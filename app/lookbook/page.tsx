@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { AuthenticationError } from "@/lib/auth";
 import { AuthRequiredCard } from "@/components/auth-required-card";
 import { LookbookImageUpload } from "@/components/lookbook-image-upload";
@@ -33,37 +32,18 @@ export default async function LookbookPage() {
 
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-8 px-6 py-10 md:px-10">
-        <header className="flex flex-col gap-4 rounded-[2rem] border border-[var(--line)] bg-[var(--surface)] p-8 shadow-[0_18px_50px_rgba(40,25,12,0.08)]">
-          <p className="text-sm uppercase tracking-[0.35em] text-[var(--muted)]">
+        <div className="space-y-2">
+          <p className="text-[11px] uppercase tracking-[0.34em] text-[var(--muted)]">
             Lookbook
           </p>
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div className="space-y-3">
-              <h1 className="text-4xl font-semibold tracking-[-0.04em]">
-                Inspiration, references, and missing-piece planning.
-              </h1>
-              <p className="max-w-2xl text-sm leading-6 text-[var(--muted)]">
-                This slice keeps lookbook entries separate from owned garments so
-                inspiration, wishlist targets, and saved references do not leak
-                into the wardrobe inventory.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Link
-                href="/wardrobe"
-                className="rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium"
-              >
-                Wardrobe
-              </Link>
-              <Link
-                href="/"
-                className="rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium"
-              >
-                Back Home
-              </Link>
-            </div>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--muted)]">
+            <span>{entries.length} saved references</span>
+            <span className="text-[rgba(23,20,17,0.22)]">/</span>
+            <span>
+              {entries.reduce((total, entry) => total + entry.items.length, 0)} linked items
+            </span>
           </div>
-        </header>
+        </div>
 
         <section className="grid gap-6 xl:grid-cols-[1.05fr_1fr]">
           <form

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { AuthenticationError } from "@/lib/auth";
 import { AuthRequiredCard } from "@/components/auth-required-card";
 import { listStyleRules } from "@/lib/domain/style-rules/service";
@@ -16,31 +15,18 @@ export default async function StyleRulesPage() {
 
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-8 px-6 py-10 md:px-10">
-        <header className="flex flex-col gap-4 rounded-[2rem] border border-[var(--line)] bg-[var(--surface)] p-8 shadow-[0_18px_50px_rgba(40,25,12,0.08)]">
-          <p className="text-sm uppercase tracking-[0.35em] text-[var(--muted)]">
+        <div className="space-y-2">
+          <p className="text-[11px] uppercase tracking-[0.34em] text-[var(--muted)]">
             Style Rules
           </p>
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div className="space-y-3">
-              <h1 className="text-4xl font-semibold tracking-[-0.04em]">
-                Inspectable styling logic, not opaque prompts.
-              </h1>
-              <p className="max-w-2xl text-sm leading-6 text-[var(--muted)]">
-                Global rules stay readable, and user rules act as overrides or
-                personalized additions for colour pairing, occasion fit, weather,
-                and silhouette logic.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Link href="/" className="rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium">
-                Back Home
-              </Link>
-              <Link href="/lookbook" className="rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium">
-                Lookbook
-              </Link>
-            </div>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--muted)]">
+            <span>{globalRules.length} global rules</span>
+            <span className="text-[rgba(23,20,17,0.22)]">/</span>
+            <span>{userRules.length} user rules</span>
+            <span className="text-[rgba(23,20,17,0.22)]">/</span>
+            <span>{rules.filter((rule) => rule.active).length} active</span>
           </div>
-        </header>
+        </div>
 
         <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
           <form action={createStyleRuleAction} className="rounded-[1.75rem] border border-[var(--line)] bg-white/65 p-6">
