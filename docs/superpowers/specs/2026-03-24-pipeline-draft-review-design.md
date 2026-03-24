@@ -19,7 +19,7 @@ Complete the pipeline-to-wardrobe flow by improving the draft review experience.
 | Crop timing | At draft creation (server-side, `sharp`) | Crops stored once; review page loads fast with small images |
 | Card layout | Compact inline (image + fields side by side) | Multiple cards visible without scrolling |
 | Edit before accept | Yes — inline editable fields | User can correct AI mistakes before committing |
-| Garment image on accept | The cropped bbox image | Clean isolated garment photo, no extra upload needed |
+| Garment image on accept | The cropped bbox image (`image_type: "cropped"`) | Clean isolated garment photo, no extra upload needed. `"cropped"` = rectangular region; `"cutout"` = background-removed. Storage bucket is named `garment-cutouts` but `image_type` value is `"cropped"`. |
 
 ---
 
@@ -27,51 +27,101 @@ Complete the pipeline-to-wardrobe flow by improving the draft review experience.
 
 ### 1. Cropping at Draft Creation (`lib/domain/ingestion/service.ts`)
 
-`createDraftsFromPipelineResult` gains a `storagePath` parameter (the source image's storage path). After inserting drafts, it:
+`CreateDraftsParams` gains a `storagePath` field (the source image's storage path in `garment-originals`):
 
-1. Downloads the source image from `garment-originals` bucket via Supabase Storage.
-2. Uses `sharp` to crop each garment's bounding box region (`[x1, y1, x2, y2]`).
-3. Uploads each crop to the `garment-cutouts` bucket at `{userId}/crops/{draftId}.jpg`.
-4. Stores the crop path in `draft_payload_json.crop_path`.
+```ts
+interface CreateDraftsParams {
+  sourceId: string;
+  storagePath: string;   // new
+  result: PipelineAnalyzeResponse;
+}
+```
 
-Crops run in parallel with `Promise.all`. If a crop fails, the draft is still created — `crop_path` will be null and the card falls back to a placeholder.
+`createDraftsFromPipelineResult` updates in two phases:
+
+**Phase 1 — insert all drafts** (existing loop, unchanged structure):
+- Insert each garment as a `garment_draft` row with `crop_path: null` in `draft_payload_json`.
+- Collect `{ draftId, bbox }` pairs.
+
+**Phase 2 — crop in parallel** (`Promise.all`):
+- Generate a short-lived signed URL for `storagePath` in the `garment-originals` bucket (e.g. 60s expiry) using the Supabase client's `createSignedUrl`. Fetch the image bytes via `fetch(signedUrl)` → `ArrayBuffer`. This gives `sharp` actual bytes — it cannot use a storage path directly.
+- For each `{ draftId, bbox }`:
+  - Use `sharp` to crop `[x1, y1, x2, y2]` → JPEG buffer.
+  - Upload to `garment-cutouts` at `{userId}/crops/{draftId}.jpg`.
+  - Capture output `{ width, height }` from sharp metadata.
+  - `UPDATE garment_drafts SET draft_payload_json = draft_payload_json || '{"crop_path": "...", "crop_width": N, "crop_height": N}'` for that draft id.
+- If a crop fails for one garment, log the error and leave `crop_path: null` — do not abort other crops or throw.
 
 **`sharp` install:** Add `sharp` to `package.json` dependencies.
 
-### 2. `PendingDraft` type changes (`lib/domain/ingestion/service.ts`)
-
-`listPendingDrafts` joins `garment_sources` to retrieve `storage_path`. The returned `PendingDraft` type gains:
+`app/page-actions.ts` passes `storagePath` when calling `createDraftsFromPipelineResult`:
 
 ```ts
-interface PendingDraft {
+await createDraftsFromPipelineResult({ sourceId, storagePath, result });
+```
+
+`storagePath` is already returned by `createGarmentSource` and available in `uploadAndAnalyseAction`.
+
+---
+
+### 2. `PendingDraft` type update (`lib/domain/ingestion/service.ts`)
+
+Add `cropPath`, `cropWidth`, `cropHeight` to the existing type. All other existing fields are retained:
+
+```ts
+export interface PendingDraft {
   id: string;
   sourceId: string;
   confidence: number | null;
-  cropPath: string | null;          // new — from draft_payload_json.crop_path
+  cropPath: string | null;        // new — from draft_payload_json.crop_path
+  cropWidth: number | null;       // new — from draft_payload_json.crop_width
+  cropHeight: number | null;      // new — from draft_payload_json.crop_height
   payload: {
+    tag: string;                  // pipeline's human-readable label (used as title)
     category: string;
     colour: string;
     material: string | null;
     style: string;
-    tag: string;
     confidence: number;
   };
 }
 ```
 
-### 3. Signed URL generation for crop images (`app/wardrobe/review/page.tsx`)
+`listPendingDrafts` reads `crop_path`, `crop_width`, `crop_height` from `draft_payload_json` when mapping rows.
 
-The review page (server component) generates signed URLs for each draft's `cropPath` from the `garment-cutouts` bucket (1-hour expiry). These are passed to `DraftReviewList` alongside the draft data.
+---
+
+### 3. Title field mapping
+
+Pipeline drafts do not have a `title` field in `draft_payload_json`. The `tag` field (e.g., `"navy cotton shirt/blouse"`) serves as the human-readable label. In the editable card UI, the "Title" input is initialised from `draft.payload.tag`. When `acceptDraftAction` is called, the edited title value is passed as the `title` argument to `createGarment` — the same mapping already present in the current `acceptDraftAction`.
+
+---
+
+### 4. Signed URL generation (`app/wardrobe/review/page.tsx`)
+
+The review page (server component) generates signed URLs for each draft's `cropPath` from the `garment-cutouts` bucket (1-hour expiry). If `cropPath` is null or `createSignedUrl` returns an error, `cropUrl` is `null` — the card falls back to a placeholder image.
+
+Export the combined type from `page.tsx`:
 
 ```ts
-interface DraftWithImageUrl extends PendingDraft {
+export interface DraftWithImageUrl extends PendingDraft {
   cropUrl: string | null;
 }
 ```
 
-### 4. Editable draft card (`app/wardrobe/review/draft-review-list.tsx`)
+---
 
-Each card uses local React state to hold editable field values, initialised from `draft.payload`. Layout:
+### 5. Editable draft card (`app/wardrobe/review/draft-review-list.tsx`)
+
+`Props` changes to:
+
+```ts
+interface Props {
+  drafts: DraftWithImageUrl[];
+}
+```
+
+Each card uses local React state (`useState`) to hold editable field values, initialised from `draft.payload`. Layout (compact inline, A):
 
 ```
 ┌────────────────────────────────────────┐
@@ -82,24 +132,59 @@ Each card uses local React state to hold editable field values, initialised from
 └────────────────────────────────────────┘
 ```
 
-Fields: title (text), category (text), colour (text), material (text), style (text).
+Fields: title (from `tag`), category, colour, material, style — all plain `<input type="text">`.
 
-On **Accept**, the edited values are passed to `acceptDraftAction`. On **Reject**, no field values are needed.
+Crop image: `<img src={draft.cropUrl ?? undefined} />` with a grey placeholder `<div>` when `cropUrl` is null.
 
-### 5. Accept action with image attachment (`app/wardrobe/review/actions.ts`)
+On **Accept**, pass only `{ draftId, fields }` to `acceptDraftAction` — the action reads `cropPath` server-side from the draft row.
+On **Reject**, call `rejectDraftAction` with no field values.
 
-`acceptDraftAction` is updated to accept edited field overrides and `cropPath`:
+---
+
+### 6. Accept action (`app/wardrobe/review/actions.ts`)
+
+Define `EditedFields` locally in `actions.ts`:
 
 ```ts
-acceptDraftAction(draftId: string, fields: EditedFields, cropPath: string | null)
+interface EditedFields {
+  title: string;
+  category: string;
+  colour: string;
+  material: string;
+  style: string;
+}
+```
+
+Update `acceptDraftAction` signature — crop data is read server-side from the draft row, not supplied by the client:
+
+```ts
+acceptDraftAction(input: {
+  draftId: string;
+  fields: EditedFields;
+})
 ```
 
 Steps:
-1. Fetch draft from DB, guard against non-pending status.
-2. Call `createGarment` with edited field values.
-3. If `cropPath` is non-null: insert a `garment_images` record with `image_type: "original"` and `storage_path: cropPath`. Also update `garment_sources.garment_id` to link the source to the new garment.
-4. Mark draft `status: "confirmed"`.
-5. Revalidate `/`, `/wardrobe`, `/wardrobe/review`.
+1. Fetch draft from DB; guard: if `status !== "pending"` return `{ status: "success" }` (idempotent).
+2. Read `cropPath`, `cropWidth`, `cropHeight` from `draft.draft_payload_json` (already fetched in step 1). Never trust client-supplied paths — this prevents path injection into `garment-cutouts`.
+3. Call `createGarment` with `fields.title`, `fields.category`, and canonical colour from `fields.colour`.
+4. If `cropPath` is non-null:
+   - Insert a `garment_images` row: `{ garment_id, image_type: "cropped", storage_path: cropPath, width: cropWidth, height: cropHeight }`.
+   - Update `garment_sources` row where `id = draft.source_id`: set `garment_id = garment.id` (column already exists as nullable — no migration needed).
+5. Update `garment_drafts` row: `status → "confirmed"`.
+6. Revalidate `/`, `/wardrobe`, `/wardrobe/review`.
+
+---
+
+### 7. Reject action (`app/wardrobe/review/actions.ts`)
+
+Add a pending-status guard to `rejectDraftAction` (currently absent):
+
+```ts
+if (draft.status !== "pending") return { status: "success" };
+```
+
+This prevents a confirmed draft from being overwritten to `rejected` if the user manages to click Reject on a stale page.
 
 ---
 
@@ -107,27 +192,29 @@ Steps:
 
 ```
 uploadAndAnalyseAction
-  → createGarmentSource           (uploads source to garment-originals)
-  → callPipelineService           (gets garments + bboxes)
-  → createDraftsFromPipelineResult(sourceStoragePath)
-      → for each garment:
-          insert garment_draft    (with bbox in payload)
-          sharp.crop(bbox)        (parallel)
-          upload to garment-cutouts  → crop_path stored in payload
+  → createGarmentSource           → storagePath
+  → callPipelineService           → garments + bboxes
+  → createDraftsFromPipelineResult({ sourceId, storagePath, result })
+      Phase 1: insert all garment_draft rows (crop_path: null)
+      Phase 2: Promise.all crops
+        download source image once
+        for each draft: sharp.crop(bbox) → upload garment-cutouts → UPDATE draft crop_path/width/height
   → redirect /wardrobe/review
 
-/wardrobe/review (server)
-  → listPendingDrafts             (includes cropPath)
-  → createSignedUrl per cropPath  (garment-cutouts bucket)
-  → render DraftReviewList with cropUrls
+/wardrobe/review (server component)
+  → listPendingDrafts()           → PendingDraft[] (includes cropPath)
+  → createSignedUrl per cropPath  (garment-cutouts, 1h; null on error)
+  → render DraftReviewList with DraftWithImageUrl[]
 
-DraftReviewList (client)
-  → editable fields per draft
-  → acceptDraftAction(id, editedFields, cropPath)
-      → createGarment
-      → insert garment_images (crop_path)
+DraftReviewList (client component)
+  → editable fields per card (title/category/colour/material/style)
+  → acceptDraftAction({ draftId, fields })
+      → fetch draft row (reads cropPath/cropWidth/cropHeight from draft_payload_json)
+      → createGarment(fields)
+      → insert garment_images (image_type: "cropped", crop dimensions)
+      → update garment_sources set garment_id where id = draft.source_id
       → update garment_draft status → "confirmed"
-  → rejectDraftAction(id)
+  → rejectDraftAction(draftId)    (guards status === "pending")
       → update garment_draft status → "rejected"
   → redirect /wardrobe when all actioned
 ```
@@ -140,8 +227,10 @@ DraftReviewList (client)
 |---|---|
 | Crop fails for one garment | Draft created with `crop_path: null`; card shows placeholder |
 | All crops fail | Drafts still created; review page works, cards show placeholders |
+| `createSignedUrl` fails | `cropUrl` set to `null`; card shows placeholder, review continues |
 | Accept fails after garment created | Return error, draft stays pending; user can retry |
-| Source image not in storage | Log warning, skip crop step; draft created without image |
+| Source image not in storage | Log warning, skip crop phase; drafts created without images |
+| Reject on already-confirmed draft | Guard returns `{ status: "success" }` silently |
 
 ---
 
@@ -150,11 +239,11 @@ DraftReviewList (client)
 | File | Change |
 |---|---|
 | `package.json` | Add `sharp` dependency |
-| `lib/domain/ingestion/service.ts` | Crop at draft creation; update `PendingDraft` type; join sources in `listPendingDrafts` |
+| `lib/domain/ingestion/service.ts` | Add `storagePath` to `CreateDraftsParams`; two-phase crop logic; update `PendingDraft` type; read crop fields in `listPendingDrafts` |
 | `app/page-actions.ts` | Pass `storagePath` to `createDraftsFromPipelineResult` |
-| `app/wardrobe/review/page.tsx` | Generate signed crop URLs server-side |
-| `app/wardrobe/review/draft-review-list.tsx` | Editable fields; pass edited values + cropPath to accept action |
-| `app/wardrobe/review/actions.ts` | Accept edited fields; attach crop image to garment |
+| `app/wardrobe/review/page.tsx` | Generate signed crop URLs; export `DraftWithImageUrl` type |
+| `app/wardrobe/review/draft-review-list.tsx` | Use `DraftWithImageUrl[]`; editable fields; pass fields + cropPath to accept action |
+| `app/wardrobe/review/actions.ts` | Add `EditedFields`; updated accept signature; crop image attachment; status guard on reject |
 
 ---
 
@@ -164,3 +253,4 @@ DraftReviewList (client)
 - Brand or size fields (can be edited post-accept via Edit Item)
 - Receipt or URL ingestion (separate flows)
 - Retry UI for failed crops
+- DB schema changes (all required columns already exist)
