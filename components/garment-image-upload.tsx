@@ -2,6 +2,9 @@
 
 import { useActionState, useEffect, useId, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { DestructiveActionButton } from "@/components/destructive-action-button";
+import { FormFeedback } from "@/components/form-feedback";
+import { showAppToast } from "@/lib/ui/app-toast";
 import {
   wardrobeActionState,
   type WardrobeActionState
@@ -33,10 +36,34 @@ export function GarmentImageUpload({
     };
   }, [previewUrl]);
 
+  useEffect(() => {
+    if (state.status === "success" || state.status === "partial") {
+      showAppToast({
+        message: state.message || "Garment image attached",
+        tone: state.status === "partial" ? "info" : "success"
+      });
+    }
+  }, [state.message, state.status]);
+
+  const clearPreview = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setFileName(null);
+    setPreviewUrl(null);
+
+    const input = document.getElementById(inputId) as HTMLInputElement | null;
+
+    if (input) {
+      input.value = "";
+    }
+  };
+
   return (
     <form
       action={formAction}
-      className="rounded-[1rem] border border-[var(--line)] bg-white/70 p-4"
+      className="pw-panel-soft p-4"
     >
       <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
         Upload Original Image
@@ -47,8 +74,8 @@ export function GarmentImageUpload({
           previewUrl
             ? "border-transparent bg-white"
             : dragActive
-              ? "border-[var(--accent)] bg-[rgba(166,99,60,0.07)]"
-              : "border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(246,239,232,0.85))]"
+              ? "border-[var(--accent)] bg-[rgba(123,92,240,0.08)]"
+              : "border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,243,255,0.88))]"
         }`}
         onDragEnter={(event) => {
           event.preventDefault();
@@ -101,29 +128,18 @@ export function GarmentImageUpload({
               alt="Selected garment upload preview"
               className="h-72 w-full object-contain bg-[rgba(0,0,0,0.03)]"
             />
-            <button
-              type="button"
-              onClick={(event) => {
-                event.preventDefault();
-                if (previewUrl) {
-                  URL.revokeObjectURL(previewUrl);
-                }
-                setFileName(null);
-                setPreviewUrl(null);
-
-                const input = event.currentTarget
-                  .parentElement
-                  ?.querySelector('input[type="file"]') as HTMLInputElement | null;
-
-                if (input) {
-                  input.value = "";
-                }
-              }}
-              className="absolute right-4 top-4 rounded-full bg-black/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white"
-            >
-              Remove
-            </button>
-            <div className="border-t border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(246,239,232,0.88))] px-5 py-4">
+            <div className="absolute right-4 top-4">
+              <DestructiveActionButton
+                idleLabel="Remove Image"
+                pendingLabel="Removing..."
+                confirmLabel="Confirm remove"
+                buttonType="button"
+                onConfirm={clearPreview}
+                className="rounded-full bg-black/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white"
+                confirmClassName="rounded-full bg-red-600 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white shadow-[0_10px_24px_rgba(185,28,28,0.24)]"
+              />
+            </div>
+            <div className="border-t border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,243,255,0.88))] px-5 py-4">
               <p className="text-sm font-semibold">{fileName || "Image selected"}</p>
               <p className="mt-1 text-sm text-[var(--muted)]">
                 Replace it by choosing another file or dragging a new image into this area.
@@ -149,7 +165,7 @@ export function GarmentImageUpload({
               Add the original garment photo so it can be attached to this wardrobe item.
             </p>
             <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-              <span className="rounded-full border border-[var(--line)] bg-white px-4 py-2 text-sm font-medium">
+              <span className="pw-button-quiet px-4 py-2 text-sm font-medium">
                 JPG, PNG, WEBP
               </span>
               <span className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
@@ -157,7 +173,7 @@ export function GarmentImageUpload({
               </span>
             </div>
             <div className="mt-6">
-              <span className="rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--accent-foreground)]">
+              <span className="pw-button-primary">
                 Choose Image
               </span>
             </div>
@@ -192,15 +208,7 @@ export function GarmentImageUpload({
       </div>
 
       <UploadButton />
-      {state.message ? (
-        <p
-          className={`mt-3 text-sm ${
-            state.status === "error" ? "text-red-600" : "text-[var(--muted)]"
-          }`}
-        >
-          {state.message}
-        </p>
-      ) : null}
+      <FormFeedback state={state} className="mt-3" />
       <p className="mt-3 text-xs text-[var(--muted)]">
         Stored in the <code>garment-originals</code> bucket and recorded in{" "}
         <code>garment_images</code> plus <code>garment_sources</code>.
@@ -219,7 +227,7 @@ function UploadButton() {
     <button
       type="submit"
       disabled={pending}
-      className="mt-4 rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium disabled:opacity-60"
+      className="pw-button-quiet mt-4 px-4 py-2 text-sm disabled:opacity-60"
     >
       {pending ? "Attaching..." : "Attach Image"}
     </button>

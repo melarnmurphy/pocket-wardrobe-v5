@@ -64,4 +64,28 @@ describe("analyzePipelineAction", () => {
     expect(result.status).toBe("error");
     expect(result.message).toBe("Internal error");
   });
+
+  it("surfaces premium gating errors from the analysis API", async () => {
+    const { analyzePipelineAction } = await import("@/app/wardrobe/actions");
+
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({
+        error:
+          "Automatic photo feature labelling is a Premium feature. You can still upload the photo and fill in the garment details manually."
+      }),
+    });
+
+    const formData = new FormData();
+    formData.set("source_id", "00000000-0000-0000-0000-000000000001");
+
+    const result = await analyzePipelineAction(
+      { status: "idle", message: null },
+      formData
+    );
+
+    expect(result.status).toBe("error");
+    expect(result.message).toContain("Premium feature");
+  });
 });

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { formActionState, type FormActionState } from "@/lib/ui/form-action-state";
 import {
   createLookbookItem,
   createLookbookEntry,
@@ -93,108 +94,282 @@ const deleteLookbookItemSchema = z.object({
   id: z.string().uuid()
 });
 
-export async function createLookbookEntryAction(formData: FormData) {
-  const file = formData.get("image");
-  const values = createLookbookEntryFormSchema.parse({
-    title: formData.get("title"),
-    description: formData.get("description"),
-    source_type: formData.get("source_type"),
-    source_url: formData.get("source_url"),
-    image_path: formData.get("image_path"),
-    aesthetic_tags: splitTags(formData.get("aesthetic_tags")),
-    occasion_tags: splitTags(formData.get("occasion_tags"))
-  });
+function toActionErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof z.ZodError) {
+    return error.issues[0]?.message ?? fallback;
+  }
 
-  await createLookbookEntry(
-    values,
-    file instanceof File && file.size > 0 ? file : undefined
-  );
-  revalidatePath("/lookbook");
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
+async function runCreateLookbookEntry(formData: FormData): Promise<FormActionState> {
+  try {
+    const file = formData.get("image");
+    const values = createLookbookEntryFormSchema.parse({
+      title: formData.get("title"),
+      description: formData.get("description"),
+      source_type: formData.get("source_type"),
+      source_url: formData.get("source_url"),
+      image_path: formData.get("image_path"),
+      aesthetic_tags: splitTags(formData.get("aesthetic_tags")),
+      occasion_tags: splitTags(formData.get("occasion_tags"))
+    });
+
+    await createLookbookEntry(
+      values,
+      file instanceof File && file.size > 0 ? file : undefined
+    );
+    revalidatePath("/lookbook");
+
+    return {
+      status: "success",
+      message: "Lookbook entry saved."
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: toActionErrorMessage(error, "Could not save lookbook entry.")
+    };
+  }
+}
+
+export async function createLookbookEntryAction(formData: FormData) {
+  await runCreateLookbookEntry(formData);
+}
+
+export async function createLookbookEntryFormAction(
+  _state: FormActionState = formActionState,
+  formData?: FormData
+): Promise<FormActionState> {
+  if (!formData) {
+    return formActionState;
+  }
+
+  return runCreateLookbookEntry(formData);
+}
+
+async function runDeleteLookbookEntry(formData: FormData): Promise<FormActionState> {
+  try {
+    const values = deleteLookbookEntrySchema.parse({
+      id: formData.get("id")
+    });
+
+    await deleteLookbookEntry(values.id);
+    revalidatePath("/lookbook");
+
+    return {
+      status: "success",
+      message: "Lookbook entry deleted."
+    } satisfies FormActionState;
+  } catch (error) {
+    return {
+      status: "error",
+      message: toActionErrorMessage(error, "Could not delete lookbook entry.")
+    } satisfies FormActionState;
+  }
 }
 
 export async function deleteLookbookEntryAction(formData: FormData) {
-  const values = deleteLookbookEntrySchema.parse({
-    id: formData.get("id")
-  });
+  await runDeleteLookbookEntry(formData);
+}
 
-  await deleteLookbookEntry(values.id);
-  revalidatePath("/lookbook");
+export async function deleteLookbookEntryFormAction(
+  _state: FormActionState = formActionState,
+  formData?: FormData
+): Promise<FormActionState> {
+  if (!formData) {
+    return formActionState;
+  }
+
+  return runDeleteLookbookEntry(formData);
+}
+
+async function runUpdateLookbookEntry(formData: FormData): Promise<FormActionState> {
+  try {
+    const id = z.string().uuid().parse(formData.get("id"));
+    const values = createLookbookEntryFormSchema.parse({
+      title: formData.get("title"),
+      description: formData.get("description"),
+      source_type: formData.get("source_type"),
+      source_url: formData.get("source_url"),
+      image_path: formData.get("image_path"),
+      aesthetic_tags: splitTags(formData.get("aesthetic_tags")),
+      occasion_tags: splitTags(formData.get("occasion_tags"))
+    });
+
+    await updateLookbookEntry(id, values);
+    revalidatePath("/lookbook");
+
+    return {
+      status: "success",
+      message: "Lookbook entry updated."
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: toActionErrorMessage(error, "Could not update lookbook entry.")
+    };
+  }
 }
 
 export async function updateLookbookEntryAction(formData: FormData) {
-  const id = z.string().uuid().parse(formData.get("id"));
-  const values = createLookbookEntryFormSchema.parse({
-    title: formData.get("title"),
-    description: formData.get("description"),
-    source_type: formData.get("source_type"),
-    source_url: formData.get("source_url"),
-    image_path: formData.get("image_path"),
-    aesthetic_tags: splitTags(formData.get("aesthetic_tags")),
-    occasion_tags: splitTags(formData.get("occasion_tags"))
-  });
+  await runUpdateLookbookEntry(formData);
+}
 
-  await updateLookbookEntry(id, values);
-  revalidatePath("/lookbook");
+export async function updateLookbookEntryFormAction(
+  _state: FormActionState = formActionState,
+  formData?: FormData
+): Promise<FormActionState> {
+  if (!formData) {
+    return formActionState;
+  }
+
+  return runUpdateLookbookEntry(formData);
+}
+
+async function runCreateLookbookItem(formData: FormData): Promise<FormActionState> {
+  try {
+    const values = createLookbookItemFormSchema.parse({
+      lookbook_entry_id: formData.get("lookbook_entry_id"),
+      garment_id: formData.get("garment_id"),
+      role: formData.get("role"),
+      desired_title: formData.get("desired_title"),
+      desired_category: formData.get("desired_category"),
+      desired_notes: formData.get("desired_notes")
+    });
+
+    await createLookbookItem({
+      lookbook_entry_id: values.lookbook_entry_id,
+      garment_id: values.garment_id,
+      role: values.role,
+      desired_item_json:
+        values.garment_id === null
+          ? {
+              title: values.desired_title,
+              category: values.desired_category,
+              notes: values.desired_notes
+            }
+          : null
+    });
+    revalidatePath("/lookbook");
+
+    return {
+      status: "success",
+      message: "Linked item added."
+    } satisfies FormActionState;
+  } catch (error) {
+    return {
+      status: "error",
+      message: toActionErrorMessage(error, "Could not add linked item.")
+    } satisfies FormActionState;
+  }
 }
 
 export async function createLookbookItemAction(formData: FormData) {
-  const values = createLookbookItemFormSchema.parse({
-    lookbook_entry_id: formData.get("lookbook_entry_id"),
-    garment_id: formData.get("garment_id"),
-    role: formData.get("role"),
-    desired_title: formData.get("desired_title"),
-    desired_category: formData.get("desired_category"),
-    desired_notes: formData.get("desired_notes")
-  });
+  await runCreateLookbookItem(formData);
+}
 
-  await createLookbookItem({
-    lookbook_entry_id: values.lookbook_entry_id,
-    garment_id: values.garment_id,
-    role: values.role,
-    desired_item_json:
-      values.garment_id === null
-        ? {
-            title: values.desired_title,
-            category: values.desired_category,
-            notes: values.desired_notes
-          }
-        : null
-  });
-  revalidatePath("/lookbook");
+export async function createLookbookItemFormAction(
+  _state: FormActionState = formActionState,
+  formData?: FormData
+): Promise<FormActionState> {
+  if (!formData) {
+    return formActionState;
+  }
+
+  return runCreateLookbookItem(formData);
+}
+
+async function runDeleteLookbookItem(formData: FormData): Promise<FormActionState> {
+  try {
+    const values = deleteLookbookItemSchema.parse({
+      id: formData.get("id")
+    });
+
+    await deleteLookbookItem(values.id);
+    revalidatePath("/lookbook");
+
+    return {
+      status: "success",
+      message: "Linked item removed."
+    } satisfies FormActionState;
+  } catch (error) {
+    return {
+      status: "error",
+      message: toActionErrorMessage(error, "Could not remove linked item.")
+    } satisfies FormActionState;
+  }
 }
 
 export async function deleteLookbookItemAction(formData: FormData) {
-  const values = deleteLookbookItemSchema.parse({
-    id: formData.get("id")
-  });
+  await runDeleteLookbookItem(formData);
+}
 
-  await deleteLookbookItem(values.id);
-  revalidatePath("/lookbook");
+export async function deleteLookbookItemFormAction(
+  _state: FormActionState = formActionState,
+  formData?: FormData
+): Promise<FormActionState> {
+  if (!formData) {
+    return formActionState;
+  }
+
+  return runDeleteLookbookItem(formData);
+}
+
+async function runUpdateLookbookItem(formData: FormData): Promise<FormActionState> {
+  try {
+    const id = z.string().uuid().parse(formData.get("id"));
+    const values = createLookbookItemFormSchema.parse({
+      lookbook_entry_id: formData.get("lookbook_entry_id"),
+      garment_id: formData.get("garment_id"),
+      role: formData.get("role"),
+      desired_title: formData.get("desired_title"),
+      desired_category: formData.get("desired_category"),
+      desired_notes: formData.get("desired_notes")
+    });
+
+    await updateLookbookItem(id, {
+      lookbook_entry_id: values.lookbook_entry_id,
+      garment_id: values.garment_id,
+      role: values.role,
+      desired_item_json:
+        values.garment_id === null
+          ? {
+              title: values.desired_title,
+              category: values.desired_category,
+              notes: values.desired_notes
+            }
+          : null
+    });
+    revalidatePath("/lookbook");
+
+    return {
+      status: "success",
+      message: "Linked item updated."
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: toActionErrorMessage(error, "Could not update linked item.")
+    };
+  }
 }
 
 export async function updateLookbookItemAction(formData: FormData) {
-  const id = z.string().uuid().parse(formData.get("id"));
-  const values = createLookbookItemFormSchema.parse({
-    lookbook_entry_id: formData.get("lookbook_entry_id"),
-    garment_id: formData.get("garment_id"),
-    role: formData.get("role"),
-    desired_title: formData.get("desired_title"),
-    desired_category: formData.get("desired_category"),
-    desired_notes: formData.get("desired_notes")
-  });
+  await runUpdateLookbookItem(formData);
+}
 
-  await updateLookbookItem(id, {
-    lookbook_entry_id: values.lookbook_entry_id,
-    garment_id: values.garment_id,
-    role: values.role,
-    desired_item_json:
-      values.garment_id === null
-        ? {
-            title: values.desired_title,
-            category: values.desired_category,
-            notes: values.desired_notes
-          }
-        : null
-  });
-  revalidatePath("/lookbook");
+export async function updateLookbookItemFormAction(
+  _state: FormActionState = formActionState,
+  formData?: FormData
+): Promise<FormActionState> {
+  if (!formData) {
+    return formActionState;
+  }
+
+  return runUpdateLookbookItem(formData);
 }

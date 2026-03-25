@@ -8,10 +8,17 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState
 } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useFormStatus } from "react-dom";
+import { DestructiveActionButton } from "@/components/destructive-action-button";
+import { FormFeedback } from "@/components/form-feedback";
 import { GarmentImageUpload } from "@/components/garment-image-upload";
+import { PremiumUpsellCard } from "@/components/premium-upsell-card";
+import { showAppToast } from "@/lib/ui/app-toast";
+import type { PlanTier } from "@/lib/domain/entitlements";
 import {
   wardrobeActionState,
   type WardrobeActionState
@@ -23,7 +30,18 @@ const seasonOptions = ["spring", "summer", "autumn", "winter"] as const;
 
 export function WardrobeShop({
   garments,
+  planTier,
+  canUseFeatureLabels,
+  premiumUpgradeUrl,
+  billingCheckoutEnabled,
+  premiumFeatures,
+  initialBrowseState,
+  initialActiveGarmentId,
+  initialCreateState,
   createGarmentAction,
+  createPhotoDraftAction,
+  createProductUrlDraftAction,
+  createReceiptDraftAction,
   addGarmentImageAction,
   deleteGarmentAction,
   toggleGarmentFavouriteAction,
@@ -31,7 +49,39 @@ export function WardrobeShop({
   updateGarmentAction
 }: {
   garments: GarmentListItem[];
+  planTier: PlanTier;
+  canUseFeatureLabels: boolean;
+  premiumUpgradeUrl: string | null;
+  billingCheckoutEnabled: boolean;
+  premiumFeatures: readonly string[];
+  initialBrowseState?: {
+    query?: string;
+    occasionFilter?: string;
+    typeFilter?: string;
+    seasonFilter?: string;
+    colourFilter?: string;
+    statusFilter?: string;
+    favouritesOnly?: boolean;
+    sortBy?: string;
+  };
+  initialActiveGarmentId?: string | null;
+  initialCreateState?: {
+    isOpen?: boolean;
+    sourceMode?: "manual" | "photo" | "product_url" | "receipt";
+  };
   createGarmentAction: (
+    state: WardrobeActionState,
+    formData: FormData
+  ) => Promise<WardrobeActionState>;
+  createPhotoDraftAction: (
+    state: WardrobeActionState,
+    formData: FormData
+  ) => Promise<WardrobeActionState>;
+  createProductUrlDraftAction: (
+    state: WardrobeActionState,
+    formData: FormData
+  ) => Promise<WardrobeActionState>;
+  createReceiptDraftAction: (
     state: WardrobeActionState,
     formData: FormData
   ) => Promise<WardrobeActionState>;
@@ -56,8 +106,16 @@ export function WardrobeShop({
     formData: FormData
   ) => Promise<WardrobeActionState>;
 }) {
-  const [activeGarmentId, setActiveGarmentId] = useState<string | null>(null);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [activeGarmentId, setActiveGarmentId] = useState<string | null>(
+    initialActiveGarmentId ?? null
+  );
+  const [isCreateOpen, setIsCreateOpen] = useState(initialCreateState?.isOpen ?? false);
+  const [createSourceMode, setCreateSourceMode] = useState<
+    "manual" | "photo" | "product_url" | "receipt"
+  >(initialCreateState?.sourceMode ?? "manual");
   const [createMobileStep, setCreateMobileStep] = useState<1 | 2>(1);
   const [isCreateDetailsOpen, setIsCreateDetailsOpen] = useState(false);
   const [isFilterBarCondensed, setIsFilterBarCondensed] = useState(false);
@@ -69,18 +127,39 @@ export function WardrobeShop({
   const [createPreviewPrice, setCreatePreviewPrice] = useState("");
   const [createPreviewCurrency, setCreatePreviewCurrency] = useState("AUD");
   const [createPreviewImageUrl, setCreatePreviewImageUrl] = useState<string | null>(null);
-  const [createSuccessToast, setCreateSuccessToast] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  const [occasionFilter, setOccasionFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [seasonFilter, setSeasonFilter] = useState("all");
-  const [colourFilter, setColourFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [favouritesOnly, setFavouritesOnly] = useState(false);
-  const [sortBy, setSortBy] = useState("newest");
+  const [query, setQuery] = useState(initialBrowseState?.query ?? "");
+  const [occasionFilter, setOccasionFilter] = useState(
+    initialBrowseState?.occasionFilter ?? "all"
+  );
+  const [typeFilter, setTypeFilter] = useState(initialBrowseState?.typeFilter ?? "all");
+  const [seasonFilter, setSeasonFilter] = useState(
+    initialBrowseState?.seasonFilter ?? "all"
+  );
+  const [colourFilter, setColourFilter] = useState(
+    initialBrowseState?.colourFilter ?? "all"
+  );
+  const [statusFilter, setStatusFilter] = useState(
+    initialBrowseState?.statusFilter ?? "all"
+  );
+  const [favouritesOnly, setFavouritesOnly] = useState(
+    initialBrowseState?.favouritesOnly ?? false
+  );
+  const [sortBy, setSortBy] = useState(initialBrowseState?.sortBy ?? "newest");
   const deferredQuery = useDeferredValue(query);
   const [createState, createFormAction] = useActionState(
     createGarmentAction,
+    wardrobeActionState
+  );
+  const [photoDraftState, photoDraftFormAction] = useActionState(
+    createPhotoDraftAction,
+    wardrobeActionState
+  );
+  const [productUrlDraftState, productUrlDraftFormAction] = useActionState(
+    createProductUrlDraftAction,
+    wardrobeActionState
+  );
+  const [receiptDraftState, receiptDraftFormAction] = useActionState(
+    createReceiptDraftAction,
     wardrobeActionState
   );
 
@@ -249,6 +328,30 @@ export function WardrobeShop({
   );
 
   useEffect(() => {
+    setQuery(initialBrowseState?.query ?? "");
+    setOccasionFilter(initialBrowseState?.occasionFilter ?? "all");
+    setTypeFilter(initialBrowseState?.typeFilter ?? "all");
+    setSeasonFilter(initialBrowseState?.seasonFilter ?? "all");
+    setColourFilter(initialBrowseState?.colourFilter ?? "all");
+    setStatusFilter(initialBrowseState?.statusFilter ?? "all");
+    setFavouritesOnly(initialBrowseState?.favouritesOnly ?? false);
+    setSortBy(initialBrowseState?.sortBy ?? "newest");
+  }, [initialBrowseState]);
+
+  useEffect(() => {
+    setActiveGarmentId(initialActiveGarmentId ?? null);
+  }, [initialActiveGarmentId]);
+
+  useEffect(() => {
+    if (initialActiveGarmentId) {
+      setIsCreateOpen(false);
+    } else {
+      setIsCreateOpen(initialCreateState?.isOpen ?? false);
+    }
+    setCreateSourceMode(initialCreateState?.sourceMode ?? "manual");
+  }, [initialActiveGarmentId, initialCreateState]);
+
+  useEffect(() => {
     if (
       (createState.status === "success" || createState.status === "partial") &&
       createState.garmentId
@@ -257,7 +360,10 @@ export function WardrobeShop({
       setIsCreateOpen(false);
       setCreateMobileStep(1);
       setIsCreateDetailsOpen(false);
-      setCreateSuccessToast(`${createdLabel} added to your shop`);
+      showAppToast({
+        message: `${createdLabel} added to your shop`,
+        tone: createState.status === "partial" ? "info" : "success"
+      });
       setCreatePreviewTitle("");
       setCreatePreviewBrand("");
       setCreatePreviewCategory("");
@@ -276,16 +382,44 @@ export function WardrobeShop({
   ]);
 
   useEffect(() => {
-    if (!createSuccessToast) {
+    const redirectTarget =
+      photoDraftState.nextPath || productUrlDraftState.nextPath || receiptDraftState.nextPath;
+
+    if (!redirectTarget) {
       return;
     }
 
-    const timeoutId = window.setTimeout(() => {
-      setCreateSuccessToast(null);
-    }, 2800);
+    setIsCreateOpen(false);
+    router.push(redirectTarget as "/wardrobe/review");
+  }, [photoDraftState.nextPath, productUrlDraftState.nextPath, receiptDraftState.nextPath, router]);
 
-    return () => window.clearTimeout(timeoutId);
-  }, [createSuccessToast]);
+  useEffect(() => {
+    if (photoDraftState.status === "success" && photoDraftState.message) {
+      showAppToast({
+        message: photoDraftState.message,
+        tone: "success"
+      });
+    }
+  }, [photoDraftState.message, photoDraftState.status]);
+
+  useEffect(() => {
+    if (productUrlDraftState.status === "success" && productUrlDraftState.message) {
+      showAppToast({
+        message: productUrlDraftState.message,
+        tone: "success"
+      });
+    }
+  }, [productUrlDraftState.message, productUrlDraftState.status]);
+
+  useEffect(() => {
+    if (receiptDraftState.status === "success" && receiptDraftState.message) {
+      showAppToast({
+        message: receiptDraftState.message,
+        tone:
+          receiptDraftState.message.includes("Extraction was limited") ? "info" : "success"
+      });
+    }
+  }, [receiptDraftState.message, receiptDraftState.status]);
 
   useEffect(() => {
     if (activeGarmentId && !garments.some((garment) => garment.id === activeGarmentId)) {
@@ -304,8 +438,52 @@ export function WardrobeShop({
     return () => window.removeEventListener("scroll", updateCondensedState);
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    const effectiveActiveGarmentId = activeGarmentId;
+    const effectiveCreateOpen = isCreateOpen && !effectiveActiveGarmentId;
+
+    applyFilterParam(params, "q", query.trim() || null);
+    applyFilterParam(params, "occasion", occasionFilter !== "all" ? occasionFilter : null);
+    applyFilterParam(params, "type", typeFilter !== "all" ? typeFilter : null);
+    applyFilterParam(params, "season", seasonFilter !== "all" ? seasonFilter : null);
+    applyFilterParam(params, "colour", colourFilter !== "all" ? colourFilter : null);
+    applyFilterParam(params, "status", statusFilter !== "all" ? statusFilter : null);
+    applyFilterParam(params, "fav", favouritesOnly ? "1" : null);
+    applyFilterParam(params, "sort", sortBy !== "newest" ? sortBy : null);
+    applyFilterParam(params, "item", effectiveActiveGarmentId);
+    applyFilterParam(params, "create", effectiveCreateOpen ? "1" : null);
+    applyFilterParam(params, "source", effectiveCreateOpen ? createSourceMode : null);
+
+    const nextQuery = params.toString();
+    const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname;
+    const currentQuery = searchParams.toString();
+    const currentUrl = currentQuery ? `${pathname}?${currentQuery}` : pathname;
+
+    if (nextUrl !== currentUrl) {
+      router.replace(nextUrl as never, { scroll: false });
+    }
+  }, [
+    colourFilter,
+    favouritesOnly,
+    occasionFilter,
+    pathname,
+    query,
+    router,
+    searchParams,
+    seasonFilter,
+    sortBy,
+    statusFilter,
+    typeFilter,
+    activeGarmentId,
+    isCreateOpen,
+    createSourceMode
+  ]);
+
   const openCreateComposer = () => {
+    setActiveGarmentId(null);
     setIsCreateOpen(true);
+    setCreateSourceMode("manual");
     setCreateMobileStep(1);
     setIsCreateDetailsOpen(false);
     setCreatePreviewTitle("");
@@ -321,26 +499,25 @@ export function WardrobeShop({
   return (
     <>
       <section className="space-y-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-[0.34em] text-[var(--muted)]">
-              Wardrobe
-            </p>
-            <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--muted)]">
+        <div className="pw-page-head">
+          <div className="space-y-3">
+            <p className="pw-kicker">Wardrobe</p>
+            <h1 className="pw-page-title">Dress from a system, not from memory.</h1>
+            <div className="pw-meta-row">
               <span>{garments.length} items</span>
-              <span className="text-[rgba(23,20,17,0.22)]">/</span>
+              <span className="divider">/</span>
               <span>
                 {garments.filter((garment) => garment.favourite_score && garment.favourite_score > 0)
                   .length} favourites
               </span>
-              <span className="text-[rgba(23,20,17,0.22)]">/</span>
+              <span className="divider">/</span>
               <span>{garments.reduce((total, garment) => total + garment.wear_count, 0)} wears tracked</span>
             </div>
           </div>
           <button
             type="button"
             onClick={openCreateComposer}
-            className="inline-flex items-center justify-center gap-2 self-start rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--accent-foreground)] shadow-[0_12px_25px_rgba(166,99,60,0.22)] transition-transform hover:-translate-y-0.5"
+            className="pw-button-primary self-start"
           >
             <PlusIcon />
             Add Item
@@ -348,8 +525,8 @@ export function WardrobeShop({
         </div>
 
         <div
-          className={`sticky top-4 z-20 rounded-[1.75rem] border border-[rgba(23,20,17,0.08)] bg-[rgba(255,251,246,0.88)] shadow-[0_18px_40px_rgba(40,25,12,0.08)] backdrop-blur-xl transition-all duration-300 ${
-            isFilterBarCondensed ? "p-3 shadow-[0_16px_32px_rgba(40,25,12,0.1)]" : "p-4"
+          className={`pw-fade-up sticky top-4 z-20 rounded-[8px] border border-[var(--line)] bg-[rgba(255,255,255,0.82)] shadow-[0_18px_40px_rgba(45,27,105,0.08)] backdrop-blur-xl transition-all duration-300 ${
+            isFilterBarCondensed ? "p-3 shadow-[0_16px_32px_rgba(45,27,105,0.12)]" : "p-4"
           }`}
         >
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -365,15 +542,15 @@ export function WardrobeShop({
               ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--muted)]">
-              <span className="inline-flex items-center gap-2 rounded-full bg-[rgba(23,20,17,0.04)] px-3 py-2">
+              <span className="inline-flex items-center gap-2 rounded-full bg-[rgba(45,27,105,0.06)] px-3 py-2">
                 <GridIcon />
                 {filteredGarments.length} visible
               </span>
-              <span className="inline-flex items-center gap-2 rounded-full bg-[rgba(23,20,17,0.04)] px-3 py-2">
+              <span className="inline-flex items-center gap-2 rounded-full bg-[rgba(45,27,105,0.06)] px-3 py-2">
                 <StarIcon filled />
                 {garments.filter((garment) => garment.favourite_score && garment.favourite_score > 0).length} favourites
               </span>
-              <span className="hidden items-center gap-2 rounded-full bg-[rgba(23,20,17,0.04)] px-3 py-2 sm:inline-flex">
+              <span className="hidden items-center gap-2 rounded-full bg-[rgba(45,27,105,0.06)] px-3 py-2 sm:inline-flex">
                 <WearIcon />
                 {garments.reduce((total, garment) => total + garment.wear_count, 0)} wears
               </span>
@@ -389,23 +566,16 @@ export function WardrobeShop({
                   setFavouritesOnly(false);
                   setSortBy("newest");
                 }}
-                className="rounded-full border border-[var(--line)] px-3 py-2 font-medium transition-colors hover:bg-white"
+                className="pw-button-quiet px-3 py-2"
               >
                 Reset
-              </button>
-              <button
-                type="button"
-                onClick={openCreateComposer}
-                className="rounded-full bg-[var(--foreground)] px-3 py-2 font-medium text-white transition-colors hover:bg-[rgba(23,20,17,0.88)]"
-              >
-                Add Item
               </button>
             </div>
           </div>
 
           <div className="-mx-1 mt-4 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex min-w-max gap-3 xl:grid xl:min-w-0 xl:flex-none xl:grid-cols-[1.15fr_repeat(6,minmax(0,1fr))]">
-            <label className="flex min-w-[18rem] items-center gap-3 rounded-[1.1rem] border border-[rgba(23,20,17,0.08)] bg-[linear-gradient(180deg,#fff,#fbf7f1)] px-4 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] xl:min-w-0">
+            <div className="flex min-w-max gap-3 xl:grid xl:min-w-max xl:flex-none xl:grid-cols-[minmax(18rem,1.15fr)_repeat(6,minmax(11rem,1fr))]">
+            <label className="flex min-w-[18rem] items-center gap-3 rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,#fff,rgba(245,243,255,0.92))] px-4 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
               <SearchIcon />
               <input
                 suppressHydrationWarning
@@ -510,7 +680,7 @@ export function WardrobeShop({
               onClick={() => setFavouritesOnly((current) => !current)}
               className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${
                 favouritesOnly
-                  ? "border-[#e0bf4b] bg-[#fff7d6] text-[#8f6b00]"
+                  ? "border-[rgba(255,107,157,0.22)] bg-[rgba(255,107,157,0.12)] text-[var(--accent-strong)]"
                   : "border-[var(--line)] bg-white text-[var(--muted)] hover:bg-[var(--surface)]"
               }`}
             >
@@ -530,7 +700,7 @@ export function WardrobeShop({
                   className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition-colors ${
                     colourFilter === colour.family
                       ? "border-[var(--foreground)] bg-white text-[var(--foreground)]"
-                      : "border-[rgba(23,20,17,0.08)] bg-[var(--surface)] text-[var(--muted)]"
+                      : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)]"
                   }`}
                 >
                   <span
@@ -548,7 +718,7 @@ export function WardrobeShop({
           </div>
 
           {activeFilterChips.length ? (
-            <div className="mt-4 border-t border-[rgba(23,20,17,0.08)] pt-4">
+            <div className="mt-4 border-t border-[var(--line)] pt-4">
               <div className="-mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <div className="flex min-w-max items-center gap-2">
                   {activeFilterChips.map((chip) => (
@@ -556,7 +726,7 @@ export function WardrobeShop({
                       key={chip.key}
                       type="button"
                       onClick={chip.onClear}
-                      className="inline-flex items-center gap-2 rounded-full border border-[rgba(23,20,17,0.1)] bg-white px-3 py-2 text-sm text-[var(--foreground)] transition-colors hover:bg-[var(--surface)]"
+                      className="pw-button-quiet px-3 py-2 text-sm"
                     >
                       {chip.label}
                       <span className="text-[var(--muted)]">
@@ -595,18 +765,42 @@ export function WardrobeShop({
             ))}
           </div>
         ) : (
-          <div className="rounded-[1.5rem] border border-dashed border-[var(--line)] bg-white/65 px-6 py-10 text-center">
-            <p className="text-base font-semibold">No items match these filters</p>
-            <p className="mt-2 text-sm text-[var(--muted)]">
-              Adjust the filter bar or add a new wardrobe item.
+          <div className="pw-empty-state bg-white/65 px-6 py-10">
+            <p className="text-base font-semibold">
+              {garments.length === 0
+                ? "Your wardrobe starts with the first piece"
+                : "No items match these filters"}
             </p>
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              {garments.length === 0
+                ? "Add your first item to begin tracking wears, favourites, and outfit potential."
+                : "Adjust the filter bar or add a new wardrobe item."}
+            </p>
+            {garments.length === 0 ? (
+              <button
+                type="button"
+                onClick={openCreateComposer}
+                className="mx-auto mt-6 inline-flex min-w-[16rem] items-center justify-center gap-3 rounded-[8px] border border-[rgba(123,92,240,0.2)] bg-[linear-gradient(180deg,rgba(123,92,240,0.12),rgba(123,92,240,0.05))] px-6 py-5 text-left text-[var(--foreground)] shadow-[0_16px_35px_rgba(123,92,240,0.12)] transition-transform hover:-translate-y-0.5"
+              >
+                <span className="flex h-12 w-12 items-center justify-center rounded-[8px] bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[0_10px_20px_rgba(123,92,240,0.18)]">
+                  <svg
+                    viewBox="0 0 20 20"
+                    className="h-6 w-6 fill-none stroke-current stroke-[1.8]"
+                    aria-hidden="true"
+                  >
+                    <path d="M10 4v12M4 10h12" />
+                  </svg>
+                </span>
+                <span className="text-base font-semibold">Add Item</span>
+              </button>
+            ) : null}
           </div>
         )}
       </section>
 
       {isCreateOpen ? (
         <DialogShell onClose={() => setIsCreateOpen(false)}>
-          <form action={createFormAction} className="space-y-6">
+          <div className="space-y-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm uppercase tracking-[0.25em] text-[var(--muted)]">
@@ -616,226 +810,285 @@ export function WardrobeShop({
                   Create a new garment card
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm text-[var(--muted)]">
-                  Start with the photo and core identity. The longer wardrobe metadata can stay
-                  secondary until you need it.
+                  Choose how the item enters your wardrobe, then either create it directly or send
+                  it into review.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsCreateOpen(false)}
-                className="rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium"
+                className="pw-button-quiet px-4 py-2 text-sm"
               >
                 Close
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 rounded-[1.2rem] bg-[rgba(23,20,17,0.04)] p-1 lg:hidden">
-              <button
-                type="button"
-                onClick={() => setCreateMobileStep(1)}
-                className={`rounded-[0.95rem] px-4 py-3 text-sm font-medium transition-colors ${
-                  createMobileStep === 1
-                    ? "bg-white text-[var(--foreground)] shadow-sm"
-                    : "text-[var(--muted)]"
-                }`}
-              >
-                Details
-              </button>
-              <button
-                type="button"
-                onClick={() => setCreateMobileStep(2)}
-                className={`rounded-[0.95rem] px-4 py-3 text-sm font-medium transition-colors ${
-                  createMobileStep === 2
-                    ? "bg-white text-[var(--foreground)] shadow-sm"
-                    : "text-[var(--muted)]"
-                }`}
-              >
-                Preview
-              </button>
-            </div>
-
-            <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
-              <div className={`space-y-5 ${createMobileStep === 1 ? "block" : "hidden"} lg:block`}>
-                <CreateImageField onPreviewChange={setCreatePreviewImageUrl} />
-
-                <div className="rounded-[1.5rem] border border-[rgba(23,20,17,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(249,243,236,0.9))] p-5">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">
-                        Core Identity
-                      </p>
-                      <p className="mt-2 max-w-2xl text-sm text-[var(--muted)]">
-                        Add the details you would want to see on the card immediately.
-                      </p>
-                    </div>
-                    <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                      Live preview
-                    </span>
-                  </div>
-
-                  <div className="mt-5 grid gap-4 md:grid-cols-2">
-                    <FormField
-                      label="Title"
-                      name="title"
-                      placeholder="Black long sleeve top"
-                      value={createPreviewTitle}
-                      onChange={setCreatePreviewTitle}
-                    />
-                    <FormField
-                      label="Brand"
-                      name="brand"
-                      placeholder="Viktoria & Woods"
-                      value={createPreviewBrand}
-                      onChange={setCreatePreviewBrand}
-                    />
-                    <FormField
-                      label="Category"
-                      name="category"
-                      placeholder="top"
-                      required
-                      value={createPreviewCategory}
-                      onChange={setCreatePreviewCategory}
-                    />
-                    <FormField
-                      label="Subcategory"
-                      name="subcategory"
-                      placeholder="long sleeve"
-                      value={createPreviewSubcategory}
-                      onChange={setCreatePreviewSubcategory}
-                    />
-                    <ColourField value={createPreviewColour} onChange={setCreatePreviewColour} />
-                    <FormField
-                      label="Formality"
-                      name="formality_level"
-                      placeholder="smart casual"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className={`${createMobileStep === 2 ? "block" : "hidden"} lg:block`}>
-                <CreateGarmentPreviewCard
-                  title={createPreviewTitle}
-                  brand={createPreviewBrand}
-                  category={createPreviewCategory}
-                  subcategory={createPreviewSubcategory}
-                  colourFamily={createPreviewColour}
-                  price={createPreviewPrice}
-                  currency={createPreviewCurrency}
-                  previewUrl={createPreviewImageUrl}
+            <section className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <SourceChoiceButton
+                  title="Build Manually"
+                  description="Create the garment card now and optionally attach a photo."
+                  active={createSourceMode === "manual"}
+                  onClick={() => setCreateSourceMode("manual")}
+                  icon={<HangerIcon />}
+                />
+                <SourceChoiceButton
+                  title={canUseFeatureLabels ? "Analyse Photo" : "Upload Photo"}
+                  description={
+                    canUseFeatureLabels
+                      ? "Upload a clothing photo and review detected garment drafts."
+                      : "Upload a clothing photo and complete the garment details manually in review."
+                  }
+                  active={createSourceMode === "photo"}
+                  onClick={() => setCreateSourceMode("photo")}
+                  icon={<CameraIcon />}
+                  badge={canUseFeatureLabels ? "Premium" : "Manual on free"}
+                />
+                <SourceChoiceButton
+                  title="Paste Product Link"
+                  description="Start from a retailer URL and refine it in review."
+                  active={createSourceMode === "product_url"}
+                  onClick={() => setCreateSourceMode("product_url")}
+                  icon={<LinkIcon />}
+                />
+                <SourceChoiceButton
+                  title="Upload Receipt"
+                  description="Create a draft from a receipt or invoice file, then review it."
+                  active={createSourceMode === "receipt"}
+                  onClick={() => setCreateSourceMode("receipt")}
+                  icon={<ReceiptIcon />}
                 />
               </div>
-            </div>
+            </section>
 
-            {createState.message ? (
-              <p
-                className={`rounded-2xl border px-4 py-3 text-sm ${
-                  createState.status === "error" || createState.status === "partial"
-                    ? "border-red-200 bg-red-50 text-red-700"
-                    : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)]"
-                }`}
-              >
-                {createState.message}
-              </p>
-            ) : null}
-
-            <div
-              className={`rounded-[1.5rem] border border-[rgba(23,20,17,0.08)] bg-white/80 ${
-                createMobileStep === 1 ? "block" : "hidden"
-              } lg:block`}
-            >
-              <button
-                type="button"
-                onClick={() => setIsCreateDetailsOpen((current) => !current)}
-                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
-              >
-                <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">
-                    More Details
-                  </p>
-                  <p className="mt-2 text-sm text-[var(--muted)]">
-                    Material, fit, sizing, purchase details, and seasonality.
-                  </p>
+            {createSourceMode === "manual" ? (
+              <form action={createFormAction} className="space-y-6">
+                <div className="grid grid-cols-2 gap-2 rounded-[8px] bg-[rgba(45,27,105,0.06)] p-1 lg:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setCreateMobileStep(1)}
+                    className={`rounded-[0.95rem] px-4 py-3 text-sm font-medium transition-colors ${
+                      createMobileStep === 1
+                        ? "bg-white text-[var(--foreground)] shadow-sm"
+                        : "text-[var(--muted)]"
+                    }`}
+                  >
+                    Details
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCreateMobileStep(2)}
+                    className={`rounded-[0.95rem] px-4 py-3 text-sm font-medium transition-colors ${
+                      createMobileStep === 2
+                        ? "bg-white text-[var(--foreground)] shadow-sm"
+                        : "text-[var(--muted)]"
+                    }`}
+                  >
+                    Preview
+                  </button>
                 </div>
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-white text-[var(--muted)]">
-                  <ChevronIcon open={isCreateDetailsOpen} />
-                </span>
-              </button>
 
-              {isCreateDetailsOpen ? (
-                <div className="border-t border-[rgba(23,20,17,0.08)] px-5 pb-5 pt-5">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <FormField label="Material" name="material" placeholder="wool blend" />
-                    <FormField label="Size" name="size" placeholder="AU 10" />
-                    <FormField label="Fit" name="fit" placeholder="relaxed" />
-                    <FormField
-                      label="Purchase Price"
-                      name="purchase_price"
-                      type="number"
-                      step="0.01"
-                      value={createPreviewPrice}
-                      onChange={setCreatePreviewPrice}
-                    />
-                    <FormField
-                      label="Currency"
-                      name="purchase_currency"
-                      placeholder="AUD"
-                      value={createPreviewCurrency}
-                      onChange={setCreatePreviewCurrency}
-                    />
-                    <FormField label="Purchase Date" name="purchase_date" type="date" />
-                    <FormField label="Retailer" name="retailer" placeholder="David Jones" />
+                <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
+                  <div className={`space-y-5 ${createMobileStep === 1 ? "block" : "hidden"} lg:block`}>
+                    <CreateImageField onPreviewChange={setCreatePreviewImageUrl} />
+
+                    <div className="rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,243,255,0.92))] p-5">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">
+                            Core Identity
+                          </p>
+                          <p className="mt-2 max-w-2xl text-sm text-[var(--muted)]">
+                            Add the details you would want to see on the card immediately.
+                          </p>
+                        </div>
+                          <span className="pw-chip">
+                            Live preview
+                          </span>
+                      </div>
+
+                      <div className="mt-5 grid gap-4 md:grid-cols-2">
+                        <FormField
+                          label="Title"
+                          name="title"
+                          placeholder="Black long sleeve top"
+                          value={createPreviewTitle}
+                          onChange={setCreatePreviewTitle}
+                        />
+                        <FormField
+                          label="Brand"
+                          name="brand"
+                          placeholder="Viktoria & Woods"
+                          value={createPreviewBrand}
+                          onChange={setCreatePreviewBrand}
+                        />
+                        <FormField
+                          label="Category"
+                          name="category"
+                          placeholder="top"
+                          required
+                          value={createPreviewCategory}
+                          onChange={setCreatePreviewCategory}
+                        />
+                        <FormField
+                          label="Subcategory"
+                          name="subcategory"
+                          placeholder="long sleeve"
+                          value={createPreviewSubcategory}
+                          onChange={setCreatePreviewSubcategory}
+                        />
+                        <ColourField value={createPreviewColour} onChange={setCreatePreviewColour} />
+                        <FormField
+                          label="Formality"
+                          name="formality_level"
+                          placeholder="smart casual"
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  <fieldset className="mt-5">
-                    <legend className="text-sm font-medium">Seasonality</legend>
-                    <div className="mt-3 flex flex-wrap gap-3">
-                      {seasonOptions.map((season) => (
-                        <label
-                          key={season}
-                          className="rounded-full border border-[var(--line)] px-3 py-2 text-sm"
-                        >
-                          <input
-                            className="mr-2"
-                            type="checkbox"
-                            name="seasonality"
-                            value={season}
-                          />
-                          {season}
-                        </label>
-                      ))}
-                    </div>
-                  </fieldset>
+                  <div className={`${createMobileStep === 2 ? "block" : "hidden"} lg:block`}>
+                    <CreateGarmentPreviewCard
+                      title={createPreviewTitle}
+                      brand={createPreviewBrand}
+                      category={createPreviewCategory}
+                      subcategory={createPreviewSubcategory}
+                      colourFamily={createPreviewColour}
+                      price={createPreviewPrice}
+                      currency={createPreviewCurrency}
+                      previewUrl={createPreviewImageUrl}
+                    />
+                  </div>
                 </div>
-              ) : null}
-            </div>
 
-            <div className="flex items-center justify-between gap-3 lg:hidden">
-              {createMobileStep === 2 ? (
-                <button
-                  type="button"
-                  onClick={() => setCreateMobileStep(1)}
-                  className="rounded-full border border-[var(--line)] px-4 py-2.5 text-sm font-medium"
+                {createState.message ? (
+                  <p
+                    className={`rounded-2xl border px-4 py-3 text-sm ${
+                      createState.status === "error" || createState.status === "partial"
+                        ? "border-red-200 bg-red-50 text-red-700"
+                        : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)]"
+                    }`}
+                  >
+                    {createState.message}
+                  </p>
+                ) : null}
+
+                <div
+                  className={`rounded-[8px] border border-[var(--line)] bg-white/80 ${
+                    createMobileStep === 1 ? "block" : "hidden"
+                  } lg:block`}
                 >
-                  Back To Details
-                </button>
-              ) : (
-                <span />
-              )}
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateDetailsOpen((current) => !current)}
+                    className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+                  >
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">
+                        More Details
+                      </p>
+                      <p className="mt-2 text-sm text-[var(--muted)]">
+                        Material, fit, sizing, purchase details, and seasonality.
+                      </p>
+                    </div>
+                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-white text-[var(--muted)]">
+                      <ChevronIcon open={isCreateDetailsOpen} />
+                    </span>
+                  </button>
 
-              {createMobileStep === 1 ? (
-                <button
-                  type="button"
-                  onClick={() => setCreateMobileStep(2)}
-                  className="rounded-full bg-[var(--foreground)] px-5 py-2.5 text-sm font-semibold text-white"
-                >
-                  Review Card
-                </button>
-              ) : null}
-            </div>
+                  {isCreateDetailsOpen ? (
+                    <div className="border-t border-[var(--line)] px-5 pb-5 pt-5">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <FormField label="Material" name="material" placeholder="wool blend" />
+                        <FormField label="Size" name="size" placeholder="AU 10" />
+                        <FormField label="Fit" name="fit" placeholder="relaxed" />
+                        <FormField
+                          label="Purchase Price"
+                          name="purchase_price"
+                          type="number"
+                          step="0.01"
+                          value={createPreviewPrice}
+                          onChange={setCreatePreviewPrice}
+                        />
+                        <FormField
+                          label="Currency"
+                          name="purchase_currency"
+                          placeholder="AUD"
+                          value={createPreviewCurrency}
+                          onChange={setCreatePreviewCurrency}
+                        />
+                        <FormField label="Purchase Date" name="purchase_date" type="date" />
+                        <FormField label="Retailer" name="retailer" placeholder="David Jones" />
+                      </div>
 
-            <PendingButton idle="Add Item" pending="Adding Item..." />
-          </form>
+                      <fieldset className="mt-5">
+                        <legend className="text-sm font-medium">Seasonality</legend>
+                        <div className="mt-3 flex flex-wrap gap-3">
+                          {seasonOptions.map((season) => (
+                            <label
+                              key={season}
+                              className="pw-button-quiet px-3 py-2 text-sm"
+                            >
+                              <input
+                                className="mr-2"
+                                type="checkbox"
+                                name="seasonality"
+                                value={season}
+                              />
+                              {season}
+                            </label>
+                          ))}
+                        </div>
+                      </fieldset>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="flex items-center justify-between gap-3 lg:hidden">
+                  {createMobileStep === 2 ? (
+                    <button
+                      type="button"
+                      onClick={() => setCreateMobileStep(1)}
+                      className="pw-button-quiet px-4 py-2.5 text-sm"
+                    >
+                      Back To Details
+                    </button>
+                  ) : (
+                    <span />
+                  )}
+
+                  {createMobileStep === 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => setCreateMobileStep(2)}
+                      className="rounded-full bg-[var(--foreground)] px-5 py-2.5 text-sm font-semibold text-white"
+                    >
+                      Review Card
+                    </button>
+                  ) : null}
+                </div>
+
+                <PendingButton idle="Add Item" pending="Adding Item..." />
+              </form>
+            ) : createSourceMode === "photo" ? (
+              <PhotoDraftComposer
+                action={photoDraftFormAction}
+                state={photoDraftState}
+                canUseFeatureLabels={canUseFeatureLabels}
+                planTier={planTier}
+                premiumUpgradeUrl={premiumUpgradeUrl}
+                billingCheckoutEnabled={billingCheckoutEnabled}
+                premiumFeatures={premiumFeatures}
+              />
+            ) : createSourceMode === "product_url" ? (
+              <ProductUrlDraftComposer
+                action={productUrlDraftFormAction}
+                state={productUrlDraftState}
+              />
+            ) : (
+              <ReceiptDraftComposer action={receiptDraftFormAction} state={receiptDraftState} />
+            )}
+          </div>
         </DialogShell>
       ) : null}
 
@@ -849,17 +1102,6 @@ export function WardrobeShop({
           logWearAction={logWearAction}
           updateGarmentAction={updateGarmentAction}
         />
-      ) : null}
-
-      {createSuccessToast ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center px-4">
-          <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-[rgba(23,20,17,0.08)] bg-[rgba(255,251,246,0.96)] px-4 py-3 text-sm text-[var(--foreground)] shadow-[0_18px_40px_rgba(40,25,12,0.14)] backdrop-blur-xl">
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#eef8ec] text-[#2f6b33]">
-              <CheckIcon />
-            </span>
-            <span className="font-medium">{createSuccessToast}</span>
-          </div>
-        </div>
       ) : null}
     </>
   );
@@ -890,16 +1132,47 @@ function GarmentCard({
     toggleGarmentFavouriteAction,
     wardrobeActionState
   );
+  const serverFavourite = Boolean(garment.favourite_score && garment.favourite_score > 0);
+  const [optimisticFavourite, setOptimisticFavourite] = useState(serverFavourite);
+
+  useEffect(() => {
+    setOptimisticFavourite(serverFavourite);
+  }, [serverFavourite]);
+
+  useEffect(() => {
+    if (deleteState.status === "success") {
+      showAppToast({
+        message: deleteState.message || "Item deleted",
+        tone: "success"
+      });
+    }
+  }, [deleteState.message, deleteState.status]);
+
+  useEffect(() => {
+    if (favouriteState.status === "error") {
+      setOptimisticFavourite(serverFavourite);
+    }
+  }, [favouriteState.status, serverFavourite]);
+
+  useEffect(() => {
+    if (favouriteState.status === "success") {
+      showAppToast({
+        message: serverFavourite ? "Removed from favourites" : "Added to favourites",
+        tone: "success"
+      });
+    }
+  }, [favouriteState.status, serverFavourite]);
 
   return (
-    <article className="group relative overflow-hidden rounded-[1.25rem] border border-[rgba(23,20,17,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,242,235,0.92))] shadow-[0_14px_30px_rgba(40,25,12,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_50px_rgba(40,25,12,0.1)] sm:rounded-[1.6rem] sm:shadow-[0_18px_40px_rgba(40,25,12,0.06)]">
+    <article className="group relative overflow-hidden rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,243,255,0.92))] shadow-[0_14px_30px_rgba(45,27,105,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_50px_rgba(45,27,105,0.12)] sm:shadow-[0_18px_40px_rgba(45,27,105,0.08)]">
       <div className="absolute right-2 top-2 z-10 flex gap-1.5 opacity-100 transition-opacity duration-200 sm:right-3 sm:top-3 sm:gap-2 sm:opacity-0 sm:group-hover:opacity-100">
         <QuickIconForm
           action={favouriteFormAction}
           garmentId={garment.id as string}
-          title={garment.favourite_score && garment.favourite_score > 0 ? "Remove favourite" : "Favourite item"}
-          tone={garment.favourite_score && garment.favourite_score > 0 ? "favourite" : "light"}
-          icon={<StarIcon filled={Boolean(garment.favourite_score && garment.favourite_score > 0)} />}
+          onOptimisticSubmit={() => setOptimisticFavourite((current) => !current)}
+          title={optimisticFavourite ? "Remove favourite" : "Favourite item"}
+          tone={optimisticFavourite ? "favourite" : "light"}
+          icon={<StarIcon filled={optimisticFavourite} />}
         />
         <QuickIconForm
           action={deleteFormAction}
@@ -911,7 +1184,7 @@ function GarmentCard({
       </div>
 
       <button type="button" onClick={onOpen} className="block w-full text-left">
-        <div className="relative aspect-[3/4] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,232,220,0.9))] sm:aspect-[4/5]">
+        <div className="relative aspect-[3/4] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,243,255,0.9))] sm:aspect-[4/5]">
           {garment.preview_url ? (
             <img
               src={garment.preview_url}
@@ -949,7 +1222,7 @@ function GarmentCard({
                   .join(" · ")}
               </p>
             </div>
-            <p className="shrink-0 rounded-full bg-[rgba(23,20,17,0.04)] px-2.5 py-1 text-right text-xs font-semibold sm:px-3 sm:py-1.5 sm:text-sm">
+            <p className="shrink-0 rounded-full bg-[rgba(45,27,105,0.06)] px-2.5 py-1 text-right text-xs font-semibold sm:px-3 sm:py-1.5 sm:text-sm">
               {garment.purchase_price != null
                 ? `${garment.purchase_currency || ""} ${garment.purchase_price}`
                 : "n/a"}
@@ -957,13 +1230,13 @@ function GarmentCard({
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-[0.9rem] bg-[rgba(23,20,17,0.04)] px-2.5 py-2 sm:rounded-[1rem] sm:px-3">
+            <div className="rounded-[8px] bg-[rgba(45,27,105,0.06)] px-2.5 py-2 sm:px-3">
               <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Status</p>
               <p className="mt-1 line-clamp-1 text-xs font-medium sm:text-sm">
                 {categoryLabel(garment.wardrobe_status)}
               </p>
             </div>
-            <div className="rounded-[0.9rem] bg-[rgba(23,20,17,0.04)] px-2.5 py-2 sm:rounded-[1rem] sm:px-3">
+            <div className="rounded-[8px] bg-[rgba(45,27,105,0.06)] px-2.5 py-2 sm:px-3">
               <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Wear Count</p>
               <p className="mt-1 text-xs font-medium sm:text-sm">{garment.wear_count}</p>
             </div>
@@ -971,7 +1244,7 @@ function GarmentCard({
 
           <div className="flex flex-wrap gap-1.5 text-[11px] uppercase tracking-[0.12em] text-[var(--muted)] sm:gap-2 sm:text-xs sm:tracking-[0.15em]">
             {garment.primary_colour_family ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(23,20,17,0.08)] bg-white/80 px-2 py-1 sm:gap-2 sm:px-2.5">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white/80 px-2 py-1 sm:gap-2 sm:px-2.5">
                 <span
                   className="h-2 w-2 rounded-full border border-black/10 sm:h-2.5 sm:w-2.5"
                   style={{ backgroundColor: garment.primary_colour_hex || "#d7c1a1" }}
@@ -979,14 +1252,14 @@ function GarmentCard({
                 {categoryLabel(garment.primary_colour_family)}
               </span>
             ) : null}
-            <span className="rounded-full border border-[rgba(23,20,17,0.08)] bg-white/80 px-2 py-1 sm:px-2.5">
+            <span className="rounded-full border border-[var(--line)] bg-white/80 px-2 py-1 sm:px-2.5">
               {garment.wardrobe_status}
             </span>
-            <span className="rounded-full border border-[rgba(23,20,17,0.08)] bg-white/80 px-2 py-1 sm:px-2.5">
+            <span className="rounded-full border border-[var(--line)] bg-white/80 px-2 py-1 sm:px-2.5">
               {garment.wear_count} wears
             </span>
-            {garment.favourite_score && garment.favourite_score > 0 ? (
-              <span className="rounded-full border border-[#e0bf4b] bg-[#fff7d6] px-2 py-1 text-[#8f6b00] sm:px-2.5">
+            {optimisticFavourite ? (
+              <span className="rounded-full border border-[rgba(255,107,157,0.22)] bg-[rgba(255,107,157,0.12)] px-2 py-1 text-[var(--accent-strong)] sm:px-2.5">
                 Favourite
               </span>
             ) : null}
@@ -1007,34 +1280,74 @@ function GarmentCard({
 function QuickIconForm({
   action,
   garmentId,
+  onOptimisticSubmit,
   title,
   icon,
   tone
 }: {
-  action: (payload: FormData) => void;
+  action: (formData: FormData) => void;
   garmentId: string;
+  onOptimisticSubmit?: () => void;
   title: string;
   icon: ReactNode;
   tone: "light" | "danger" | "favourite";
 }) {
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  useEffect(() => {
+    if (!isConfirming) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setIsConfirming(false);
+    }, 2200);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isConfirming]);
+
   return (
-    <form action={action}>
+    <form action={action} className="relative">
       <input type="hidden" name="garment_id" value={garmentId} />
-      <QuickIconButton title={title} tone={tone}>
+      <QuickIconButton
+        title={isConfirming && tone === "danger" ? "Confirm delete" : title}
+        tone={isConfirming && tone === "danger" ? "danger-confirm" : tone}
+        onPress={(event) => {
+          if (tone !== "danger") {
+            onOptimisticSubmit?.();
+            return;
+          }
+
+          if (!isConfirming) {
+            event.preventDefault();
+            setIsConfirming(true);
+            return;
+          }
+
+          setIsConfirming(false);
+        }}
+      >
         {icon}
       </QuickIconButton>
+      {tone === "danger" && isConfirming ? (
+        <p className="absolute right-0 top-full mt-2 rounded-full bg-[var(--foreground)] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white shadow-[0_10px_24px_rgba(0,0,0,0.14)]">
+          Confirm delete
+        </p>
+      ) : null}
     </form>
   );
 }
 
 function QuickIconButton({
   children,
+  onPress,
   title,
   tone
 }: {
   children: ReactNode;
+  onPress?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   title: string;
-  tone: "light" | "danger" | "favourite";
+  tone: "light" | "danger" | "favourite" | "danger-confirm";
 }) {
   const { pending } = useFormStatus();
 
@@ -1043,9 +1356,12 @@ function QuickIconButton({
       type="submit"
       title={title}
       disabled={pending}
-      className={`rounded-full p-2 shadow-sm backdrop-blur disabled:opacity-60 ${
+      onClick={onPress}
+      className={`rounded-full p-2 shadow-sm backdrop-blur transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(45,27,105,0.12)] active:translate-y-0 active:scale-[0.96] disabled:transform-none disabled:opacity-60 disabled:shadow-sm ${
         tone === "danger"
           ? "bg-white/92 text-red-600"
+          : tone === "danger-confirm"
+            ? "bg-red-600 text-white"
           : tone === "favourite"
             ? "bg-[#fff6cf] text-[#d3a300]"
           : "bg-white/92 text-[var(--foreground)]"
@@ -1090,6 +1406,8 @@ function GarmentDetailDialog({
 }) {
   const [wearState, wearFormAction] = useActionState(logWearAction, wardrobeActionState);
   const [editState, editFormAction] = useActionState(updateGarmentAction, wardrobeActionState);
+  const [showReupload, setShowReupload] = useState(false);
+  const wearFormRef = useRef<HTMLFormElement>(null);
   const [deleteState, deleteFormAction] = useActionState(
     deleteGarmentAction,
     wardrobeActionState
@@ -1098,12 +1416,56 @@ function GarmentDetailDialog({
     toggleGarmentFavouriteAction,
     wardrobeActionState
   );
+  const serverFavourite = Boolean(garment.favourite_score && garment.favourite_score > 0);
+  const [optimisticFavourite, setOptimisticFavourite] = useState(serverFavourite);
+
+  useEffect(() => {
+    setOptimisticFavourite(serverFavourite);
+  }, [serverFavourite]);
 
   useEffect(() => {
     if (deleteState.status === "success") {
+      showAppToast({
+        message: deleteState.message || "Item deleted",
+        tone: "success"
+      });
       onClose();
     }
-  }, [deleteState.status, onClose]);
+  }, [deleteState.message, deleteState.status, onClose]);
+
+  useEffect(() => {
+    if (favouriteState.status === "error") {
+      setOptimisticFavourite(serverFavourite);
+    }
+  }, [favouriteState.status, serverFavourite]);
+
+  useEffect(() => {
+    if (favouriteState.status === "success") {
+      showAppToast({
+        message: serverFavourite ? "Removed from favourites" : "Added to favourites",
+        tone: "success"
+      });
+    }
+  }, [favouriteState.status, serverFavourite]);
+
+  useEffect(() => {
+    if (editState.status === "success") {
+      showAppToast({
+        message: editState.message || "Item updated",
+        tone: "success"
+      });
+    }
+  }, [editState.message, editState.status]);
+
+  useEffect(() => {
+    if (wearState.status === "success") {
+      wearFormRef.current?.reset();
+      showAppToast({
+        message: wearState.message || "Wear event saved",
+        tone: "success"
+      });
+    }
+  }, [wearState.message, wearState.status]);
 
   return (
     <DialogShell onClose={onClose} size="max-w-5xl">
@@ -1125,9 +1487,10 @@ function GarmentDetailDialog({
           <QuickIconForm
             action={favouriteFormAction}
             garmentId={garment.id as string}
-            title={garment.favourite_score && garment.favourite_score > 0 ? "Remove favourite" : "Favourite item"}
-            tone={garment.favourite_score && garment.favourite_score > 0 ? "favourite" : "light"}
-            icon={<StarIcon filled={Boolean(garment.favourite_score && garment.favourite_score > 0)} />}
+            onOptimisticSubmit={() => setOptimisticFavourite((current) => !current)}
+            title={optimisticFavourite ? "Remove favourite" : "Favourite item"}
+            tone={optimisticFavourite ? "favourite" : "light"}
+            icon={<StarIcon filled={optimisticFavourite} />}
           />
           <QuickIconForm
             action={deleteFormAction}
@@ -1139,22 +1502,22 @@ function GarmentDetailDialog({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium"
+            className="pw-button-quiet px-4 py-2 text-sm"
           >
             Close
           </button>
         </div>
       </div>
 
-      <div className="mt-5 rounded-[1.5rem] border border-[rgba(23,20,17,0.08)] bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(246,239,232,0.9))] p-4 sm:p-5">
+      <div className="mt-5 rounded-[8px] border border-[var(--line)] bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(245,243,255,0.92))] p-4 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
-              <span className="rounded-full border border-[rgba(23,20,17,0.08)] bg-white/80 px-3 py-1.5">
+              <span className="rounded-full border border-[var(--line)] bg-white/80 px-3 py-1.5">
                 {categoryLabel(garment.wardrobe_status)}
               </span>
               {garment.primary_colour_family ? (
-                <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(23,20,17,0.08)] bg-white/80 px-3 py-1.5">
+                <span className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/80 px-3 py-1.5">
                   <span
                     className="h-2.5 w-2.5 rounded-full border border-black/10"
                     style={{ backgroundColor: garment.primary_colour_hex || "#d7c1a1" }}
@@ -1162,8 +1525,8 @@ function GarmentDetailDialog({
                   {categoryLabel(garment.primary_colour_family)}
                 </span>
               ) : null}
-              {garment.favourite_score && garment.favourite_score > 0 ? (
-                <span className="rounded-full border border-[#e0bf4b] bg-[#fff7d6] px-3 py-1.5 text-[#8f6b00]">
+              {optimisticFavourite ? (
+                <span className="rounded-full border border-[rgba(255,107,157,0.22)] bg-[rgba(255,107,157,0.12)] px-3 py-1.5 text-[var(--accent-strong)]">
                   Favourite
                 </span>
               ) : null}
@@ -1200,28 +1563,50 @@ function GarmentDetailDialog({
       <div className="mt-6 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="space-y-4">
           {garment.preview_url ? (
-            <div className="overflow-hidden rounded-[1.65rem] border border-[rgba(23,20,17,0.08)] bg-white shadow-[0_18px_40px_rgba(40,25,12,0.08)]">
-              <img
-                src={garment.preview_url}
-                alt={garment.title || garment.category}
-                className="h-[25rem] w-full object-cover sm:h-[30rem]"
-              />
-              <div className="border-t border-[rgba(23,20,17,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(246,239,232,0.9))] p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
-                      Shop View
-                    </p>
-                    <p className="mt-2 text-sm text-[var(--muted)]">
-                      The primary image and wardrobe summary your future outfit flows will rely on.
-                    </p>
+            <>
+              <div className="overflow-hidden rounded-[8px] border border-[var(--line)] bg-white shadow-[0_18px_40px_rgba(45,27,105,0.1)]">
+                <div className="relative group">
+                  <img
+                    src={garment.preview_url}
+                    alt={garment.title || garment.category}
+                    className="h-[25rem] w-full object-cover sm:h-[30rem]"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-200 flex items-end justify-start p-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowReupload((v) => !v)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-full bg-white/90 px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[var(--foreground)] shadow-md hover:bg-white"
+                    >
+                      {showReupload ? "Cancel" : "Reupload Image"}
+                    </button>
                   </div>
-                  <span className="rounded-full bg-white px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                    Original
-                  </span>
+                </div>
+                <div className="border-t border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,243,255,0.9))] p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
+                        Shop View
+                      </p>
+                      <p className="mt-2 text-sm text-[var(--muted)]">
+                        The primary image and wardrobe summary your future outfit flows will rely on.
+                      </p>
+                    </div>
+                    <span className="pw-chip bg-white">
+                      Original
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
+              {showReupload && (
+                <div className="mt-3">
+                  <GarmentImageUpload
+                    garmentId={garment.id as string}
+                    action={addGarmentImageAction}
+                    latestPath={garment.images[0]?.storage_path ?? null}
+                  />
+                </div>
+              )}
+            </>
           ) : (
             <GarmentImageUpload
               garmentId={garment.id as string}
@@ -1250,39 +1635,61 @@ function GarmentDetailDialog({
         </div>
 
         <div className="space-y-4">
-          {garment.preview_url ? (
-            <div className="rounded-[1.2rem] border border-[rgba(23,20,17,0.08)] bg-white/80 p-4">
-              <div className="mb-4">
-                <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
-                  Refresh Image
-                </p>
-                <p className="mt-2 text-sm text-[var(--muted)]">
-                  Swap the hero image without leaving the garment detail view.
-                </p>
+          <details className="pw-panel-soft p-5" open>
+            <summary className="cursor-pointer text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
+              Log Wear
+            </summary>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--muted)]">
+              Capture when you wore it so wear count and cost-per-wear stay accurate.
+            </p>
+            <form ref={wearFormRef} action={wearFormAction} className="mt-5">
+              <input type="hidden" name="garment_id" value={garment.id} />
+              <div className="grid gap-x-4 gap-y-5 md:grid-cols-2">
+                <FormField
+                  label="Worn At"
+                  name="worn_at"
+                  type="datetime-local"
+                  defaultValue=""
+                />
+                <FormField
+                  label="Occasion"
+                  name="occasion"
+                  placeholder="office, dinner, weekend"
+                />
               </div>
-              <GarmentImageUpload
-                garmentId={garment.id as string}
-                action={addGarmentImageAction}
-                latestPath={garment.images[0]?.storage_path ?? null}
-              />
-            </div>
-          ) : null}
+              <div className="mt-5">
+                <FormTextAreaField
+                  label="Notes"
+                  name="notes"
+                  placeholder="Anything worth remembering about how you wore it."
+                />
+              </div>
+              <div className="mt-5 border-t border-[var(--line)] pt-4">
+                <div className="flex justify-center">
+                  <PendingButton idle="Save Wear Event" pending="Saving..." compact />
+                </div>
+              </div>
+              {wearState.status === "error" || wearState.status === "partial" ? (
+                <FormFeedback state={wearState} className="mt-3" />
+              ) : null}
+            </form>
+          </details>
 
-          <details className="rounded-[1.2rem] border border-[rgba(23,20,17,0.08)] bg-white/80 p-4" open>
+          <details className="pw-panel-soft p-5" open>
             <summary className="cursor-pointer text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
               Edit Item
             </summary>
-            <p className="mt-3 text-sm text-[var(--muted)]">
+            <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--muted)]">
               Update the wardrobe record without breaking the product-like browsing flow.
             </p>
-            <form action={editFormAction} className="mt-4">
+            <form action={editFormAction} className="mt-5">
               <input type="hidden" name="garment_id" value={garment.id} />
-              <div className="space-y-4">
-                <section className="rounded-[1rem] border border-[rgba(23,20,17,0.07)] bg-[rgba(255,255,255,0.72)] p-4">
+              <div className="space-y-5">
+                <section className="rounded-[8px] border border-[var(--line)] bg-[rgba(255,255,255,0.78)] p-5">
                   <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
                     Core Identity
                   </p>
-                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <div className="mt-4 grid gap-x-4 gap-y-5 md:grid-cols-2">
                     <FormField label="Title" name="title" defaultValue={garment.title || ""} />
                     <FormField label="Brand" name="brand" defaultValue={garment.brand || ""} />
                     <FormField
@@ -1312,11 +1719,11 @@ function GarmentDetailDialog({
                   </div>
                 </section>
 
-                <details className="rounded-[1rem] border border-[rgba(23,20,17,0.07)] bg-[rgba(255,255,255,0.72)] p-4">
+                <details className="rounded-[8px] border border-[var(--line)] bg-[rgba(255,255,255,0.78)] p-5">
                   <summary className="cursor-pointer text-[11px] font-medium uppercase tracking-[0.24em] text-[var(--muted)]">
                     Purchase Details
                   </summary>
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <div className="mt-5 grid gap-x-4 gap-y-5 md:grid-cols-2">
                     <FormField
                       label="Purchase Price"
                       name="purchase_price"
@@ -1346,13 +1753,13 @@ function GarmentDetailDialog({
                 </details>
               </div>
 
-              <fieldset className="mt-4">
+              <fieldset className="mt-5 rounded-[8px] border border-[var(--line)] bg-[rgba(255,255,255,0.78)] p-5">
                 <legend className="text-sm font-medium">Seasonality</legend>
-                <div className="mt-3 flex flex-wrap gap-3">
+                <div className="mt-4 flex flex-wrap gap-3">
                   {seasonOptions.map((season) => (
                     <label
                       key={season}
-                      className="rounded-full border border-[var(--line)] px-3 py-2 text-sm"
+                      className="pw-button-quiet px-3 py-2 text-sm"
                     >
                       <input
                         className="mr-2"
@@ -1367,17 +1774,13 @@ function GarmentDetailDialog({
                 </div>
               </fieldset>
 
-              <div className="mt-4 flex justify-center">
-                <PendingButton idle="Save Item Changes" pending="Saving..." compact />
+              <div className="mt-5 border-t border-[var(--line)] pt-4">
+                <div className="flex justify-center">
+                  <PendingButton idle="Save Item Changes" pending="Saving..." compact />
+                </div>
               </div>
-              {editState.message ? (
-                <p
-                  className={`mt-3 text-sm ${
-                    editState.status === "error" ? "text-red-600" : "text-[var(--muted)]"
-                  }`}
-                >
-                  {editState.message}
-                </p>
+              {editState.status === "error" || editState.status === "partial" ? (
+                <FormFeedback state={editState} className="mt-3" />
               ) : null}
             </form>
           </details>
@@ -1465,11 +1868,11 @@ function GarmentDetailDialog({
             Generate outfit with this →
           </Link>
 
-          {deleteState.status === "error" ? (
-            <p className="text-sm text-red-600">{deleteState.message}</p>
+          {deleteState.status === "error" || deleteState.status === "partial" ? (
+            <FormFeedback state={deleteState} className="mt-0" />
           ) : null}
-          {favouriteState.status === "error" ? (
-            <p className="text-sm text-red-600">{favouriteState.message}</p>
+          {favouriteState.status === "error" || favouriteState.status === "partial" ? (
+            <FormFeedback state={favouriteState} className="mt-0" />
           ) : null}
         </div>
       </div>
@@ -1508,7 +1911,12 @@ function CreateImageField({
 }) {
   const inputId = useId();
   const [fileName, setFileName] = useState<string | null>(null);
+  const [fileType, setFileType] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [sourceDimensions, setSourceDimensions] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
   const [dragActive, setDragActive] = useState(false);
 
   useEffect(() => {
@@ -1520,6 +1928,24 @@ function CreateImageField({
     };
   }, [onPreviewChange, previewUrl]);
 
+  const clearPreview = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setFileName(null);
+    setFileType(null);
+    setPreviewUrl(null);
+    setSourceDimensions(null);
+    onPreviewChange?.(null);
+
+    const input = document.getElementById(inputId) as HTMLInputElement | null;
+
+    if (input) {
+      input.value = "";
+    }
+  };
+
   return (
     <div className="block">
       <label htmlFor={inputId} className="text-sm font-medium">
@@ -1530,8 +1956,8 @@ function CreateImageField({
           previewUrl
             ? "border-transparent bg-white"
             : dragActive
-              ? "border-[var(--accent)] bg-[rgba(166,99,60,0.07)]"
-              : "border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(246,239,232,0.85))]"
+              ? "border-[var(--accent)] bg-[rgba(123,92,240,0.08)]"
+              : "border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,243,255,0.88))]"
         }`}
         onDragEnter={(event) => {
           event.preventDefault();
@@ -1562,6 +1988,9 @@ function CreateImageField({
           setFileName(file.name);
           const nextPreviewUrl = URL.createObjectURL(file);
           setPreviewUrl(nextPreviewUrl);
+          loadImageDimensions(file).then(setSourceDimensions).catch(() => {
+            setSourceDimensions(null);
+          });
           onPreviewChange?.(nextPreviewUrl);
 
           const input = event.currentTarget.querySelector(
@@ -1582,36 +2011,27 @@ function CreateImageField({
               alt="Selected garment preview"
               className="h-80 w-full object-contain bg-[rgba(0,0,0,0.03)]"
             />
-            <button
-              type="button"
-              onClick={(event) => {
-                event.preventDefault();
-
-                if (previewUrl) {
-                  URL.revokeObjectURL(previewUrl);
-                }
-
-                setFileName(null);
-                setPreviewUrl(null);
-                onPreviewChange?.(null);
-
-                const input = event.currentTarget
-                  .parentElement
-                  ?.querySelector('input[type="file"]') as HTMLInputElement | null;
-
-                if (input) {
-                  input.value = "";
-                }
-              }}
-              className="absolute right-4 top-4 rounded-full bg-black/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white"
-            >
-              Remove
-            </button>
-            <div className="border-t border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(246,239,232,0.88))] px-5 py-4">
+            <div className="absolute right-4 top-4">
+              <DestructiveActionButton
+                idleLabel="Remove Image"
+                pendingLabel="Removing..."
+                confirmLabel="Confirm remove"
+                buttonType="button"
+                onConfirm={clearPreview}
+                className="rounded-full bg-black/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white"
+                confirmClassName="rounded-full bg-red-600 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white shadow-[0_10px_24px_rgba(185,28,28,0.24)]"
+              />
+            </div>
+            <div className="border-t border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,243,255,0.88))] px-5 py-4">
               <p className="text-sm font-semibold">{fileName || "Image selected"}</p>
               <p className="mt-1 text-sm text-[var(--muted)]">
                 This image will be uploaded as the original garment photo when the item is created.
               </p>
+              {sourceDimensions ? (
+                <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
+                  {sourceDimensions.width} × {sourceDimensions.height}
+                </p>
+              ) : null}
             </div>
           </div>
         ) : (
@@ -1652,6 +2072,7 @@ function CreateImageField({
             if (!file) {
               setFileName(null);
               setPreviewUrl(null);
+              setSourceDimensions(null);
               onPreviewChange?.(null);
               return;
             }
@@ -1659,11 +2080,70 @@ function CreateImageField({
             setFileName(file.name);
             const nextPreviewUrl = URL.createObjectURL(file);
             setPreviewUrl(nextPreviewUrl);
+            loadImageDimensions(file).then(setSourceDimensions).catch(() => {
+              setSourceDimensions(null);
+            });
             onPreviewChange?.(nextPreviewUrl);
           }}
         />
+        <input
+          type="hidden"
+          name="source_width"
+          value={sourceDimensions?.width ?? ""}
+        />
+        <input
+          type="hidden"
+          name="source_height"
+          value={sourceDimensions?.height ?? ""}
+        />
       </div>
     </div>
+  );
+}
+
+async function loadImageDimensions(file: File) {
+  if (!file.type.startsWith("image/")) {
+    return null;
+  }
+
+  const imageUrl = URL.createObjectURL(file);
+
+  try {
+    const dimensions = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => {
+        resolve({
+          width: image.naturalWidth,
+          height: image.naturalHeight
+        });
+      };
+      image.onerror = () => reject(new Error("Could not read image dimensions."));
+      image.src = imageUrl;
+    });
+
+    return dimensions;
+  } finally {
+    URL.revokeObjectURL(imageUrl);
+  }
+}
+
+function DocumentIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-7 w-7 text-[#8b8177]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M7 3.75h7l5 5V20.25A1.75 1.75 0 0 1 17.25 22H7A1.75 1.75 0 0 1 5.25 20.25V5.5A1.75 1.75 0 0 1 7 3.75Z" />
+      <path d="M14 3.75v5h5" />
+      <path d="M8.5 13h7" />
+      <path d="M8.5 16.5h5" />
+    </svg>
   );
 }
 
@@ -1681,14 +2161,14 @@ function FilterSelect({
   options: Array<{ value: string; label: string }>;
 }) {
   return (
-    <label className="flex items-center gap-3 rounded-[1.1rem] border border-[rgba(23,20,17,0.08)] bg-[linear-gradient(180deg,#fff,#fbf7f1)] px-4 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+    <label className="flex min-w-[11rem] items-center gap-3 rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,#fff,rgba(245,243,255,0.92))] px-4 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
       <span className="text-[var(--muted)]">{icon}</span>
       <select
         suppressHydrationWarning
         value={value}
         onChange={(event) => onChange(event.target.value)}
         aria-label={label}
-        className="w-full bg-transparent outline-none"
+        className="min-w-0 flex-1 bg-transparent outline-none"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -1754,7 +2234,7 @@ function CreateGarmentPreviewCard({
   const missingChecks = readinessChecks.filter((check) => !check.complete);
 
   return (
-    <div className="space-y-4 rounded-[1.6rem] border border-[rgba(23,20,17,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,242,235,0.92))] p-4 shadow-[0_18px_40px_rgba(40,25,12,0.06)]">
+    <div className="space-y-4 rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,243,255,0.92))] p-4 shadow-[0_18px_40px_rgba(45,27,105,0.08)]">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Card Preview</p>
@@ -1767,7 +2247,7 @@ function CreateGarmentPreviewCard({
         </span>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-[1.35rem] border border-[rgba(23,20,17,0.08)] bg-white">
+      <div className="mt-4 overflow-hidden rounded-[8px] border border-[var(--line)] bg-white">
         <div className="relative aspect-[4/5] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,232,220,0.9))]">
           {previewUrl ? (
             <img src={previewUrl} alt={displayTitle} className="h-full w-full object-cover" />
@@ -1800,17 +2280,17 @@ function CreateGarmentPreviewCard({
                 {displayMeta || "Brand, category, and subcategory will appear here."}
               </p>
             </div>
-            <p className="shrink-0 rounded-full bg-[rgba(23,20,17,0.04)] px-3 py-1.5 text-right text-sm font-semibold">
+            <p className="shrink-0 rounded-full bg-[rgba(45,27,105,0.06)] px-3 py-1.5 text-right text-sm font-semibold">
               {price.trim() ? `${currency.trim() || "AUD"} ${price.trim()}` : "n/a"}
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-[1rem] bg-[rgba(23,20,17,0.04)] px-3 py-2">
+            <div className="rounded-[8px] bg-[rgba(45,27,105,0.06)] px-3 py-2">
               <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Status</p>
               <p className="mt-1 text-sm font-medium">active</p>
             </div>
-            <div className="rounded-[1rem] bg-[rgba(23,20,17,0.04)] px-3 py-2">
+            <div className="rounded-[8px] bg-[rgba(45,27,105,0.06)] px-3 py-2">
               <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Wear Count</p>
               <p className="mt-1 text-sm font-medium">0</p>
             </div>
@@ -1818,7 +2298,7 @@ function CreateGarmentPreviewCard({
 
           <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.15em] text-[var(--muted)]">
             {colour ? (
-              <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(23,20,17,0.08)] bg-white/80 px-2.5 py-1">
+              <span className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/80 px-2.5 py-1">
                 <span
                   className="h-2.5 w-2.5 rounded-full border border-black/10"
                   style={{ backgroundColor: colour.hex }}
@@ -1826,17 +2306,17 @@ function CreateGarmentPreviewCard({
                 {categoryLabel(colour.family)}
               </span>
             ) : null}
-            <span className="rounded-full border border-[rgba(23,20,17,0.08)] bg-white/80 px-2.5 py-1">
+            <span className="rounded-full border border-[var(--line)] bg-white/80 px-2.5 py-1">
               active
             </span>
-            <span className="rounded-full border border-[rgba(23,20,17,0.08)] bg-white/80 px-2.5 py-1">
+            <span className="rounded-full border border-[var(--line)] bg-white/80 px-2.5 py-1">
               0 wears
             </span>
           </div>
         </div>
       </div>
 
-      <div className="rounded-[1.25rem] border border-[rgba(23,20,17,0.08)] bg-white/78 p-4">
+      <div className="rounded-[8px] border border-[var(--line)] bg-white/78 p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">Review</p>
@@ -1849,7 +2329,7 @@ function CreateGarmentPreviewCard({
           <span
             className={`rounded-full px-3 py-1.5 text-xs uppercase tracking-[0.18em] ${
               missingChecks.length
-                ? "bg-[rgba(23,20,17,0.05)] text-[var(--muted)]"
+                ? "bg-[rgba(45,27,105,0.06)] text-[var(--muted)]"
                 : "bg-[#eef8ec] text-[#2f6b33]"
             }`}
           >
@@ -1864,7 +2344,7 @@ function CreateGarmentPreviewCard({
               className={`flex items-center justify-between gap-3 rounded-[0.95rem] px-3 py-2.5 text-sm ${
                 check.complete
                   ? "bg-[#f3f9f1] text-[#2f6b33]"
-                  : "bg-[rgba(23,20,17,0.04)] text-[var(--foreground)]"
+                  : "bg-[rgba(45,27,105,0.06)] text-[var(--foreground)]"
               }`}
             >
               <span>{check.complete ? check.label : check.missingLabel}</span>
@@ -1872,7 +2352,7 @@ function CreateGarmentPreviewCard({
                 className={`inline-flex h-6 w-6 items-center justify-center rounded-full border text-xs ${
                   check.complete
                     ? "border-[#b9dbb7] bg-white text-[#2f6b33]"
-                    : "border-[rgba(23,20,17,0.08)] bg-white text-[var(--muted)]"
+                    : "border-[var(--line)] bg-white text-[var(--muted)]"
                 }`}
               >
                 {check.complete ? <CheckIcon /> : <DotIcon />}
@@ -1902,7 +2382,7 @@ function PendingButton({
     <button
       type="submit"
       disabled={isPending}
-      className={`${compact ? "" : "mt-4"} rounded-full px-4 py-2 text-sm font-medium disabled:opacity-60 ${
+      className={`${compact ? "" : "mt-4"} rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(45,27,105,0.1)] active:translate-y-0 active:scale-[0.98] disabled:transform-none disabled:opacity-60 disabled:shadow-none ${
         tone === "danger"
           ? "border border-red-200 bg-red-50 text-red-700"
           : "border border-[var(--line)] bg-white"
@@ -1910,6 +2390,355 @@ function PendingButton({
     >
       {isPending ? pending : idle}
     </button>
+  );
+}
+
+function SourceChoiceButton({
+  title,
+  description,
+  active,
+  onClick,
+  icon,
+  badge
+}: {
+  title: string;
+  description: string;
+  active: boolean;
+  onClick: () => void;
+  icon: ReactNode;
+  badge?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-[1.25rem] border p-4 text-left transition-all duration-200 ${
+        active
+          ? "border-[rgba(123,92,240,0.28)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,243,255,0.92))] shadow-[0_14px_30px_rgba(123,92,240,0.12)]"
+          : "border-[var(--line)] bg-white/78 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(45,27,105,0.08)]"
+      }`}
+    >
+      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(45,27,105,0.06)] text-[var(--foreground)]">
+        {icon}
+      </span>
+      {badge ? (
+        <span className="mt-4 inline-flex rounded-full border border-[rgba(123,92,240,0.14)] bg-[rgba(123,92,240,0.08)] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
+          {badge}
+        </span>
+      ) : null}
+      <p className="mt-4 text-sm font-semibold">{title}</p>
+      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{description}</p>
+    </button>
+  );
+}
+
+function PhotoDraftComposer({
+  action,
+  state,
+  canUseFeatureLabels,
+  planTier,
+  premiumUpgradeUrl,
+  billingCheckoutEnabled,
+  premiumFeatures
+}: {
+  action: (formData: FormData) => void;
+  state: WardrobeActionState;
+  canUseFeatureLabels: boolean;
+  planTier: PlanTier;
+  premiumUpgradeUrl: string | null;
+  billingCheckoutEnabled: boolean;
+  premiumFeatures: readonly string[];
+}) {
+  return (
+    <form action={action} className="space-y-5">
+      <section className="pw-panel-soft p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">
+              {canUseFeatureLabels ? "Analyse Photo" : "Upload Photo"}
+            </p>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+              {canUseFeatureLabels
+                ? "Upload a clothing image and send it through the detection pipeline. You will review the resulting drafts before anything is added to your wardrobe."
+                : `Upload a clothing image and create a manual review draft. Automatic feature labelling is reserved for ${planTier === "free" ? "Premium" : "higher"} tiers, so you will fill in the garment details yourself.`}
+            </p>
+          </div>
+          <span className="pw-chip bg-white">
+            {canUseFeatureLabels ? "Review required" : "Manual review"}
+          </span>
+        </div>
+        <div className="mt-6">
+          <CreateImageField />
+        </div>
+      </section>
+
+      {!canUseFeatureLabels ? (
+        <PremiumUpsellCard
+          title="Upgrade for assisted photo ingestion"
+          description={`You're on the ${planTier} plan. Premium unlocks automatic feature labelling and keeps the review step so your wardrobe data stays editable and explainable.`}
+          features={premiumFeatures}
+          upgradeUrl={premiumUpgradeUrl}
+          checkoutEnabled={billingCheckoutEnabled}
+          compact
+        />
+      ) : null}
+
+      <PendingButton
+        idle={canUseFeatureLabels ? "Analyse Photo" : "Upload For Manual Review"}
+        pending={canUseFeatureLabels ? "Analysing..." : "Uploading..."}
+      />
+      <FormFeedback state={state} />
+    </form>
+  );
+}
+
+function ProductUrlDraftComposer({
+  action,
+  state
+}: {
+  action: (formData: FormData) => void;
+  state: WardrobeActionState;
+}) {
+  return (
+    <form action={action} className="space-y-5">
+      <section className="pw-panel-soft p-5">
+        <div>
+          <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">
+            Paste Product Link
+          </p>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+            Start from a retailer or product page. For now this creates a review draft with the
+            source URL attached, so you can confirm the garment details before saving.
+          </p>
+        </div>
+        <div className="mt-6 grid gap-5">
+          <FormField
+            label="Product URL"
+            name="product_url"
+            type="url"
+            placeholder="https://example.com/products/ivory-trench"
+            required
+          />
+          <FormField
+            label="Title Hint"
+            name="title_hint"
+            placeholder="Ivory oversized trench"
+          />
+          <FormTextAreaField
+            label="Notes"
+            name="notes"
+            placeholder="Anything you already know from the product page."
+          />
+        </div>
+      </section>
+
+      <PendingButton idle="Create Link Draft" pending="Creating..." />
+      <FormFeedback state={state} />
+    </form>
+  );
+}
+
+function ReceiptDraftComposer({
+  action,
+  state
+}: {
+  action: (formData: FormData) => void;
+  state: WardrobeActionState;
+}) {
+  const inputId = useId();
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [fileType, setFileType] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [sourceDimensions, setSourceDimensions] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  const clearReceiptFile = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setFileName(null);
+    setFileType(null);
+    setPreviewUrl(null);
+    setSourceDimensions(null);
+
+    const input = document.getElementById(inputId) as HTMLInputElement | null;
+
+    if (input) {
+      input.value = "";
+    }
+  };
+
+  return (
+    <form action={action} className="space-y-5">
+      <section className="pw-panel-soft p-5">
+        <div>
+          <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">
+            Upload Receipt
+          </p>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+            Upload a receipt or invoice file. This creates a draft that you can review and clean up
+            before adding the garment into your wardrobe.
+          </p>
+          <p className="mt-3 max-w-2xl rounded-[8px] border border-[rgba(123,92,240,0.16)] bg-[rgba(123,92,240,0.08)] px-4 py-3 text-sm leading-6 text-[var(--accent-strong)]">
+            Best results come from pasted receipt text or text-readable PDFs. Image and photo
+            receipts use OCR when available, but if the draft looks weak, paste the merchant lines
+            and item text here before retrying.
+          </p>
+        </div>
+        <div className="mt-6 space-y-5">
+          <label className="flex flex-col gap-2 text-sm">
+            <span className="font-medium">Receipt File</span>
+            {previewUrl ? (
+              <div className="overflow-hidden rounded-[1.2rem] border border-[var(--line)] bg-white">
+                <div className="relative">
+                  <img
+                    src={previewUrl}
+                    alt="Selected receipt preview"
+                    className="h-64 w-full object-contain bg-[rgba(0,0,0,0.03)]"
+                  />
+                  <div className="absolute right-4 top-4">
+                    <DestructiveActionButton
+                      idleLabel="Remove Image"
+                      pendingLabel="Removing..."
+                      confirmLabel="Confirm remove"
+                      buttonType="button"
+                      onConfirm={clearReceiptFile}
+                      className="rounded-full bg-black/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white"
+                      confirmClassName="rounded-full bg-red-600 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white shadow-[0_10px_24px_rgba(185,28,28,0.24)]"
+                    />
+                  </div>
+                </div>
+                <div className="border-t border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,243,255,0.88))] px-5 py-4">
+                  <p className="text-sm font-semibold">{fileName || "Receipt selected"}</p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">
+                    This receipt image will be used for OCR and review before any wardrobe item is
+                    created.
+                  </p>
+                  {sourceDimensions ? (
+                    <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
+                      {sourceDimensions.width} × {sourceDimensions.height}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            ) : fileName ? (
+              <div className="overflow-hidden rounded-[1.2rem] border border-[var(--line)] bg-white">
+                <div className="relative flex min-h-40 items-center justify-center bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,243,255,0.9))]">
+                  <div className="flex flex-col items-center gap-3 px-6 text-center text-[var(--muted)]">
+                    <DocumentIcon />
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em]">
+                        {fileType?.includes("pdf") ? "PDF Receipt" : "Document Receipt"}
+                      </p>
+                      <p className="mt-2 text-sm">
+                        OCR and text extraction will run from this file before review.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="absolute right-4 top-4">
+                    <DestructiveActionButton
+                      idleLabel="Remove File"
+                      pendingLabel="Removing..."
+                      confirmLabel="Confirm remove"
+                      buttonType="button"
+                      onConfirm={clearReceiptFile}
+                      className="rounded-full bg-black/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white"
+                      confirmClassName="rounded-full bg-red-600 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white shadow-[0_10px_24px_rgba(185,28,28,0.24)]"
+                    />
+                  </div>
+                </div>
+                <div className="border-t border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,243,255,0.88))] px-5 py-4">
+                  <p className="text-sm font-semibold">{fileName}</p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">
+                    This receipt document will be used for OCR and review before any wardrobe item
+                    is created.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <label
+                htmlFor={inputId}
+                className="flex cursor-pointer items-center justify-between rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,243,255,0.9))] px-4 py-4"
+              >
+                <span className="text-sm text-[var(--muted)]">
+                  {fileName || "PDF, PNG, JPG, or WEBP"}
+                </span>
+                <span className="rounded-full bg-white px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                  Choose file
+                </span>
+              </label>
+            )}
+            <input
+              suppressHydrationWarning
+              id={inputId}
+              name="receipt"
+              type="file"
+              accept=".pdf,image/*"
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0] ?? null;
+
+                if (!file) {
+                  setFileName(null);
+                  setFileType(null);
+                  setPreviewUrl(null);
+                  setSourceDimensions(null);
+                  return;
+                }
+
+                if (previewUrl) {
+                  URL.revokeObjectURL(previewUrl);
+                }
+
+                setFileName(file.name);
+                setFileType(file.type || null);
+                const nextPreviewUrl = file.type.startsWith("image/")
+                  ? URL.createObjectURL(file)
+                  : null;
+                setPreviewUrl(nextPreviewUrl);
+                loadImageDimensions(file).then(setSourceDimensions).catch(() => {
+                  setSourceDimensions(null);
+                });
+              }}
+              className="sr-only"
+              required
+            />
+            <input type="hidden" name="source_width" value={sourceDimensions?.width ?? ""} />
+            <input type="hidden" name="source_height" value={sourceDimensions?.height ?? ""} />
+            {sourceDimensions ? (
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
+                Image size: {sourceDimensions.width} × {sourceDimensions.height}
+              </p>
+            ) : null}
+          </label>
+
+          <FormTextAreaField
+            label="Receipt Text"
+            name="receipt_text"
+            placeholder="Paste receipt text or invoice line items here for better extraction."
+          />
+
+          <FormTextAreaField
+            label="Notes"
+            name="notes"
+            placeholder="Optional context about what line item to look for."
+          />
+        </div>
+      </section>
+
+      <PendingButton idle="Create Receipt Draft" pending="Creating..." />
+      <FormFeedback state={state} />
+    </form>
   );
 }
 
@@ -1959,6 +2788,31 @@ function FormField({
   );
 }
 
+function FormTextAreaField({
+  label,
+  name,
+  placeholder,
+  defaultValue
+}: {
+  label: string;
+  name: string;
+  placeholder?: string;
+  defaultValue?: string;
+}) {
+  return (
+    <label className="flex flex-col gap-2 text-sm">
+      <span className="font-medium">{label}</span>
+      <textarea
+        suppressHydrationWarning
+        className="min-h-24 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
+        name={name}
+        placeholder={placeholder}
+        defaultValue={defaultValue}
+      />
+    </label>
+  );
+}
+
 function ColourField({
   defaultValue = "",
   value,
@@ -1971,7 +2825,7 @@ function ColourField({
   return (
     <label className="flex flex-col gap-2 text-sm">
       <span className="font-medium">Primary Colour</span>
-      <div className="rounded-[1.2rem] border border-[rgba(23,20,17,0.08)] bg-[linear-gradient(180deg,#fff,#fbf7f1)] p-3">
+      <div className="rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,#fff,rgba(245,243,255,0.92))] p-3">
         <select
           suppressHydrationWarning
           name="primary_colour_family"
@@ -2019,7 +2873,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1rem] border border-[rgba(23,20,17,0.08)] bg-white/82 px-3 py-3">
+    <div className="rounded-[8px] border border-[var(--line)] bg-white/82 px-3 py-3">
       <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">{label}</p>
       <p className="mt-2 line-clamp-2 text-sm font-medium text-[var(--foreground)]">{value}</p>
     </div>
@@ -2028,6 +2882,18 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 
 function categoryLabel(value: string) {
   return value.replaceAll("_", " ");
+}
+
+function applyFilterParam(
+  params: URLSearchParams,
+  key: string,
+  value: string | null
+) {
+  if (value) {
+    params.set(key, value);
+  } else {
+    params.delete(key);
+  }
 }
 
 function occasionLabel(value: string) {
@@ -2092,6 +2958,34 @@ function PlusIcon() {
   return (
     <svg viewBox="0 0 20 20" className="h-4 w-4 fill-none stroke-current stroke-[1.8]">
       <path d="M10 4v12M4 10h12" />
+    </svg>
+  );
+}
+
+function CameraIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-4 w-4 fill-none stroke-current stroke-[1.8]">
+      <path d="M6.5 5.5h2l1.1-1.7h1.8l1.1 1.7h1.5A2 2 0 0 1 16 7.5v6a2 2 0 0 1-2 2H6A2 2 0 0 1 4 13.5v-6a2 2 0 0 1 2-2h.5Z" />
+      <circle cx="10" cy="10.5" r="2.7" />
+    </svg>
+  );
+}
+
+function LinkIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-4 w-4 fill-none stroke-current stroke-[1.8]">
+      <path d="m8 12-1.2 1.2a2.5 2.5 0 0 1-3.5-3.5L5.9 7a2.5 2.5 0 0 1 3.5 0l.6.6" />
+      <path d="m12 8 1.2-1.2a2.5 2.5 0 1 1 3.5 3.5L14.1 13a2.5 2.5 0 0 1-3.5 0l-.6-.6" />
+      <path d="m7.5 12.5 5-5" />
+    </svg>
+  );
+}
+
+function ReceiptIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-4 w-4 fill-none stroke-current stroke-[1.8]">
+      <path d="M5.5 3.5h9v13l-2-1.2-1.5 1.2-1-1.2-1 1.2-1.5-1.2-2 1.2v-13Z" />
+      <path d="M7.5 7h5M7.5 10h5M7.5 13h3.5" />
     </svg>
   );
 }

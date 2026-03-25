@@ -479,6 +479,21 @@ create table if not exists public.weather_snapshots (
   unique (user_id, location_key, weather_date)
 );
 
+create table if not exists public.user_entitlements (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  plan_tier text not null default 'free'
+    check (plan_tier in ('free', 'pro', 'premium')),
+  feature_labels_enabled boolean not null default false,
+  receipt_ocr_enabled boolean not null default false,
+  product_url_ingestion_enabled boolean not null default false,
+  outfit_decomposition_enabled boolean not null default false,
+  billing_provider text,
+  billing_customer_id text,
+  billing_subscription_id text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.occasion_profiles (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade,
@@ -552,6 +567,7 @@ create index if not exists idx_trend_signals_type on public.trend_signals(trend_
 create index if not exists idx_trend_signals_label on public.trend_signals(label);
 create index if not exists idx_user_trend_matches_user_id on public.user_trend_matches(user_id);
 create index if not exists idx_weather_snapshots_user_id on public.weather_snapshots(user_id);
+create index if not exists idx_user_entitlements_plan_tier on public.user_entitlements(plan_tier);
 create index if not exists idx_processing_jobs_status on public.processing_jobs(status);
 
 -- =============================================================================
@@ -567,6 +583,12 @@ execute function public.set_updated_at();
 drop trigger if exists trg_processing_jobs_set_updated_at on public.processing_jobs;
 create trigger trg_processing_jobs_set_updated_at
 before update on public.processing_jobs
+for each row
+execute function public.set_updated_at();
+
+drop trigger if exists trg_user_entitlements_set_updated_at on public.user_entitlements;
+create trigger trg_user_entitlements_set_updated_at
+before update on public.user_entitlements
 for each row
 execute function public.set_updated_at();
 
@@ -610,6 +632,7 @@ alter table public.outfit_items enable row level security;
 alter table public.garment_colours enable row level security;
 alter table public.user_trend_matches enable row level security;
 alter table public.weather_snapshots enable row level security;
+alter table public.user_entitlements enable row level security;
 alter table public.occasion_profiles enable row level security;
 alter table public.processing_jobs enable row level security;
 
@@ -717,6 +740,19 @@ for update using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
 create policy wear_events_delete_own on public.wear_events
+for delete using (auth.uid() = user_id);
+
+create policy user_entitlements_select_own on public.user_entitlements
+for select using (auth.uid() = user_id);
+
+create policy user_entitlements_insert_own on public.user_entitlements
+for insert with check (auth.uid() = user_id);
+
+create policy user_entitlements_update_own on public.user_entitlements
+for update using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+create policy user_entitlements_delete_own on public.user_entitlements
 for delete using (auth.uid() = user_id);
 
 create policy lookbook_entries_select_own on public.lookbook_entries

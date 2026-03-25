@@ -3,6 +3,7 @@ export type WardrobeActionState = {
   message: string | null;
   garmentId?: string;
   draftIds?: string[];
+  nextPath?: string;
 };
 
 export const wardrobeActionState: WardrobeActionState = {

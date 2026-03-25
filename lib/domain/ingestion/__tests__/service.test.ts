@@ -98,7 +98,7 @@ describe("createGarmentSource", () => {
     );
     const file = new File(["data"], "outfit.jpg", { type: "image/jpeg" });
 
-    const result = await createGarmentSource({ file });
+    const result = await createGarmentSource({ file, width: 1200, height: 1600 });
 
     expect(mockStorageFrom).toHaveBeenCalledWith("garment-originals");
     expect(mockStorageUpload).toHaveBeenCalled();
@@ -107,6 +107,9 @@ describe("createGarmentSource", () => {
     const insertCall = mockInsert.mock.calls[0][0] as Record<string, unknown>;
     expect(insertCall.garment_id).toBeNull();
     expect(insertCall.source_type).toBe("direct_upload");
+    expect(insertCall.source_metadata_json).toEqual(
+      expect.objectContaining({ width: 1200, height: 1600 })
+    );
 
     expect(result.sourceId).toBe("source-uuid-xyz");
     expect(typeof result.storagePath).toBe("string");
@@ -145,6 +148,7 @@ describe("listPendingDrafts", () => {
       id: "draft-1",
       source_id: "src-1",
       confidence: 0.87,
+      garment_sources: null,
       draft_payload_json: {
         category: "shirt/blouse",
         colour: "navy",
@@ -158,6 +162,7 @@ describe("listPendingDrafts", () => {
       id: "draft-2",
       source_id: "src-1",
       confidence: 0.51,
+      garment_sources: null,
       draft_payload_json: {
         category: "pants",
         colour: "black",
@@ -191,6 +196,8 @@ describe("listPendingDrafts", () => {
     expect(drafts[0].id).toBe("draft-1");
     expect(drafts[0].payload.category).toBe("shirt/blouse");
     expect(drafts[0].payload.colour).toBe("navy");
+    expect(drafts[0].preview_url).toBeNull();
+    expect(drafts[0].preview_kind).toBeNull();
     expect(drafts[1].payload.material).toBeNull();
   });
 

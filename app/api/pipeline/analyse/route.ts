@@ -3,6 +3,10 @@ import { z } from "zod";
 import { getRequiredUser, AuthenticationError } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getServerEnv } from "@/lib/env";
+import {
+  assertFeatureLabelsAccess,
+  FeatureAccessError
+} from "@/lib/domain/entitlements/service";
 import { callPipelineService } from "@/lib/domain/ingestion/client";
 import { createDraftsFromPipelineResult } from "@/lib/domain/ingestion/service";
 import type { Tables } from "@/types/database";
@@ -15,6 +19,7 @@ const requestSchema = z.object({
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const user = await getRequiredUser();
+    await assertFeatureLabelsAccess();
     const supabase = await createClient();
 
     const body = await request.json() as unknown;
@@ -74,6 +79,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     if (error instanceof AuthenticationError) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+    if (error instanceof FeatureAccessError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid request." }, { status: 400 });

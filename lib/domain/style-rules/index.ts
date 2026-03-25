@@ -12,7 +12,8 @@ export const styleRuleSchema = z.object({
   rule_scope: z.enum(["global", "user"]).default("global"),
   user_id: z.string().uuid().nullable().optional(),
   explanation: z.string().trim().max(2000).nullable().optional(),
-  active: z.boolean().default(true)
+  active: z.boolean().default(true),
+  constraint_type: z.enum(["hard", "soft"]).default("soft"),
 });
 
 export type StyleRule = z.infer<typeof styleRuleSchema>;

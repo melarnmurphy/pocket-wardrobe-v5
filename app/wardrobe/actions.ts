@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
+import { getServerEnv } from "@/lib/env";
 import {
   createGarment,
   addGarmentImage,
@@ -12,6 +14,24 @@ import {
 import type { WardrobeColourFamily } from "@/lib/domain/wardrobe/colours";
 import type { WardrobeActionState } from "@/lib/domain/wardrobe/action-state";
 import { logWearEvent } from "@/lib/domain/wear-events/service";
+import {
+  createGarmentSource,
+  createDraftsFromPipelineResult,
+  createManualPhotoReviewDraft,
+  createManualReviewDraft,
+  createProductUrlSource,
+  createReceiptSource
+} from "@/lib/domain/ingestion/service";
+import {
+  callPipelineService,
+  callReceiptOcrService
+} from "@/lib/domain/ingestion/client";
+import { canUseFeatureLabels } from "@/lib/domain/entitlements/service";
+import {
+  extractProductMetadataFromUrl,
+  parseReceiptDraftCandidates,
+  readReceiptTextFromFile
+} from "@/lib/domain/ingestion/extractors";
 
 const nullableText = (max: number) =>
   z.preprocess(
@@ -108,6 +128,48 @@ const updateGarmentFormSchema = createGarmentFormSchema.extend({
   garment_id: z.string().uuid()
 });
 
+const productUrlDraftFormSchema = z.object({
+  product_url: z.string().trim().url(),
+  title_hint: nullableText(200),
+  notes: nullableText(1000)
+});
+
+const receiptDraftFormSchema = z.object({
+  receipt_text: nullableText(5000),
+  notes: nullableText(1000),
+  source_width: z.preprocess((value) => {
+    if (typeof value !== "string" || !value.trim()) {
+      return undefined;
+    }
+
+    return Number.parseInt(value, 10);
+  }, z.number().int().positive().optional()),
+  source_height: z.preprocess((value) => {
+    if (typeof value !== "string" || !value.trim()) {
+      return undefined;
+    }
+
+    return Number.parseInt(value, 10);
+  }, z.number().int().positive().optional())
+});
+
+const photoDraftFormSchema = z.object({
+  source_width: z.preprocess((value) => {
+    if (typeof value !== "string" || !value.trim()) {
+      return undefined;
+    }
+
+    return Number.parseInt(value, 10);
+  }, z.number().int().positive().optional()),
+  source_height: z.preprocess((value) => {
+    if (typeof value !== "string" || !value.trim()) {
+      return undefined;
+    }
+
+    return Number.parseInt(value, 10);
+  }, z.number().int().positive().optional())
+});
+
 export async function createGarmentAction(
   _previousState: WardrobeActionState,
   formData: FormData
@@ -169,6 +231,257 @@ export async function createGarmentAction(
   }
 }
 
+export async function createPhotoDraftAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const file = formData.get("image");
+
+    if (!(file instanceof File) || file.size === 0) {
+      return {
+        status: "error",
+        message: "Choose an image to analyse."
+      };
+    }
+
+    const values = photoDraftFormSchema.parse({
+      source_width: formData.get("source_width"),
+      source_height: formData.get("source_height")
+    });
+
+    const { sourceId, storagePath } = await createGarmentSource({
+      file,
+      width: values.source_width,
+      height: values.source_height
+    });
+    const featureLabelsEnabled = await canUseFeatureLabels();
+
+    if (!featureLabelsEnabled) {
+      const draftId = await createManualPhotoReviewDraft({
+        sourceId,
+        fileName: file.name
+      });
+
+      revalidatePath("/wardrobe/review");
+
+      return {
+        status: "success",
+        draftIds: [draftId],
+        nextPath: "/wardrobe/review",
+        message: "Photo uploaded. Fill in the garment details manually."
+      };
+    }
+
+    const supabase = await createClient();
+    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+      .from("garment-originals")
+      .createSignedUrl(storagePath, 5 * 60);
+
+    if (signedUrlError || !signedUrlData?.signedUrl) {
+      return {
+        status: "error",
+        message: "Failed to prepare image for analysis."
+      };
+    }
+
+    const env = getServerEnv();
+    const result = await callPipelineService({
+      serviceUrl: env.PIPELINE_SERVICE_URL,
+      imageUrl: signedUrlData.signedUrl
+    });
+
+    const draftIds = await createDraftsFromPipelineResult({
+      sourceId,
+      result
+    });
+
+    revalidatePath("/wardrobe/review");
+
+    return {
+      status: "success",
+      draftIds,
+      nextPath: "/wardrobe/review",
+      message:
+        draftIds.length > 0
+          ? `${draftIds.length} draft${draftIds.length === 1 ? "" : "s"} ready to review.`
+          : "No garments detected from that image."
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Could not analyse photo."
+    };
+  }
+}
+
+export async function createProductUrlDraftAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = productUrlDraftFormSchema.parse({
+      product_url: formData.get("product_url"),
+      title_hint: formData.get("title_hint"),
+      notes: formData.get("notes")
+    });
+
+    const url = new URL(values.product_url);
+    const titleHint =
+      values.title_hint ||
+      decodeURIComponent(url.pathname.split("/").filter(Boolean).pop() || "")
+        .replace(/[-_]+/g, " ")
+        .trim() ||
+      url.hostname;
+    const { sourceId } = await createProductUrlSource({ url: values.product_url });
+    const extracted = await extractProductMetadataFromUrl(values.product_url);
+    const extractedPrice =
+      extracted.price && extracted.price.trim().length > 0
+        ? Number(extracted.price.replace(/[^0-9.]+/g, ""))
+        : null;
+    const usedRetailerMetadata = Boolean(
+      extracted.brand ||
+        extracted.category ||
+        extracted.price ||
+        extracted.description ||
+        (extracted.title && extracted.title !== titleHint)
+    );
+    const extractionSource = usedRetailerMetadata
+      ? "retailer metadata"
+      : values.title_hint
+        ? "manual hint"
+        : "URL fallback";
+    const draftId = await createManualReviewDraft({
+      sourceId,
+      sourceType: "product_url",
+      title: extracted.title || titleHint,
+      category: extracted.category,
+      colour: extracted.colour,
+      brand: extracted.brand,
+      material: null,
+      sourceLabel: url.hostname,
+      style: extracted.brand || extracted.retailer || "product link",
+      notes: values.notes ?? (
+        [extracted.description, extracted.price ? `Price: ${extracted.currency || ""} ${extracted.price}`.trim() : null]
+          .filter(Boolean)
+          .join(" · ") || `Added from ${url.hostname}`
+      ),
+      confidence: extracted.title || extracted.category ? 0.44 : 0.22,
+      retailer: extracted.retailer,
+      purchasePrice: Number.isFinite(extractedPrice) ? extractedPrice : null,
+      purchaseCurrency: extracted.currency,
+      extractionSource
+    });
+
+    revalidatePath("/wardrobe/review");
+
+    return {
+      status: "success",
+      draftIds: [draftId],
+      nextPath: "/wardrobe/review",
+      message: "Product link draft created."
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Could not create product-link draft."
+    };
+  }
+}
+
+export async function createReceiptDraftAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const file = formData.get("receipt");
+
+    if (!(file instanceof File) || file.size === 0) {
+      return {
+        status: "error",
+        message: "Choose a receipt file to upload."
+      };
+    }
+
+    const values = receiptDraftFormSchema.parse({
+      receipt_text: formData.get("receipt_text"),
+      notes: formData.get("notes"),
+      source_width: formData.get("source_width"),
+      source_height: formData.get("source_height")
+    });
+
+    const { sourceId } = await createReceiptSource({
+      file,
+      width: values.source_width,
+      height: values.source_height
+    });
+    const fileText = await readReceiptTextFromFile(file);
+    const ocrText =
+      fileText || !shouldAttemptReceiptOcr(file)
+        ? null
+        : await callReceiptOcrService({
+            serviceUrl: getServerEnv().PIPELINE_SERVICE_URL,
+            file
+          }).catch(() => null);
+    const receiptText = [values.receipt_text, fileText, ocrText].filter(Boolean).join("\n");
+    const hasStrongReceiptText = receiptText.trim().length > 0;
+    const extractionSource = values.receipt_text
+      ? "pasted text"
+      : fileText
+        ? "text-readable file"
+        : ocrText
+          ? "OCR"
+          : "filename fallback";
+    const fallbackTitle = file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
+    const candidates = parseReceiptDraftCandidates({
+      receiptText,
+      fallbackTitle
+    });
+
+    const draftIds: string[] = [];
+
+    for (const candidate of candidates) {
+      const draftId = await createManualReviewDraft({
+        sourceId,
+        sourceType: "receipt",
+        title: candidate.title,
+        category: candidate.category,
+        colour: candidate.colour,
+        brand: candidate.brand,
+        sourceLabel: file.name,
+        style: "receipt import",
+        notes: values.notes ?? candidate.notes ?? "Review this receipt-derived draft.",
+        confidence: candidate.confidence,
+        retailer: candidate.retailer,
+        purchasePrice: candidate.price,
+        purchaseCurrency: candidate.currency,
+        extractionSource
+      });
+
+      draftIds.push(draftId);
+    }
+
+    revalidatePath("/wardrobe/review");
+
+    return {
+      status: "success",
+      draftIds,
+      nextPath: "/wardrobe/review",
+      message:
+        !hasStrongReceiptText
+          ? "Receipt draft created. Extraction was limited, so paste receipt text for stronger item, brand, and price matching."
+          : draftIds.length > 1
+            ? `${draftIds.length} receipt drafts created.`
+            : "Receipt draft created."
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Could not create receipt draft."
+    };
+  }
+}
+
 export async function addGarmentImageAction(
   _previousState: WardrobeActionState,
   formData: FormData
@@ -209,6 +522,14 @@ export async function addGarmentImageAction(
       message: error instanceof Error ? error.message : "Unable to attach image."
     };
   }
+}
+
+function shouldAttemptReceiptOcr(file: File) {
+  return (
+    file.type.startsWith("image/") ||
+    file.type === "application/pdf" ||
+    file.name.toLowerCase().endsWith(".pdf")
+  );
 }
 
 export async function updateGarmentAction(

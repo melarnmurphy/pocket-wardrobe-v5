@@ -37,3 +37,53 @@ export async function callPipelineService(
   const raw = await response.json() as Record<string, unknown>;
   return pipelineAnalyzeResponseSchema.parse({ garments: raw["garments"] ?? [] });
 }
+
+export interface CallReceiptOcrServiceParams {
+  serviceUrl: string;
+  file: File;
+}
+
+export async function callReceiptOcrService(
+  params: CallReceiptOcrServiceParams
+): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", params.file, params.file.name || "receipt");
+
+  const response = await fetch(`${params.serviceUrl}/receipt-ocr`, {
+    method: "POST",
+    body: formData
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`Receipt OCR service error: ${response.status}${text ? ` — ${text}` : ""}`);
+  }
+
+  const rawText = await response.text();
+  const parsed = tryParseJson(rawText);
+
+  if (parsed && typeof parsed === "object") {
+    const candidate = [parsed.text, parsed.receipt_text, parsed.raw_text, parsed.markdown].find(
+      (value): value is string => typeof value === "string" && value.trim().length > 0
+    );
+
+    if (candidate) {
+      return candidate.trim();
+    }
+  }
+
+  if (rawText.trim().length > 0) {
+    return rawText.trim();
+  }
+
+  throw new Error("Receipt OCR service returned no text.");
+}
+
+function tryParseJson(value: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}

@@ -93,3 +93,47 @@ describe("callPipelineService", () => {
     ).rejects.toThrow("Pipeline service error: 503");
   });
 });
+
+describe("callReceiptOcrService", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("posts multipart to /receipt-ocr and returns OCR text from JSON payload", async () => {
+    const { callReceiptOcrService } = await import("@/lib/domain/ingestion/client");
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      text: async () => JSON.stringify({ receipt_text: "MYER\nBasque Wool Blend Blazer AUD 179.95" }),
+    });
+
+    const result = await callReceiptOcrService({
+      serviceUrl: "https://example--fashion-pipeline-api.modal.run",
+      file: new File(["receipt-image"], "receipt.jpg", { type: "image/jpeg" }),
+    });
+
+    expect(result).toContain("Basque Wool Blend Blazer");
+
+    const [ocrUrl, ocrOpts] = mockFetch.mock.calls[0];
+    expect(ocrUrl).toBe("https://example--fashion-pipeline-api.modal.run/receipt-ocr");
+    expect((ocrOpts as RequestInit).method).toBe("POST");
+    expect((ocrOpts as RequestInit).body).toBeInstanceOf(FormData);
+  });
+
+  it("throws if OCR service returns non-ok", async () => {
+    const { callReceiptOcrService } = await import("@/lib/domain/ingestion/client");
+
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      text: async () => "Service Unavailable",
+    });
+
+    await expect(
+      callReceiptOcrService({
+        serviceUrl: "https://example--fashion-pipeline-api.modal.run",
+        file: new File(["receipt-image"], "receipt.jpg", { type: "image/jpeg" }),
+      })
+    ).rejects.toThrow("Receipt OCR service error: 503");
+  });
+});

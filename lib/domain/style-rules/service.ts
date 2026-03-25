@@ -20,7 +20,8 @@ const styleRuleListSchema = styleRuleSchema.extend({
 const createUserStyleRuleSchema = styleRuleSchema.omit({
   id: true,
   user_id: true,
-  rule_scope: true
+  rule_scope: true,
+  constraint_type: true,
 });
 
 const updateUserStyleRuleSchema = createUserStyleRuleSchema;
@@ -53,11 +54,14 @@ export async function createUserStyleRule(
   const user = await getRequiredUser();
   const supabase = await createClient();
   const parsed = createUserStyleRuleSchema.parse(input);
-  const payload: StyleRuleInsert = {
+  // constraint_type is not yet in the generated DB types — added by migration 005.
+  // Cast through unknown until types are regenerated after migration is applied.
+  const payload = {
     ...parsed,
-    rule_scope: "user",
-    user_id: user.id
-  };
+    rule_scope: "user" as const,
+    user_id: user.id,
+    constraint_type: "soft" as const,
+  } as unknown as StyleRuleInsert;
 
   const { data, error } = await supabase
     .from("style_rules")

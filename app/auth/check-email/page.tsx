@@ -11,8 +11,8 @@ export default async function CheckEmailPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl items-center px-6 py-10">
-      <section className="w-full rounded-[2rem] border border-[var(--line)] bg-[var(--surface)] p-8 shadow-[0_18px_50px_rgba(40,25,12,0.08)]">
-        <p className="text-sm uppercase tracking-[0.35em] text-[var(--muted)]">
+      <section className="pw-panel w-full p-8">
+        <p className="pw-kicker">
           Check Email
         </p>
         <h1 className="mt-4 text-3xl font-semibold tracking-[-0.04em]">
@@ -22,16 +22,10 @@ export default async function CheckEmailPage({
           Open the Supabase email and follow the sign-in link to continue into Pocket Wardrobe.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
-          <a
-            href={next}
-            className="rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium"
-          >
+          <a href={next} className="pw-button-quiet px-4 py-2 text-sm">
             Back
           </a>
-          <Link
-            href="/"
-            className="rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium"
-          >
+          <Link href="/" className="pw-button-quiet px-4 py-2 text-sm">
             Home
           </Link>
         </div>

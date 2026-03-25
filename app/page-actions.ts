@@ -4,7 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getServerEnv } from "@/lib/env";
 import { createGarmentSource } from "@/lib/domain/ingestion/service";
 import { createDraftsFromPipelineResult } from "@/lib/domain/ingestion/service";
+import { createManualPhotoReviewDraft } from "@/lib/domain/ingestion/service";
 import { callPipelineService } from "@/lib/domain/ingestion/client";
+import { canUseFeatureLabels } from "@/lib/domain/entitlements/service";
 import { redirect } from "next/navigation";
 
 export type UploadActionResult =
@@ -25,6 +27,15 @@ export async function uploadAndAnalyseAction(
 
   try {
     const { sourceId, storagePath } = await createGarmentSource({ file });
+    const featureLabelsEnabled = await canUseFeatureLabels();
+
+    if (!featureLabelsEnabled) {
+      await createManualPhotoReviewDraft({
+        sourceId,
+        fileName: file.name
+      });
+      redirect("/wardrobe/review");
+    }
 
     const supabase = await createClient();
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage

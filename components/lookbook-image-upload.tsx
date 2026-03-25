@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DestructiveActionButton } from "@/components/destructive-action-button";
 
 export function LookbookImageUpload({
   name,
@@ -23,6 +24,21 @@ export function LookbookImageUpload({
     };
   }, [previewUrl]);
 
+  const clearPreview = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setFileName(null);
+    setPreviewUrl(null);
+
+    const input = document.querySelector(`input[name="${name}"][type="file"]`) as HTMLInputElement | null;
+
+    if (input) {
+      input.value = "";
+    }
+  };
+
   return (
     <label className="block">
       <span className="text-sm font-medium">Reference Image</span>
@@ -31,8 +47,8 @@ export function LookbookImageUpload({
           previewUrl
             ? "border-transparent bg-white"
             : dragActive
-              ? "border-[var(--accent)] bg-[rgba(166,99,60,0.07)]"
-              : "border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(246,239,232,0.85))]"
+              ? "border-[var(--accent)] bg-[rgba(123,92,240,0.08)]"
+              : "border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,243,255,0.88))]"
         }`}
         onDragEnter={(event) => {
           event.preventDefault();
@@ -86,29 +102,18 @@ export function LookbookImageUpload({
                 alt="Selected lookbook upload preview"
                 className="h-[26rem] w-full object-contain bg-[rgba(0,0,0,0.03)]"
               />
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.preventDefault();
-                  if (previewUrl) {
-                    URL.revokeObjectURL(previewUrl);
-                  }
-                  setFileName(null);
-                  setPreviewUrl(null);
-
-                  const input = event.currentTarget
-                    .parentElement
-                    ?.querySelector('input[type="file"]') as HTMLInputElement | null;
-
-                  if (input) {
-                    input.value = "";
-                  }
-                }}
-                className="absolute right-4 top-4 rounded-full bg-black/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white"
-              >
-                Remove
-              </button>
-              <div className="border-t border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(246,239,232,0.88))] px-5 py-4">
+              <div className="absolute right-4 top-4">
+                <DestructiveActionButton
+                  idleLabel="Remove Image"
+                  pendingLabel="Removing..."
+                  confirmLabel="Confirm remove"
+                  buttonType="button"
+                  onConfirm={clearPreview}
+                  className="rounded-full bg-black/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white"
+                  confirmClassName="rounded-full bg-red-600 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white shadow-[0_10px_24px_rgba(185,28,28,0.24)]"
+                />
+              </div>
+              <div className="border-t border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,243,255,0.88))] px-5 py-4">
                 <p className="text-sm font-semibold">{fileName || "Image selected"}</p>
                 <p className="mt-1 text-sm text-[var(--muted)]">
                   Replace it by choosing another file or dragging a new image into this area.
@@ -133,7 +138,7 @@ export function LookbookImageUpload({
                 {hint || "Upload an image for this lookbook reference."}
               </p>
               <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-                <span className="rounded-full border border-[var(--line)] bg-white px-4 py-2 text-sm font-medium">
+                <span className="pw-button-quiet px-4 py-2 text-sm font-medium">
                   JPG, PNG, WEBP
                 </span>
                 <span className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
@@ -141,7 +146,7 @@ export function LookbookImageUpload({
                 </span>
               </div>
               <div className="mt-6">
-                <span className="rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--accent-foreground)]">
+                <span className="pw-button-primary">
                   Choose Image
                 </span>
               </div>

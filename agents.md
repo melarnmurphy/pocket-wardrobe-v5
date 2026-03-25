@@ -9,6 +9,13 @@ Before making any code changes, you MUST read and understand the following files
 
 These documents define the system architecture and product behavior. They are the source of truth.
 
+## MCP Project Target
+
+For this repository, any Supabase MCP usage must target `pocketwardrobev5` only.
+
+Do not invoke the `real-estate` MCP server when working in `fashionapp5`.
+If an MCP server name is needed for Supabase access in this repo, use `pocketwardrobev5`.
+
 ## Development workflow for this project
 
 When starting a task:

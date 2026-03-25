@@ -906,6 +906,48 @@ export type Database = {
         }
         Relationships: []
       }
+      user_entitlements: {
+        Row: {
+          billing_customer_id: string | null
+          billing_provider: string | null
+          billing_subscription_id: string | null
+          created_at: string
+          feature_labels_enabled: boolean
+          outfit_decomposition_enabled: boolean
+          plan_tier: string
+          product_url_ingestion_enabled: boolean
+          receipt_ocr_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          billing_customer_id?: string | null
+          billing_provider?: string | null
+          billing_subscription_id?: string | null
+          created_at?: string
+          feature_labels_enabled?: boolean
+          outfit_decomposition_enabled?: boolean
+          plan_tier?: string
+          product_url_ingestion_enabled?: boolean
+          receipt_ocr_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          billing_customer_id?: string | null
+          billing_provider?: string | null
+          billing_subscription_id?: string | null
+          created_at?: string
+          feature_labels_enabled?: boolean
+          outfit_decomposition_enabled?: boolean
+          plan_tier?: string
+          product_url_ingestion_enabled?: boolean
+          receipt_ocr_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_trend_matches: {
         Row: {
           created_at: string
