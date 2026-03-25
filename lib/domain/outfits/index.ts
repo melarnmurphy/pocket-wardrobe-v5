@@ -46,7 +46,7 @@ export const outfitGarmentPreviewSchema = z.object({
   id: z.string().uuid(),
   title: z.string().nullable().optional(),
   category: z.string(),
-  role: z.enum(["top", "bottom", "dress", "outerwear", "shoes", "accessory", "bag", "jewellery", "other"]),
+  role: z.enum(OUTFIT_ITEM_ROLES),
   preview_url: z.string().nullable().optional()
 });
 export type OutfitGarmentPreview = z.infer<typeof outfitGarmentPreviewSchema>;
@@ -89,7 +89,7 @@ export const saveOutfitInputSchema = z.object({
   explanation_json: z.record(z.string(), z.unknown()).default({}),
   garments: z.array(z.object({
     garment_id: z.string().uuid(),
-    role: z.enum(["top", "bottom", "dress", "outerwear", "shoes", "accessory", "bag", "jewellery", "other"])
+    role: z.enum(OUTFIT_ITEM_ROLES)
   }))
 });
 export type SaveOutfitInput = z.infer<typeof saveOutfitInputSchema>;
