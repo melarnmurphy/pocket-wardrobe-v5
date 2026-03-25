@@ -21,6 +21,9 @@ export async function AuthShell() {
           <Link href="/style-rules" className="text-[var(--muted)]">
             Style Rules
           </Link>
+          <Link href="/outfits" className="text-[var(--muted)]">
+            Outfits
+          </Link>
         </div>
 
         {user ? (

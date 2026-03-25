@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   type ReactNode,
   useActionState,
@@ -1456,6 +1457,14 @@ function GarmentDetailDialog({
               )}
             </div>
           </section>
+
+          <Link
+            href={`/outfits?mode=plan&item=${garment.id}`}
+            className="inline-flex items-center gap-1.5 text-xs text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
+          >
+            Generate outfit with this →
+          </Link>
+
           {deleteState.status === "error" ? (
             <p className="text-sm text-red-600">{deleteState.message}</p>
           ) : null}

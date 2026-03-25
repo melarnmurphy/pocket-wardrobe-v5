@@ -74,6 +74,11 @@ export const userTrendMatchSchema = z.object({
 
 export type UserTrendMatch = z.infer<typeof userTrendMatchSchema>;
 
+export const userTrendMatchWithSignalSchema = userTrendMatchSchema.extend({
+  trend_signal: trendSignalSchema
+});
+export type UserTrendMatchWithSignal = z.infer<typeof userTrendMatchWithSignalSchema>;
+
 export const trendIngestionJobSchema = z.object({
   id: z.string().uuid().optional(),
   job_type: z.enum([
