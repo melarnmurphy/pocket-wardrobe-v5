@@ -21,3 +21,20 @@ export const trendSignalSchema = z.object({
 });
 
 export type TrendSignal = z.infer<typeof trendSignalSchema>;
+
+export const userTrendMatchSchema = z.object({
+  id: z.string().uuid().optional(),
+  user_id: z.string().uuid(),
+  trend_signal_id: z.string().uuid(),
+  match_type: z.enum(["exact_match", "adjacent_match", "styling_match", "missing_piece"]),
+  score: z.number().min(0).max(100),
+  reasoning_json: z.record(z.string(), z.unknown()).default({}),
+  created_at: z.string().optional()
+});
+
+export type UserTrendMatch = z.infer<typeof userTrendMatchSchema>;
+
+export const userTrendMatchWithSignalSchema = userTrendMatchSchema.extend({
+  trend_signal: trendSignalSchema
+});
+export type UserTrendMatchWithSignal = z.infer<typeof userTrendMatchWithSignalSchema>;
