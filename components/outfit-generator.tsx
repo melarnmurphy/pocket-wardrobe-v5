@@ -18,15 +18,19 @@ interface OutfitGeneratorProps {
   garments: GarmentListItem[];
   styleRules: StyleRuleListItem[];
   trendSignals: UserTrendMatchWithSignal[];
+  initialMode?: "plan" | "surprise" | "trend";
+  initialItemId?: string;
 }
 
 export function OutfitGenerator({
   isPro,
   garments,
   styleRules,
-  trendSignals
+  trendSignals,
+  initialMode,
+  initialItemId: _initialItemId // TODO: pre-lock garment from initialItemId
 }: OutfitGeneratorProps) {
-  const [activeTab, setActiveTab] = useState<Tab>("plan");
+  const [activeTab, setActiveTab] = useState<Tab>(initialMode ?? "plan");
   const [pendingResult, setPendingResult] = useState<GeneratedOutfit | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);

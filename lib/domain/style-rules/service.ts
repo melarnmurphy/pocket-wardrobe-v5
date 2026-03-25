@@ -11,6 +11,9 @@ const timestampSchema = z.string().min(1);
 const styleRuleListSchema = styleRuleSchema.extend({
   id: z.string().uuid(),
   user_id: z.string().uuid().nullable(),
+  // constraint_type was added by migration 005 (knowledge-graph style rules).
+  // It is optional here so existing rows without the column still parse cleanly.
+  constraint_type: z.string().optional(),
   created_at: timestampSchema
 });
 
@@ -31,7 +34,7 @@ export async function listStyleRules(): Promise<StyleRuleListItem[]> {
   const { data, error } = await supabase
     .from("style_rules")
     .select(
-      "id,rule_type,subject_type,subject_value,predicate,object_type,object_value,weight,rule_scope,user_id,explanation,active,created_at"
+      "id,rule_type,subject_type,subject_value,predicate,object_type,object_value,weight,rule_scope,user_id,explanation,active,constraint_type,created_at"
     )
     .or(`rule_scope.eq.global,user_id.eq.${user.id}`)
     .order("rule_scope", { ascending: true })
@@ -60,7 +63,7 @@ export async function createUserStyleRule(
     .from("style_rules")
     .insert(payload as never)
     .select(
-      "id,rule_type,subject_type,subject_value,predicate,object_type,object_value,weight,rule_scope,user_id,explanation,active,created_at"
+      "id,rule_type,subject_type,subject_value,predicate,object_type,object_value,weight,rule_scope,user_id,explanation,active,constraint_type,created_at"
     )
     .single();
 
@@ -87,7 +90,7 @@ export async function updateUserStyleRule(
     .eq("rule_scope", "user")
     .eq("user_id", user.id)
     .select(
-      "id,rule_type,subject_type,subject_value,predicate,object_type,object_value,weight,rule_scope,user_id,explanation,active,created_at"
+      "id,rule_type,subject_type,subject_value,predicate,object_type,object_value,weight,rule_scope,user_id,explanation,active,constraint_type,created_at"
     )
     .single();
 

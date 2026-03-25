@@ -36,10 +36,14 @@ export async function getSwapCandidatesAction(
   role: string,
   excludeGarmentId: string
 ): Promise<GarmentListItem[]> {
-  const garments = await listWardrobeGarments();
-  return garments.filter(
-    g => categoryToRole(g.category) === role && g.id !== excludeGarmentId
-  );
+  try {
+    const garments = await listWardrobeGarments();
+    return garments.filter(
+      g => categoryToRole(g.category) === role && g.id !== excludeGarmentId
+    );
+  } catch {
+    return [];
+  }
 }
 
 /** Persist a generated outfit to the DB. */

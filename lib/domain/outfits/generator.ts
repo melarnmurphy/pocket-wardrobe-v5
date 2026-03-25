@@ -27,8 +27,12 @@ export function categoryToRole(category: string): OutfitItemRole {
 // Rules engine types & helpers
 // ---------------------------------------------------------------------------
 
-// Internal augmented type: StyleRuleListItem doesn't expose constraint_type in
-// its public schema, but DB rows carry the column. We cast locally where needed.
+// Internal augmented type: StyleRuleListItem's public Zod schema includes
+// constraint_type as an optional field (added by migration 005, types not yet
+// regenerated). The select in listStyleRules fetches the column explicitly, so
+// it is present on runtime objects even though TypeScript's database.ts doesn't
+// list it. The cast here is therefore safe: the field is fetched, just not
+// reflected in the generated types yet.
 type RuleWithConstraint = StyleRuleListItem & { constraint_type?: string };
 
 const OPTIONAL_ROLES: OutfitItemRole[] = ["outerwear", "shoes", "accessory", "bag", "jewellery"];

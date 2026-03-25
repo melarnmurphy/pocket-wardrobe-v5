@@ -9,7 +9,15 @@ import { AuthRequiredCard } from "@/components/auth-required-card";
 import { OutfitGenerator } from "@/components/outfit-generator";
 import { OutfitGallery } from "@/components/outfit-gallery";
 
-export default async function OutfitsPage() {
+export default async function OutfitsPage({
+  searchParams
+}: {
+  searchParams: Promise<{ mode?: string; item?: string }>
+}) {
+  const params = await searchParams;
+  const initialMode = params.mode as "plan" | "surprise" | "trend" | undefined;
+  const initialItemId = params.item;
+
   try {
     const [garments, styleRules, trendSignals, savedOutfits] = await Promise.all([
       listWardrobeGarments(),
@@ -36,6 +44,8 @@ export default async function OutfitsPage() {
           garments={garments}
           styleRules={styleRules}
           trendSignals={trendSignals}
+          initialMode={initialMode}
+          initialItemId={initialItemId}
         />
 
         <section>
