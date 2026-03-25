@@ -5,11 +5,13 @@ import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
 import type { StyleRuleListItem } from "@/lib/domain/style-rules/service";
 import type { UserTrendMatchWithSignal } from "@/lib/domain/trends";
 import type { GeneratedOutfit, OutfitGarmentPreview } from "@/lib/domain/outfits";
+import type { LocalWeatherContext, WeatherProfile } from "@/lib/domain/weather";
 import {
   generateOutfitAction,
   getSwapCandidatesAction,
   saveOutfitAction
 } from "@/app/outfits/actions";
+import { showAppToast } from "@/lib/ui/app-toast";
 
 type Tab = "plan" | "surprise" | "trend";
 
@@ -39,6 +41,9 @@ export function OutfitGenerator({
   const [occasion, setOccasion] = useState("");
   const [dressCode, setDressCode] = useState("");
   const [weather, setWeather] = useState("");
+  const [locationQuery, setLocationQuery] = useState("");
+  const [weatherContext, setWeatherContext] = useState<LocalWeatherContext | null>(null);
+  const [isLoadingWeather, setIsLoadingWeather] = useState(false);
 
   // Trend form state
   const [selectedSignalId, setSelectedSignalId] = useState<string | null>(null);
@@ -53,6 +58,12 @@ export function OutfitGenerator({
     "Any": "", "Warm sun": "warm_sun", "Cool breeze": "cool_breeze",
     "Cold rain": "cold_rain", "Mild clear": "mild_clear"
   };
+  const WEATHER_LABELS: Record<WeatherProfile, string> = {
+    warm_sun: "Warm sun",
+    cool_breeze: "Cool breeze",
+    cold_rain: "Cold rain",
+    mild_clear: "Mild clear"
+  };
 
   async function handleGenerate() {
     setIsGenerating(true);
@@ -65,7 +76,7 @@ export function OutfitGenerator({
         mode: "plan",
         occasion: occasion || null,
         dress_code: DRESS_CODE_VALUES[dressCode] || null,
-        weather: WEATHER_VALUES[weather] || null
+        weather: weatherContext?.profile ?? (WEATHER_VALUES[weather] || null)
       };
     } else if (activeTab === "surprise") {
       input = { mode: "surprise" };
@@ -94,7 +105,11 @@ export function OutfitGenerator({
       title = [occasion, dressCode].filter(Boolean).join(", ") || "Outfit";
       occasion_val = occasion || null;
       dress_code_val = DRESS_CODE_VALUES[dressCode] || null;
-      if (weather) weather_ctx = { weather: WEATHER_VALUES[weather] };
+      if (weatherContext) {
+        weather_ctx = weatherContext;
+      } else if (weather) {
+        weather_ctx = { weather: WEATHER_VALUES[weather] };
+      }
     } else if (activeTab === "surprise") {
       title = `Outfit — ${new Date().toLocaleDateString()}`;
     } else {
@@ -117,7 +132,83 @@ export function OutfitGenerator({
     } else {
       setPendingResult(null);
       setOccasion(""); setDressCode(""); setWeather(""); setSelectedSignalId(null);
+      setLocationQuery(""); setWeatherContext(null);
     }
+  }
+
+  async function loadWeather(params: URLSearchParams) {
+    setIsLoadingWeather(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/weather/local?${params.toString()}`, {
+        method: "GET"
+      });
+      const payload = (await response.json()) as {
+        error?: string;
+        weather_context?: LocalWeatherContext;
+      };
+
+      if (!response.ok || !payload.weather_context) {
+        throw new Error(payload.error ?? "Unable to load local weather.");
+      }
+
+      setWeatherContext(payload.weather_context);
+      setWeather(WEATHER_LABELS[payload.weather_context.profile]);
+      if (!locationQuery.trim()) {
+        setLocationQuery(payload.weather_context.location_label);
+      }
+      showAppToast({
+        tone: "success",
+        message: `Loaded ${payload.weather_context.profile_label.toLowerCase()} for ${payload.weather_context.location_label}.`
+      });
+    } catch (loadError) {
+      const message =
+        loadError instanceof Error ? loadError.message : "Unable to load local weather.";
+      setError(message);
+      showAppToast({ tone: "error", message });
+    } finally {
+      setIsLoadingWeather(false);
+    }
+  }
+
+  function handleLocationLookup() {
+    if (!locationQuery.trim()) {
+      const message = "Enter a city or suburb to load local weather.";
+      setError(message);
+      showAppToast({ tone: "error", message });
+      return;
+    }
+
+    void loadWeather(new URLSearchParams({ location: locationQuery.trim() }));
+  }
+
+  function handleCurrentLocation() {
+    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
+      const message = "Geolocation is not available in this browser.";
+      setError(message);
+      showAppToast({ tone: "error", message });
+      return;
+    }
+
+    setIsLoadingWeather(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        void loadWeather(
+          new URLSearchParams({
+            latitude: String(position.coords.latitude),
+            longitude: String(position.coords.longitude)
+          })
+        );
+      },
+      (geoError) => {
+        setIsLoadingWeather(false);
+        const message = geoError.message || "Unable to access your current location.";
+        setError(message);
+        showAppToast({ tone: "error", message });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+    );
   }
 
   const MATCH_TYPE_LABEL: Record<string, string> = {
@@ -163,36 +254,91 @@ export function OutfitGenerator({
       {/* Form panels */}
       <div className="p-5">
         {activeTab === "plan" && (
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            <div>
-              <label className="block text-[10px] uppercase tracking-[0.25em] text-[var(--muted)] mb-1.5">Occasion</label>
-              <input
-                type="text"
-                value={occasion}
-                onChange={e => setOccasion(e.target.value)}
-                placeholder="dinner, work…"
-                className="w-full h-9 rounded-lg bg-[var(--surface)] border border-[var(--line)] px-3 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)]"
-              />
+          <div className="mb-4 space-y-3">
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[10px] uppercase tracking-[0.25em] text-[var(--muted)] mb-1.5">Occasion</label>
+                <input
+                  type="text"
+                  value={occasion}
+                  onChange={e => setOccasion(e.target.value)}
+                  placeholder="dinner, work…"
+                  className="w-full h-9 rounded-lg bg-[var(--surface)] border border-[var(--line)] px-3 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)]"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase tracking-[0.25em] text-[var(--muted)] mb-1.5">Dress Code</label>
+                <select
+                  value={dressCode}
+                  onChange={e => setDressCode(e.target.value)}
+                  className="w-full h-9 rounded-lg bg-[var(--surface)] border border-[var(--line)] px-3 text-sm text-[var(--foreground)]"
+                >
+                  {DRESS_CODE_OPTIONS.map(opt => <option key={opt}>{opt}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase tracking-[0.25em] text-[var(--muted)] mb-1.5">Weather</label>
+                <select
+                  value={weather}
+                  onChange={e => {
+                    setWeather(e.target.value);
+                    setWeatherContext(null);
+                  }}
+                  className="w-full h-9 rounded-lg bg-[var(--surface)] border border-[var(--line)] px-3 text-sm text-[var(--foreground)]"
+                >
+                  {WEATHER_OPTIONS.map(opt => <option key={opt}>{opt}</option>)}
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="block text-[10px] uppercase tracking-[0.25em] text-[var(--muted)] mb-1.5">Dress Code</label>
-              <select
-                value={dressCode}
-                onChange={e => setDressCode(e.target.value)}
-                className="w-full h-9 rounded-lg bg-[var(--surface)] border border-[var(--line)] px-3 text-sm text-[var(--foreground)]"
-              >
-                {DRESS_CODE_OPTIONS.map(opt => <option key={opt}>{opt}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] uppercase tracking-[0.25em] text-[var(--muted)] mb-1.5">Weather</label>
-              <select
-                value={weather}
-                onChange={e => setWeather(e.target.value)}
-                className="w-full h-9 rounded-lg bg-[var(--surface)] border border-[var(--line)] px-3 text-sm text-[var(--foreground)]"
-              >
-                {WEATHER_OPTIONS.map(opt => <option key={opt}>{opt}</option>)}
-              </select>
+
+            <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                <div className="flex-1">
+                  <label className="block text-[10px] uppercase tracking-[0.25em] text-[var(--muted)] mb-1.5">
+                    Load Local Weather
+                  </label>
+                  <input
+                    type="text"
+                    value={locationQuery}
+                    onChange={e => setLocationQuery(e.target.value)}
+                    placeholder="Adelaide, Sydney, Melbourne..."
+                    className="w-full h-9 rounded-lg bg-white border border-[var(--line)] px-3 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)]"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleLocationLookup}
+                    disabled={isLoadingWeather}
+                    className="h-9 rounded-lg border border-[var(--line)] bg-white px-3 text-xs font-medium text-[var(--foreground)] disabled:opacity-60"
+                  >
+                    {isLoadingWeather ? "Loading..." : "Load weather"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCurrentLocation}
+                    disabled={isLoadingWeather}
+                    className="h-9 rounded-lg border border-[var(--line)] bg-white px-3 text-xs font-medium text-[var(--foreground)] disabled:opacity-60"
+                  >
+                    Use current location
+                  </button>
+                </div>
+              </div>
+
+              {weatherContext ? (
+                <div className="mt-3 rounded-lg bg-white px-3 py-2 text-xs text-[var(--muted)]">
+                  <span className="font-medium text-[var(--foreground)]">
+                    {weatherContext.profile_label}
+                  </span>
+                  {` via ${weatherContext.provider} for ${weatherContext.location_label}`}
+                  {weatherContext.current_temperature_c !== null
+                    ? ` · ${Math.round(weatherContext.current_temperature_c)}C`
+                    : ""}
+                  {weatherContext.precipitation_chance !== null
+                    ? ` · ${Math.round(weatherContext.precipitation_chance)}% rain`
+                    : ""}
+                </div>
+              ) : null}
             </div>
           </div>
         )}
