@@ -1,4 +1,8 @@
 import { AuthenticationError } from "@/lib/auth";
+import {
+  getUserEntitlements,
+  hasPaidPlan
+} from "@/lib/domain/entitlements/service";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import { listStyleRules } from "@/lib/domain/style-rules/service";
 import {
@@ -19,15 +23,14 @@ export default async function OutfitsPage({
   const initialItemId = params.item;
 
   try {
-    const [garments, styleRules, trendSignals, savedOutfits] = await Promise.all([
+    const [entitlements, garments, styleRules, trendSignals, savedOutfits] = await Promise.all([
+      getUserEntitlements(),
       listWardrobeGarments(),
       listStyleRules(),
       listUserTrendMatchesWithSignals(),
       listSavedOutfits()
     ]);
-
-    // isPro: hardcoded false for this iteration
-    const isPro = false;
+    const isPro = hasPaidPlan(entitlements);
 
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-8 px-6 py-10 md:px-10">
