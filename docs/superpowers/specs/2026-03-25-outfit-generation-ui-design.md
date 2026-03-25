@@ -55,7 +55,14 @@ No user input. Claude picks a complete outfit from the wardrobe scored by style 
 
 ### Trend (Pro only)
 
-User selects one active trend signal from their matched trend signals list. The list is loaded from `user_trend_matches` joined to `trend_signals` for the current user. Each row shows: trend label, trend type, source count, `authority_score` displayed as a discretized label (< 0.5 = "low authority", 0.5–0.8 = "medium authority", > 0.8 = "high authority"), and match type (exact match / adjacent / missing piece). The engine weights garments that match the trend's `normalized_attributes_json` field higher during selection. Button reads "Generate outfit around this trend."
+User selects one active trend signal from their matched trend signals list. The list is loaded from `user_trend_matches` joined to `trend_signals` for the current user. Each row shows: trend label, trend type, source count, `authority_score` displayed as a discretized label (< 0.5 = "low authority", 0.5–0.8 = "medium authority", > 0.8 = "high authority"), and match type displayed as:
+
+| `match_type` value | Display label |
+|---|---|
+| `exact_match` | exact match |
+| `adjacent_match` | adjacent |
+| `styling_match` | adjacent |
+| `missing_piece` | missing piece | The engine weights garments that match the trend's `normalized_attributes_json` field higher during selection. Button reads "Generate outfit around this trend."
 
 ---
 
@@ -97,7 +104,7 @@ User saves
 
 | File | Change |
 |---|---|
-| `lib/domain/outfits/index.ts` | Add `GenerateOutfitInput`, `GeneratedOutfit`, `SaveOutfitInput` Zod schemas |
+| `lib/domain/outfits/index.ts` | Add `GenerateOutfitInput`, `GeneratedOutfit`, `SaveOutfitInput`, `OutfitWithItems` Zod schemas. `OutfitWithItems` is `outfitSchema` extended with `items: Array<outfitItemSchema & { garment: { id, title, category, preview_url } }>` |
 | `lib/domain/trends/index.ts` | Add `UserTrendMatchWithSignal` composite type: `UserTrendMatch & { trend_signal: TrendSignal }` |
 | `app/wardrobe/page.tsx` | Add "Generate outfit" entry point on garment detail |
 
@@ -144,11 +151,23 @@ Shown inline below the form after generation. Contains:
 
 **Actions:** "Save outfit" (primary) and "Discard" (secondary). Saving inserts into `outfits` + `outfit_items` and revalidates the page; discarding clears `pendingResult`.
 
+**`outfits` columns populated at save:**
+
+| Column | Value |
+|---|---|
+| `title` | Derived from mode (see Gallery section) |
+| `occasion` | Plan it: user-entered occasion text; others: `null` |
+| `dress_code` | Plan it: selected dress code; others: `null` |
+| `weather_context_json` | Plan it: `{ weather: selectedWeather }`; others: `{}` |
+| `explanation` | Free: `null`; Pro: Claude prose string |
+| `explanation_json` | Free: `{ rules: firedRules[] }`; Pro: `{}` |
+| `source_type` | Always `"generated"` |
+
 ---
 
 ## Swap dropdown
 
-Anchored to the garment chip. Opens on ⇄ click. Lists wardrobe items filtered by the same role, excluding the current garment, sorted by style-rule score for the current outfit context. Selecting an item replaces the chip and re-evaluates the "Why this works" tags client-side — the rules engine re-runs in the browser using the wardrobe data and style rules already in memory (no new server action call, no new Claude call). On the Pro hybrid path, swapped results always show rule tags, not Claude prose. Closing without selecting keeps the original.
+Anchored to the garment chip. Opens on ⇄ click. Lists wardrobe items whose category maps to the same role (via `categoryToRole`) as the current chip, excluding the current garment, sorted by style-rule score for the current outfit context. The `role` field is not stored on `garments` — it is always derived at runtime via `categoryToRole`. Selecting an item replaces the chip and re-evaluates the "Why this works" tags client-side — the rules engine re-runs in the browser using the wardrobe data and style rules already in memory (no new server action call, no new Claude call). On the Pro hybrid path, swapped results always show rule tags, not Claude prose. Closing without selecting keeps the original.
 
 ---
 
@@ -180,7 +199,7 @@ Pure functions, no DB calls, no LLM. Takes: wardrobe `GarmentListItem[]`, active
 1. **Hard filter** — remove garments with a `hard` constraint rule matching `avoid_with` for the requested dress code (e.g. jeans excluded when dress code is `formal`)
 2. **Score per role** — for each role (top, bottom, outerwear, shoes), score remaining garments against active soft rules: colour compatibility, occasion fit, weather fit, seasonality, silhouette pairing
 3. **Trend boost** (Trend mode) — garments whose attributes match the selected trend signal's `normalized_attributes` receive a score multiplier
-4. **Recency penalty** (Surprise Me) — garments worn in the last 7 days receive a score penalty
+4. **Recency penalty** (Surprise Me) — garments where `last_worn_at` is within the last 7 days receive a −0.3 score penalty (a constant; confirm during implementation). Garments where `last_worn_at` is `null` receive no penalty.
 5. **Select** — highest-scoring candidate per role; omit optional roles (outerwear, shoes) if no candidates score above a minimum threshold of 0.2 (a constant to be confirmed during implementation)
 6. **Collect fired rules** — record which rules contributed to each selection for the explanation tags
 
