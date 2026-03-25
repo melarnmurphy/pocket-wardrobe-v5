@@ -32,6 +32,9 @@ describe("categoryToRole", () => {
   it("maps tote bag to bag", () => {
     expect(categoryToRole("tote bag")).toBe("bag");
   });
+  it("maps belt to accessory", () => {
+    expect(categoryToRole("belt")).toBe("accessory");
+  });
   it("maps earrings to jewellery", () => {
     expect(categoryToRole("gold earrings")).toBe("jewellery");
   });
