@@ -91,6 +91,8 @@ function makeRule(overrides: Partial<StyleRuleListItem> & {
   predicate: string;
   subject_value: string;
   object_value: string;
+  constraint_type?: string;
+  [key: string]: unknown;
 }): StyleRuleListItem {
   return {
     id: "rule-" + Math.random(),
@@ -117,8 +119,8 @@ describe("applyHardFilters", () => {
       subject_value: "jeans",
       object_value: "formal",
       constraint_type: "hard"
-    } as Parameters<typeof makeRule>[0] & { constraint_type: string });
-    const result = applyHardFilters([jeans, shirt], [rule as never], "formal");
+    });
+    const result = applyHardFilters([jeans, shirt], [rule], "formal");
     expect(result.map(g => g.id)).toEqual(["g2"]);
   });
 
@@ -129,8 +131,8 @@ describe("applyHardFilters", () => {
       subject_value: "jeans",
       object_value: "formal",
       constraint_type: "hard"
-    } as Parameters<typeof makeRule>[0] & { constraint_type: string });
-    const result = applyHardFilters([jeans], [rule as never], undefined);
+    });
+    const result = applyHardFilters([jeans], [rule], undefined);
     expect(result).toHaveLength(1);
   });
 });
@@ -144,8 +146,8 @@ describe("scoreGarment", () => {
       object_value: "smart_casual",
       weight: 0.9,
       constraint_type: "soft"
-    } as Parameters<typeof makeRule>[0] & { constraint_type: string });
-    const score = scoreGarment(chinos, [rule as never], { dress_code: "smart_casual" });
+    });
+    const score = scoreGarment(chinos, [rule], { dress_code: "smart_casual" });
     expect(score).toBeCloseTo(0.9);
   });
 
@@ -157,8 +159,8 @@ describe("scoreGarment", () => {
       object_value: "formal",
       weight: 0.99,
       constraint_type: "hard"
-    } as Parameters<typeof makeRule>[0] & { constraint_type: string });
-    const score = scoreGarment(jeans, [rule as never], { dress_code: "formal" });
+    });
+    const score = scoreGarment(jeans, [rule], { dress_code: "formal" });
     expect(score).toBe(0);
   });
 });

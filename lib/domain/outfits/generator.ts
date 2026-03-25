@@ -27,9 +27,8 @@ export function categoryToRole(category: string): OutfitItemRole {
 // Rules engine types & helpers
 // ---------------------------------------------------------------------------
 
-// StyleRuleListItem doesn't include constraint_type in the schema, so we use
-// an augmented type internally to allow the generator to work with rules that
-// carry this field (e.g. seeded from DB rows that do have the column).
+// Internal augmented type: StyleRuleListItem doesn't expose constraint_type in
+// its public schema, but DB rows carry the column. We cast locally where needed.
 type RuleWithConstraint = StyleRuleListItem & { constraint_type?: string };
 
 const OPTIONAL_ROLES: OutfitItemRole[] = ["outerwear", "shoes", "accessory", "bag", "jewellery"];
@@ -40,7 +39,7 @@ const RECENCY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 export type GeneratorInput = {
   mode: "plan" | "surprise" | "trend";
   garments: GarmentListItem[];
-  styleRules: RuleWithConstraint[];
+  styleRules: StyleRuleListItem[];
   trendSignal: UserTrendMatchWithSignal | null;
   dress_code?: string;
   weather?: string;
@@ -56,11 +55,11 @@ type ScoringContext = {
 /** Remove garments blocked by hard constraint rules for the given dress code. */
 export function applyHardFilters(
   garments: GarmentListItem[],
-  rules: RuleWithConstraint[],
+  rules: StyleRuleListItem[],
   dress_code: string | undefined
 ): GarmentListItem[] {
   if (!dress_code) return garments;
-  const hardAvoid = rules.filter(
+  const hardAvoid = (rules as RuleWithConstraint[]).filter(
     r => r.constraint_type === "hard" && r.predicate === "avoid_with" && r.object_value === dress_code
   );
   if (hardAvoid.length === 0) return garments;
@@ -73,12 +72,12 @@ export function applyHardFilters(
 /** Score a single garment against soft rules for the given context. */
 export function scoreGarment(
   garment: GarmentListItem,
-  rules: RuleWithConstraint[],
+  rules: StyleRuleListItem[],
   ctx: ScoringContext
 ): number {
   const cat = garment.category.toLowerCase();
   let score = 0;
-  for (const rule of rules) {
+  for (const rule of rules as RuleWithConstraint[]) {
     if (rule.constraint_type !== "soft" || !rule.active) continue;
     if (!cat.includes(rule.subject_value.toLowerCase())) continue;
     if (rule.predicate === "appropriate_for" || rule.predicate === "occasion_fit") {
@@ -160,7 +159,7 @@ export function generateOutfit(input: GeneratorInput): GeneratedOutfit {
     });
 
     // Collect fired rules for this garment
-    const fired = styleRules.filter(r => {
+    const fired = (styleRules as RuleWithConstraint[]).filter(r => {
       if (r.constraint_type !== "soft" || !r.active) return false;
       return g.category.toLowerCase().includes(r.subject_value.toLowerCase());
     });
