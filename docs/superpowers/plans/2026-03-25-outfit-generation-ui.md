@@ -728,7 +728,7 @@ export async function listSavedOutfits(): Promise<OutfitWithItems[]> {
       explanation, explanation_json, source_type, created_at,
       items:outfit_items(
         id, outfit_id, garment_id, role, created_at,
-        garment:garments(id, title, category, preview_url)
+        garment:garments(id, title, category)
       )
     `)
     .eq("user_id", user.id)
@@ -737,6 +737,13 @@ export async function listSavedOutfits(): Promise<OutfitWithItems[]> {
   if (error) throw new Error(error.message);
   return z.array(outfitWithItemsSchema).parse(data ?? []);
 }
+
+// NOTE: Gallery thumbnails (OutfitWithItems.items[].garment.preview_url) will always be null
+// in this iteration. The `preview_url` field is computed from the garment_images join + signed
+// URLs in listWardrobeGarments — it is not a column on the `garments` table and cannot be
+// fetched via a nested Supabase select. The gallery renders empty placeholder slots gracefully.
+// Wiring up thumbnails requires replicating the garment_images join + storage signing pattern
+// and is deferred to a future iteration.
 ```
 
 - [ ] **Step 2: Compile check**
@@ -961,7 +968,7 @@ import { useState } from "react";
 import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
 import type { StyleRuleListItem } from "@/lib/domain/style-rules/service";
 import type { UserTrendMatchWithSignal } from "@/lib/domain/trends";
-import type { GeneratedOutfit } from "@/lib/domain/outfits";
+import type { GeneratedOutfit, OutfitGarmentPreview } from "@/lib/domain/outfits";
 import {
   generateOutfitAction,
   getSwapCandidatesAction,
@@ -1304,8 +1311,6 @@ export function OutfitGenerator({
 }
 
 // ---- Swap chip sub-component ----
-
-import type { OutfitGarmentPreview } from "@/lib/domain/outfits";
 
 interface SwapChipProps {
   garment: OutfitGarmentPreview;
