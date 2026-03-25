@@ -47,7 +47,7 @@ export function OutfitGallery({ outfits }: OutfitGalleryProps) {
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-full items-center justify-content-center" />
+                      <div className="flex h-full items-center justify-center" />
                     )}
                   </div>
                 ) : (
