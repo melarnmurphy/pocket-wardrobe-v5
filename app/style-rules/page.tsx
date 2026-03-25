@@ -1,6 +1,6 @@
 import { AuthenticationError } from "@/lib/auth";
 import { AuthRequiredCard } from "@/components/auth-required-card";
-import { StyleRuleForm } from "@/components/style-rule-form";
+import { StyleRuleTemplateForm } from "@/components/style-rule-template-form";
 import { StyleRuleSection } from "@/components/style-rule-section";
 import { listStyleRules } from "@/lib/domain/style-rules/service";
 import {
@@ -35,7 +35,7 @@ export default async function StyleRulesPage() {
         </div>
 
         <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-          <StyleRuleForm action={createStyleRuleFormAction} />
+          <StyleRuleTemplateForm action={createStyleRuleFormAction} />
 
           <section className="space-y-6">
             <StyleRuleSection
