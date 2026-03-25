@@ -115,7 +115,7 @@ export function WardrobeShop({
   const [isCreateOpen, setIsCreateOpen] = useState(initialCreateState?.isOpen ?? false);
   const [createSourceMode, setCreateSourceMode] = useState<
     "manual" | "photo" | "product_url" | "receipt"
-  >(initialCreateState?.sourceMode ?? "manual");
+  >(initialCreateState?.sourceMode ?? "photo");
   const [createMobileStep, setCreateMobileStep] = useState<1 | 2>(1);
   const [isCreateDetailsOpen, setIsCreateDetailsOpen] = useState(false);
   const [isFilterBarCondensed, setIsFilterBarCondensed] = useState(false);
@@ -348,7 +348,7 @@ export function WardrobeShop({
     } else {
       setIsCreateOpen(initialCreateState?.isOpen ?? false);
     }
-    setCreateSourceMode(initialCreateState?.sourceMode ?? "manual");
+    setCreateSourceMode(initialCreateState?.sourceMode ?? "photo");
   }, [initialActiveGarmentId, initialCreateState]);
 
   useEffect(() => {
@@ -483,7 +483,7 @@ export function WardrobeShop({
   const openCreateComposer = () => {
     setActiveGarmentId(null);
     setIsCreateOpen(true);
-    setCreateSourceMode("manual");
+    setCreateSourceMode("photo");
     setCreateMobileStep(1);
     setIsCreateDetailsOpen(false);
     setCreatePreviewTitle("");
@@ -824,76 +824,39 @@ export function WardrobeShop({
             </div>
 
             <section className="space-y-4">
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <SourceChoiceButton
-                  title="Build Manually"
-                  description="Create the garment card now and optionally attach a photo."
-                  active={createSourceMode === "manual"}
-                  onClick={() => setCreateSourceMode("manual")}
-                  icon={<HangerIcon />}
+              <div className="grid gap-3 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+                <PhotoSourceDropCard
+                  action={photoDraftFormAction}
+                  state={photoDraftState}
+                  canUseFeatureLabels={canUseFeatureLabels}
                 />
-                <SourceChoiceButton
-                  title={canUseFeatureLabels ? "Analyse Photo" : "Upload Photo"}
-                  description={
-                    canUseFeatureLabels
-                      ? "Upload a clothing photo and review detected garment drafts."
-                      : "Upload a clothing photo and complete the garment details manually in review."
-                  }
-                  active={createSourceMode === "photo"}
-                  onClick={() => setCreateSourceMode("photo")}
-                  icon={<CameraIcon />}
-                  badge={canUseFeatureLabels ? "Premium" : "Manual on free"}
-                />
-                <SourceChoiceButton
-                  title="Paste Product Link"
-                  description="Start from a retailer URL and refine it in review."
-                  active={createSourceMode === "product_url"}
-                  onClick={() => setCreateSourceMode("product_url")}
-                  icon={<LinkIcon />}
-                />
-                <SourceChoiceButton
-                  title="Upload Receipt"
-                  description="Create a draft from a receipt or invoice file, then review it."
-                  active={createSourceMode === "receipt"}
-                  onClick={() => setCreateSourceMode("receipt")}
-                  icon={<ReceiptIcon />}
-                />
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                  <SourceChoiceButton
+                    title="Paste Product Link"
+                    description="Start from a retailer URL and refine it in review."
+                    active={createSourceMode === "product_url"}
+                    onClick={() => setCreateSourceMode("product_url")}
+                    icon={<LinkIcon />}
+                  />
+                  <SourceChoiceButton
+                    title="Upload Receipt"
+                    description="Create a draft from a receipt or invoice file, then review it."
+                    active={createSourceMode === "receipt"}
+                    onClick={() => setCreateSourceMode("receipt")}
+                    icon={<ReceiptIcon />}
+                  />
+                </div>
               </div>
             </section>
 
             {createSourceMode === "manual" ? (
               <form action={createFormAction} className="space-y-6">
-                <div className="grid grid-cols-2 gap-2 rounded-[8px] bg-[rgba(45,27,105,0.06)] p-1 lg:hidden">
-                  <button
-                    type="button"
-                    onClick={() => setCreateMobileStep(1)}
-                    className={`rounded-[0.95rem] px-4 py-3 text-sm font-medium transition-colors ${
-                      createMobileStep === 1
-                        ? "bg-white text-[var(--foreground)] shadow-sm"
-                        : "text-[var(--muted)]"
-                    }`}
-                  >
-                    Details
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCreateMobileStep(2)}
-                    className={`rounded-[0.95rem] px-4 py-3 text-sm font-medium transition-colors ${
-                      createMobileStep === 2
-                        ? "bg-white text-[var(--foreground)] shadow-sm"
-                        : "text-[var(--muted)]"
-                    }`}
-                  >
-                    Preview
-                  </button>
-                </div>
-
-                <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
+                <div className="grid gap-5">
                   <div className={`space-y-5 ${createMobileStep === 1 ? "block" : "hidden"} lg:block`}>
                     <CreateImageField onPreviewChange={setCreatePreviewImageUrl} />
 
                     <div className="rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,243,255,0.92))] p-5">
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                      <div>
                         <div>
                           <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">
                             Core Identity
@@ -902,9 +865,6 @@ export function WardrobeShop({
                             Add the details you would want to see on the card immediately.
                           </p>
                         </div>
-                          <span className="pw-chip">
-                            Live preview
-                          </span>
                       </div>
 
                       <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -945,19 +905,6 @@ export function WardrobeShop({
                         />
                       </div>
                     </div>
-                  </div>
-
-                  <div className={`${createMobileStep === 2 ? "block" : "hidden"} lg:block`}>
-                    <CreateGarmentPreviewCard
-                      title={createPreviewTitle}
-                      brand={createPreviewBrand}
-                      category={createPreviewCategory}
-                      subcategory={createPreviewSubcategory}
-                      colourFamily={createPreviewColour}
-                      price={createPreviewPrice}
-                      currency={createPreviewCurrency}
-                      previewUrl={createPreviewImageUrl}
-                    />
                   </div>
                 </div>
 
@@ -1070,16 +1017,6 @@ export function WardrobeShop({
 
                 <PendingButton idle="Add Item" pending="Adding Item..." />
               </form>
-            ) : createSourceMode === "photo" ? (
-              <PhotoDraftComposer
-                action={photoDraftFormAction}
-                state={photoDraftState}
-                canUseFeatureLabels={canUseFeatureLabels}
-                planTier={planTier}
-                premiumUpgradeUrl={premiumUpgradeUrl}
-                billingCheckoutEnabled={billingCheckoutEnabled}
-                premiumFeatures={premiumFeatures}
-              />
             ) : createSourceMode === "product_url" ? (
               <ProductUrlDraftComposer
                 action={productUrlDraftFormAction}
@@ -1905,9 +1842,13 @@ function DialogShell({
 }
 
 function CreateImageField({
-  onPreviewChange
+  onPreviewChange,
+  hideLabel = false,
+  compact = false
 }: {
   onPreviewChange?: (previewUrl: string | null) => void;
+  hideLabel?: boolean;
+  compact?: boolean;
 }) {
   const inputId = useId();
   const [fileName, setFileName] = useState<string | null>(null);
@@ -1948,17 +1889,19 @@ function CreateImageField({
 
   return (
     <div className="block">
-      <label htmlFor={inputId} className="text-sm font-medium">
-        Garment Image
-      </label>
+      {!hideLabel ? (
+        <label htmlFor={inputId} className="text-sm font-medium">
+          Garment Image
+        </label>
+      ) : null}
       <div
-        className={`relative mt-2 overflow-hidden rounded-[1.5rem] border-2 border-dashed transition-colors ${
+        className={`relative overflow-hidden border-2 border-dashed transition-colors ${
           previewUrl
             ? "border-transparent bg-white"
             : dragActive
               ? "border-[var(--accent)] bg-[rgba(123,92,240,0.08)]"
               : "border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,243,255,0.88))]"
-        }`}
+        } ${compact ? "mt-0 rounded-[1rem]" : "mt-2 rounded-[1.5rem]"}`}
         onDragEnter={(event) => {
           event.preventDefault();
           setDragActive(true);
@@ -2037,21 +1980,25 @@ function CreateImageField({
         ) : (
           <label
             htmlFor={inputId}
-            className="flex cursor-pointer flex-col items-center justify-center px-6 py-10 text-center"
+            className={`flex cursor-pointer flex-col items-center justify-center text-center ${
+              compact ? "px-4 py-6" : "px-6 py-10"
+            }`}
           >
             <img
               src="/illustrations/chatting.svg"
               alt=""
               aria-hidden="true"
-              className="mb-5 h-28 w-28 object-contain opacity-90"
+              className={`${compact ? "mb-4 h-20 w-20" : "mb-5 h-28 w-28"} object-contain opacity-90`}
             />
-            <p className="text-base font-semibold tracking-[-0.02em]">
+            <p className={`${compact ? "text-sm" : "text-base"} font-semibold tracking-[-0.02em]`}>
               Click to upload garment image
             </p>
             <p className="mt-1 text-sm text-[var(--muted)]">or drag and drop</p>
-            <p className="mt-3 max-w-md text-sm leading-6 text-[var(--muted)]">
-              Start with the item photo, then fill in the wardrobe metadata underneath.
-            </p>
+            {!compact ? (
+              <p className="mt-3 max-w-md text-sm leading-6 text-[var(--muted)]">
+                Start with the item photo, then fill in the wardrobe metadata underneath.
+              </p>
+            ) : null}
           </label>
         )}
 
@@ -2412,7 +2359,7 @@ function SourceChoiceButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-[1.25rem] border p-4 text-left transition-all duration-200 ${
+      className={`flex h-full flex-col rounded-[1.25rem] border p-4 text-left transition-all duration-200 ${
         active
           ? "border-[rgba(123,92,240,0.28)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,243,255,0.92))] shadow-[0_14px_30px_rgba(123,92,240,0.12)]"
           : "border-[var(--line)] bg-white/78 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(45,27,105,0.08)]"
@@ -2432,60 +2379,43 @@ function SourceChoiceButton({
   );
 }
 
-function PhotoDraftComposer({
+function PhotoSourceDropCard({
   action,
   state,
-  canUseFeatureLabels,
-  planTier,
-  premiumUpgradeUrl,
-  billingCheckoutEnabled,
-  premiumFeatures
+  canUseFeatureLabels
 }: {
   action: (formData: FormData) => void;
   state: WardrobeActionState;
   canUseFeatureLabels: boolean;
-  planTier: PlanTier;
-  premiumUpgradeUrl: string | null;
-  billingCheckoutEnabled: boolean;
-  premiumFeatures: readonly string[];
 }) {
   return (
-    <form action={action} className="space-y-5">
-      <section className="pw-panel-soft p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">
-              {canUseFeatureLabels ? "Analyse Photo" : "Upload Photo"}
-            </p>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-              {canUseFeatureLabels
-                ? "Upload a clothing image and send it through the detection pipeline. You will review the resulting drafts before anything is added to your wardrobe."
-                : `Upload a clothing image and create a manual review draft. Automatic feature labelling is reserved for ${planTier === "free" ? "Premium" : "higher"} tiers, so you will fill in the garment details yourself.`}
-            </p>
-          </div>
-          <span className="pw-chip bg-white">
-            {canUseFeatureLabels ? "Review required" : "Manual review"}
-          </span>
-        </div>
-        <div className="mt-6">
-          <CreateImageField />
-        </div>
-      </section>
-
-      {!canUseFeatureLabels ? (
-        <PremiumUpsellCard
-          title="Upgrade for assisted photo ingestion"
-          description={`You're on the ${planTier} plan. Premium unlocks automatic feature labelling and keeps the review step so your wardrobe data stays editable and explainable.`}
-          features={premiumFeatures}
-          upgradeUrl={premiumUpgradeUrl}
-          checkoutEnabled={billingCheckoutEnabled}
-          compact
-        />
-      ) : null}
-
+    <form
+      action={action}
+      className="flex h-full flex-col rounded-[1.25rem] border border-[rgba(123,92,240,0.28)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,243,255,0.92))] p-4 shadow-[0_14px_30px_rgba(123,92,240,0.12)]"
+    >
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(45,27,105,0.06)] text-[var(--foreground)]">
+          <CameraIcon />
+        </span>
+        <span className="rounded-full border border-[rgba(123,92,240,0.14)] bg-[rgba(123,92,240,0.08)] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
+          {canUseFeatureLabels ? "Review required" : "Manual on free"}
+        </span>
+      </div>
+      <p className="text-sm font-semibold">
+        {canUseFeatureLabels ? "Analyse Photo" : "Upload Photo"}
+      </p>
+      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+        {canUseFeatureLabels
+          ? "Drop a garment photo here to create review-ready drafts."
+          : "Drop a garment photo here to create a manual review draft."}
+      </p>
+      <div className="mt-4 flex-1">
+        <CreateImageField hideLabel compact />
+      </div>
       <PendingButton
         idle={canUseFeatureLabels ? "Analyse Photo" : "Upload For Manual Review"}
         pending={canUseFeatureLabels ? "Analysing..." : "Uploading..."}
+        compact
       />
       <FormFeedback state={state} />
     </form>
