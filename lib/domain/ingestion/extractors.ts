@@ -175,7 +175,10 @@ export async function extractProductMetadataFromUrl(url: string): Promise<Produc
       adapter.image_url || sanitizeText(ogImage) || sanitizeText(twitterImage) || findJsonLdImageValue(html)
     );
     const description = adapter.description || sanitizeText(ogDescription || metaDescription);
-    const attributeText = [description, title].filter(Boolean).join(" ");
+    // Body text often contains richer fit/fabric detail than meta descriptions.
+    // Use it for attribute extraction only; garment.description stays concise.
+    const bodyText = extractBodyDescriptionText(html);
+    const attributeText = [bodyText, description, title].filter(Boolean).join(" ");
     const extracted = extractGarmentAttributesFromText(attributeText);
 
     return {
@@ -689,6 +692,100 @@ function normalizeReceiptMerchantLabel(value: string | null | undefined) {
   }
 
   return normalized;
+}
+
+/**
+ * Body text extraction for rich attribute parsing.
+ *
+ * Meta descriptions are often too short to contain fit/fabric vocabulary.
+ * This function extracts fuller product description text from the HTML body
+ * by trying structured markup first (itemprop), then common class patterns
+ * used by Shopify, WooCommerce, Net-a-Porter, ASOS, and similar platforms.
+ *
+ * Result is used for attribute extraction only — not stored as garment.description.
+ */
+function extractBodyDescriptionText(html: string): string | null {
+  // 1. itemprop="description" — reliable structured markup, used by many retailers
+  const itempropText = extractElementByAttribute(html, "itemprop", "description");
+  if (itempropText && itempropText.length > 30) return itempropText.slice(0, 3000);
+
+  // 2. Common product description class fragments across platforms, ordered by reliability
+  const classFragments = [
+    // Shopify themes
+    "product__description",
+    "product-single__description",
+    "product__synopsis",
+    "product__info-description",
+    // Generic / WooCommerce / custom
+    "product-description",
+    "product-details__description",
+    "product-detail__description",
+    "product__content",
+    "product__body",
+    "pdp-description",
+    "pdp__description",
+    "item-description",
+    // Net-a-Porter / MrPorter
+    "product-details__description",
+    "editorial-description",
+    // ASOS
+    "product-description__heading",
+  ];
+
+  for (const fragment of classFragments) {
+    const text = extractElementByClassFragment(html, fragment);
+    if (text && text.length > 30) return text.slice(0, 3000);
+  }
+
+  return null;
+}
+
+function extractElementByAttribute(html: string, attr: string, value: string): string | null {
+  const openTagRe = new RegExp(
+    `<(\\w+)[^>]*\\b${escapeRegExp(attr)}=["']${escapeRegExp(value)}["'][^>]*>`,
+    "i"
+  );
+  const openMatch = openTagRe.exec(html);
+  if (!openMatch) return null;
+
+  const tagName = openMatch[1].toLowerCase();
+  const contentStart = openMatch.index + openMatch[0].length;
+  const closeRe = new RegExp(`</${escapeRegExp(tagName)}>`, "i");
+  const closeMatch = closeRe.exec(html.slice(contentStart));
+  if (!closeMatch) return null;
+
+  return stripHtmlTags(html.slice(contentStart, contentStart + closeMatch.index));
+}
+
+function extractElementByClassFragment(html: string, classFragment: string): string | null {
+  const openTagRe = new RegExp(
+    `<(\\w+)[^>]*class=["'][^"']*${escapeRegExp(classFragment)}[^"']*["'][^>]*>`,
+    "i"
+  );
+  const openMatch = openTagRe.exec(html);
+  if (!openMatch) return null;
+
+  const tagName = openMatch[1].toLowerCase();
+  const contentStart = openMatch.index + openMatch[0].length;
+  const closeRe = new RegExp(`</${escapeRegExp(tagName)}>`, "i");
+  const closeMatch = closeRe.exec(html.slice(contentStart));
+  if (!closeMatch) return null;
+
+  return stripHtmlTags(html.slice(contentStart, contentStart + closeMatch.index));
+}
+
+function stripHtmlTags(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#\d+;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function inferBrandFromHostname(hostname: string) {
