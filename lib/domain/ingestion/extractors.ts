@@ -1,3 +1,8 @@
+import {
+  extractGarmentAttributesFromText,
+  type GarmentAttribute,
+} from "./garment-attributes";
+
 const CLOTHING_KEYWORDS = [
   "dress",
   "shirt",
@@ -56,16 +61,35 @@ const COLOUR_WORDS = [
   "silver"
 ] as const;
 
+export type { GarmentAttribute };
+
 type ProductMetadata = {
   title: string | null;
   brand: string | null;
   category: string | null;
   colour: string | null;
+  /** Normalised fit descriptor extracted from product copy, e.g. "oversized" */
+  fit: string | null;
+  /** Fabric composition or primary material, e.g. "53% Cotton, 45% Nylon" */
+  material: string | null;
   retailer: string | null;
   description: string | null;
   price: string | null;
   currency: string | null;
+  image_url: string | null;
+  /**
+   * Structured attributes with knowledge-graph mappings.
+   * Stored in extraction_metadata_json.attributes on the garment row.
+   */
+  attributes: GarmentAttribute[];
 };
+
+type RetailerAdapterMetadata = Partial<
+  Pick<
+    ProductMetadata,
+    "title" | "brand" | "price" | "currency" | "description" | "image_url"
+  >
+>;
 
 export type ReceiptDraftCandidate = {
   title: string;
@@ -98,10 +122,14 @@ export async function extractProductMetadataFromUrl(url: string): Promise<Produc
         brand: null,
         category: deriveCategoryFromText(deriveTitleFromUrl(parsedUrl)),
         colour: deriveColourFromText(deriveTitleFromUrl(parsedUrl)),
+        fit: null,
+        material: null,
         retailer,
         description: null,
         price: null,
-        currency: null
+        currency: null,
+        image_url: null,
+        attributes: [],
       };
     }
 
@@ -111,6 +139,8 @@ export async function extractProductMetadataFromUrl(url: string): Promise<Produc
     const twitterTitle = findMetaContent(html, "name", "twitter:title");
     const ogDescription = findMetaContent(html, "property", "og:description");
     const metaDescription = findMetaContent(html, "name", "description");
+    const ogImage = findMetaContent(html, "property", "og:image");
+    const twitterImage = findMetaContent(html, "name", "twitter:image");
     const productBrand =
       adapter.brand ||
       findMetaContent(html, "property", "product:brand") ||
@@ -133,18 +163,34 @@ export async function extractProductMetadataFromUrl(url: string): Promise<Produc
       sanitizeText(twitterTitle) ||
       sanitizeText(findTitleTag(html)) ||
       deriveTitleFromUrl(parsedUrl);
-    const category = deriveCategoryFromText(productCategory || title);
+    const category = deriveProductCategory({
+      url: parsedUrl,
+      title,
+      productCategory,
+      description: adapter.description || sanitizeText(ogDescription || metaDescription)
+    });
     const colour = deriveColourFromText(`${title || ""} ${ogDescription || ""}`);
+    const imageUrl = resolveAbsoluteUrl(
+      parsedUrl,
+      adapter.image_url || sanitizeText(ogImage) || sanitizeText(twitterImage) || findJsonLdImageValue(html)
+    );
+    const description = adapter.description || sanitizeText(ogDescription || metaDescription);
+    const attributeText = [description, title].filter(Boolean).join(" ");
+    const extracted = extractGarmentAttributesFromText(attributeText);
 
     return {
       title,
       brand: sanitizeText(productBrand),
       category,
       colour,
+      fit: extracted.fit,
+      material: extracted.material,
       retailer,
-      description: adapter.description || sanitizeText(ogDescription || metaDescription),
+      description,
       price: sanitizeText(productPrice),
-      currency: normalizeCurrency(productCurrency)
+      currency: normalizeCurrency(productCurrency),
+      image_url: imageUrl,
+      attributes: extracted.attributes,
     };
   } catch {
     const fallbackTitle = deriveTitleFromUrl(parsedUrl);
@@ -154,10 +200,14 @@ export async function extractProductMetadataFromUrl(url: string): Promise<Produc
       brand: null,
       category: deriveCategoryFromText(fallbackTitle),
       colour: deriveColourFromText(fallbackTitle),
+      fit: null,
+      material: null,
       retailer,
       description: null,
       price: null,
-      currency: null
+      currency: null,
+      image_url: null,
+      attributes: [],
     };
   }
 }
@@ -332,6 +382,48 @@ function findJsonLdOfferValue(html: string, field: string) {
   return null;
 }
 
+function findJsonLdImageValue(html: string) {
+  const scripts =
+    html.match(
+      /<script[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi
+    ) ?? [];
+
+  for (const script of scripts) {
+    const raw = script.replace(/<script[^>]*>/i, "").replace(/<\/script>/i, "").trim();
+
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown> | Record<string, unknown>[];
+      const nodes = Array.isArray(parsed) ? parsed : [parsed];
+
+      for (const node of nodes) {
+        const image = node.image;
+
+        if (typeof image === "string") {
+          return image;
+        }
+
+        if (Array.isArray(image)) {
+          const firstString = image.find((value): value is string => typeof value === "string");
+          if (firstString) {
+            return firstString;
+          }
+        }
+
+        if (image && typeof image === "object" && "url" in image) {
+          const url = (image as { url?: unknown }).url;
+          if (typeof url === "string") {
+            return url;
+          }
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
 function deriveTitleFromUrl(url: URL) {
   const slug = decodeURIComponent(url.pathname.split("/").filter(Boolean).pop() || "")
     .replace(/\.[a-z0-9]+$/i, "")
@@ -345,6 +437,24 @@ function deriveCategoryFromText(value: string | null) {
   const haystack = value?.toLowerCase() || "";
   const match = CLOTHING_KEYWORDS.find((keyword) => haystack.includes(keyword));
   return match ? match.replace("t-shirt", "top") : null;
+}
+
+function deriveProductCategory(params: {
+  url: URL;
+  title: string | null;
+  productCategory: string | null;
+  description: string | null;
+}) {
+  const combinedText = [
+    params.productCategory,
+    params.title,
+    params.description,
+    params.url.pathname.replace(/[-_/]+/g, " ")
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return deriveCategoryFromText(combinedText) || "top";
 }
 
 function deriveColourFromText(value: string | null) {
@@ -412,6 +522,18 @@ function normalizeCurrency(value: string | null | undefined) {
 
   const normalized = value.trim().toUpperCase();
   return normalized.length === 3 ? normalized : null;
+}
+
+function resolveAbsoluteUrl(baseUrl: URL, candidate: string | null | undefined) {
+  if (!candidate) {
+    return null;
+  }
+
+  try {
+    return new URL(candidate, baseUrl).toString();
+  } catch {
+    return null;
+  }
 }
 
 function inferReceiptCurrency(value: string) {
@@ -583,7 +705,10 @@ function inferBrandFromHostname(hostname: string) {
   return null;
 }
 
-function extractRetailerAdapterMetadata(hostname: string, html: string) {
+function extractRetailerAdapterMetadata(
+  hostname: string,
+  html: string
+): RetailerAdapterMetadata {
   const host = hostname.replace(/^www\./, "").toLowerCase();
 
   if (host.includes("farfetch")) {
@@ -600,7 +725,11 @@ function extractRetailerAdapterMetadata(hostname: string, html: string) {
       currency:
         normalizeCurrency(/"currency":"([^"]+)"/i.exec(html)?.[1]) ||
         normalizeCurrency(findJsonLdOfferValue(html, "priceCurrency")),
-      description: sanitizeText(findMetaContent(html, "name", "description"))
+      description: sanitizeText(findMetaContent(html, "name", "description")),
+      image_url:
+        sanitizeText(findMetaContent(html, "property", "og:image")) ||
+        sanitizeText(/"images"\s*:\s*\["([^"]+)"/i.exec(html)?.[1]) ||
+        findJsonLdImageValue(html)
     };
   }
 
@@ -618,7 +747,10 @@ function extractRetailerAdapterMetadata(hostname: string, html: string) {
       currency:
         normalizeCurrency(/"priceCurrency":"([^"]+)"/i.exec(html)?.[1]) ||
         normalizeCurrency(findJsonLdOfferValue(html, "priceCurrency")),
-      description: sanitizeText(findMetaContent(html, "name", "description"))
+      description: sanitizeText(findMetaContent(html, "name", "description")),
+      image_url:
+        sanitizeText(findMetaContent(html, "property", "og:image")) ||
+        findJsonLdImageValue(html)
     };
   }
 
@@ -640,7 +772,11 @@ function extractRetailerAdapterMetadata(hostname: string, html: string) {
       currency:
         normalizeCurrency(findMetaContent(html, "property", "product:price:currency")) ||
         normalizeCurrency(findJsonLdOfferValue(html, "priceCurrency")),
-      description: sanitizeText(findMetaContent(html, "name", "description"))
+      description: sanitizeText(findMetaContent(html, "name", "description")),
+      image_url:
+        sanitizeText(findMetaContent(html, "property", "og:image")) ||
+        sanitizeText(findMetaContent(html, "name", "twitter:image")) ||
+        findJsonLdImageValue(html)
     };
   }
 
@@ -649,6 +785,7 @@ function extractRetailerAdapterMetadata(hostname: string, html: string) {
     brand: null,
     price: null,
     currency: null,
-    description: null
+    description: null,
+    image_url: null
   };
 }
