@@ -39,26 +39,27 @@ const CLOTHING_KEYWORDS = [
 ] as const;
 
 const COLOUR_WORDS = [
-  "black",
-  "white",
-  "cream",
-  "ivory",
-  "grey",
-  "gray",
-  "navy",
-  "blue",
-  "red",
-  "burgundy",
-  "green",
-  "olive",
-  "brown",
-  "tan",
-  "beige",
-  "camel",
-  "pink",
-  "yellow",
-  "gold",
-  "silver"
+  { token: "black", value: "black" },
+  { token: "white", value: "white" },
+  { token: "cream", value: "cream" },
+  { token: "ivory", value: "ivory" },
+  { token: "grey", value: "grey" },
+  { token: "gray", value: "grey" },
+  { token: "navy", value: "navy" },
+  { token: "blue", value: "blue" },
+  { token: "red", value: "red" },
+  { token: "burgundy", value: "burgundy" },
+  { token: "green", value: "green" },
+  { token: "olive", value: "olive" },
+  { token: "brown", value: "brown" },
+  { token: "tan", value: "tan" },
+  { token: "beige", value: "beige" },
+  { token: "camel", value: "camel" },
+  { token: "hazelnut", value: "hazelnut" },
+  { token: "pink", value: "pink" },
+  { token: "yellow", value: "yellow" },
+  { token: "gold", value: "gold" },
+  { token: "silver", value: "silver" }
 ] as const;
 
 export type { GarmentAttribute };
@@ -103,37 +104,46 @@ export type ReceiptDraftCandidate = {
   confidence: number;
 };
 
-export async function extractProductMetadataFromUrl(url: string): Promise<ProductMetadata> {
+export async function extractProductMetadataFromUrl(
+  url: string,
+  options?: { preRenderedHtml?: string }
+): Promise<ProductMetadata> {
   const parsedUrl = new URL(url);
   const retailer = sanitizeText(parsedUrl.hostname.replace(/^www\./, ""));
 
   try {
-    const response = await fetch(url, {
-      headers: {
-        "user-agent":
-          "Mozilla/5.0 (compatible; PocketWardrobeBot/0.1; +https://example.com/bot)"
-      },
-      cache: "no-store"
-    });
+    let html: string;
 
-    if (!response.ok) {
-      return {
-        title: deriveTitleFromUrl(parsedUrl),
-        brand: null,
-        category: deriveCategoryFromText(deriveTitleFromUrl(parsedUrl)),
-        colour: deriveColourFromText(deriveTitleFromUrl(parsedUrl)),
-        fit: null,
-        material: null,
-        retailer,
-        description: null,
-        price: null,
-        currency: null,
-        image_url: null,
-        attributes: [],
-      };
+    if (options?.preRenderedHtml) {
+      html = options.preRenderedHtml;
+    } else {
+      const response = await fetch(url, {
+        headers: {
+          "user-agent":
+            "Mozilla/5.0 (compatible; PocketWardrobeBot/0.1; +https://example.com/bot)"
+        },
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        return {
+          title: deriveTitleFromUrl(parsedUrl),
+          brand: null,
+          category: deriveCategoryFromText(deriveTitleFromUrl(parsedUrl)),
+          colour: deriveColourFromText(deriveTitleFromUrl(parsedUrl)),
+          fit: null,
+          material: null,
+          retailer,
+          description: null,
+          price: null,
+          currency: null,
+          image_url: null,
+          attributes: [],
+        };
+      }
+
+      html = await response.text();
     }
-
-    const html = await response.text();
     const adapter = extractRetailerAdapterMetadata(parsedUrl.hostname, html);
     const ogTitle = findMetaContent(html, "property", "og:title");
     const twitterTitle = findMetaContent(html, "name", "twitter:title");
@@ -462,8 +472,18 @@ function deriveProductCategory(params: {
 
 function deriveColourFromText(value: string | null) {
   const haystack = value?.toLowerCase() || "";
-  const match = COLOUR_WORDS.find((word) => haystack.includes(word));
-  return match === "gray" ? "grey" : match ?? null;
+
+  for (const colour of COLOUR_WORDS) {
+    if (hasWholeWordMatch(haystack, colour.token)) {
+      return colour.value;
+    }
+  }
+
+  return null;
+}
+
+function hasWholeWordMatch(haystack: string, token: string) {
+  return new RegExp(`\\b${escapeRegExp(token)}\\b`, "i").test(haystack);
 }
 
 function looksLikeReceiptItem(line: string) {

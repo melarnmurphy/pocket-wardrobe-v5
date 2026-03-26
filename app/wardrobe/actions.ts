@@ -25,7 +25,8 @@ import {
 } from "@/lib/domain/ingestion/service";
 import {
   callPipelineService,
-  callReceiptOcrService
+  callReceiptOcrService,
+  callScraperService
 } from "@/lib/domain/ingestion/client";
 import { canUseFeatureLabels } from "@/lib/domain/entitlements/service";
 import {
@@ -335,7 +336,28 @@ export async function createProductUrlDraftAction(
         .trim() ||
       url.hostname;
     const { sourceId } = await createProductUrlSource({ url: values.product_url });
-    const extracted = await extractProductMetadataFromUrl(values.product_url);
+    let extracted = await extractProductMetadataFromUrl(values.product_url);
+
+    // If the static fetch returned a JS shell (no body text, no attributes, no material),
+    // retry with a headless-rendered version from the pipeline scraper endpoint.
+    const isSparse =
+      extracted.attributes.length === 0 &&
+      !extracted.material &&
+      (!extracted.description || extracted.description.length < 80);
+
+    if (isSparse) {
+      const env = getServerEnv();
+      const renderedHtml = await callScraperService({
+        serviceUrl: env.PIPELINE_SERVICE_URL,
+        url: values.product_url,
+      }).catch(() => null);
+
+      if (renderedHtml) {
+        extracted = await extractProductMetadataFromUrl(values.product_url, {
+          preRenderedHtml: renderedHtml,
+        });
+      }
+    }
     const extractedPrice =
       extracted.price && extracted.price.trim().length > 0
         ? Number(extracted.price.replace(/[^0-9.]+/g, ""))

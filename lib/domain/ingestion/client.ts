@@ -79,6 +79,22 @@ export async function callReceiptOcrService(
   throw new Error("Receipt OCR service returned no text.");
 }
 
+export async function callScraperService(params: {
+  serviceUrl: string;
+  url: string;
+}): Promise<string | null> {
+  const response = await fetch(`${params.serviceUrl}/scrape`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url: params.url }),
+  });
+
+  if (!response.ok) return null;
+
+  const body = await response.json() as { html?: unknown };
+  return typeof body.html === "string" ? body.html : null;
+}
+
 function tryParseJson(value: string): Record<string, unknown> | null {
   try {
     const parsed = JSON.parse(value) as unknown;

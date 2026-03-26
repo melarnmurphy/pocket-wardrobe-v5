@@ -4,7 +4,7 @@ from pathlib import Path
 # --- Modal app definition ---
 app = modal.App("fashion-pipeline")
 
-# Container image with all dependencies
+# Heavy ML image — used by the GPU inference class only
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install(
@@ -18,6 +18,17 @@ image = (
         "ftfy",
         "open_clip_torch",
     )
+)
+
+# Lightweight API image — used by the FastAPI wrapper (no GPU, adds Playwright)
+api_image = (
+    modal.Image.debian_slim(python_version="3.11")
+    .pip_install(
+        "fastapi",
+        "python-multipart",
+        "playwright",
+    )
+    .run_commands("playwright install chromium --with-deps")
 )
 
 # Model IDs
@@ -174,11 +185,12 @@ class FashionPipeline:
 
 
 # --- FastAPI web endpoint ---
-@app.function(image=image)
+@app.function(image=api_image)
 @modal.asgi_app()
 def api():
     from fastapi import FastAPI, File, UploadFile, HTTPException
     from fastapi.middleware.cors import CORSMiddleware
+    from pydantic import BaseModel
 
     web = FastAPI(title="Fashion Vision API")
 
@@ -211,6 +223,60 @@ def api():
             "garment_count":  len(garments),
             "garments":       garments,
         }
+
+    class ScrapeRequest(BaseModel):
+        url: str
+
+    @web.post("/scrape")
+    async def scrape(req: ScrapeRequest):
+        """
+        Render a product page with a headless Chromium browser and return the
+        fully-rendered HTML. Used as a fallback when static fetch returns a JS
+        shell (Zara, H&M, SSENSE, etc.) with no meaningful product content.
+        """
+        from playwright.async_api import async_playwright
+
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(
+                args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"]
+            )
+            page = await browser.new_page()
+            await page.set_extra_http_headers({
+                "User-Agent": (
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/120.0.0.0 Safari/537.36"
+                )
+            })
+
+            try:
+                await page.goto(req.url, wait_until="domcontentloaded", timeout=30_000)
+
+                # Brief pause for JS frameworks to render initial content
+                await page.wait_for_timeout(2_500)
+
+                # Dismiss common cookie / consent banners without navigating away
+                consent_selectors = [
+                    "button[id*='accept']",
+                    "button[class*='accept']",
+                    "button[id*='cookie-accept']",
+                    "[data-testid*='cookie'] button",
+                    "[class*='cookie-banner'] button",
+                    "[class*='consent'] button",
+                    "[aria-label*='Accept']",
+                ]
+                for selector in consent_selectors:
+                    try:
+                        await page.click(selector, timeout=1_000)
+                        break  # stop after first successful dismissal
+                    except Exception:
+                        pass
+
+                html = await page.content()
+            finally:
+                await browser.close()
+
+        return {"html": html, "url": req.url}
 
     return web
 
