@@ -8,6 +8,7 @@ import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
 import type { StyleRuleListItem } from "@/lib/domain/style-rules/service";
 import { describe, it, expect } from "vitest";
 import { categoryToRole } from "../generator";
+import { expandRulesWithAttributeInference } from "@/lib/domain/style-rules/inference";
 
 describe("categoryToRole", () => {
   it("maps shirt to top", () => {
@@ -187,5 +188,85 @@ describe("generateOutfit", () => {
     const result = generateOutfit(input);
     const topGarment = result.garments.find(g => g.role === "top");
     expect(topGarment?.id).toBe("stale");
+  });
+});
+
+describe("expandRulesWithAttributeInference integration", () => {
+  it("garment with layering_piece attribute gets inferred rule boost", () => {
+    const tshirt = makeGarment({ id: "tshirt", category: "t-shirt" });
+    const attrRule = makeRule({
+      predicate: "has_attribute",
+      subject_value: "t-shirt",
+      object_value: "layering_piece",
+      rule_type: "attribute_classification",
+      subject_type: "category",
+      object_type: "attribute",
+      weight: 1.0,
+      constraint_type: "soft",
+    });
+    const outerAttrRule = makeRule({
+      predicate: "has_attribute",
+      subject_value: "jacket",
+      object_value: "outer_layer",
+      rule_type: "attribute_classification",
+      subject_type: "category",
+      object_type: "attribute",
+      weight: 1.0,
+      constraint_type: "soft",
+    });
+    // With inference enabled, t-shirt should get a score from inferred layerable_with rule
+    const expanded = expandRulesWithAttributeInference([attrRule, outerAttrRule]);
+    const score = scoreGarment(tshirt, expanded, {});
+    // Inferred rule: t-shirt layerable_with jacket (weight 0.5) → 0.5 * 0.3 = 0.15
+    expect(score).toBeGreaterThan(0);
+  });
+
+  it("outer layer garment gets object-side boost from layerable_with rule", () => {
+    const jacket = makeGarment({ id: "jacket", category: "jacket" });
+    const rule = makeRule({
+      predicate: "layerable_with",
+      subject_value: "t-shirt",
+      object_value: "jacket",
+      weight: 0.8,
+      rule_type: "layering",
+      constraint_type: "soft",
+    });
+    const score = scoreGarment(jacket, [rule], {});
+    // jacket is the outer layer (object side): 0.8 * 0.15 = 0.12
+    expect(score).toBeCloseTo(0.12);
+  });
+
+  it("generateOutfit uses inference-expanded rules without surfacing inferred rules in firedRules", () => {
+    const tshirt = makeGarment({ id: "tshirt", category: "t-shirt" });
+    const jacket = makeGarment({ id: "jacket", category: "jacket" });
+    const attrRule1 = makeRule({
+      predicate: "has_attribute",
+      subject_value: "t-shirt",
+      object_value: "layering_piece",
+      rule_type: "attribute_classification",
+      subject_type: "category",
+      object_type: "attribute",
+      weight: 1.0,
+      constraint_type: "soft",
+    });
+    const attrRule2 = makeRule({
+      predicate: "has_attribute",
+      subject_value: "jacket",
+      object_value: "outer_layer",
+      rule_type: "attribute_classification",
+      subject_type: "category",
+      object_type: "attribute",
+      weight: 1.0,
+      constraint_type: "soft",
+    });
+    const input: GeneratorInput = {
+      mode: "plan",
+      garments: [tshirt, jacket],
+      styleRules: [attrRule1, attrRule2],
+      trendSignal: null,
+    };
+    const result = generateOutfit(input);
+    // Inferred rules should not appear in firedRules
+    expect(result.firedRules.every(r => !r.description.includes("inferred"))).toBe(true);
   });
 });

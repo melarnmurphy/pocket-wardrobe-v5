@@ -3,6 +3,7 @@ import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
 import type { StyleRuleListItem } from "@/lib/domain/style-rules/service";
 import type { UserTrendMatchWithSignal } from "@/lib/domain/trends";
 import type { GeneratedOutfit, FiredRule, OutfitGarmentPreview } from "@/lib/domain/outfits";
+import { expandRulesWithAttributeInference } from "@/lib/domain/style-rules/inference";
 
 const ROLE_KEYWORDS: Array<[OutfitItemRole, string[]]> = [
   ["dress",     ["dress", "jumpsuit", "playsuit"]],
@@ -83,16 +84,23 @@ export function scoreGarment(
   let score = 0;
   for (const rule of rules as RuleWithConstraint[]) {
     if (rule.constraint_type !== "soft" || !rule.active) continue;
-    if (!cat.includes(rule.subject_value.toLowerCase())) continue;
+    const subjectMatch = cat.includes(rule.subject_value.toLowerCase());
+    const isLayeringObj = rule.predicate === "layerable_with" && cat.includes(rule.object_value.toLowerCase());
+    if (!subjectMatch && !isLayeringObj) continue;
     if (rule.predicate === "appropriate_for" || rule.predicate === "occasion_fit") {
-      if (ctx.dress_code && rule.object_value === ctx.dress_code) score += rule.weight;
-      else if (ctx.occasion && rule.object_value === ctx.occasion) score += rule.weight;
+      if (subjectMatch) {
+        if (ctx.dress_code && rule.object_value === ctx.dress_code) score += rule.weight;
+        else if (ctx.occasion && rule.object_value === ctx.occasion) score += rule.weight;
+      }
     } else if (rule.predicate === "works_in_weather") {
-      if (ctx.weather && rule.object_value === ctx.weather) score += rule.weight;
+      if (subjectMatch) {
+        if (ctx.weather && rule.object_value === ctx.weather) score += rule.weight;
+      }
     } else if (rule.predicate === "works_in_season") {
-      score += rule.weight * 0.5;
+      if (subjectMatch) score += rule.weight * 0.5;
     } else {
-      score += rule.weight * 0.3;
+      if (subjectMatch) score += rule.weight * 0.3;
+      else if (isLayeringObj) score += rule.weight * 0.15;
     }
   }
   return score;
@@ -116,7 +124,9 @@ export function generateOutfit(input: GeneratorInput): GeneratedOutfit {
   const { mode, garments, styleRules, trendSignal, dress_code, weather, occasion } = input;
   const ctx: ScoringContext = { dress_code, weather, occasion };
 
-  // Hard filter
+  const expandedRules = expandRulesWithAttributeInference(styleRules);
+
+  // Hard filter (uses original styleRules — inference only adds soft rules)
   const eligible = applyHardFilters(garments, styleRules, dress_code);
 
   // Group by role
@@ -136,7 +146,7 @@ export function generateOutfit(input: GeneratorInput): GeneratedOutfit {
 
     // Score each candidate
     const scored = candidates.map(g => {
-      let score = scoreGarment(g, styleRules, ctx);
+      let score = scoreGarment(g, expandedRules, ctx);
       if (mode === "surprise" && g.last_worn_at) {
         const wornAt = new Date(g.last_worn_at).getTime();
         if (now - wornAt < RECENCY_WINDOW_MS) score -= RECENCY_PENALTY;
@@ -162,9 +172,10 @@ export function generateOutfit(input: GeneratorInput): GeneratedOutfit {
       preview_url: g.preview_url ?? null
     });
 
-    // Collect fired rules for this garment
-    const fired = (styleRules as RuleWithConstraint[]).filter(r => {
+    // Collect fired rules for this garment (exclude inferred rules — background signals only)
+    const fired = (expandedRules as RuleWithConstraint[]).filter(r => {
       if (r.constraint_type !== "soft" || !r.active) return false;
+      if (r.id?.startsWith("inferred:")) return false;
       return g.category.toLowerCase().includes(r.subject_value.toLowerCase());
     });
     for (const r of fired) {
