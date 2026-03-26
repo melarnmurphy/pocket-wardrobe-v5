@@ -36,7 +36,7 @@ export function WardrobeShop({
   billingCheckoutEnabled,
   premiumFeatures,
   initialBrowseState,
-  initialActiveGarmentId,
+  initialSelectedGarmentId,
   initialCreateState,
   createGarmentAction,
   createPhotoDraftAction,
@@ -60,11 +60,10 @@ export function WardrobeShop({
     typeFilter?: string;
     seasonFilter?: string;
     colourFilter?: string;
-    statusFilter?: string;
     favouritesOnly?: boolean;
     sortBy?: string;
   };
-  initialActiveGarmentId?: string | null;
+  initialSelectedGarmentId?: string | null;
   initialCreateState?: {
     isOpen?: boolean;
     sourceMode?: "manual" | "photo" | "product_url" | "receipt";
@@ -109,8 +108,8 @@ export function WardrobeShop({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [activeGarmentId, setActiveGarmentId] = useState<string | null>(
-    initialActiveGarmentId ?? null
+  const [selectedGarmentId, setSelectedGarmentId] = useState<string | null>(
+    initialSelectedGarmentId ?? null
   );
   const [isCreateOpen, setIsCreateOpen] = useState(initialCreateState?.isOpen ?? false);
   const [createSourceMode, setCreateSourceMode] = useState<
@@ -137,9 +136,6 @@ export function WardrobeShop({
   );
   const [colourFilter, setColourFilter] = useState(
     initialBrowseState?.colourFilter ?? "all"
-  );
-  const [statusFilter, setStatusFilter] = useState(
-    initialBrowseState?.statusFilter ?? "all"
   );
   const [favouritesOnly, setFavouritesOnly] = useState(
     initialBrowseState?.favouritesOnly ?? false
@@ -173,11 +169,6 @@ export function WardrobeShop({
       Array.from(
         new Set(garments.map((garment) => garment.formality_level).filter(Boolean))
       ).sort(),
-    [garments]
-  );
-  const statuses = useMemo(
-    () =>
-      Array.from(new Set(garments.map((garment) => garment.wardrobe_status))).sort(),
     [garments]
   );
   const activeFilterChips = useMemo(
@@ -218,13 +209,6 @@ export function WardrobeShop({
               onClear: () => setColourFilter("all")
             }
           : null,
-        statusFilter !== "all"
-          ? {
-              key: "status",
-              label: `Status: ${categoryLabel(statusFilter)}`,
-              onClear: () => setStatusFilter("all")
-            }
-          : null,
         favouritesOnly
           ? {
               key: "favourites",
@@ -240,7 +224,7 @@ export function WardrobeShop({
             }
           : null
       ].filter((chip): chip is { key: string; label: string; onClear: () => void } => Boolean(chip)),
-    [colourFilter, favouritesOnly, occasionFilter, query, seasonFilter, sortBy, statusFilter, typeFilter]
+    [colourFilter, favouritesOnly, occasionFilter, query, seasonFilter, sortBy, typeFilter]
   );
 
   const filteredGarments = useMemo(() => {
@@ -282,10 +266,6 @@ export function WardrobeShop({
           return false;
         }
 
-        if (statusFilter !== "all" && garment.wardrobe_status !== statusFilter) {
-          return false;
-        }
-
         if (favouritesOnly && !(garment.favourite_score && garment.favourite_score > 0)) {
           return false;
         }
@@ -295,9 +275,9 @@ export function WardrobeShop({
       .sort((left, right) => {
         switch (sortBy) {
           case "cost_desc":
-            return (right.cost_per_wear ?? -1) - (left.cost_per_wear ?? -1);
+            return (displayCostPerWear(right) ?? -1) - (displayCostPerWear(left) ?? -1);
           case "cost_asc":
-            return (left.cost_per_wear ?? Number.MAX_SAFE_INTEGER) - (right.cost_per_wear ?? Number.MAX_SAFE_INTEGER);
+            return (displayCostPerWear(left) ?? Number.MAX_SAFE_INTEGER) - (displayCostPerWear(right) ?? Number.MAX_SAFE_INTEGER);
           case "favourites":
             return (right.favourite_score ?? 0) - (left.favourite_score ?? 0);
           case "most_worn":
@@ -318,13 +298,12 @@ export function WardrobeShop({
     colourFilter,
     seasonFilter,
     sortBy,
-    statusFilter,
     typeFilter
   ]);
 
-  const activeGarment = useMemo(
-    () => garments.find((garment) => garment.id === activeGarmentId) ?? null,
-    [activeGarmentId, garments]
+  const selectedGarment = useMemo(
+    () => garments.find((garment) => garment.id === selectedGarmentId) ?? null,
+    [selectedGarmentId, garments]
   );
 
   useEffect(() => {
@@ -333,23 +312,22 @@ export function WardrobeShop({
     setTypeFilter(initialBrowseState?.typeFilter ?? "all");
     setSeasonFilter(initialBrowseState?.seasonFilter ?? "all");
     setColourFilter(initialBrowseState?.colourFilter ?? "all");
-    setStatusFilter(initialBrowseState?.statusFilter ?? "all");
     setFavouritesOnly(initialBrowseState?.favouritesOnly ?? false);
     setSortBy(initialBrowseState?.sortBy ?? "newest");
   }, [initialBrowseState]);
 
   useEffect(() => {
-    setActiveGarmentId(initialActiveGarmentId ?? null);
-  }, [initialActiveGarmentId]);
+    setSelectedGarmentId(initialSelectedGarmentId ?? null);
+  }, [initialSelectedGarmentId]);
 
   useEffect(() => {
-    if (initialActiveGarmentId) {
+    if (initialSelectedGarmentId) {
       setIsCreateOpen(false);
     } else {
       setIsCreateOpen(initialCreateState?.isOpen ?? false);
     }
     setCreateSourceMode(initialCreateState?.sourceMode ?? null);
-  }, [initialActiveGarmentId, initialCreateState]);
+  }, [initialSelectedGarmentId, initialCreateState]);
 
   useEffect(() => {
     if (
@@ -372,7 +350,7 @@ export function WardrobeShop({
       setCreatePreviewPrice("");
       setCreatePreviewCurrency("AUD");
       setCreatePreviewImageUrl(null);
-      setActiveGarmentId(createState.garmentId);
+      setSelectedGarmentId(createState.garmentId);
     }
   }, [
     createPreviewCategory,
@@ -408,8 +386,25 @@ export function WardrobeShop({
         message: productUrlDraftState.message,
         tone: "success"
       });
+    } else if (productUrlDraftState.status === "partial" && productUrlDraftState.message) {
+      showAppToast({
+        message: productUrlDraftState.message,
+        tone: "info"
+      });
     }
   }, [productUrlDraftState.message, productUrlDraftState.status]);
+
+  useEffect(() => {
+    if (
+      (productUrlDraftState.status === "success" || productUrlDraftState.status === "partial") &&
+      productUrlDraftState.garmentId
+    ) {
+      setIsCreateOpen(false);
+      setCreateMobileStep(1);
+      setIsCreateDetailsOpen(false);
+      setSelectedGarmentId(productUrlDraftState.garmentId);
+    }
+  }, [productUrlDraftState.garmentId, productUrlDraftState.status]);
 
   useEffect(() => {
     if (receiptDraftState.status === "success" && receiptDraftState.message) {
@@ -422,10 +417,10 @@ export function WardrobeShop({
   }, [receiptDraftState.message, receiptDraftState.status]);
 
   useEffect(() => {
-    if (activeGarmentId && !garments.some((garment) => garment.id === activeGarmentId)) {
-      setActiveGarmentId(null);
+    if (selectedGarmentId && !garments.some((garment) => garment.id === selectedGarmentId)) {
+      setSelectedGarmentId(null);
     }
-  }, [activeGarmentId, garments]);
+  }, [selectedGarmentId, garments]);
 
   useEffect(() => {
     const updateCondensedState = () => {
@@ -440,18 +435,17 @@ export function WardrobeShop({
 
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
-    const effectiveActiveGarmentId = activeGarmentId;
-    const effectiveCreateOpen = isCreateOpen && !effectiveActiveGarmentId;
+    const effectiveSelectedGarmentId = selectedGarmentId;
+    const effectiveCreateOpen = isCreateOpen && !effectiveSelectedGarmentId;
 
     applyFilterParam(params, "q", query.trim() || null);
     applyFilterParam(params, "occasion", occasionFilter !== "all" ? occasionFilter : null);
     applyFilterParam(params, "type", typeFilter !== "all" ? typeFilter : null);
     applyFilterParam(params, "season", seasonFilter !== "all" ? seasonFilter : null);
     applyFilterParam(params, "colour", colourFilter !== "all" ? colourFilter : null);
-    applyFilterParam(params, "status", statusFilter !== "all" ? statusFilter : null);
     applyFilterParam(params, "fav", favouritesOnly ? "1" : null);
     applyFilterParam(params, "sort", sortBy !== "newest" ? sortBy : null);
-    applyFilterParam(params, "item", effectiveActiveGarmentId);
+    applyFilterParam(params, "garment", effectiveSelectedGarmentId);
     applyFilterParam(params, "create", effectiveCreateOpen ? "1" : null);
     applyFilterParam(params, "source", effectiveCreateOpen ? createSourceMode : null);
 
@@ -473,15 +467,14 @@ export function WardrobeShop({
     searchParams,
     seasonFilter,
     sortBy,
-    statusFilter,
     typeFilter,
-    activeGarmentId,
+    selectedGarmentId,
     isCreateOpen,
     createSourceMode
   ]);
 
   const openCreateComposer = () => {
-    setActiveGarmentId(null);
+    setSelectedGarmentId(null);
     setIsCreateOpen(true);
     setCreateSourceMode(null);
     setCreateMobileStep(1);
@@ -536,7 +529,7 @@ export function WardrobeShop({
               </p>
               {!isFilterBarCondensed ? (
                 <p className="mt-2 max-w-2xl text-sm text-[var(--muted)]">
-                  Search by brand or garment, then narrow by occasion, season, status, or sort
+                  Search by brand or garment, then narrow by occasion, season, colour, or sort
                   order.
                 </p>
               ) : null}
@@ -562,7 +555,6 @@ export function WardrobeShop({
                   setTypeFilter("all");
                   setSeasonFilter("all");
                   setColourFilter("all");
-                  setStatusFilter("all");
                   setFavouritesOnly(false);
                   setSortBy("newest");
                 }}
@@ -638,20 +630,6 @@ export function WardrobeShop({
                 ...canonicalWardrobeColours.map((colour) => ({
                   value: colour.family,
                   label: categoryLabel(colour.family)
-                }))
-              ]}
-            />
-
-            <FilterSelect
-              icon={<TagIcon />}
-              label="Status"
-              value={statusFilter}
-              onChange={setStatusFilter}
-              options={[
-                { value: "all", label: "All statuses" },
-                ...statuses.map((status) => ({
-                  value: status,
-                  label: categoryLabel(status)
                 }))
               ]}
             />
@@ -758,7 +736,7 @@ export function WardrobeShop({
               <GarmentCard
                 key={garment.id}
                 garment={garment}
-                onOpen={() => setActiveGarmentId(garment.id as string)}
+                onOpen={() => setSelectedGarmentId(garment.id as string)}
                 deleteGarmentAction={deleteGarmentAction}
                 toggleGarmentFavouriteAction={toggleGarmentFavouriteAction}
               />
@@ -837,7 +815,7 @@ export function WardrobeShop({
                 />
                 <SourceChoiceButton
                   title="Paste Product Link"
-                  description="Start from a retailer URL and refine it in review."
+                  description="Create a wardrobe item from a retailer URL and keep the source attached."
                   active={createSourceMode === "product_url"}
                   onClick={() => setCreateSourceMode(createSourceMode === "product_url" ? null : "product_url")}
                   icon={<LinkIcon />}
@@ -1038,10 +1016,10 @@ export function WardrobeShop({
         </DialogShell>
       ) : null}
 
-      {activeGarment ? (
+      {selectedGarment ? (
         <GarmentDetailDialog
-          garment={activeGarment}
-          onClose={() => setActiveGarmentId(null)}
+          garment={selectedGarment}
+          onClose={() => setSelectedGarmentId(null)}
           addGarmentImageAction={addGarmentImageAction}
           deleteGarmentAction={deleteGarmentAction}
           toggleGarmentFavouriteAction={toggleGarmentFavouriteAction}
@@ -1080,6 +1058,7 @@ function GarmentCard({
   );
   const serverFavourite = Boolean(garment.favourite_score && garment.favourite_score > 0);
   const [optimisticFavourite, setOptimisticFavourite] = useState(serverFavourite);
+  const costPerWear = displayCostPerWear(garment);
 
   useEffect(() => {
     setOptimisticFavourite(serverFavourite);
@@ -1168,27 +1147,24 @@ function GarmentCard({
                   .join(" · ")}
               </p>
             </div>
-            <p className="shrink-0 rounded-full bg-[#111111] px-2.5 py-1 text-right text-xs font-semibold text-white sm:px-3 sm:py-1.5 sm:text-sm">
-              {garment.purchase_price != null
-                ? `${garment.purchase_currency || ""} ${garment.purchase_price}`
-                : "n/a"}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-[8px] border border-[rgba(17,17,17,0.06)] bg-[rgba(17,17,17,0.03)] px-2.5 py-2 sm:px-3">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Status</p>
-              <p className="mt-1 line-clamp-1 text-xs font-medium sm:text-sm">
-                {categoryLabel(garment.wardrobe_status)}
+            <div className="flex shrink-0 flex-col items-end gap-2">
+              <p className="rounded-full bg-[#111111] px-2.5 py-1 text-right text-xs font-semibold text-white sm:px-3 sm:py-1.5 sm:text-sm">
+                {costPerWear != null
+                  ? `${garment.purchase_currency || ""} ${formatCurrencyValue(costPerWear)}/wear`
+                  : "Cost per wear n/a"}
               </p>
-            </div>
-            <div className="rounded-[8px] border border-[rgba(17,17,17,0.06)] bg-[rgba(17,17,17,0.03)] px-2.5 py-2 sm:px-3">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Wear Count</p>
-              <p className="mt-1 text-xs font-medium sm:text-sm">{garment.wear_count}</p>
+              <span className="rounded-full border border-[var(--line)] bg-white/88 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--muted)] sm:text-[11px]">
+                {garment.wear_count} wear{garment.wear_count === 1 ? "" : "s"}
+              </span>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-1.5 text-[11px] uppercase tracking-[0.12em] text-[var(--muted)] sm:gap-2 sm:text-xs sm:tracking-[0.15em]">
+            {costPerWear != null ? (
+              <span className="rounded-full border border-[var(--line)] bg-white/88 px-2 py-1 sm:px-2.5">
+                Cost Per Wear {garment.purchase_currency || ""} {formatCurrencyValue(costPerWear)}
+              </span>
+            ) : null}
             {garment.primary_colour_family ? (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white/80 px-2 py-1 sm:gap-2 sm:px-2.5">
                 <span
@@ -1198,12 +1174,6 @@ function GarmentCard({
                 {categoryLabel(garment.primary_colour_family)}
               </span>
             ) : null}
-            <span className="rounded-full border border-[var(--line)] bg-white/80 px-2 py-1 sm:px-2.5">
-              {garment.wardrobe_status}
-            </span>
-            <span className="rounded-full border border-[var(--line)] bg-white/80 px-2 py-1 sm:px-2.5">
-              {garment.wear_count} wears
-            </span>
             {optimisticFavourite ? (
               <span className="rounded-full border border-[rgba(255,107,157,0.22)] bg-[rgba(255,107,157,0.12)] px-2 py-1 text-[var(--accent-strong)] sm:px-2.5">
                 Favourite
@@ -1221,6 +1191,11 @@ function GarmentCard({
       ) : null}
     </article>
   );
+}
+
+function formatCurrencyValue(value: number) {
+  const rounded = Math.round(value * 100) / 100;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
 }
 
 function QuickIconForm({
@@ -1455,69 +1430,18 @@ function GarmentDetailDialog({
         </div>
       </div>
 
-      <div className="mt-5 rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))] p-4 sm:p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-3">
-            <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
-              <span className="rounded-full border border-[var(--line)] bg-white/80 px-3 py-1.5">
-                {categoryLabel(garment.wardrobe_status)}
-              </span>
-              {garment.primary_colour_family ? (
-                <span className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/80 px-3 py-1.5">
-                  <span
-                    className="h-2.5 w-2.5 rounded-full border border-black/10"
-                    style={{ backgroundColor: garment.primary_colour_hex || "#d7c1a1" }}
-                  />
-                  {categoryLabel(garment.primary_colour_family)}
-                </span>
-              ) : null}
-              {optimisticFavourite ? (
-                <span className="rounded-full border border-[rgba(255,107,157,0.22)] bg-[rgba(255,107,157,0.12)] px-3 py-1.5 text-[var(--accent-strong)]">
-                  Favourite
-                </span>
-              ) : null}
-            </div>
-            <div className="flex flex-wrap gap-3 text-sm text-[var(--muted)]">
-              <span>{garment.wear_count} wears logged</span>
-              <span>
-                Cost per wear:{" "}
-                {garment.cost_per_wear != null
-                  ? `${garment.purchase_currency || ""} ${garment.cost_per_wear}`
-                  : "n/a"}
-              </span>
-              <span>
-                Seasonality:{" "}
-                {garment.seasonality.length ? garment.seasonality.join(", ") : "n/a"}
-              </span>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <MiniStat label="Price" value={garment.purchase_price != null ? `${garment.purchase_currency || ""} ${garment.purchase_price}` : "n/a"} />
-            <MiniStat label="Wear Count" value={String(garment.wear_count)} />
-            <MiniStat
-              label="Last Worn"
-              value={garment.last_worn_at ? shortDateLabel(garment.last_worn_at) : "Not yet"}
-            />
-            <MiniStat
-              label="Retailer"
-              value={garment.retailer || garment.brand || "n/a"}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-6 grid gap-5 md:gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+      <div className="mt-6 space-y-5">
         <div className="space-y-4">
           {garment.preview_url ? (
             <>
-              <div className="overflow-hidden rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-white shadow-[0_24px_55px_rgba(17,17,17,0.1)]">
+              <div className="mx-auto max-w-3xl overflow-hidden rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-white shadow-[0_24px_55px_rgba(17,17,17,0.1)]">
                 <div className="relative group">
                   <img
                     src={garment.preview_url}
                     alt={garment.title || garment.category}
-                    className="h-[18rem] w-full object-cover sm:h-[25rem] lg:h-[30rem]"
+                    className="h-[18rem] w-full object-contain bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))] sm:h-[25rem] lg:h-[30rem]"
                   />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-200 flex items-end justify-start p-4">
+                  <div className="absolute inset-0 flex items-end justify-center bg-black/0 p-4 transition-all duration-200 group-hover:bg-black/12">
                     <button
                       type="button"
                       onClick={() => setShowReupload((v) => !v)}
@@ -1544,7 +1468,7 @@ function GarmentDetailDialog({
                 </div>
               </div>
               {showReupload && (
-                <div className="mt-3">
+                <div className="mx-auto mt-3 max-w-3xl">
                   <GarmentImageUpload
                     garmentId={garment.id as string}
                     action={addGarmentImageAction}
@@ -1554,15 +1478,16 @@ function GarmentDetailDialog({
               )}
             </>
           ) : (
-            <GarmentImageUpload
-              garmentId={garment.id as string}
-              action={addGarmentImageAction}
-              latestPath={garment.images[0]?.storage_path ?? null}
-            />
+            <div className="mx-auto max-w-3xl">
+              <GarmentImageUpload
+                garmentId={garment.id as string}
+                action={addGarmentImageAction}
+                latestPath={garment.images[0]?.storage_path ?? null}
+              />
+            </div>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <StatCard label="Status" value={garment.wardrobe_status} />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard label="Wear Count" value={String(garment.wear_count)} />
             <StatCard
               label="Colour"
@@ -1571,62 +1496,24 @@ function GarmentDetailDialog({
             <StatCard
               label="Cost Per Wear"
               value={
-                garment.cost_per_wear != null
-                  ? `${garment.purchase_currency || ""} ${garment.cost_per_wear}`
+                displayCostPerWear(garment) != null
+                  ? `${garment.purchase_currency || ""} ${displayCostPerWear(garment)}`
                   : "n/a"
               }
             />
             <StatCard label="Seasonality" value={garment.seasonality.length ? garment.seasonality.join(", ") : "n/a"} />
           </div>
+
+          <ProductImportSummaryCard garment={garment} />
         </div>
 
         <div className="space-y-4">
           <details className="pw-panel-soft p-4 sm:p-5" open>
             <summary className="cursor-pointer text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
-              Log Wear
-            </summary>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--muted)]">
-              Capture when you wore it so wear count and cost-per-wear stay accurate.
-            </p>
-            <form ref={wearFormRef} action={wearFormAction} className="mt-5">
-              <input type="hidden" name="garment_id" value={garment.id} />
-              <div className="grid gap-x-4 gap-y-5 md:grid-cols-2">
-                <FormField
-                  label="Worn At"
-                  name="worn_at"
-                  type="datetime-local"
-                  defaultValue=""
-                />
-                <FormField
-                  label="Occasion"
-                  name="occasion"
-                  placeholder="office, dinner, weekend"
-                />
-              </div>
-              <div className="mt-5">
-                <FormTextAreaField
-                  label="Notes"
-                  name="notes"
-                  placeholder="Anything worth remembering about how you wore it."
-                />
-              </div>
-              <div className="mt-5 border-t border-[var(--line)] pt-4">
-                <div className="flex justify-center">
-                  <PendingButton idle="Save Wear Event" pending="Saving..." compact />
-                </div>
-              </div>
-              {wearState.status === "error" || wearState.status === "partial" ? (
-                <FormFeedback state={wearState} className="mt-3" />
-              ) : null}
-            </form>
-          </details>
-
-          <details className="pw-panel-soft p-4 sm:p-5" open>
-            <summary className="cursor-pointer text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
               Edit Item
             </summary>
             <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--muted)]">
-              Update the wardrobe record without breaking the product-like browsing flow.
+              Update the wardrobe record directly underneath the hero image, without losing the product-style browse view.
             </p>
             <form action={editFormAction} className="mt-5">
               <input type="hidden" name="garment_id" value={garment.id} />
@@ -1635,41 +1522,45 @@ function GarmentDetailDialog({
                   <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
                     Core Identity
                   </p>
-                  <div className="mt-4 grid gap-x-4 gap-y-5 md:grid-cols-2">
-                    <FormField label="Title" name="title" defaultValue={garment.title || ""} />
-                    <FormField label="Brand" name="brand" defaultValue={garment.brand || ""} />
+                  <div className="mt-4 grid gap-x-3 gap-y-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
+                    <FormField label="Title" name="title" defaultValue={garment.title || ""} density="compact" />
+                    <FormField label="Brand" name="brand" defaultValue={garment.brand || ""} density="compact" />
                     <FormField
                       label="Category"
                       name="category"
                       defaultValue={garment.category}
                       required
+                      density="compact"
                     />
                     <FormField
                       label="Subcategory"
                       name="subcategory"
                       defaultValue={garment.subcategory || ""}
+                      density="compact"
                     />
                     <FormField
                       label="Material"
                       name="material"
                       defaultValue={garment.material || ""}
+                      density="compact"
                     />
-                    <FormField label="Size" name="size" defaultValue={garment.size || ""} />
-                    <FormField label="Fit" name="fit" defaultValue={garment.fit || ""} />
+                    <FormField label="Size" name="size" defaultValue={garment.size || ""} density="compact" />
+                    <FormField label="Fit" name="fit" defaultValue={garment.fit || ""} density="compact" />
                     <FormField
                       label="Formality"
                       name="formality_level"
                       defaultValue={garment.formality_level || ""}
+                      density="compact"
                     />
-                    <ColourField defaultValue={garment.primary_colour_family || ""} />
+                    <ColourField defaultValue={garment.primary_colour_family || ""} density="compact" />
                   </div>
                 </section>
 
-                <details className="rounded-[8px] border border-[var(--line)] bg-[rgba(255,255,255,0.78)] p-4 sm:p-5">
+                <details className="rounded-[8px] border border-[var(--line)] bg-[rgba(255,255,255,0.78)] p-4 sm:p-5" open>
                   <summary className="cursor-pointer text-[11px] font-medium uppercase tracking-[0.24em] text-[var(--muted)]">
                     Purchase Details
                   </summary>
-                  <div className="mt-5 grid gap-x-4 gap-y-5 md:grid-cols-2">
+                  <div className="mt-5 grid gap-x-3 gap-y-4 md:grid-cols-2 xl:grid-cols-4">
                     <FormField
                       label="Purchase Price"
                       name="purchase_price"
@@ -1678,34 +1569,38 @@ function GarmentDetailDialog({
                       defaultValue={
                         garment.purchase_price != null ? String(garment.purchase_price) : ""
                       }
+                      density="compact"
                     />
                     <FormField
                       label="Currency"
                       name="purchase_currency"
                       defaultValue={garment.purchase_currency || ""}
+                      density="compact"
                     />
                     <FormField
                       label="Purchase Date"
                       name="purchase_date"
                       type="date"
                       defaultValue={garment.purchase_date || ""}
+                      density="compact"
                     />
                     <FormField
                       label="Retailer"
                       name="retailer"
                       defaultValue={garment.retailer || ""}
+                      density="compact"
                     />
                   </div>
                 </details>
               </div>
 
               <fieldset className="mt-5 rounded-[8px] border border-[var(--line)] bg-[rgba(255,255,255,0.78)] p-4 sm:p-5">
-                <legend className="text-sm font-medium">Seasonality</legend>
-                <div className="mt-4 flex flex-wrap gap-3">
+                <legend className="text-[11px] font-medium uppercase tracking-[0.2em] text-[var(--muted)]">Seasonality</legend>
+                <div className="mt-4 flex flex-wrap gap-2.5">
                   {seasonOptions.map((season) => (
                     <label
                       key={season}
-                      className="pw-button-quiet px-3 py-2 text-sm"
+                      className="pw-button-quiet px-3 py-1.5 text-xs"
                     >
                       <input
                         className="mr-2"
@@ -1731,32 +1626,43 @@ function GarmentDetailDialog({
             </form>
           </details>
 
-          <form action={wearFormAction} className="rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-white/88 p-4">
-            <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
-              Log Wear
-            </h4>
-            <p className="mt-3 text-sm text-[var(--muted)]">
-              Keep the wardrobe history current so cost-per-wear and planning stay accurate.
-            </p>
+          <form
+            ref={wearFormRef}
+            action={wearFormAction}
+            className="rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-white/88 p-4"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
+                  Log Wear
+                </h4>
+                <p className="mt-2 text-sm text-[var(--muted)]">
+                  Keep the wardrobe history current so cost-per-wear and planning stay accurate.
+                </p>
+              </div>
+              <span className="rounded-full bg-[rgba(23,20,17,0.04)] px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                Wear event
+              </span>
+            </div>
             <input type="hidden" name="garment_id" value={garment.id} />
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <FormField label="Worn At" name="worn_at" type="datetime-local" />
-              <FormField label="Occasion" name="occasion" placeholder="office" />
+            <div className="mt-4 grid gap-3 lg:grid-cols-[1.15fr_0.95fr_1.2fr]">
+              <FormField label="Worn At" name="worn_at" type="datetime-local" density="compact" />
+              <FormField label="Occasion" name="occasion" placeholder="office" density="compact" />
+              <FormTextAreaField
+                label="Notes"
+                name="notes"
+                placeholder="Paired with loafers"
+                density="compact"
+              />
             </div>
-            <div className="mt-3">
-              <FormField label="Notes" name="notes" placeholder="Paired with loafers" />
-            </div>
-            <div className="mt-4 flex justify-center">
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--line)] pt-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
+                Updates wear count and cost per wear
+              </p>
               <PendingButton idle="Save Wear Event" pending="Saving..." compact />
             </div>
-            {wearState.message ? (
-              <p
-                className={`mt-3 text-sm ${
-                  wearState.status === "error" ? "text-red-600" : "text-[var(--muted)]"
-                }`}
-              >
-                {wearState.message}
-              </p>
+            {(wearState.status === "error" || wearState.status === "partial") && wearState.message ? (
+              <FormFeedback state={wearState} className="mt-3" />
             ) : null}
           </form>
           <section className="rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-white/88 p-4">
@@ -1774,7 +1680,7 @@ function GarmentDetailDialog({
               </span>
             </div>
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
               {garment.recent_wear_events.length ? (
                 garment.recent_wear_events.map((event) => (
                   <article
@@ -1782,15 +1688,15 @@ function GarmentDetailDialog({
                     className="rounded-[8px] border border-[rgba(17,17,17,0.07)] bg-[rgba(255,255,255,0.78)] px-4 py-3"
                   >
                     <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-medium">
+                      <div className="min-w-0">
+                        <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
                           {event.occasion || "Wear logged"}
                         </p>
-                        <p className="mt-1 text-sm text-[var(--muted)]">
+                        <p className="mt-2 text-sm font-medium">
                           {shortDateTimeLabel(event.worn_at)}
                         </p>
                       </div>
-                      <span className="rounded-full bg-[rgba(23,20,17,0.04)] px-3 py-1 text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
+                      <span className="rounded-full bg-[rgba(23,20,17,0.04)] px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-[var(--muted)]">
                         Wear
                       </span>
                     </div>
@@ -1800,7 +1706,7 @@ function GarmentDetailDialog({
                   </article>
                 ))
               ) : (
-                <div className="rounded-[1rem] border border-dashed border-[var(--line)] bg-[rgba(255,255,255,0.72)] px-4 py-5 text-sm text-[var(--muted)]">
+                <div className="rounded-[1rem] border border-dashed border-[var(--line)] bg-[rgba(255,255,255,0.72)] px-4 py-5 text-sm text-[var(--muted)] lg:col-span-2">
                   No recent wear activity for this item yet.
                 </div>
               )}
@@ -2245,12 +2151,14 @@ function CreateGarmentPreviewCard({
 
           <div className="grid grid-cols-2 gap-2">
             <div className="rounded-[8px] border border-[rgba(17,17,17,0.06)] bg-[rgba(17,17,17,0.03)] px-3 py-2">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Status</p>
-              <p className="mt-1 text-sm font-medium">active</p>
-            </div>
-            <div className="rounded-[8px] border border-[rgba(17,17,17,0.06)] bg-[rgba(17,17,17,0.03)] px-3 py-2">
               <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Wear Count</p>
               <p className="mt-1 text-sm font-medium">0</p>
+            </div>
+            <div className="rounded-[8px] border border-[rgba(17,17,17,0.06)] bg-[rgba(17,17,17,0.03)] px-3 py-2">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Cost Per Wear</p>
+              <p className="mt-1 text-sm font-medium">
+                {price.trim() ? `${currency.trim() || "AUD"} ${price.trim()}` : "n/a"}
+              </p>
             </div>
           </div>
 
@@ -2265,10 +2173,9 @@ function CreateGarmentPreviewCard({
               </span>
             ) : null}
             <span className="rounded-full border border-[var(--line)] bg-white/80 px-2.5 py-1">
-              active
-            </span>
-            <span className="rounded-full border border-[var(--line)] bg-white/80 px-2.5 py-1">
-              0 wears
+              {price.trim()
+                ? `${currency.trim() || "AUD"} ${price.trim()}`
+                : "Price pending"}
             </span>
           </div>
         </div>
@@ -2450,8 +2357,8 @@ function ProductUrlDraftComposer({
             Paste Product Link
           </p>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-            Start from a retailer or product page. For now this creates a review draft with the
-            source URL attached, so you can confirm the garment details before saving.
+            Start from a retailer or product page. This saves a real wardrobe item immediately,
+            attaches the source URL, and pulls a product image when the page exposes one.
           </p>
         </div>
         <div className="mt-6 grid gap-5">
@@ -2475,7 +2382,7 @@ function ProductUrlDraftComposer({
         </div>
       </section>
 
-      <PendingButton idle="Create Link Draft" pending="Creating..." />
+      <PendingButton idle="Add From Link" pending="Adding..." />
       <FormFeedback state={state} />
     </form>
   );
@@ -2694,7 +2601,8 @@ function FormField({
   step,
   defaultValue,
   value,
-  onChange
+  onChange,
+  density = "default"
 }: {
   label: string;
   name: string;
@@ -2705,13 +2613,20 @@ function FormField({
   defaultValue?: string;
   value?: string;
   onChange?: (value: string) => void;
+  density?: "default" | "compact";
 }) {
   return (
-    <label className="flex flex-col gap-2 text-sm">
-      <span className="font-medium">{label}</span>
+    <label className={`flex flex-col ${density === "compact" ? "gap-1.5 text-xs" : "gap-2 text-sm"}`}>
+      <span className={density === "compact" ? "font-medium uppercase tracking-[0.16em] text-[var(--muted)]" : "font-medium"}>
+        {label}
+      </span>
       <input
         suppressHydrationWarning
-        className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
+        className={`border border-[var(--line)] bg-white outline-none ${
+          density === "compact"
+            ? "rounded-[0.9rem] px-3 py-2.5 text-sm"
+            : "rounded-2xl px-4 py-3"
+        }`}
         name={name}
         type={type}
         placeholder={placeholder}
@@ -2735,19 +2650,27 @@ function FormTextAreaField({
   label,
   name,
   placeholder,
-  defaultValue
+  defaultValue,
+  density = "default"
 }: {
   label: string;
   name: string;
   placeholder?: string;
   defaultValue?: string;
+  density?: "default" | "compact";
 }) {
   return (
-    <label className="flex flex-col gap-2 text-sm">
-      <span className="font-medium">{label}</span>
+    <label className={`flex flex-col ${density === "compact" ? "gap-1.5 text-xs" : "gap-2 text-sm"}`}>
+      <span className={density === "compact" ? "font-medium uppercase tracking-[0.16em] text-[var(--muted)]" : "font-medium"}>
+        {label}
+      </span>
       <textarea
         suppressHydrationWarning
-        className="min-h-24 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
+        className={`border border-[var(--line)] bg-white outline-none ${
+          density === "compact"
+            ? "min-h-20 rounded-[0.9rem] px-3 py-2.5 text-sm"
+            : "min-h-24 rounded-2xl px-4 py-3"
+        }`}
         name={name}
         placeholder={placeholder}
         defaultValue={defaultValue}
@@ -2759,49 +2682,54 @@ function FormTextAreaField({
 function ColourField({
   defaultValue = "",
   value,
-  onChange
+  onChange,
+  density = "default"
 }: {
   defaultValue?: string;
   value?: string;
   onChange?: (value: string) => void;
+  density?: "default" | "compact";
 }) {
+  const [localValue, setLocalValue] = useState(defaultValue);
+  const controlled = value !== undefined;
+  const selected = controlled ? value : localValue;
+
+  function handleSelect(family: string) {
+    const next = selected === family ? "" : family;
+    if (!controlled) setLocalValue(next);
+    onChange?.(next);
+  }
+
+  const sz = density === "compact" ? "h-7 w-7" : "h-8 w-8";
+
   return (
-    <label className="flex flex-col gap-2 text-sm">
-      <span className="font-medium">Primary Colour</span>
-      <div className="rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,#fff,rgba(245,243,255,0.92))] p-3">
-        <select
-          suppressHydrationWarning
-          name="primary_colour_family"
-          defaultValue={defaultValue}
-          value={value}
-          onChange={
-            onChange
-              ? (event) => {
-                  onChange(event.target.value);
-                }
-              : undefined
-          }
-          className="w-full bg-transparent pb-3 outline-none"
-        >
-          <option value="">Choose a colour family</option>
-          {canonicalWardrobeColours.map((colour) => (
-            <option key={colour.family} value={colour.family}>
-              {categoryLabel(colour.family)}
-            </option>
-          ))}
-        </select>
-        <div className="grid grid-cols-6 gap-2">
-          {canonicalWardrobeColours.map((colour) => (
-            <span
+    <div className={`flex flex-col ${density === "compact" ? "gap-1.5 text-xs" : "gap-2 text-sm"}`}>
+      <span className={density === "compact" ? "font-medium uppercase tracking-[0.16em] text-[var(--muted)]" : "font-medium"}>
+        Primary Colour
+      </span>
+      <input type="hidden" name="primary_colour_family" value={selected} />
+      <div className={`flex flex-wrap ${density === "compact" ? "gap-1.5" : "gap-2"}`}>
+        {canonicalWardrobeColours.map((colour) => {
+          const active = selected === colour.family;
+          return (
+            <button
               key={colour.family}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-black/10"
-              style={{ backgroundColor: colour.hex }}
+              type="button"
               title={categoryLabel(colour.family)}
+              aria-pressed={active}
+              aria-label={categoryLabel(colour.family)}
+              onClick={() => handleSelect(colour.family)}
+              className={`rounded-full transition-all ${sz} ${
+                active
+                  ? "scale-110 ring-2 ring-[var(--accent)] ring-offset-1"
+                  : "ring-1 ring-black/10 hover:ring-black/25"
+              }`}
+              style={{ backgroundColor: colour.hex }}
             />
-          ))}
-        </div>
+          );
+        })}
       </div>
-    </label>
+    </div>
   );
 }
 
@@ -2814,11 +2742,85 @@ function StatCard({ label, value }: { label: string; value: string }) {
   );
 }
 
+function ProductImportSummaryCard({ garment }: { garment: GarmentListItem }) {
+  const summary = getProductImportSummary(garment.extraction_metadata_json);
+
+  if (!summary) {
+    return null;
+  }
+
+  const rows = [
+    { label: "Title", value: summary.title?.value, source: summary.title?.source },
+    { label: "Category", value: summary.category?.value, source: summary.category?.source },
+    { label: "Colour", value: summary.colour?.value, source: summary.colour?.source },
+    { label: "Brand", value: summary.brand?.value, source: summary.brand?.source },
+    { label: "Retailer", value: summary.retailer?.value, source: summary.retailer?.source },
+    {
+      label: "Price",
+      value:
+        summary.price?.value != null
+          ? `${summary.price.currency || ""} ${summary.price.value}`.trim()
+          : null,
+      source: summary.price?.source
+    }
+  ].filter((row) => row.value || row.source);
+
+  if (!rows.length) {
+    return null;
+  }
+
+  return (
+    <section className="rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-white/88 p-4 sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
+            URL Import Summary
+          </h4>
+          <p className="mt-2 text-sm text-[var(--muted)]">
+            See which fields came from the retailer page versus a fallback.
+          </p>
+        </div>
+        <span className="rounded-full bg-[rgba(23,20,17,0.04)] px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+          {summary.source_label || "product_url"}
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {rows.map((row) => (
+          <div
+            key={row.label}
+            className="rounded-[8px] border border-[rgba(17,17,17,0.07)] bg-[rgba(255,255,255,0.78)] px-4 py-3"
+          >
+            <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">{row.label}</p>
+            <p className="mt-2 text-sm font-medium text-[var(--foreground)]">{row.value || "n/a"}</p>
+            {humanizeImportSource(row.source) ? (
+              <p className="mt-2 text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
+                {humanizeImportSource(row.source)}
+              </p>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function HeaderSpec({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[0.9rem] border border-[rgba(17,17,17,0.07)] bg-white/72 px-3 py-3">
+      <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">{label}</p>
+      <p className="mt-2 text-sm font-medium leading-5 text-[var(--foreground)]">{value}</p>
+    </div>
+  );
+}
+
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[8px] border border-[var(--line)] bg-white/82 px-3 py-3">
+    <div className="rounded-[0.95rem] border border-[rgba(17,17,17,0.07)] bg-white/88 px-3 py-3">
       <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">{label}</p>
-      <p className="mt-2 line-clamp-2 text-sm font-medium text-[var(--foreground)]">{value}</p>
+      <p className="mt-2 line-clamp-2 text-base font-semibold tracking-[-0.02em] text-[var(--foreground)]">
+        {value}
+      </p>
     </div>
   );
 }
@@ -2841,6 +2843,18 @@ function applyFilterParam(
 
 function occasionLabel(value: string) {
   return value.replaceAll("_", " ");
+}
+
+function displayCostPerWear(garment: GarmentListItem) {
+  if (garment.cost_per_wear != null) {
+    return garment.cost_per_wear;
+  }
+
+  if (garment.purchase_price != null) {
+    return garment.purchase_price / Math.max(garment.wear_count, 1);
+  }
+
+  return null;
 }
 
 function shortDateLabel(value: string) {
@@ -2869,6 +2883,62 @@ function shortDateTimeLabel(value: string) {
     hour: "numeric",
     minute: "2-digit"
   });
+}
+
+function getProductImportSummary(metadata: Record<string, unknown> | null | undefined) {
+  if (!metadata || typeof metadata !== "object") {
+    return null;
+  }
+
+  const sourceType = metadata["source_type"];
+  const summary = metadata["import_summary"];
+
+  if (sourceType !== "product_url" || !summary || typeof summary !== "object") {
+    return null;
+  }
+
+  return summary as {
+    source_label?: string;
+    title?: { value?: string; source?: string };
+    category?: { value?: string; source?: string };
+    colour?: { value?: string; source?: string };
+    brand?: { value?: string; source?: string };
+    retailer?: { value?: string; source?: string };
+    price?: { value?: number | null; currency?: string | null; source?: string };
+    image?: { value?: string | null; source?: string };
+  };
+}
+
+function humanizeImportSource(value: string | null | undefined) {
+  if (!value) {
+    return "Source unknown";
+  }
+
+  if (value === "retailer metadata") {
+    return null;
+  }
+
+  if (value === "manual hint") {
+    return "From your title hint";
+  }
+
+  if (value === "hostname fallback") {
+    return "From website hostname";
+  }
+
+  if (value === "category fallback") {
+    return "From category fallback";
+  }
+
+  if (value === "URL fallback") {
+    return "From URL fallback";
+  }
+
+  if (value === "unavailable") {
+    return "Not available";
+  }
+
+  return categoryLabel(value);
 }
 
 function sortLabel(value: string) {

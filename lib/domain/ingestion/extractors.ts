@@ -240,6 +240,30 @@ export async function extractProductMetadataFromUrl(
   }
 }
 
+/**
+ * Extract a size hint from free-text notes.
+ * Conservative — only matches explicit letter sizes, system-prefixed
+ * numerics (AU 10, US 6), or numbers preceded by the word "size".
+ * Avoids false matches on prices, dates, etc.
+ */
+export function extractSizeFromNotes(text: string | null | undefined): string | null {
+  if (!text) return null;
+
+  // Standard letter sizes — word boundary required on both sides
+  const letterMatch = /\b(XXS|XS|(?<![A-Z])S(?![A-Z])|(?<![A-Z])M(?![A-Z])|(?<![A-Z])L(?![A-Z])|XL|XXL|XXXL|3XL)\b/i.exec(text);
+  if (letterMatch) return letterMatch[1].toUpperCase();
+
+  // System-prefixed numeric: "AU 10", "US 6", "UK 8", "EU 36"
+  const systemMatch = /\b(AU|US|UK|EU|IT)\s*(\d{1,3}(?:\.\d)?)\b/i.exec(text);
+  if (systemMatch) return `${systemMatch[1].toUpperCase()} ${systemMatch[2]}`;
+
+  // Explicit keyword: "size 10", "size: 12", "I'm a size 10"
+  const sizeKeywordMatch = /\bsize\s*:?\s*(\d{1,3}(?:\.\d)?)\b/i.exec(text);
+  if (sizeKeywordMatch) return sizeKeywordMatch[1];
+
+  return null;
+}
+
 export function parseReceiptDraftCandidates(params: {
   receiptText: string;
   fallbackTitle?: string | null;

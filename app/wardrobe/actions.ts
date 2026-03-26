@@ -14,7 +14,7 @@ import {
 } from "@/lib/domain/wardrobe/service";
 import type { WardrobeColourFamily } from "@/lib/domain/wardrobe/colours";
 import type { WardrobeActionState } from "@/lib/domain/wardrobe/action-state";
-import { logWearEvent } from "@/lib/domain/wear-events/service";
+import { incrementWearCount, logWearEvent } from "@/lib/domain/wear-events/service";
 import {
   createGarmentSource,
   createDraftsFromPipelineResult,
@@ -31,6 +31,7 @@ import {
 import { canUseFeatureLabels } from "@/lib/domain/entitlements/service";
 import {
   extractProductMetadataFromUrl,
+  extractSizeFromNotes,
   parseReceiptDraftCandidates,
   readReceiptTextFromFile
 } from "@/lib/domain/ingestion/extractors";
@@ -117,6 +118,14 @@ const addGarmentImageFormSchema = z.object({
 
 const logWearFormSchema = z.object({
   garment_id: z.string().uuid(),
+  entry_mode: z.enum(["quick", "detail"]).default("detail"),
+  wears_to_add: z.preprocess((value) => {
+    if (typeof value !== "string" || !value.trim()) {
+      return 1;
+    }
+
+    return Number(value);
+  }, z.number().int().positive().default(1)),
   worn_at: optionalTimestampInput,
   occasion: nullableText(120),
   notes: nullableText(2000)
@@ -392,6 +401,7 @@ export async function createProductUrlDraftAction(
       retailer: extracted.retailer,
       fit: extracted.fit ?? undefined,
       material: extracted.material ?? undefined,
+      size: extractSizeFromNotes(values.notes) ?? undefined,
       purchase_price: Number.isFinite(extractedPrice) ? extractedPrice : undefined,
       purchase_currency: extracted.currency,
       description:
@@ -414,6 +424,7 @@ export async function createProductUrlDraftAction(
         // Each entry has a kg_predicate ("has_attribute") and kg_object_value
         // that maps to style rule vocabulary (outer_layer, oversized, etc.).
         attributes: extracted.attributes,
+        styling_suggestions: extracted.styling_suggestions,
         import_summary: {
           source_label: url.hostname,
           title: { value: extracted.title || titleHint, source: titleSource },
@@ -478,6 +489,7 @@ export async function createProductUrlDraftAction(
           extracted_fit: extracted.fit,
           extracted_material: extracted.material,
           extracted_attributes: extracted.attributes,
+          extracted_styling_suggestions: extracted.styling_suggestions,
           image_status: imageStatus,
           import_summary: {
             title_source: titleSource,
@@ -704,18 +716,30 @@ export async function logWearAction(
   try {
     const values = logWearFormSchema.parse({
       garment_id: formData.get("garment_id"),
+      entry_mode: formData.get("entry_mode"),
+      wears_to_add: formData.get("wears_to_add"),
       worn_at: formData.get("worn_at"),
       occasion: formData.get("occasion"),
       notes: formData.get("notes")
     });
 
-    await logWearEvent(values);
+    if (values.entry_mode === "quick") {
+      await incrementWearCount({
+        garmentId: values.garment_id,
+        wearsToAdd: values.wears_to_add
+      });
+    } else {
+      await logWearEvent(values);
+    }
     revalidatePath("/wardrobe");
 
     return {
       status: "success",
       garmentId: values.garment_id,
-      message: "Wear event saved."
+      message:
+        values.entry_mode === "quick"
+          ? `${values.wears_to_add} wear${values.wears_to_add === 1 ? "" : "s"} added.`
+          : "Wear event saved."
     };
   } catch (error) {
     return {
