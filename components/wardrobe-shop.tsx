@@ -114,8 +114,8 @@ export function WardrobeShop({
   );
   const [isCreateOpen, setIsCreateOpen] = useState(initialCreateState?.isOpen ?? false);
   const [createSourceMode, setCreateSourceMode] = useState<
-    "manual" | "photo" | "product_url" | "receipt"
-  >(initialCreateState?.sourceMode ?? "photo");
+    "manual" | "photo" | "product_url" | "receipt" | null
+  >(initialCreateState?.sourceMode ?? null);
   const [createMobileStep, setCreateMobileStep] = useState<1 | 2>(1);
   const [isCreateDetailsOpen, setIsCreateDetailsOpen] = useState(false);
   const [isFilterBarCondensed, setIsFilterBarCondensed] = useState(false);
@@ -348,7 +348,7 @@ export function WardrobeShop({
     } else {
       setIsCreateOpen(initialCreateState?.isOpen ?? false);
     }
-    setCreateSourceMode(initialCreateState?.sourceMode ?? "photo");
+    setCreateSourceMode(initialCreateState?.sourceMode ?? null);
   }, [initialActiveGarmentId, initialCreateState]);
 
   useEffect(() => {
@@ -483,7 +483,7 @@ export function WardrobeShop({
   const openCreateComposer = () => {
     setActiveGarmentId(null);
     setIsCreateOpen(true);
-    setCreateSourceMode("photo");
+    setCreateSourceMode(null);
     setCreateMobileStep(1);
     setIsCreateDetailsOpen(false);
     setCreatePreviewTitle("");
@@ -499,10 +499,10 @@ export function WardrobeShop({
   return (
     <>
       <section className="space-y-5">
-        <div className="pw-page-head">
+        <div className="pw-page-head gap-4">
           <div className="space-y-3">
             <p className="pw-kicker">Wardrobe</p>
-            <h1 className="pw-page-title">Dress from a system, not from memory.</h1>
+            <h1 className="pw-page-title max-w-[9ch]">Dress from a system, not from memory.</h1>
             <div className="pw-meta-row">
               <span>{garments.length} items</span>
               <span className="divider">/</span>
@@ -517,7 +517,7 @@ export function WardrobeShop({
           <button
             type="button"
             onClick={openCreateComposer}
-            className="pw-button-primary self-start"
+            className="pw-button-primary w-full self-start sm:w-auto"
           >
             <PlusIcon />
             Add Item
@@ -525,32 +525,32 @@ export function WardrobeShop({
         </div>
 
         <div
-          className={`pw-fade-up sticky top-4 z-20 rounded-[8px] border border-[var(--line)] bg-[rgba(255,255,255,0.82)] shadow-[0_18px_40px_rgba(45,27,105,0.08)] backdrop-blur-xl transition-all duration-300 ${
-            isFilterBarCondensed ? "p-3 shadow-[0_16px_32px_rgba(45,27,105,0.12)]" : "p-4"
+          className={`pw-toolbar-shell pw-fade-up sticky top-2 z-20 transition-all duration-300 sm:top-4 ${
+            isFilterBarCondensed ? "p-3 shadow-[0_18px_36px_rgba(17,17,17,0.08)]" : "p-4 md:p-5"
           }`}
         >
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">
+              <p className="text-xs uppercase tracking-[0.32em] text-[var(--muted)]">
                 Refine View
               </p>
               {!isFilterBarCondensed ? (
-                <p className="mt-2 text-sm text-[var(--muted)]">
+                <p className="mt-2 max-w-2xl text-sm text-[var(--muted)]">
                   Search by brand or garment, then narrow by occasion, season, status, or sort
                   order.
                 </p>
               ) : null}
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--muted)]">
-              <span className="inline-flex items-center gap-2 rounded-full bg-[rgba(45,27,105,0.06)] px-3 py-2">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted)] sm:text-sm">
+              <span className="inline-flex items-center gap-2 rounded-full bg-[rgba(17,17,17,0.04)] px-3 py-2">
                 <GridIcon />
                 {filteredGarments.length} visible
               </span>
-              <span className="inline-flex items-center gap-2 rounded-full bg-[rgba(45,27,105,0.06)] px-3 py-2">
+              <span className="inline-flex items-center gap-2 rounded-full bg-[rgba(17,17,17,0.04)] px-3 py-2">
                 <StarIcon filled />
                 {garments.filter((garment) => garment.favourite_score && garment.favourite_score > 0).length} favourites
               </span>
-              <span className="hidden items-center gap-2 rounded-full bg-[rgba(45,27,105,0.06)] px-3 py-2 sm:inline-flex">
+              <span className="hidden items-center gap-2 rounded-full bg-[rgba(17,17,17,0.04)] px-3 py-2 sm:inline-flex">
                 <WearIcon />
                 {garments.reduce((total, garment) => total + garment.wear_count, 0)} wears
               </span>
@@ -566,7 +566,7 @@ export function WardrobeShop({
                   setFavouritesOnly(false);
                   setSortBy("newest");
                 }}
-                className="pw-button-quiet px-3 py-2"
+                className="pw-button-quiet px-3 py-2 text-xs sm:text-sm"
               >
                 Reset
               </button>
@@ -575,7 +575,7 @@ export function WardrobeShop({
 
           <div className="-mx-1 mt-4 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex min-w-max gap-3 xl:grid xl:min-w-max xl:flex-none xl:grid-cols-[minmax(18rem,1.15fr)_repeat(6,minmax(11rem,1fr))]">
-            <label className="flex min-w-[18rem] items-center gap-3 rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,#fff,rgba(245,243,255,0.92))] px-4 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+            <label className="pw-filter-frame flex min-w-[15rem] items-center gap-3 px-4 py-3 text-sm sm:min-w-[18rem]">
               <SearchIcon />
               <input
                 suppressHydrationWarning
@@ -678,9 +678,9 @@ export function WardrobeShop({
             <button
               type="button"
               onClick={() => setFavouritesOnly((current) => !current)}
-              className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${
                 favouritesOnly
-                  ? "border-[rgba(255,107,157,0.22)] bg-[rgba(255,107,157,0.12)] text-[var(--accent-strong)]"
+                  ? "border-[rgba(255,107,157,0.24)] bg-[rgba(255,107,157,0.1)] text-[var(--foreground)]"
                   : "border-[var(--line)] bg-white text-[var(--muted)] hover:bg-[var(--surface)]"
               }`}
             >
@@ -726,7 +726,7 @@ export function WardrobeShop({
                       key={chip.key}
                       type="button"
                       onClick={chip.onClear}
-                      className="pw-button-quiet px-3 py-2 text-sm"
+                      className="pw-button-quiet px-3 py-2 text-xs sm:text-sm"
                     >
                       {chip.label}
                       <span className="text-[var(--muted)]">
@@ -753,7 +753,7 @@ export function WardrobeShop({
         ) : null}
 
         {filteredGarments.length ? (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4 xl:gap-5">
+          <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4 xl:gap-5">
             {filteredGarments.map((garment) => (
               <GarmentCard
                 key={garment.id}
@@ -765,13 +765,16 @@ export function WardrobeShop({
             ))}
           </div>
         ) : (
-          <div className="pw-empty-state bg-white/65 px-6 py-10">
-            <p className="text-base font-semibold">
+          <div className="pw-empty-state bg-white/80 px-6 py-12">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.32em] text-[var(--muted)]">
+              Wardrobe Start
+            </p>
+            <p className="mt-4 text-3xl font-semibold tracking-[-0.07em]">
               {garments.length === 0
                 ? "Your wardrobe starts with the first piece"
                 : "No items match these filters"}
             </p>
-            <p className="mt-2 text-sm text-[var(--muted)]">
+            <p className="mx-auto mt-3 max-w-xl text-sm text-[var(--muted)]">
               {garments.length === 0
                 ? "Add your first item to begin tracking wears, favourites, and outfit potential."
                 : "Adjust the filter bar or add a new wardrobe item."}
@@ -780,9 +783,9 @@ export function WardrobeShop({
               <button
                 type="button"
                 onClick={openCreateComposer}
-                className="mx-auto mt-6 inline-flex min-w-[16rem] items-center justify-center gap-3 rounded-[8px] border border-[rgba(123,92,240,0.2)] bg-[linear-gradient(180deg,rgba(123,92,240,0.12),rgba(123,92,240,0.05))] px-6 py-5 text-left text-[var(--foreground)] shadow-[0_16px_35px_rgba(123,92,240,0.12)] transition-transform hover:-translate-y-0.5"
+                className="mx-auto mt-8 inline-flex w-full max-w-[20rem] items-center justify-center gap-3 rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-white px-6 py-5 text-left text-[var(--foreground)] shadow-[0_24px_50px_rgba(17,17,17,0.08)] transition-transform hover:-translate-y-0.5"
               >
-                <span className="flex h-12 w-12 items-center justify-center rounded-[8px] bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[0_10px_20px_rgba(123,92,240,0.18)]">
+                <span className="flex h-12 w-12 items-center justify-center rounded-[8px] bg-[#111111] text-white shadow-[0_10px_20px_rgba(17,17,17,0.14)]">
                   <svg
                     viewBox="0 0 20 20"
                     className="h-6 w-6 fill-none stroke-current stroke-[1.8]"
@@ -801,7 +804,7 @@ export function WardrobeShop({
       {isCreateOpen ? (
         <DialogShell onClose={() => setIsCreateOpen(false)}>
           <div className="space-y-6">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.25em] text-[var(--muted)]">
                   Add Item
@@ -817,39 +820,45 @@ export function WardrobeShop({
               <button
                 type="button"
                 onClick={() => setIsCreateOpen(false)}
-                className="pw-button-quiet px-4 py-2 text-sm"
+                className="pw-button-quiet w-full px-4 py-2 text-sm sm:w-auto"
               >
                 Close
               </button>
             </div>
 
             <section className="space-y-4">
-              <div className="grid gap-3 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
-                <PhotoSourceDropCard
-                  action={photoDraftFormAction}
-                  state={photoDraftState}
-                  canUseFeatureLabels={canUseFeatureLabels}
+              <div className="grid gap-3 sm:grid-cols-3">
+                <SourceChoiceButton
+                  title={canUseFeatureLabels ? "Analyse Photo" : "Upload Photo"}
+                  description={canUseFeatureLabels ? "Drop a garment photo to create review-ready drafts." : "Upload a photo for manual review."}
+                  active={createSourceMode === "photo"}
+                  onClick={() => setCreateSourceMode(createSourceMode === "photo" ? null : "photo")}
+                  icon={<CameraIcon />}
                 />
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                  <SourceChoiceButton
-                    title="Paste Product Link"
-                    description="Start from a retailer URL and refine it in review."
-                    active={createSourceMode === "product_url"}
-                    onClick={() => setCreateSourceMode("product_url")}
-                    icon={<LinkIcon />}
-                  />
-                  <SourceChoiceButton
-                    title="Upload Receipt"
-                    description="Create a draft from a receipt or invoice file, then review it."
-                    active={createSourceMode === "receipt"}
-                    onClick={() => setCreateSourceMode("receipt")}
-                    icon={<ReceiptIcon />}
-                  />
-                </div>
+                <SourceChoiceButton
+                  title="Paste Product Link"
+                  description="Start from a retailer URL and refine it in review."
+                  active={createSourceMode === "product_url"}
+                  onClick={() => setCreateSourceMode(createSourceMode === "product_url" ? null : "product_url")}
+                  icon={<LinkIcon />}
+                />
+                <SourceChoiceButton
+                  title="Upload Receipt"
+                  description="Create a draft from a receipt or invoice file, then review it."
+                  active={createSourceMode === "receipt"}
+                  onClick={() => setCreateSourceMode(createSourceMode === "receipt" ? null : "receipt")}
+                  icon={<ReceiptIcon />}
+                />
               </div>
             </section>
 
-            {createSourceMode === "manual" ? (
+            {createSourceMode === "photo" ? (
+              <PhotoSourceDropCard
+                action={photoDraftFormAction}
+                state={photoDraftState}
+                canUseFeatureLabels={canUseFeatureLabels}
+              />
+            ) : createSourceMode === "manual" ? (
               <form action={createFormAction} className="space-y-6">
                 <div className="grid gap-5">
                   <div className={`space-y-5 ${createMobileStep === 1 ? "block" : "hidden"} lg:block`}>
@@ -1022,9 +1031,9 @@ export function WardrobeShop({
                 action={productUrlDraftFormAction}
                 state={productUrlDraftState}
               />
-            ) : (
+            ) : createSourceMode === "receipt" ? (
               <ReceiptDraftComposer action={receiptDraftFormAction} state={receiptDraftState} />
-            )}
+            ) : null}
           </div>
         </DialogShell>
       ) : null}
@@ -1101,7 +1110,7 @@ function GarmentCard({
   }, [favouriteState.status, serverFavourite]);
 
   return (
-    <article className="group relative overflow-hidden rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,243,255,0.92))] shadow-[0_14px_30px_rgba(45,27,105,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_50px_rgba(45,27,105,0.12)] sm:shadow-[0_18px_40px_rgba(45,27,105,0.08)]">
+    <article className="group relative overflow-hidden rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,246,241,0.94))] shadow-[0_18px_45px_rgba(17,17,17,0.07)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_60px_rgba(17,17,17,0.12)]">
       <div className="absolute right-2 top-2 z-10 flex gap-1.5 opacity-100 transition-opacity duration-200 sm:right-3 sm:top-3 sm:gap-2 sm:opacity-0 sm:group-hover:opacity-100">
         <QuickIconForm
           action={favouriteFormAction}
@@ -1121,7 +1130,7 @@ function GarmentCard({
       </div>
 
       <button type="button" onClick={onOpen} className="block w-full text-left">
-        <div className="relative aspect-[3/4] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,243,255,0.9))] sm:aspect-[4/5]">
+        <div className="relative aspect-[3/4] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))] sm:aspect-[4/5]">
           {garment.preview_url ? (
             <img
               src={garment.preview_url}
@@ -1159,7 +1168,7 @@ function GarmentCard({
                   .join(" · ")}
               </p>
             </div>
-            <p className="shrink-0 rounded-full bg-[rgba(45,27,105,0.06)] px-2.5 py-1 text-right text-xs font-semibold sm:px-3 sm:py-1.5 sm:text-sm">
+            <p className="shrink-0 rounded-full bg-[#111111] px-2.5 py-1 text-right text-xs font-semibold text-white sm:px-3 sm:py-1.5 sm:text-sm">
               {garment.purchase_price != null
                 ? `${garment.purchase_currency || ""} ${garment.purchase_price}`
                 : "n/a"}
@@ -1167,13 +1176,13 @@ function GarmentCard({
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-[8px] bg-[rgba(45,27,105,0.06)] px-2.5 py-2 sm:px-3">
+            <div className="rounded-[8px] border border-[rgba(17,17,17,0.06)] bg-[rgba(17,17,17,0.03)] px-2.5 py-2 sm:px-3">
               <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Status</p>
               <p className="mt-1 line-clamp-1 text-xs font-medium sm:text-sm">
                 {categoryLabel(garment.wardrobe_status)}
               </p>
             </div>
-            <div className="rounded-[8px] bg-[rgba(45,27,105,0.06)] px-2.5 py-2 sm:px-3">
+            <div className="rounded-[8px] border border-[rgba(17,17,17,0.06)] bg-[rgba(17,17,17,0.03)] px-2.5 py-2 sm:px-3">
               <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Wear Count</p>
               <p className="mt-1 text-xs font-medium sm:text-sm">{garment.wear_count}</p>
             </div>
@@ -1294,14 +1303,14 @@ function QuickIconButton({
       title={title}
       disabled={pending}
       onClick={onPress}
-      className={`rounded-full p-2 shadow-sm backdrop-blur transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(45,27,105,0.12)] active:translate-y-0 active:scale-[0.96] disabled:transform-none disabled:opacity-60 disabled:shadow-sm ${
+      className={`rounded-full border border-[rgba(17,17,17,0.08)] p-2 shadow-sm backdrop-blur transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(17,17,17,0.1)] active:translate-y-0 active:scale-[0.96] disabled:transform-none disabled:opacity-60 disabled:shadow-sm ${
         tone === "danger"
-          ? "bg-white/92 text-red-600"
+          ? "bg-white/96 text-red-600"
           : tone === "danger-confirm"
             ? "bg-red-600 text-white"
           : tone === "favourite"
-            ? "bg-[#fff6cf] text-[#d3a300]"
-          : "bg-white/92 text-[var(--foreground)]"
+            ? "border-[rgba(255,107,157,0.18)] bg-[rgba(255,107,157,0.12)] text-[var(--foreground)]"
+          : "bg-white/96 text-[var(--foreground)]"
       }`}
     >
       {children}
@@ -1406,7 +1415,7 @@ function GarmentDetailDialog({
 
   return (
     <DialogShell onClose={onClose} size="max-w-5xl">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm uppercase tracking-[0.25em] text-[var(--muted)]">
             Garment Detail
@@ -1420,7 +1429,7 @@ function GarmentDetailDialog({
               .join(" · ")}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <QuickIconForm
             action={favouriteFormAction}
             garmentId={garment.id as string}
@@ -1439,14 +1448,14 @@ function GarmentDetailDialog({
           <button
             type="button"
             onClick={onClose}
-            className="pw-button-quiet px-4 py-2 text-sm"
+            className="pw-button-quiet w-full px-4 py-2 text-sm sm:w-auto"
           >
             Close
           </button>
         </div>
       </div>
 
-      <div className="mt-5 rounded-[8px] border border-[var(--line)] bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(245,243,255,0.92))] p-4 sm:p-5">
+      <div className="mt-5 rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))] p-4 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
@@ -1497,28 +1506,28 @@ function GarmentDetailDialog({
         </div>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+      <div className="mt-6 grid gap-5 md:gap-6 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="space-y-4">
           {garment.preview_url ? (
             <>
-              <div className="overflow-hidden rounded-[8px] border border-[var(--line)] bg-white shadow-[0_18px_40px_rgba(45,27,105,0.1)]">
+              <div className="overflow-hidden rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-white shadow-[0_24px_55px_rgba(17,17,17,0.1)]">
                 <div className="relative group">
                   <img
                     src={garment.preview_url}
                     alt={garment.title || garment.category}
-                    className="h-[25rem] w-full object-cover sm:h-[30rem]"
+                    className="h-[18rem] w-full object-cover sm:h-[25rem] lg:h-[30rem]"
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-200 flex items-end justify-start p-4">
                     <button
                       type="button"
                       onClick={() => setShowReupload((v) => !v)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-full bg-white/90 px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[var(--foreground)] shadow-md hover:bg-white"
+                      className="opacity-100 transition-opacity duration-200 rounded-full bg-white/92 px-4 py-2 text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--foreground)] shadow-md hover:bg-white sm:opacity-0 sm:group-hover:opacity-100 sm:text-xs"
                     >
                       {showReupload ? "Cancel" : "Reupload Image"}
                     </button>
                   </div>
                 </div>
-                <div className="border-t border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,243,255,0.9))] p-4">
+                <div className="border-t border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))] p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
@@ -1572,7 +1581,7 @@ function GarmentDetailDialog({
         </div>
 
         <div className="space-y-4">
-          <details className="pw-panel-soft p-5" open>
+          <details className="pw-panel-soft p-4 sm:p-5" open>
             <summary className="cursor-pointer text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
               Log Wear
             </summary>
@@ -1612,7 +1621,7 @@ function GarmentDetailDialog({
             </form>
           </details>
 
-          <details className="pw-panel-soft p-5" open>
+          <details className="pw-panel-soft p-4 sm:p-5" open>
             <summary className="cursor-pointer text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
               Edit Item
             </summary>
@@ -1622,7 +1631,7 @@ function GarmentDetailDialog({
             <form action={editFormAction} className="mt-5">
               <input type="hidden" name="garment_id" value={garment.id} />
               <div className="space-y-5">
-                <section className="rounded-[8px] border border-[var(--line)] bg-[rgba(255,255,255,0.78)] p-5">
+                <section className="rounded-[8px] border border-[var(--line)] bg-[rgba(255,255,255,0.78)] p-4 sm:p-5">
                   <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
                     Core Identity
                   </p>
@@ -1656,7 +1665,7 @@ function GarmentDetailDialog({
                   </div>
                 </section>
 
-                <details className="rounded-[8px] border border-[var(--line)] bg-[rgba(255,255,255,0.78)] p-5">
+                <details className="rounded-[8px] border border-[var(--line)] bg-[rgba(255,255,255,0.78)] p-4 sm:p-5">
                   <summary className="cursor-pointer text-[11px] font-medium uppercase tracking-[0.24em] text-[var(--muted)]">
                     Purchase Details
                   </summary>
@@ -1690,7 +1699,7 @@ function GarmentDetailDialog({
                 </details>
               </div>
 
-              <fieldset className="mt-5 rounded-[8px] border border-[var(--line)] bg-[rgba(255,255,255,0.78)] p-5">
+              <fieldset className="mt-5 rounded-[8px] border border-[var(--line)] bg-[rgba(255,255,255,0.78)] p-4 sm:p-5">
                 <legend className="text-sm font-medium">Seasonality</legend>
                 <div className="mt-4 flex flex-wrap gap-3">
                   {seasonOptions.map((season) => (
@@ -1722,7 +1731,7 @@ function GarmentDetailDialog({
             </form>
           </details>
 
-          <form action={wearFormAction} className="rounded-[1.2rem] border border-[rgba(23,20,17,0.08)] bg-white/80 p-4">
+          <form action={wearFormAction} className="rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-white/88 p-4">
             <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
               Log Wear
             </h4>
@@ -1730,7 +1739,7 @@ function GarmentDetailDialog({
               Keep the wardrobe history current so cost-per-wear and planning stay accurate.
             </p>
             <input type="hidden" name="garment_id" value={garment.id} />
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <FormField label="Worn At" name="worn_at" type="datetime-local" />
               <FormField label="Occasion" name="occasion" placeholder="office" />
             </div>
@@ -1750,7 +1759,7 @@ function GarmentDetailDialog({
               </p>
             ) : null}
           </form>
-          <section className="rounded-[1.2rem] border border-[rgba(23,20,17,0.08)] bg-white/80 p-4">
+          <section className="rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-white/88 p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
@@ -1770,7 +1779,7 @@ function GarmentDetailDialog({
                 garment.recent_wear_events.map((event) => (
                   <article
                     key={event.id}
-                    className="rounded-[1rem] border border-[rgba(23,20,17,0.07)] bg-[rgba(255,255,255,0.72)] px-4 py-3"
+                    className="rounded-[8px] border border-[rgba(17,17,17,0.07)] bg-[rgba(255,255,255,0.78)] px-4 py-3"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
@@ -1828,14 +1837,16 @@ function DialogShell({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6 backdrop-blur-sm"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/48 backdrop-blur-sm"
       onClick={onClose}
     >
-      <div
-        className={`max-h-[92vh] w-full ${size} overflow-auto rounded-[2rem] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.16)] md:p-8`}
-        onClick={(event) => event.stopPropagation()}
-      >
-        {children}
+      <div className="flex min-h-full items-start justify-center px-3 py-3 sm:px-4 sm:py-6">
+        <div
+          className={`w-full ${size} rounded-[10px] border border-[rgba(17,17,17,0.08)] bg-[rgba(252,251,249,0.96)] p-4 shadow-[0_35px_90px_rgba(0,0,0,0.18)] sm:max-h-[calc(100vh-3rem)] sm:overflow-auto sm:p-6 md:p-8`}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -2108,7 +2119,7 @@ function FilterSelect({
   options: Array<{ value: string; label: string }>;
 }) {
   return (
-    <label className="flex min-w-[11rem] items-center gap-3 rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,#fff,rgba(245,243,255,0.92))] px-4 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+    <label className="pw-filter-frame flex min-w-[11rem] items-center gap-3 px-4 py-3 text-sm">
       <span className="text-[var(--muted)]">{icon}</span>
       <select
         suppressHydrationWarning
@@ -2181,7 +2192,7 @@ function CreateGarmentPreviewCard({
   const missingChecks = readinessChecks.filter((check) => !check.complete);
 
   return (
-    <div className="space-y-4 rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,243,255,0.92))] p-4 shadow-[0_18px_40px_rgba(45,27,105,0.08)]">
+    <div className="space-y-4 rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))] p-4 shadow-[0_18px_44px_rgba(17,17,17,0.08)]">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Card Preview</p>
@@ -2227,17 +2238,17 @@ function CreateGarmentPreviewCard({
                 {displayMeta || "Brand, category, and subcategory will appear here."}
               </p>
             </div>
-            <p className="shrink-0 rounded-full bg-[rgba(45,27,105,0.06)] px-3 py-1.5 text-right text-sm font-semibold">
+            <p className="shrink-0 rounded-full bg-[#111111] px-3 py-1.5 text-right text-sm font-semibold text-white">
               {price.trim() ? `${currency.trim() || "AUD"} ${price.trim()}` : "n/a"}
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-[8px] bg-[rgba(45,27,105,0.06)] px-3 py-2">
+            <div className="rounded-[8px] border border-[rgba(17,17,17,0.06)] bg-[rgba(17,17,17,0.03)] px-3 py-2">
               <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Status</p>
               <p className="mt-1 text-sm font-medium">active</p>
             </div>
-            <div className="rounded-[8px] bg-[rgba(45,27,105,0.06)] px-3 py-2">
+            <div className="rounded-[8px] border border-[rgba(17,17,17,0.06)] bg-[rgba(17,17,17,0.03)] px-3 py-2">
               <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Wear Count</p>
               <p className="mt-1 text-sm font-medium">0</p>
             </div>
@@ -2263,7 +2274,7 @@ function CreateGarmentPreviewCard({
         </div>
       </div>
 
-      <div className="rounded-[8px] border border-[var(--line)] bg-white/78 p-4">
+      <div className="rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-white/86 p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">Review</p>
@@ -2276,7 +2287,7 @@ function CreateGarmentPreviewCard({
           <span
             className={`rounded-full px-3 py-1.5 text-xs uppercase tracking-[0.18em] ${
               missingChecks.length
-                ? "bg-[rgba(45,27,105,0.06)] text-[var(--muted)]"
+                ? "bg-[rgba(17,17,17,0.05)] text-[var(--muted)]"
                 : "bg-[#eef8ec] text-[#2f6b33]"
             }`}
           >
@@ -2291,7 +2302,7 @@ function CreateGarmentPreviewCard({
               className={`flex items-center justify-between gap-3 rounded-[0.95rem] px-3 py-2.5 text-sm ${
                 check.complete
                   ? "bg-[#f3f9f1] text-[#2f6b33]"
-                  : "bg-[rgba(45,27,105,0.06)] text-[var(--foreground)]"
+                  : "bg-[rgba(17,17,17,0.04)] text-[var(--foreground)]"
               }`}
             >
               <span>{check.complete ? check.label : check.missingLabel}</span>
@@ -2329,10 +2340,10 @@ function PendingButton({
     <button
       type="submit"
       disabled={isPending}
-      className={`${compact ? "" : "mt-4"} rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(45,27,105,0.1)] active:translate-y-0 active:scale-[0.98] disabled:transform-none disabled:opacity-60 disabled:shadow-none ${
+      className={`${compact ? "" : "mt-4"} rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(17,17,17,0.12)] active:translate-y-0 active:scale-[0.98] disabled:transform-none disabled:opacity-60 disabled:shadow-none ${
         tone === "danger"
           ? "border border-red-200 bg-red-50 text-red-700"
-          : "border border-[var(--line)] bg-white"
+          : "border border-[#111111] bg-[#111111] text-white"
       }`}
     >
       {isPending ? pending : idle}
@@ -2359,17 +2370,19 @@ function SourceChoiceButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex h-full flex-col rounded-[1.25rem] border p-4 text-left transition-all duration-200 ${
+      className={`flex h-full flex-col rounded-[8px] border p-4 text-left transition-all duration-200 ${
         active
-          ? "border-[rgba(123,92,240,0.28)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,243,255,0.92))] shadow-[0_14px_30px_rgba(123,92,240,0.12)]"
-          : "border-[var(--line)] bg-white/78 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(45,27,105,0.08)]"
+          ? "border-[var(--accent)] bg-[var(--accent)]/5 shadow-[0_18px_38px_rgba(17,17,17,0.08)]"
+          : "border-[var(--line)] bg-white/84 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(17,17,17,0.08)]"
       }`}
     >
-      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(45,27,105,0.06)] text-[var(--foreground)]">
+      <span className={`inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
+        active ? "bg-[var(--accent)]/15 text-[var(--accent)]" : "bg-[rgba(17,17,17,0.05)] text-[var(--foreground)]"
+      }`}>
         {icon}
       </span>
       {badge ? (
-        <span className="mt-4 inline-flex rounded-full border border-[rgba(123,92,240,0.14)] bg-[rgba(123,92,240,0.08)] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
+        <span className="mt-4 inline-flex rounded-full border border-[rgba(17,17,17,0.08)] bg-[rgba(17,17,17,0.04)] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
           {badge}
         </span>
       ) : null}
@@ -2391,13 +2404,13 @@ function PhotoSourceDropCard({
   return (
     <form
       action={action}
-      className="flex h-full flex-col rounded-[1.25rem] border border-[rgba(123,92,240,0.28)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,243,255,0.92))] p-4 shadow-[0_14px_30px_rgba(123,92,240,0.12)]"
+      className="flex h-full flex-col rounded-[8px] border border-[rgba(17,17,17,0.12)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))] p-4 shadow-[0_18px_38px_rgba(17,17,17,0.08)]"
     >
       <div className="mb-4 flex items-center justify-between gap-3">
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(45,27,105,0.06)] text-[var(--foreground)]">
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(17,17,17,0.05)] text-[var(--foreground)]">
           <CameraIcon />
         </span>
-        <span className="rounded-full border border-[rgba(123,92,240,0.14)] bg-[rgba(123,92,240,0.08)] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
+        <span className="rounded-full border border-[rgba(17,17,17,0.08)] bg-[rgba(17,17,17,0.04)] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
           {canUseFeatureLabels ? "Review required" : "Manual on free"}
         </span>
       </div>
