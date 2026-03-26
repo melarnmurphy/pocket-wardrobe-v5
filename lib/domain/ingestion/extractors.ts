@@ -64,6 +64,13 @@ const COLOUR_WORDS = [
 
 export type { GarmentAttribute };
 
+export type StylingSuggestion = {
+  predicate: "pairs_with" | "layer_with";
+  terms: string[];
+  raw_text: string;
+  source: "retailer_copy";
+};
+
 type ProductMetadata = {
   title: string | null;
   brand: string | null;
@@ -83,6 +90,7 @@ type ProductMetadata = {
    * Stored in extraction_metadata_json.attributes on the garment row.
    */
   attributes: GarmentAttribute[];
+  styling_suggestions: StylingSuggestion[];
 };
 
 type RetailerAdapterMetadata = Partial<
@@ -139,6 +147,7 @@ export async function extractProductMetadataFromUrl(
           currency: null,
           image_url: null,
           attributes: [],
+          styling_suggestions: [],
         };
       }
 
@@ -167,12 +176,13 @@ export async function extractProductMetadataFromUrl(
       adapter.currency ||
       findMetaContent(html, "property", "product:price:currency") ||
       findJsonLdOfferValue(html, "priceCurrency");
-    const title =
+    const rawTitle =
       adapter.title ||
       sanitizeText(ogTitle) ||
       sanitizeText(twitterTitle) ||
       sanitizeText(findTitleTag(html)) ||
       deriveTitleFromUrl(parsedUrl);
+    const title = cleanProductTitle(rawTitle, sanitizeText(productBrand));
     const category = deriveProductCategory({
       url: parsedUrl,
       title,
@@ -185,10 +195,13 @@ export async function extractProductMetadataFromUrl(
       adapter.image_url || sanitizeText(ogImage) || sanitizeText(twitterImage) || findJsonLdImageValue(html)
     );
     const description = adapter.description || sanitizeText(ogDescription || metaDescription);
-    // Body text often contains richer fit/fabric detail than meta descriptions.
-    // Use it for attribute extraction only; garment.description stays concise.
+    // Body text often contains richer fit/fabric detail than meta descriptions,
+    // but also retailer styling advice. Strip styling sentences out before
+    // extracting garment facts so "pair with denim" does not become material.
     const bodyText = extractBodyDescriptionText(html);
-    const attributeText = [bodyText, description, title].filter(Boolean).join(" ");
+    const stylingSuggestions = extractStylingSuggestionsFromText(bodyText);
+    const factualBodyText = removeStylingSentences(bodyText);
+    const attributeText = [factualBodyText, description, title].filter(Boolean).join(" ");
     const extracted = extractGarmentAttributesFromText(attributeText);
 
     return {
@@ -204,6 +217,7 @@ export async function extractProductMetadataFromUrl(
       currency: normalizeCurrency(productCurrency),
       image_url: imageUrl,
       attributes: extracted.attributes,
+      styling_suggestions: stylingSuggestions,
     };
   } catch {
     const fallbackTitle = deriveTitleFromUrl(parsedUrl);
@@ -221,6 +235,7 @@ export async function extractProductMetadataFromUrl(
       currency: null,
       image_url: null,
       attributes: [],
+      styling_suggestions: [],
     };
   }
 }
@@ -449,7 +464,10 @@ function deriveTitleFromUrl(url: URL) {
 function deriveCategoryFromText(value: string | null) {
   const haystack = value?.toLowerCase() || "";
   const match = CLOTHING_KEYWORDS.find((keyword) => haystack.includes(keyword));
-  return match ? match.replace("t-shirt", "top") : null;
+  if (!match) return null;
+  // Normalise aliases to canonical category names
+  if (match === "t-shirt" || match === "tee") return "top";
+  return match;
 }
 
 function deriveProductCategory(params: {
@@ -760,6 +778,86 @@ function extractBodyDescriptionText(html: string): string | null {
   return null;
 }
 
+function removeStylingSentences(text: string | null) {
+  if (!text) {
+    return null;
+  }
+
+  const sentences = splitIntoSentences(text).filter((sentence) => !isStylingSentence(sentence));
+  return sentences.length ? sentences.join(" ") : null;
+}
+
+function extractStylingSuggestionsFromText(text: string | null): StylingSuggestion[] {
+  if (!text) {
+    return [];
+  }
+
+  const suggestions: StylingSuggestion[] = [];
+
+  for (const sentence of splitIntoSentences(text)) {
+    const normalizedSentence = sentence.trim();
+
+    if (!normalizedSentence || !isStylingSentence(normalizedSentence)) {
+      continue;
+    }
+
+    const pairMatch = /\bpair(?:ed)?(?:\s+\w+){0,3}\s+with\s+(.+)$/i.exec(normalizedSentence);
+    if (pairMatch?.[1]) {
+      const terms = normalizeStylingTerms(
+        pairMatch[1].replace(/\b(?:,?\s*or\s+)?layer(?:ed|ing)?(?:\s+\w+){0,3}\s+with\s+.+$/i, "")
+      );
+      if (terms.length) {
+        suggestions.push({
+          predicate: "pairs_with",
+          terms,
+          raw_text: normalizedSentence,
+          source: "retailer_copy"
+        });
+      }
+    }
+
+    const layerMatch = /\blayer(?:ed|ing)?(?:\s+\w+){0,3}\s+with\s+(.+)$/i.exec(normalizedSentence);
+    if (layerMatch?.[1]) {
+      const terms = normalizeStylingTerms(layerMatch[1]);
+      if (terms.length) {
+        suggestions.push({
+          predicate: "layer_with",
+          terms,
+          raw_text: normalizedSentence,
+          source: "retailer_copy"
+        });
+      }
+    }
+  }
+
+  return suggestions;
+}
+
+function splitIntoSentences(text: string) {
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sanitizeText(sentence))
+    .filter((sentence): sentence is string => Boolean(sentence));
+}
+
+function isStylingSentence(sentence: string) {
+  return /\b(pair|style|wear|layer)(?:ed|ing)?\b/i.test(sentence);
+}
+
+function normalizeStylingTerms(value: string) {
+  return value
+    .replace(/[.;:]+$/g, "")
+    .split(/\b(?:,|and|or)\b/i)
+    .map((term) =>
+      sanitizeText(
+        term
+          .replace(/\b(?:casually|easily|effortlessly|simply|perfectly|beautifully|well)\b/gi, "")
+          .replace(/\b(?:with|into|over|under)\b/gi, "")
+      )
+    )
+    .filter((term): term is string => Boolean(term));
+}
+
 function extractElementByAttribute(html: string, attr: string, value: string): string | null {
   const openTagRe = new RegExp(
     `<(\\w+)[^>]*\\b${escapeRegExp(attr)}=["']${escapeRegExp(value)}["'][^>]*>`,
@@ -806,6 +904,69 @@ function stripHtmlTags(html: string): string {
     .replace(/&#\d+;/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+// Noise phrases that appear at the start of page <title> tags on some retailers
+const TITLE_NOISE_PREFIXES = [
+  /^garment\s+detail\s*/i,
+  /^product\s+detail\s*/i,
+  /^shop\s+/i,
+  /^buy\s+/i,
+];
+
+/**
+ * Clean a raw page title into a concise product name.
+ *
+ * Handles three common retail patterns:
+ *   1. Pipe-delimited nav breadcrumbs: "Product | Category | Brand" → "Product"
+ *   2. Dash-delimited brand suffix: "Product - Brand Name" → "Product"
+ *   3. ALL CAPS titles → converted to Title Case
+ *   4. Leading noise prefixes ("GARMENT DETAIL ", "SHOP ") → stripped
+ */
+function cleanProductTitle(raw: string | null, brand?: string | null): string | null {
+  if (!raw) return null;
+
+  let title = raw.trim();
+
+  // Strip pipe-delimited site-structure suffixes — take only the first segment
+  const pipeParts = title.split(/\s*\|\s*/);
+  if (pipeParts.length > 1) {
+    title = pipeParts[0].trim();
+  }
+
+  // Strip dash-delimited brand suffix when the brand is known
+  if (brand) {
+    const dashBrandRe = new RegExp(`\\s*[-–]\\s*${escapeRegExp(brand)}\\s*$`, "i");
+    title = title.replace(dashBrandRe, "").trim();
+  }
+
+  // Strip known leading noise phrases
+  for (const prefix of TITLE_NOISE_PREFIXES) {
+    title = title.replace(prefix, "").trim();
+  }
+
+  // Convert ALL CAPS to Title Case (common on Australian fashion retailers)
+  if (title.length > 2 && title === title.toUpperCase()) {
+    title = toTitleCase(title);
+  }
+
+  return sanitizeText(title);
+}
+
+const TITLE_CASE_LOWERCASE = new Set([
+  "a", "an", "the", "in", "on", "at", "for", "of", "and", "but", "or", "nor", "with",
+]);
+
+function toTitleCase(str: string): string {
+  return str
+    .toLowerCase()
+    .split(" ")
+    .map((word, i) =>
+      i === 0 || !TITLE_CASE_LOWERCASE.has(word)
+        ? word.charAt(0).toUpperCase() + word.slice(1)
+        : word
+    )
+    .join(" ");
 }
 
 function inferBrandFromHostname(hostname: string) {
