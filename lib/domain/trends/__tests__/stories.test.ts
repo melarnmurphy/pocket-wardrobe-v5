@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { trendStorySchema, trendPersonSchema, STORY_DOMINANT_TYPES } from "../index";
+import { SCANNERS, SCANNER_BY_ARCHETYPE } from "../prompts/grounding-prompts";
 
 describe("trendStorySchema", () => {
   it("parses a complete story", () => {
@@ -53,5 +54,32 @@ describe("STORY_DOMINANT_TYPES", () => {
     expect(STORY_DOMINANT_TYPES).toContain("it_girl_look");
     expect(STORY_DOMINANT_TYPES).toContain("runway_moment");
     expect(STORY_DOMINANT_TYPES).toContain("aesthetic");
+  });
+});
+
+describe("new scanner archetypes", () => {
+  it("includes design_house, fashion_week, it_girl_discovery in SCANNERS", () => {
+    const archetypes = SCANNERS.map((s) => s.archetype);
+    expect(archetypes).toContain("design_house");
+    expect(archetypes).toContain("fashion_week");
+    expect(archetypes).toContain("it_girl_discovery");
+  });
+
+  it("SCANNER_BY_ARCHETYPE has entries for new archetypes", () => {
+    expect(SCANNER_BY_ARCHETYPE["design_house"]).toBeDefined();
+    expect(SCANNER_BY_ARCHETYPE["fashion_week"]).toBeDefined();
+    expect(SCANNER_BY_ARCHETYPE["it_girl_discovery"]).toBeDefined();
+  });
+
+  it("design_house scanner builds a query mentioning design house", () => {
+    const scanner = SCANNER_BY_ARCHETYPE["design_house"];
+    const query = scanner.buildGroundingQuery({ now: "2026-04-26T00:00:00Z" });
+    expect(query.toLowerCase()).toMatch(/design house|fashion house|collection/);
+  });
+
+  it("it_girl_discovery scanner builds a query mentioning style or best dressed", () => {
+    const scanner = SCANNER_BY_ARCHETYPE["it_girl_discovery"];
+    const query = scanner.buildGroundingQuery({ now: "2026-04-26T00:00:00Z" });
+    expect(query.toLowerCase()).toMatch(/best dressed|it girl|style icon|street style/);
   });
 });

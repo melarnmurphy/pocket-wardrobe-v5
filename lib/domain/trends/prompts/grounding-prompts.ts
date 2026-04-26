@@ -25,7 +25,10 @@ export type ScannerArchetype =
   | "editorial"
   | "runway"
   | "street_social"
-  | "colour_authority";
+  | "colour_authority"
+  | "design_house"
+  | "fashion_week"
+  | "it_girl_discovery";
 
 export interface GroundingScanner {
   archetype: ScannerArchetype;
@@ -246,11 +249,142 @@ const colourAuthorityScanner: GroundingScanner = {
   }
 };
 
+/**
+ * Design house scanner — collection drops and releases from established designers.
+ * Cadence: weekly. Targets garment, material, silhouette, aesthetic, pattern types.
+ */
+const designHouseScanner: GroundingScanner = {
+  archetype: "design_house",
+  targetTrendTypes: ["garment", "material", "silhouette", "aesthetic", "pattern"],
+  preferredSites: [
+    "vogue.com",
+    "wwd.com",
+    "businessoffashion.com",
+    "hypebeast.com",
+    "ssense.com"
+  ],
+  authorityByDomain: {
+    "vogue.com": 0.9,
+    "wwd.com": 0.9,
+    "businessoffashion.com": 0.9,
+    "hypebeast.com": 0.75,
+    "ssense.com": 0.8
+  },
+  defaultCadenceDays: 7,
+  recencyWindowDays: 14,
+  buildGroundingQuery: (input) => {
+    const sinceDate = isoDaysAgo(input.now, 14);
+    const sites = formatSiteFilter([
+      "vogue.com",
+      "wwd.com",
+      "businessoffashion.com",
+      "hypebeast.com"
+    ]);
+    return [
+      `fashion house collection OR new release OR design house drop (${sites}) after:${sinceDate}`,
+      input.season ?? "current season",
+      "For each trend or look mentioned, name the specific design house (e.g. Prada, Bottega Veneta, Celine, Acne Studios).",
+      "Extract the key garments, materials, and silhouettes per house. Cite the source URL."
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+};
+
+/**
+ * Fashion week scanner — show reviews and runway coverage during fashion weeks.
+ * Cadence: daily during fashion weeks (Feb, Sep), weekly otherwise.
+ * Targets silhouette, garment, material, pattern, colour types.
+ */
+const fashionWeekScanner: GroundingScanner = {
+  archetype: "fashion_week",
+  targetTrendTypes: ["silhouette", "garment", "material", "pattern", "colour"],
+  preferredSites: [
+    "vogue.com/fashion-shows",
+    "tagwalk.com",
+    "wwd.com",
+    "showstudio.com",
+    "vogue.co.uk"
+  ],
+  authorityByDomain: {
+    "vogue.com": 0.95,
+    "tagwalk.com": 0.9,
+    "wwd.com": 0.9,
+    "showstudio.com": 0.85,
+    "vogue.co.uk": 0.85
+  },
+  defaultCadenceDays: 1,
+  recencyWindowDays: 7,
+  buildGroundingQuery: (input) => {
+    const sinceDate = isoDaysAgo(input.now, 7);
+    const sites = formatSiteFilter([
+      "vogue.com",
+      "tagwalk.com",
+      "wwd.com",
+      "showstudio.com"
+    ]);
+    return [
+      `fashion week runway show collection review (${sites}) after:${sinceDate}`,
+      input.season ?? "current season",
+      input.region ?? "",
+      "Name the design house for each look. Surface repeated silhouettes, fabrics, prints across shows.",
+      "Include specific looks like 'transparent denim at Coperni'. Cite source URLs."
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+};
+
+/**
+ * It-girl discovery scanner — best-dressed and style icon coverage.
+ * Cadence: every 3 days. Targets styling, garment, aesthetic types.
+ */
+const itGirlDiscoveryScanner: GroundingScanner = {
+  archetype: "it_girl_discovery",
+  targetTrendTypes: ["styling", "garment", "aesthetic"],
+  preferredSites: [
+    "vogue.com",
+    "harpersbazaar.com",
+    "whowhatwear.com",
+    "elle.com",
+    "i-d.co"
+  ],
+  authorityByDomain: {
+    "vogue.com": 0.85,
+    "harpersbazaar.com": 0.8,
+    "whowhatwear.com": 0.8,
+    "elle.com": 0.75,
+    "i-d.co": 0.75
+  },
+  defaultCadenceDays: 3,
+  recencyWindowDays: 14,
+  buildGroundingQuery: (input) => {
+    const sinceDate = isoDaysAgo(input.now, 14);
+    const sites = formatSiteFilter([
+      "vogue.com",
+      "harpersbazaar.com",
+      "whowhatwear.com",
+      "elle.com"
+    ]);
+    return [
+      `best dressed OR it girl OR style icon OR street style (${sites}) after:${sinceDate}`,
+      "Name the specific people being called out as style references (models, actresses, socialites, musicians).",
+      "For each person, note what they wore — specific garments, styling choices, brands.",
+      "Cite the source URL for each."
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+};
+
 export const SCANNERS: readonly GroundingScanner[] = [
   editorialScanner,
   runwayScanner,
   streetSocialScanner,
-  colourAuthorityScanner
+  colourAuthorityScanner,
+  designHouseScanner,
+  fashionWeekScanner,
+  itGirlDiscoveryScanner
 ] as const;
 
 export const SCANNER_BY_ARCHETYPE: Readonly<Record<ScannerArchetype, GroundingScanner>> =
@@ -258,7 +392,10 @@ export const SCANNER_BY_ARCHETYPE: Readonly<Record<ScannerArchetype, GroundingSc
     editorial: editorialScanner,
     runway: runwayScanner,
     street_social: streetSocialScanner,
-    colour_authority: colourAuthorityScanner
+    colour_authority: colourAuthorityScanner,
+    design_house: designHouseScanner,
+    fashion_week: fashionWeekScanner,
+    it_girl_discovery: itGirlDiscoveryScanner
   };
 
 /**
