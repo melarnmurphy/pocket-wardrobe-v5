@@ -50,11 +50,27 @@ interface ExtractedSignal {
   region: string | null;
   confidence: number;
   delta?: SignalDelta;
+  house_attribution?: string[];
+  person_attribution?: string[];
 }
 
-export function buildExtractionPrompt(source: SourceContext): string {
+export function buildExtractionPrompt(
+  source: SourceContext,
+  scannerArchetype?: string
+): string {
   const colourList = COLOUR_FAMILIES.join(", ");
   const trendTypeList = TREND_TYPES.join(", ");
+
+  const isHouseScanner =
+    scannerArchetype === "design_house" || scannerArchetype === "fashion_week";
+  const isPersonScanner = scannerArchetype === "it_girl_discovery";
+
+  const attributionFields = isHouseScanner
+    ? `,\n  "house_attribution": array of design house names explicitly mentioned (e.g. ["Prada", "Acne Studios"]) — empty array if none`
+    : isPersonScanner
+      ? `,\n  "person_attribution": array of person names cited as style references (e.g. ["Kendall Jenner", "Zendaya"]) — empty array if none`
+      : "";
+
   return `You are a fashion trend analyst. Extract concrete trend signals from the following article excerpt.
 
 Source: ${source.sourceName}
@@ -80,7 +96,7 @@ Return a JSON array. Each signal:
   "season": string or null,
   "region": string or null,
   "confidence": number 0-1,
-  "delta": "new" | "intensifying" | "fading"  (optional; omit if not determinable)
+  "delta": "new" | "intensifying" | "fading"  (optional; omit if not determinable)${attributionFields}
 }`;
 }
 
@@ -101,13 +117,23 @@ async function parseClaudeResponse(content: string): Promise<ExtractedSignal[]> 
           TREND_TYPES.includes((s as ExtractedSignal).trend_type)
       )
       .map((s) => {
-        // Drop unknown delta values rather than propagating garbage.
         const delta = (s as { delta?: unknown }).delta;
+        const houseAttr = (s as { house_attribution?: unknown }).house_attribution;
+        const personAttr = (s as { person_attribution?: unknown }).person_attribution;
+
+        const result: ExtractedSignal = { ...(s as ExtractedSignal) };
         if (typeof delta === "string" && VALID_DELTAS.has(delta as SignalDelta)) {
-          return { ...s, delta: delta as SignalDelta };
+          result.delta = delta as SignalDelta;
+        } else {
+          delete result.delta;
         }
-        const { delta: _omit, ...rest } = s as ExtractedSignal & { delta?: unknown };
-        return rest as ExtractedSignal;
+        result.house_attribution = Array.isArray(houseAttr)
+          ? (houseAttr as unknown[]).filter((v): v is string => typeof v === "string")
+          : undefined;
+        result.person_attribution = Array.isArray(personAttr)
+          ? (personAttr as unknown[]).filter((v): v is string => typeof v === "string")
+          : undefined;
+        return result;
       });
   } catch {
     return [];
@@ -187,7 +213,13 @@ async function upsertTrendSignal(
         trend_confidence: row.trend_confidence ?? signal.confidence,
         ...(nextStatus && nextStatus !== row.trend_status ? { trend_status: nextStatus } : {}),
         ...(signal.season && !row.season ? { season: signal.season } : {}),
-        ...(signal.season && !row.year ? { year: new Date().getFullYear() } : {})
+        ...(signal.season && !row.year ? { year: new Date().getFullYear() } : {}),
+        ...(signal.house_attribution && signal.house_attribution.length > 0
+          ? { house_attribution: signal.house_attribution }
+          : {}),
+        ...(signal.person_attribution && signal.person_attribution.length > 0
+          ? { person_attribution: signal.person_attribution }
+          : {}),
       } as never))
       .eq("id", row.id);
 
@@ -216,12 +248,16 @@ async function upsertTrendSignal(
     // being our first sighting, skip straight to "rising".
     trend_status: signal.delta === "intensifying" ? "rising" : "candidate",
     first_seen_at: new Date().toISOString(),
-    last_seen_at: new Date().toISOString()
+    last_seen_at: new Date().toISOString(),
   };
 
   const { data, error } = await supabase
     .from("trend_signals")
-    .insert(insert as never)
+    .insert(({
+      ...insert,
+      house_attribution: signal.house_attribution ?? null,
+      person_attribution: signal.person_attribution ?? null,
+    } as never))
     .select("id")
     .single();
 
@@ -364,13 +400,16 @@ export async function processExtractionJob(jobId: string): Promise<void> {
       const response = await client.chat.completions.create({
         model: "gpt-4o-mini",
         max_tokens: 1024,
-        messages: [{ role: "user", content: buildExtractionPrompt({
-          title: sourceRow.title,
-          excerpt: chunk,
-          author: sourceRow.author,
-          publishDate: sourceRow.publish_date,
-          sourceName: sourceRow.source_name
-        }) }]
+        messages: [{ role: "user", content: buildExtractionPrompt(
+          {
+            title: sourceRow.title,
+            excerpt: chunk,
+            author: sourceRow.author,
+            publishDate: sourceRow.publish_date,
+            sourceName: sourceRow.source_name
+          },
+          typeof meta.scanner_archetype === "string" ? meta.scanner_archetype : undefined
+        ) }]
       });
 
       const text = response.choices[0]?.message?.content ?? "";

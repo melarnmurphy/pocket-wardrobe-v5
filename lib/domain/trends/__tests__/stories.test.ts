@@ -83,3 +83,49 @@ describe("new scanner archetypes", () => {
     expect(query.toLowerCase()).toMatch(/best dressed|it girl|style icon|street style/);
   });
 });
+
+import { buildExtractionPrompt } from "../extraction";
+
+describe("buildExtractionPrompt with scanner archetype", () => {
+  it("includes house attribution instructions for design_house scanner", () => {
+    const prompt = buildExtractionPrompt(
+      {
+        title: "Prada SS26 Collection Review",
+        excerpt: "Prada showed transparent organza with structural jackets.",
+        author: null,
+        publishDate: null,
+        sourceName: "vogue.com"
+      },
+      "design_house"
+    );
+    expect(prompt).toContain("house_attribution");
+  });
+
+  it("includes person attribution instructions for it_girl_discovery scanner", () => {
+    const prompt = buildExtractionPrompt(
+      {
+        title: "Best Dressed This Week",
+        excerpt: "Kendall Jenner stepped out in a trench coat and ballet flats.",
+        author: null,
+        publishDate: null,
+        sourceName: "harpersbazaar.com"
+      },
+      "it_girl_discovery"
+    );
+    expect(prompt).toContain("person_attribution");
+  });
+
+  it("does not include attribution fields for editorial scanner", () => {
+    const prompt = buildExtractionPrompt(
+      {
+        title: "Spring Trends",
+        excerpt: "Quiet luxury continues to dominate.",
+        author: null,
+        publishDate: null,
+        sourceName: "vogue.com"
+      },
+      "editorial"
+    );
+    expect(prompt).not.toContain("house_attribution");
+  });
+});
