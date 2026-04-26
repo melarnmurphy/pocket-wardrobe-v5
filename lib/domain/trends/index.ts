@@ -144,6 +144,7 @@ export const userTrendMatchSchema = z.object({
   match_type: z.enum(["exact_match", "adjacent_match", "styling_match", "missing_piece"]),
   score: z.number().min(0).max(1),
   reasoning_json: z.record(z.string(), z.unknown()).default({}),
+  story_id: z.string().uuid().nullable().optional(),
   created_at: z.string().optional()
 });
 
@@ -153,6 +154,46 @@ export const userTrendMatchWithSignalSchema = userTrendMatchSchema.extend({
   trend_signal: trendSignalSchema
 });
 export type UserTrendMatchWithSignal = z.infer<typeof userTrendMatchWithSignalSchema>;
+
+export const STORY_DOMINANT_TYPES = [
+  "colour_combo",
+  "garment_moment",
+  "aesthetic",
+  "it_girl_look",
+  "runway_moment"
+] as const;
+
+export type StoryDominantType = (typeof STORY_DOMINANT_TYPES)[number];
+
+export const trendStorySchema = z.object({
+  id: z.string().uuid().optional(),
+  headline: z.string().min(1).max(200),
+  framing: z.string().nullable().optional(),
+  momentum_label: z.string().nullable().optional(),
+  dominant_type: z.enum(STORY_DOMINANT_TYPES).nullable().optional(),
+  attributed_houses: z.array(z.string()).default([]),
+  attributed_people: z.array(z.string()).default([]),
+  signal_ids: z.array(z.string().uuid()).default([]),
+  status: z
+    .enum(["candidate", "emerging", "confirmed", "dominant", "cooling", "flat", "rising"])
+    .nullable()
+    .optional(),
+  confidence_score: z.number().nullable().optional(),
+  created_at: z.string().optional(),
+  refreshed_at: z.string().optional()
+});
+
+export type TrendStory = z.infer<typeof trendStorySchema>;
+
+export const trendPersonSchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().min(1),
+  first_seen_at: z.string().optional(),
+  mention_count: z.number().int().default(1),
+  last_seen_at: z.string().optional()
+});
+
+export type TrendPerson = z.infer<typeof trendPersonSchema>;
 
 export const trendIngestionJobSchema = z.object({
   id: z.string().uuid().optional(),
