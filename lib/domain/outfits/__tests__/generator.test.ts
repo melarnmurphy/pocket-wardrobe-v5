@@ -1,5 +1,6 @@
 import {
   applyHardFilters,
+  collectColourFiredRules,
   scoreGarment,
   generateOutfit,
   type GeneratorInput
@@ -9,13 +10,14 @@ import type { StyleRuleListItem } from "@/lib/domain/style-rules/service";
 import { describe, it, expect } from "vitest";
 import { categoryToRole } from "../generator";
 import { expandRulesWithAttributeInference } from "@/lib/domain/style-rules/inference";
+import { buildSeedStyleRules } from "@/lib/domain/style-rules/knowledge";
 
 describe("categoryToRole", () => {
   it("maps shirt to top", () => {
     expect(categoryToRole("shirt")).toBe("top");
   });
   it("maps Knitwear to top (case-insensitive)", () => {
-    expect(categoryToRole("Knitwear")).toBe("top");
+    expect(categoryToRole("Knitwear")).toBe("outerwear");
   });
   it("maps trousers to bottom", () => {
     expect(categoryToRole("wide-leg trousers")).toBe("bottom");
@@ -31,6 +33,9 @@ describe("categoryToRole", () => {
   });
   it("maps blazer to outerwear", () => {
     expect(categoryToRole("blazer")).toBe("outerwear");
+  });
+  it("uses title text to classify a knit cardigan as outerwear/layer", () => {
+    expect(categoryToRole("knit", null, "Graduate Cardi")).toBe("outerwear");
   });
   it("maps trainers to shoes", () => {
     expect(categoryToRole("trainers")).toBe("shoes");
@@ -268,5 +273,96 @@ describe("expandRulesWithAttributeInference integration", () => {
     const result = generateOutfit(input);
     // Inferred rules should not appear in firedRules
     expect(result.firedRules.every(r => !r.description.includes("inferred"))).toBe(true);
+  });
+
+  it("only surfaces layering explanations for garment pairs that actually exist", () => {
+    const tee = makeGarment({
+      id: "tee",
+      category: "shirt",
+      title: "WOODS RIB LONGSLEEVE TEE IN BLACK",
+      fit: "fitted"
+    });
+    const cardi = makeGarment({
+      id: "cardi",
+      category: "knit",
+      title: "Viktoria & Woods Graduate Cardi"
+    });
+
+    const rules = [
+      makeRule({
+        predicate: "layerable_with",
+        subject_value: "shirt",
+        object_value: "blazer",
+        rule_type: "layering",
+        explanation: "A shirt under a blazer is a classic layering combination for structured looks."
+      }),
+      makeRule({
+        predicate: "layerable_with",
+        subject_value: "shirt",
+        object_value: "waistcoat",
+        rule_type: "layering",
+        explanation: "A shirt under a waistcoat gives a smart, layered finish without a jacket."
+      }),
+      makeRule({
+        predicate: "layerable_with",
+        subject_value: "shirt",
+        object_value: "knitwear",
+        rule_type: "layering",
+        explanation: "A collared shirt under a knit is a classic smart-casual layering move."
+      }),
+      makeRule({
+        predicate: "layerable_with",
+        subject_value: "t-shirt",
+        object_value: "cardigan",
+        rule_type: "layering",
+        explanation: "A t-shirt under a cardigan creates an easy layered casual look."
+      })
+    ];
+
+    const result = generateOutfit({
+      mode: "plan",
+      garments: [tee, cardi],
+      styleRules: rules,
+      trendSignal: null
+    });
+
+    expect(result.firedRules.map((rule) => rule.description)).toEqual([
+      "A fitted t-shirt under a cardigan creates an easy layered casual look."
+    ]);
+  });
+
+  it("surfaces red-blue pairing with black as a neutral anchor for a cardigan outfit", () => {
+    const redCardigan = makeGarment({
+      id: "cardi-red",
+      category: "cardigan",
+      title: "Red wool cardigan",
+      primary_colour_family: "red"
+    });
+    const blackTop = makeGarment({
+      id: "top-black",
+      category: "t-shirt",
+      title: "Black fitted top",
+      fit: "fitted",
+      primary_colour_family: "black"
+    });
+    const blueJeans = makeGarment({
+      id: "jeans-blue",
+      category: "jeans",
+      title: "Classic blue jeans",
+      primary_colour_family: "blue"
+    });
+
+    const result = collectColourFiredRules(
+      [redCardigan, blackTop, blueJeans],
+      buildSeedStyleRules() as unknown as StyleRuleListItem[]
+    );
+
+    expect(result.map((rule) => rule.description)).toEqual(
+      expect.arrayContaining([
+        "Blue, red, and yellow form a classic triadic palette with balanced energy.",
+        "Black acts as a neutral anchor for red, which keeps bold colour from feeling noisy or overworked.",
+        "Black acts as a neutral anchor for blue, giving stronger colour contrast a cleaner base."
+      ])
+    );
   });
 });

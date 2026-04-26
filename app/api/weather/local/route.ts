@@ -3,19 +3,20 @@ import { ZodError } from "zod";
 import { AuthenticationError, getRequiredUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { localWeatherLookupSchema } from "@/lib/domain/weather";
-import { getLocalWeather } from "@/lib/domain/weather/service";
+import { getLocalWeather, type WeatherSnapshotClient } from "@/lib/domain/weather/service";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getRequiredUser();
-    const supabase = await createClient();
+    const supabase = (await createClient()) as unknown as WeatherSnapshotClient;
     const searchParams = request.nextUrl.searchParams;
     const input = localWeatherLookupSchema.parse({
       location: searchParams.get("location") ?? undefined,
       latitude: searchParams.get("latitude") ?? undefined,
       longitude: searchParams.get("longitude") ?? undefined,
+      weatherDate: searchParams.get("weather_date") ?? undefined,
       profileOverride: searchParams.get("profile_override") ?? undefined,
       provider: searchParams.get("provider") ?? undefined
     });

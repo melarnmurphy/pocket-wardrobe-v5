@@ -6,6 +6,7 @@ import type { StyleRuleListItem } from "@/lib/domain/style-rules/service";
 import type { UserTrendMatchWithSignal } from "@/lib/domain/trends";
 import type { GeneratedOutfit, OutfitGarmentPreview } from "@/lib/domain/outfits";
 import type { LocalWeatherContext, WeatherProfile } from "@/lib/domain/weather";
+import { formatOutfitRoleLabel } from "@/lib/domain/outfits/generator";
 import {
   generateOutfitAction,
   getSwapCandidatesAction,
@@ -123,7 +124,10 @@ export function OutfitGenerator({
       dress_code: dress_code_val,
       weather_context_json: weather_ctx,
       explanation: pendingResult.explanation,
-      explanation_json: { rules: pendingResult.firedRules },
+      explanation_json: {
+        rules: pendingResult.firedRules,
+        insights: pendingResult.insights
+      },
       garments: pendingResult.garments.map(g => ({ garment_id: g.id, role: g.role }))
     });
 
@@ -466,8 +470,9 @@ export function OutfitGenerator({
                   setPendingResult({
                     garments: updatedGarments,
                     firedRules: newFiredRules,
+                    insights: [],
                     explanation: null // Always rule tags after swap, even on Pro
-                  });
+                  } satisfies GeneratedOutfit);
                 }}
               />
             ))}
@@ -476,6 +481,29 @@ export function OutfitGenerator({
           {/* Why this works */}
           {pendingResult.explanation ? (
             <p className="text-sm text-[var(--muted)]">{pendingResult.explanation}</p>
+          ) : pendingResult.insights.length > 0 ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {pendingResult.insights.map((insight) => (
+                <div
+                  key={insight.key}
+                  className="rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3"
+                >
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
+                    {insight.title}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--foreground)]">{insight.body}</p>
+                  {insight.tags.length ? (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {insight.tags.map((tag) => (
+                        <span key={`${insight.key}-${tag}`} className="text-[10px] bg-white border border-[var(--line)] rounded px-2 py-1 text-[var(--muted)]">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
           ) : pendingResult.firedRules.length > 0 ? (
             <div className="bg-[var(--surface)] rounded-xl px-4 py-3">
               <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)] mb-2">Why this works</p>
@@ -525,7 +553,7 @@ function SwapChip({ garment, onSwap }: SwapChipProps) {
           )}
         </div>
         <div className="px-2.5">
-          <p className="text-[9px] uppercase tracking-[0.2em] text-[var(--muted)]">{garment.role}</p>
+          <p className="text-[9px] uppercase tracking-[0.2em] text-[var(--muted)]">{formatOutfitRoleLabel(garment)}</p>
           <p className="text-xs font-medium text-[var(--foreground)]">{garment.title ?? garment.category}</p>
         </div>
         <button

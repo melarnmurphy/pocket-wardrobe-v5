@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lookbook — Pocket Wardrobe</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="pw-top">
+  <div class="pw-top-row pw-shell">
+    <a href="index.html" class="pw-brand"><span class="mark"></span>Pocket Wardrobe</a>
+    <nav class="pw-nav">
+      <a href="wardrobe.html">Wardrobe</a>
+      <a href="lookbook.html" class="active">Lookbook</a>
+      <a href="trends.html">Trends</a>
+      <a href="planner.html">Planner</a>
+      <a href="rules.html">Rules</a>
+    </nav>
+    <div class="pw-user">
+      <button class="icon-btn" aria-label="Search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+      <button class="icon-btn" aria-label="Notifications"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8Z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></button>
+      <div class="avatar">MM</div>
+    </div>
+  </div>
+</header>
+
+<main class="pw-shell">
+  <section class="pw-page">
+
+    <!-- Head -->
+    <div class="pw-page-head animate-in">
+      <div class="title">
+        <span class="eyebrow">Inspiration · separate from what you own</span>
+        <h1 class="display display-lg">Lookbook.</h1>
+        <p class="caption" style="margin-top: 10px;">6 boards · 148 references · 12 missing pieces · 23 wishlist items</p>
+      </div>
+      <div class="row-wrap">
+        <button class="btn btn-outline">New board</button>
+        <button class="btn btn-primary" data-open-modal="#add-entry">+ Save inspiration</button>
+      </div>
+    </div>
+
+    <!-- Board tabs (horizontal scroll) -->
+    <div class="filter-rail" style="margin-bottom: 12px;">
+      <span class="chip active">All boards <span class="count">148</span></span>
+      <span class="chip">Summer in Italy <span class="count">42</span></span>
+      <span class="chip">Workwear, refined <span class="count">31</span></span>
+      <span class="chip">Evening &amp; events <span class="count">19</span></span>
+      <span class="chip">Layering studies <span class="count">27</span></span>
+      <span class="chip">Missing pieces <span class="count">12</span></span>
+      <span class="chip">Wishlist <span class="count">23</span></span>
+    </div>
+
+    <!-- Featured board hero -->
+    <div class="grid-2" style="margin: 40px 0 56px; align-items: stretch;">
+      <div style="background: var(--ink); color: var(--ivory); padding: 48px 44px; display:flex; flex-direction: column; gap: 24px; border-radius: var(--r-md); min-height: 360px; justify-content: space-between;">
+        <div>
+          <span class="eyebrow on-dark">Board 01 · In progress</span>
+          <h2 class="display display-lg" style="color: var(--ivory); margin: 14px 0 0;">
+            Summer in <span class="serif-italic">Italy</span>.
+          </h2>
+          <p style="max-width: 42ch; margin-top: 18px; color: var(--ink-20); line-height: 1.6;">
+            Relaxed tailoring, sun-worn neutrals, nothing precious. Building toward a
+            two-week wardrobe for Puglia — mostly what I own, two pieces to find.
+          </p>
+        </div>
+        <div class="row-wrap">
+          <span class="tag" style="border-color: rgba(250,250,246,.5); color: var(--ivory);">42 references</span>
+          <span class="tag" style="border-color: rgba(250,250,246,.5); color: var(--ivory);">14 owned · 2 missing</span>
+          <span class="tag" style="border-color: rgba(250,250,246,.5); color: var(--ivory);">Updated yesterday</span>
+        </div>
+        <button class="btn btn-outline" style="border-color: var(--ivory); color: var(--ivory); align-self: flex-start;">Open board</button>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; min-height: 360px;">
+        <div style="grid-row: span 2; overflow: hidden; border-radius: var(--r-md); background: var(--mist);">
+          <img src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=800&q=80" style="width:100%; height:100%; object-fit:cover;" alt="" />
+        </div>
+        <div style="overflow: hidden; border-radius: var(--r-md); background: var(--mist);">
+          <img src="https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?auto=format&fit=crop&w=500&q=80" style="width:100%; height:100%; object-fit:cover;" alt="" />
+        </div>
+        <div style="overflow: hidden; border-radius: var(--r-md); background: var(--mist);">
+          <img src="https://images.unsplash.com/photo-1434389677669-e08b4cac3105?auto=format&fit=crop&w=500&q=80" style="width:100%; height:100%; object-fit:cover;" alt="" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Divider with title -->
+    <div class="row-between" style="margin-bottom: 28px;">
+      <div>
+        <span class="eyebrow">All saved references</span>
+        <h2 class="display display-md" style="margin-top: 6px;">The moodboard.</h2>
+      </div>
+      <div class="row-wrap">
+        <span class="eyebrow">Sort:</span>
+        <select style="background: transparent; border: 0; font-family: inherit; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink); cursor: pointer;">
+          <option>Recently saved</option>
+          <option>By board</option>
+          <option>Has linked garments</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Masonry -->
+    <div class="masonry animate-in">
+
+      <div class="item" data-open-modal="#entry-detail">
+        <img src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=600&q=80" alt="" />
+        <div class="cap"><span class="name">Relaxed tailoring</span><span>Italy board</span></div>
+        <div class="cover-hover"><span>14 owned pieces match</span></div>
+      </div>
+
+      <div class="item">
+        <img src="https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?auto=format&fit=crop&w=500&q=80" alt="" />
+        <div class="cap"><span class="name">Ivory silk, bare</span><span>Wishlist</span></div>
+        <div class="cover-hover"><span>Missing: ivory silk blouse</span></div>
+      </div>
+
+      <div class="item">
+        <img src="https://images.unsplash.com/photo-1434389677669-e08b4cac3105?auto=format&fit=crop&w=600&q=80" alt="" />
+        <div class="cap"><span class="name">Three-tone layering</span><span>Layering</span></div>
+      </div>
+
+      <div class="item">
+        <img src="https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?auto=format&fit=crop&w=600&q=80" alt="" />
+        <div class="cap"><span class="name">Olive &amp; ecru</span><span>Italy board</span></div>
+      </div>
+
+      <div class="item">
+        <img src="https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=600&q=80" alt="" />
+        <div class="cap"><span class="name">White cotton</span><span>Italy board</span></div>
+      </div>
+
+      <div class="item">
+        <img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=500&q=80" alt="" />
+        <div class="cap"><span class="name">Black evening</span><span>Evening &amp; events</span></div>
+      </div>
+
+      <div class="item">
+        <img src="https://images.unsplash.com/photo-1475180098004-ca77a66827be?auto=format&fit=crop&w=600&q=80" alt="" />
+        <div class="cap"><span class="name">Travelling light</span><span>Italy board</span></div>
+      </div>
+
+      <div class="item">
+        <img src="https://images.unsplash.com/photo-1519415943484-9fa1873496d4?auto=format&fit=crop&w=500&q=80" alt="" />
+        <div class="cap"><span class="name">Knitwear &amp; camel</span><span>Layering</span></div>
+      </div>
+
+      <div class="item">
+        <img src="https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=600&q=80" alt="" />
+        <div class="cap"><span class="name">Trench, belted</span><span>Workwear</span></div>
+      </div>
+
+      <div class="item">
+        <img src="https://images.unsplash.com/photo-1469334031218-e382a71b716b?auto=format&fit=crop&w=600&q=80" alt="" />
+        <div class="cap"><span class="name">Loose wool trouser</span><span>Missing pieces</span></div>
+      </div>
+
+      <div class="item">
+        <img src="https://images.unsplash.com/photo-1524255684952-d7185b509571?auto=format&fit=crop&w=600&q=80" alt="" />
+        <div class="cap"><span class="name">Quiet minimalism</span><span>Workwear</span></div>
+      </div>
+
+      <div class="item">
+        <img src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=500&q=80" alt="" />
+        <div class="cap"><span class="name">Café morning</span><span>Italy board</span></div>
+      </div>
+
+    </div>
+
+    <div style="display:flex; justify-content:center; margin-top: 64px;">
+      <button class="btn btn-outline btn-lg">Load more references</button>
+    </div>
+
+  </section>
+
+  <footer class="pw-foot">
+    <div><span class="eyebrow">Lookbook syncs every 24 hours · last pulled 09:22</span></div>
+    <div class="row-wrap" style="gap: var(--s-5);">
+      <a href="wardrobe.html" class="eyebrow">Wardrobe</a>
+      <a href="trends.html" class="eyebrow">Trends</a>
+      <a href="planner.html" class="eyebrow">Planner</a>
+    </div>
+  </footer>
+</main>
+
+<!-- =========================================================
+     ENTRY DETAIL MODAL (reference + linked items)
+     ========================================================= -->
+<div id="entry-detail" class="overlay">
+  <div class="modal modal-wide">
+    <div class="hero">
+      <img src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=85" alt="" />
+      <button class="close close-floating" data-close-modal aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M6 18 18 6"/></svg>
+      </button>
+    </div>
+    <div class="body">
+      <div class="head">
+        <div>
+          <span class="brand-line">Italy board · Reference 14</span>
+          <h2>Relaxed<br/>tailoring.</h2>
+        </div>
+        <button class="close" data-close-modal aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M6 18 18 6"/></svg></button>
+      </div>
+
+      <p class="caption" style="max-width: 50ch;">
+        Oversized beige blazer over white linen, wide trouser, leather sandal. The mood: Taormina 2019 — worn,
+        not new. Holding onto the proportions: shoulder one size up, trouser break at the toe.
+      </p>
+
+      <div class="row-wrap">
+        <span class="tag">Relaxed</span>
+        <span class="tag">Tonal</span>
+        <span class="tag">Summer</span>
+        <span class="tag">Italy</span>
+      </div>
+
+      <section>
+        <span class="eyebrow">Pieces you already own</span>
+        <div class="row" style="gap: 10px; margin-top: 12px; overflow-x: auto; padding-bottom: 4px;">
+          <div style="width: 110px; flex-shrink: 0;">
+            <div style="aspect-ratio: 4/5; overflow: hidden; border-radius: 3px; background: var(--mist);"><img src="https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=260&q=70" style="width:100%; height:100%; object-fit:cover;" /></div>
+            <div style="font-size: 11px; color: var(--ink-60); margin-top: 6px; letter-spacing: 0.06em;">Totême blazer</div>
+          </div>
+          <div style="width: 110px; flex-shrink: 0;">
+            <div style="aspect-ratio: 4/5; overflow: hidden; border-radius: 3px; background: var(--mist);"><img src="https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=260&q=70" style="width:100%; height:100%; object-fit:cover;" /></div>
+            <div style="font-size: 11px; color: var(--ink-60); margin-top: 6px; letter-spacing: 0.06em;">Levi's 501 ecru</div>
+          </div>
+          <div style="width: 110px; flex-shrink: 0;">
+            <div style="aspect-ratio: 4/5; overflow: hidden; border-radius: 3px; background: var(--mist);"><img src="https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=260&q=70" style="width:100%; height:100%; object-fit:cover;" /></div>
+            <div style="font-size: 11px; color: var(--ink-60); margin-top: 6px; letter-spacing: 0.06em;">Veja V-10 chalk</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <span class="eyebrow">Missing from your wardrobe</span>
+        <div class="row" style="margin-top: 12px; gap: 14px; align-items:flex-start;">
+          <div style="width: 72px; height: 90px; background: repeating-linear-gradient(45deg, #fff, #fff 6px, #f3f0e8 6px, #f3f0e8 12px); border: 1px dashed var(--ink-20); border-radius: 2px; display:flex; align-items:center; justify-content:center; color: var(--ink-40);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 5v14M5 12h14"/></svg>
+          </div>
+          <div class="stack-1" style="flex:1;">
+            <div class="display display-sm" style="font-size: 18px;">Wide-leg linen trouser, ivory</div>
+            <div class="caption" style="font-size: 12px;">Unlocks 8 additional outfits for this board. Adjacent to your pleated taupe trouser and straight 501 in ecru.</div>
+            <div class="row-wrap" style="margin-top: 8px;">
+              <span class="match-badge match-missing"><i class="dot"></i>Missing piece</span>
+              <span class="tag">Linen</span>
+              <span class="tag">Wide leg</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <span class="eyebrow">Source</span>
+        <div class="caption" style="margin-top: 8px; display:flex; align-items:center; gap: 8px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 1 0-7-7L12 5"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 1 0 7 7L12 19"/></svg>
+          <span>Saved from <strong style="color: var(--ink);">pinterest.com/pin/42918</strong> · Apr 08, 2026</span>
+        </div>
+      </section>
+
+      <div class="actions">
+        <button class="btn btn-primary">Build an outfit from this</button>
+        <button class="btn btn-outline">Link a piece</button>
+        <button class="btn btn-ghost"><span class="underline">Move board</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     SAVE INSPIRATION MODAL
+     ========================================================= -->
+<div id="add-entry" class="overlay">
+  <div class="modal modal-single" style="max-width: 640px;">
+    <div style="padding: 40px 44px 36px; max-height: 92vh; overflow-y: auto;">
+      <div class="row-between" style="align-items:flex-start;">
+        <div>
+          <span class="eyebrow">Save to lookbook</span>
+          <h2 class="display display-md" style="margin: 10px 0 0;">New reference.</h2>
+        </div>
+        <button class="close" data-close-modal aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M6 18 18 6"/></svg></button>
+      </div>
+
+      <div style="margin-top: 28px; aspect-ratio: 4/3; background: var(--mist); border: 1px dashed var(--ink-20); border-radius: var(--r-md); display:flex; flex-direction:column; align-items:center; justify-content:center; gap: 10px; color: var(--ink-60); cursor: pointer;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M7 10l5-5 5 5"/><path d="M12 5v14"/></svg>
+        <div class="eyebrow">Drop an image · paste a URL · upload</div>
+      </div>
+
+      <hr />
+
+      <div class="field">
+        <label>Title</label>
+        <input type="text" placeholder="Relaxed tailoring" />
+      </div>
+
+      <div class="field-grid-2" style="margin-top: 20px;">
+        <div class="field">
+          <label>Board</label>
+          <select>
+            <option>Summer in Italy</option>
+            <option>Workwear, refined</option>
+            <option>Evening &amp; events</option>
+            <option>Layering studies</option>
+            <option>Missing pieces</option>
+            <option>Wishlist</option>
+            <option>+ New board</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Occasion</label>
+          <select>
+            <option>Weekend</option>
+            <option>Workwear</option>
+            <option>Travel</option>
+            <option>Evening</option>
+            <option>Formal</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top: 20px;">
+        <label>Aesthetic tags</label>
+        <div class="row-wrap" style="margin-top: 6px;">
+          <span class="chip active">Relaxed</span>
+          <span class="chip active">Tonal</span>
+          <span class="chip">Sharp</span>
+          <span class="chip">Layered</span>
+          <span class="chip">Monochrome</span>
+          <span class="chip">Sporty</span>
+          <span class="chip ghost">+ Add</span>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top: 24px;">
+        <label>Notes</label>
+        <textarea placeholder="What caught your eye — proportions, colour, a specific piece to remember?"></textarea>
+      </div>
+
+      <div class="row-wrap" style="margin-top: 32px;">
+        <button class="btn btn-primary">Save reference</button>
+        <button class="btn btn-outline">Save &amp; link a piece</button>
+        <button class="btn btn-ghost" data-close-modal><span class="underline">Cancel</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -9,10 +9,15 @@ import {
   addGarmentImageFromUrl,
   addGarmentImage,
   deleteGarment,
+  setGarmentFeatureImage,
+  setGarmentPrimaryColourFamily,
   toggleGarmentFavourite,
   updateGarment
 } from "@/lib/domain/wardrobe/service";
-import type { WardrobeColourFamily } from "@/lib/domain/wardrobe/colours";
+import {
+  inferWardrobeColourFamily,
+  type WardrobeColourFamily
+} from "@/lib/domain/wardrobe/colours";
 import type { WardrobeActionState } from "@/lib/domain/wardrobe/action-state";
 import { incrementWearCount, logWearEvent } from "@/lib/domain/wear-events/service";
 import {
@@ -25,8 +30,7 @@ import {
 } from "@/lib/domain/ingestion/service";
 import {
   callPipelineService,
-  callReceiptOcrService,
-  callScraperService
+  callReceiptOcrService
 } from "@/lib/domain/ingestion/client";
 import { canUseFeatureLabels } from "@/lib/domain/entitlements/service";
 import {
@@ -135,6 +139,11 @@ const deleteGarmentFormSchema = z.object({
   garment_id: z.string().uuid()
 });
 
+const setFeatureImageFormSchema = z.object({
+  garment_id: z.string().uuid(),
+  image_id: z.string().uuid()
+});
+
 const updateGarmentFormSchema = createGarmentFormSchema.extend({
   garment_id: z.string().uuid()
 });
@@ -186,7 +195,8 @@ export async function createGarmentAction(
   formData: FormData
 ): Promise<WardrobeActionState> {
   try {
-    const values = createGarmentFormSchema.parse({
+    const values = normalizeCategoryInput(
+      createGarmentFormSchema.parse({
       title: formData.get("title"),
       brand: formData.get("brand"),
       category: formData.get("category"),
@@ -201,7 +211,8 @@ export async function createGarmentAction(
       retailer: formData.get("retailer"),
       primary_colour_family: formData.get("primary_colour_family"),
       seasonality: formData.getAll("seasonality")
-    });
+      })
+    );
 
     const garment = await createGarment(values, {
       primaryColourFamily: values.primary_colour_family as WardrobeColourFamily | null | undefined
@@ -345,28 +356,7 @@ export async function createProductUrlDraftAction(
         .trim() ||
       url.hostname;
     const { sourceId } = await createProductUrlSource({ url: values.product_url });
-    let extracted = await extractProductMetadataFromUrl(values.product_url);
-
-    // If the static fetch returned a JS shell (no body text, no attributes, no material),
-    // retry with a headless-rendered version from the pipeline scraper endpoint.
-    const isSparse =
-      extracted.attributes.length === 0 &&
-      !extracted.material &&
-      (!extracted.description || extracted.description.length < 80);
-
-    if (isSparse) {
-      const env = getServerEnv();
-      const renderedHtml = await callScraperService({
-        serviceUrl: env.PIPELINE_SERVICE_URL,
-        url: values.product_url,
-      }).catch(() => null);
-
-      if (renderedHtml) {
-        extracted = await extractProductMetadataFromUrl(values.product_url, {
-          preRenderedHtml: renderedHtml,
-        });
-      }
-    }
+    const extracted = await extractProductMetadataFromUrl(values.product_url);
     const extractedPrice =
       extracted.price && extracted.price.trim().length > 0
         ? Number(extracted.price.replace(/[^0-9.]+/g, ""))
@@ -394,11 +384,16 @@ export async function createProductUrlDraftAction(
     const colourSource = extracted.colour ? "retailer metadata" : "unavailable";
     const brandSource = extracted.brand ? "retailer metadata" : "unavailable";
     const priceSource = extracted.price ? "retailer metadata" : "unavailable";
+    const primaryColourFamily = inferWardrobeColourFamily(extracted.colour);
+    const normalizedExtractedCategory = normalizeCategoryParts(extracted.category);
     const garment = await createGarment({
       title: extracted.title || titleHint,
-      category: extracted.category ?? "top",
+      category: normalizedExtractedCategory.primaryCategory ?? extracted.category ?? "top",
       brand: extracted.brand,
       retailer: extracted.retailer,
+      subcategory: normalizedExtractedCategory.descriptors.length
+        ? normalizedExtractedCategory.descriptors.join(", ")
+        : undefined,
       fit: extracted.fit ?? undefined,
       material: extracted.material ?? undefined,
       size: extractSizeFromNotes(values.notes) ?? undefined,
@@ -420,6 +415,7 @@ export async function createProductUrlDraftAction(
         extraction_source: extractionSource,
         extracted_colour: extracted.colour,
         extracted_image_url: extracted.image_url,
+        category_descriptors: normalizedExtractedCategory.descriptors,
         // Structured garment attributes with knowledge-graph mappings.
         // Each entry has a kg_predicate ("has_attribute") and kg_object_value
         // that maps to style rule vocabulary (outer_layer, oversized, etc.).
@@ -428,7 +424,10 @@ export async function createProductUrlDraftAction(
         import_summary: {
           source_label: url.hostname,
           title: { value: extracted.title || titleHint, source: titleSource },
-          category: { value: extracted.category, source: categorySource },
+          category: {
+            value: normalizedExtractedCategory.primaryCategory ?? extracted.category,
+            source: categorySource
+          },
           colour: { value: extracted.colour, source: colourSource },
           brand: { value: extracted.brand, source: brandSource },
           fit: { value: extracted.fit, source: extracted.fit ? "retailer metadata" : "unavailable" },
@@ -448,10 +447,20 @@ export async function createProductUrlDraftAction(
           }
         }
       }
+    }, {
+      primaryColourFamily
     });
 
     let imageStatus: "attached" | "failed" | "missing" = "missing";
     let uploadedStoragePath: string | null = null;
+    let sampledImageColour:
+      | {
+          dominant_hex: string | null;
+          inferred_family: WardrobeColourFamily | null;
+          lightness_band: "low" | "medium" | "high" | null;
+          relative_luminance: number | null;
+        }
+      | null = null;
 
     if (extracted.image_url) {
       try {
@@ -460,7 +469,19 @@ export async function createProductUrlDraftAction(
           imageUrl: extracted.image_url,
           fileNameHint: `${(extracted.title || titleHint || "product-image").replace(/\s+/g, "-").toLowerCase()}`
         });
-        uploadedStoragePath = uploadedImage.storagePath;
+        uploadedStoragePath = uploadedImage.featureStoragePath ?? uploadedImage.storagePath;
+        sampledImageColour = {
+          dominant_hex: uploadedImage.colourAnalysis.dominantHex,
+          inferred_family: uploadedImage.colourAnalysis.inferredFamily,
+          lightness_band: uploadedImage.colourAnalysis.lightnessBand,
+          relative_luminance: uploadedImage.colourAnalysis.relativeLuminance
+        };
+        if (!primaryColourFamily && uploadedImage.colourAnalysis.inferredFamily) {
+          await setGarmentPrimaryColourFamily({
+            garmentId: garment.id as string,
+            primaryColourFamily: uploadedImage.colourAnalysis.inferredFamily
+          });
+        }
         imageStatus = "attached";
       } catch {
         imageStatus = "failed";
@@ -486,6 +507,13 @@ export async function createProductUrlDraftAction(
           extracted_price: extracted.price,
           extracted_currency: extracted.currency,
           extracted_image_url: extracted.image_url,
+          feature_image_path: uploadedStoragePath,
+          feature_image_type:
+            imageStatus === "attached"
+              ? "cropped"
+              : null,
+          detected_image_garment: null,
+          sampled_image_colour: sampledImageColour,
           extracted_fit: extracted.fit,
           extracted_material: extracted.material,
           extracted_attributes: extracted.attributes,
@@ -659,6 +687,53 @@ export async function addGarmentImageAction(
   }
 }
 
+function normalizeCategoryInput<
+  T extends {
+    category: string;
+    subcategory?: string | null;
+    extraction_metadata_json?: Record<string, unknown>;
+  }
+>(values: T): T {
+  const normalized = normalizeCategoryParts(values.category);
+
+  if (!normalized.primaryCategory) {
+    return values;
+  }
+
+  const existingMetadata =
+    values.extraction_metadata_json && typeof values.extraction_metadata_json === "object"
+      ? values.extraction_metadata_json
+      : {};
+
+  return {
+    ...values,
+    category: normalized.primaryCategory,
+    subcategory:
+      values.subcategory?.trim() ||
+      (normalized.descriptors.length ? normalized.descriptors.join(", ") : null),
+    extraction_metadata_json: {
+      ...existingMetadata,
+      category_descriptors: normalized.descriptors
+    }
+  };
+}
+
+function normalizeCategoryParts(value: string | null | undefined) {
+  const tokens = (value ?? "")
+    .split(",")
+    .map((token) => token.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (!tokens.length) {
+    return { primaryCategory: null, descriptors: [] as string[] };
+  }
+
+  return {
+    primaryCategory: tokens[tokens.length - 1] ?? null,
+    descriptors: tokens.slice(0, -1)
+  };
+}
+
 function shouldAttemptReceiptOcr(file: File) {
   return (
     file.type.startsWith("image/") ||
@@ -672,7 +747,8 @@ export async function updateGarmentAction(
   formData: FormData
 ): Promise<WardrobeActionState> {
   try {
-    const values = updateGarmentFormSchema.parse({
+    const values = normalizeCategoryInput(
+      updateGarmentFormSchema.parse({
       garment_id: formData.get("garment_id"),
       title: formData.get("title"),
       brand: formData.get("brand"),
@@ -688,7 +764,8 @@ export async function updateGarmentAction(
       retailer: formData.get("retailer"),
       primary_colour_family: formData.get("primary_colour_family"),
       seasonality: formData.getAll("seasonality")
-    });
+      })
+    );
 
     await updateGarment(values.garment_id, values, {
       primaryColourFamily: values.primary_colour_family as WardrobeColourFamily | null | undefined
@@ -769,6 +846,35 @@ export async function deleteGarmentAction(
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Unable to delete item."
+    };
+  }
+}
+
+export async function setGarmentFeatureImageAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = setFeatureImageFormSchema.parse({
+      garment_id: formData.get("garment_id"),
+      image_id: formData.get("image_id")
+    });
+
+    await setGarmentFeatureImage({
+      garmentId: values.garment_id,
+      imageId: values.image_id
+    });
+
+    revalidatePath("/wardrobe");
+
+    return {
+      status: "success",
+      message: "Feature image updated."
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Could not update feature image."
     };
   }
 }

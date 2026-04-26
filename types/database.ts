@@ -747,6 +747,56 @@ export type Database = {
           },
         ]
       }
+      trend_entities: {
+        Row: {
+          brand: string | null
+          created_at: string
+          entity_type: string
+          first_seen_at: string | null
+          id: string
+          label: string
+          last_seen_at: string | null
+          metadata_json: Json
+          normalized_label: string
+          source_count: number
+          trend_signal_id: string
+        }
+        Insert: {
+          brand?: string | null
+          created_at?: string
+          entity_type: string
+          first_seen_at?: string | null
+          id?: string
+          label: string
+          last_seen_at?: string | null
+          metadata_json?: Json
+          normalized_label: string
+          source_count?: number
+          trend_signal_id: string
+        }
+        Update: {
+          brand?: string | null
+          created_at?: string
+          entity_type?: string
+          first_seen_at?: string | null
+          id?: string
+          label?: string
+          last_seen_at?: string | null
+          metadata_json?: Json
+          normalized_label?: string
+          source_count?: number
+          trend_signal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trend_entities_trend_signal_id_fkey"
+            columns: ["trend_signal_id"]
+            isOneToOne: false
+            referencedRelation: "trend_signals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trend_ingestion_jobs: {
         Row: {
           completed_at: string | null
@@ -813,53 +863,142 @@ export type Database = {
           },
         ]
       }
+      trend_signal_metrics: {
+        Row: {
+          commerce_signal: number | null
+          composite_score: number | null
+          confidence: number | null
+          created_at: string
+          editorial_mentions: number
+          editorial_source_count: number
+          entity_count: number
+          id: string
+          metric_date: string
+          resale_signal: number | null
+          retailer_count: number
+          runway_signal: number | null
+          search_interest: number | null
+          search_velocity: number | null
+          status: string | null
+          trend_signal_id: string
+        }
+        Insert: {
+          commerce_signal?: number | null
+          composite_score?: number | null
+          confidence?: number | null
+          created_at?: string
+          editorial_mentions?: number
+          editorial_source_count?: number
+          entity_count?: number
+          id?: string
+          metric_date: string
+          resale_signal?: number | null
+          retailer_count?: number
+          runway_signal?: number | null
+          search_interest?: number | null
+          search_velocity?: number | null
+          status?: string | null
+          trend_signal_id: string
+        }
+        Update: {
+          commerce_signal?: number | null
+          composite_score?: number | null
+          confidence?: number | null
+          created_at?: string
+          editorial_mentions?: number
+          editorial_source_count?: number
+          entity_count?: number
+          id?: string
+          metric_date?: string
+          resale_signal?: number | null
+          retailer_count?: number
+          runway_signal?: number | null
+          search_interest?: number | null
+          search_velocity?: number | null
+          status?: string | null
+          trend_signal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trend_signal_metrics_trend_signal_id_fkey"
+            columns: ["trend_signal_id"]
+            isOneToOne: false
+            referencedRelation: "trend_signals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trend_signals: {
         Row: {
           authority_score: number | null
+          canonical_label: string | null
           confidence_score: number | null
           created_at: string
+          family: string | null
           first_seen_at: string | null
           id: string
           label: string
           last_seen_at: string | null
+          micro_signal: string | null
           normalized_attributes_json: Json
           recency_score: number | null
           region: string | null
+          score_30d_delta: number | null
           season: string | null
           source_count: number
+          subfamily: string | null
+          trend_confidence: number | null
+          trend_status: string | null
           trend_type: string
+          vertical: string | null
           year: number | null
         }
         Insert: {
           authority_score?: number | null
+          canonical_label?: string | null
           confidence_score?: number | null
           created_at?: string
+          family?: string | null
           first_seen_at?: string | null
           id?: string
           label: string
           last_seen_at?: string | null
+          micro_signal?: string | null
           normalized_attributes_json?: Json
           recency_score?: number | null
           region?: string | null
+          score_30d_delta?: number | null
           season?: string | null
           source_count?: number
+          subfamily?: string | null
+          trend_confidence?: number | null
+          trend_status?: string | null
           trend_type: string
+          vertical?: string | null
           year?: number | null
         }
         Update: {
           authority_score?: number | null
+          canonical_label?: string | null
           confidence_score?: number | null
           created_at?: string
+          family?: string | null
           first_seen_at?: string | null
           id?: string
           label?: string
           last_seen_at?: string | null
+          micro_signal?: string | null
           normalized_attributes_json?: Json
           recency_score?: number | null
           region?: string | null
+          score_30d_delta?: number | null
           season?: string | null
           source_count?: number
+          subfamily?: string | null
+          trend_confidence?: number | null
+          trend_status?: string | null
           trend_type?: string
+          vertical?: string | null
           year?: number | null
         }
         Relationships: []

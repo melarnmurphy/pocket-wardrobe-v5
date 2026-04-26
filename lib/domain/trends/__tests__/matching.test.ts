@@ -22,6 +22,10 @@ function makeSignal(overrides: Partial<TrendSignalWithColour> = {}): TrendSignal
     confidence_score: 0.85,
     last_seen_at: NOW,
     trend_colour: null,
+    sources: [],
+    entities: [],
+    metrics_30d: [],
+    latest_metric: null,
     ...overrides
   };
 }

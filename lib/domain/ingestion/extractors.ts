@@ -38,6 +38,32 @@ const CLOTHING_KEYWORDS = [
   "boot"
 ] as const;
 
+const PRIORITY_CATEGORY_KEYWORDS: Array<{
+  category: string;
+  keywords: string[];
+}> = [
+  {
+    category: "shoes",
+    keywords: ["sneaker", "sneakers", "trainer", "trainers", "shoe", "shoes", "loafer", "loafers", "boot", "boots", "sandals", "sandal", "footwear"]
+  },
+  {
+    category: "dress",
+    keywords: ["dress", "midi", "maxi", "mini"]
+  },
+  {
+    category: "outerwear",
+    keywords: ["coat", "jacket", "blazer", "cardigan", "trench", "parka", "duffle", "puffer"]
+  },
+  {
+    category: "bottom",
+    keywords: ["trouser", "trousers", "pant", "pants", "jean", "jeans", "skirt", "short", "shorts"]
+  },
+  {
+    category: "top",
+    keywords: ["top", "tee", "t-shirt", "shirt", "blouse", "tank", "cami", "bodysuit"]
+  }
+];
+
 const COLOUR_WORDS = [
   { token: "black", value: "black" },
   { token: "white", value: "white" },
@@ -61,6 +87,8 @@ const COLOUR_WORDS = [
   { token: "gold", value: "gold" },
   { token: "silver", value: "silver" }
 ] as const;
+
+const PRODUCT_METADATA_FETCH_TIMEOUT_MS = 2000;
 
 export type { GarmentAttribute };
 
@@ -96,7 +124,7 @@ type ProductMetadata = {
 type RetailerAdapterMetadata = Partial<
   Pick<
     ProductMetadata,
-    "title" | "brand" | "price" | "currency" | "description" | "image_url"
+    "title" | "brand" | "price" | "currency" | "description" | "image_url" | "colour"
   >
 >;
 
@@ -130,7 +158,8 @@ export async function extractProductMetadataFromUrl(
           "user-agent":
             "Mozilla/5.0 (compatible; PocketWardrobeBot/0.1; +https://example.com/bot)"
         },
-        cache: "no-store"
+        cache: "no-store",
+        signal: AbortSignal.timeout(PRODUCT_METADATA_FETCH_TIMEOUT_MS)
       });
 
       if (!response.ok) {
@@ -168,6 +197,13 @@ export async function extractProductMetadataFromUrl(
       inferBrandFromHostname(parsedUrl.hostname);
     const productCategory =
       findJsonLdValue(html, "category") || findMetaContent(html, "property", "product:category");
+    const explicitProductColour =
+      sanitizeText(findJsonLdValue(html, "color")) ||
+      sanitizeText(findJsonLdValue(html, "colour")) ||
+      sanitizeText(findMetaContent(html, "property", "product:color")) ||
+      sanitizeText(findMetaContent(html, "property", "product:colour")) ||
+      sanitizeText(findMetaContent(html, "name", "color")) ||
+      sanitizeText(findMetaContent(html, "name", "colour"));
     const productPrice =
       adapter.price ||
       findMetaContent(html, "property", "product:price:amount") ||
@@ -189,20 +225,27 @@ export async function extractProductMetadataFromUrl(
       productCategory,
       description: adapter.description || sanitizeText(ogDescription || metaDescription)
     });
-    const colour = deriveColourFromText(`${title || ""} ${ogDescription || ""}`);
+    const description = adapter.description || sanitizeText(ogDescription || metaDescription);
+    const bodyText = extractBodyDescriptionText(html);
+    const colour = deriveProductColour({
+      explicitColour: adapter.colour || explicitProductColour,
+      url: parsedUrl,
+      title,
+      description,
+      bodyText
+    });
     const imageUrl = resolveAbsoluteUrl(
       parsedUrl,
       adapter.image_url || sanitizeText(ogImage) || sanitizeText(twitterImage) || findJsonLdImageValue(html)
     );
-    const description = adapter.description || sanitizeText(ogDescription || metaDescription);
     // Body text often contains richer fit/fabric detail than meta descriptions,
     // but also retailer styling advice. Strip styling sentences out before
     // extracting garment facts so "pair with denim" does not become material.
-    const bodyText = extractBodyDescriptionText(html);
     const stylingSuggestions = extractStylingSuggestionsFromText(bodyText);
     const factualBodyText = removeStylingSentences(bodyText);
     const attributeText = [factualBodyText, description, title].filter(Boolean).join(" ");
     const extracted = extractGarmentAttributesFromText(attributeText);
+    const compositionMaterial = extractCompositionMaterialFromHtml(html);
 
     return {
       title,
@@ -210,7 +253,7 @@ export async function extractProductMetadataFromUrl(
       category,
       colour,
       fit: extracted.fit,
-      material: extracted.material,
+      material: extracted.material || compositionMaterial,
       retailer,
       description,
       price: sanitizeText(productPrice),
@@ -487,9 +530,15 @@ function deriveTitleFromUrl(url: URL) {
 
 function deriveCategoryFromText(value: string | null) {
   const haystack = value?.toLowerCase() || "";
-  const match = CLOTHING_KEYWORDS.find((keyword) => haystack.includes(keyword));
+
+  for (const entry of PRIORITY_CATEGORY_KEYWORDS) {
+    if (entry.keywords.some((keyword) => hasWholeWordMatch(haystack, keyword))) {
+      return entry.category;
+    }
+  }
+
+  const match = CLOTHING_KEYWORDS.find((keyword) => hasWholeWordMatch(haystack, keyword));
   if (!match) return null;
-  // Normalise aliases to canonical category names
   if (match === "t-shirt" || match === "tee") return "top";
   return match;
 }
@@ -510,6 +559,22 @@ function deriveProductCategory(params: {
     .join(" ");
 
   return deriveCategoryFromText(combinedText) || "top";
+}
+
+function deriveProductColour(params: {
+  explicitColour: string | null;
+  url: URL;
+  title: string | null;
+  description: string | null;
+  bodyText: string | null;
+}) {
+  return (
+    deriveColourFromText(params.explicitColour) ||
+    deriveColourFromText(deriveTitleFromUrl(params.url)) ||
+    deriveColourFromText(params.title) ||
+    deriveColourFromText(params.description) ||
+    deriveColourFromText(params.bodyText)
+  );
 }
 
 function deriveColourFromText(value: string | null) {
@@ -914,6 +979,49 @@ function extractElementByClassFragment(html: string, classFragment: string): str
   if (!closeMatch) return null;
 
   return stripHtmlTags(html.slice(contentStart, contentStart + closeMatch.index));
+}
+
+function extractCompositionMaterialFromHtml(html: string): string | null {
+  const text = stripHtmlTags(html);
+
+  const mainAndLiningMatch =
+    /main\s*:?\s*((?:\d+%\s*[a-z]+(?:\s*,?\s*|\s+)){1,8})\s+lining\s*:?\s*((?:\d+%\s*[a-z]+(?:\s*,?\s*|\s+)){1,8})/i.exec(
+      text
+    );
+
+  if (mainAndLiningMatch?.[1]) {
+    const main = normalizeCompositionSegment(mainAndLiningMatch[1]);
+    const lining = normalizeCompositionSegment(mainAndLiningMatch[2]);
+
+    return lining ? `${main}; Lining: ${lining}` : main;
+  }
+
+  const mainOnlyMatch =
+    /main\s*:?\s*((?:\d+%\s*[a-z]+(?:\s*,?\s*|\s+)){1,8})/i.exec(text);
+  if (mainOnlyMatch?.[1]) {
+    return normalizeCompositionSegment(mainOnlyMatch[1]);
+  }
+
+  const compositionOnlyMatch =
+    /((?:\d+%\s*[a-z]+(?:\s*,?\s*|\s+)){2,8})/i.exec(text);
+  if (compositionOnlyMatch?.[1]) {
+    return normalizeCompositionSegment(compositionOnlyMatch[1]);
+  }
+
+  return null;
+}
+
+function normalizeCompositionSegment(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const parts = value.match(/\d+%\s*[A-Za-z]+/g) ?? [];
+  if (!parts.length) {
+    return null;
+  }
+
+  return parts.map((part) => part.replace(/\s+/g, " ").trim()).join(", ");
 }
 
 function stripHtmlTags(html: string): string {

@@ -137,7 +137,72 @@ export const canonicalWardrobeColours = [
 
 export type WardrobeColourFamily = (typeof canonicalWardrobeColours)[number]["family"];
 
+const wardrobeColourSynonyms: Record<string, WardrobeColourFamily> = {
+  black: "black",
+  jet: "black",
+  ebony: "black",
+  noir: "black",
+  white: "white",
+  ivory: "white",
+  pearl: "white",
+  snow: "white",
+  grey: "grey",
+  gray: "grey",
+  silver: "grey",
+  slate: "grey",
+  ash: "grey",
+  blue: "blue",
+  navy: "blue",
+  cobalt: "blue",
+  indigo: "blue",
+  denim: "blue",
+  red: "red",
+  burgundy: "red",
+  crimson: "red",
+  scarlet: "red",
+  green: "green",
+  olive: "green",
+  sage: "green",
+  emerald: "green",
+  yellow: "yellow",
+  mustard: "yellow",
+  gold: "yellow",
+  orange: "orange",
+  rust: "orange",
+  copper: "orange",
+  purple: "purple",
+  violet: "purple",
+  lavender: "purple",
+  pink: "pink",
+  blush: "pink",
+  rose: "pink",
+  brown: "brown",
+  hazelnut: "brown",
+  tan: "brown",
+  cognac: "brown",
+  mocha: "brown",
+  chestnut: "brown",
+  chocolate: "brown",
+  beige: "beige",
+  camel: "beige",
+  cream: "beige",
+  oatmeal: "beige",
+  sand: "beige",
+  taupe: "beige",
+  natural: "beige"
+};
+
 export function getCanonicalWardrobeColour(family: string | null | undefined) {
   const normalized = (family ?? "").trim().toLowerCase();
   return canonicalWardrobeColours.find((colour) => colour.family === normalized) ?? null;
+}
+
+export function inferWardrobeColourFamily(value: string | null | undefined) {
+  const normalized = (value ?? "").trim().toLowerCase();
+
+  if (!normalized) {
+    return null;
+  }
+
+  return wardrobeColourSynonyms[normalized] ?? null;
 }

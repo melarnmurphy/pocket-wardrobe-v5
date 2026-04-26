@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Planner — Pocket Wardrobe</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* Page-specific polish */
+    .planner-main {
+      display: grid;
+      grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+      gap: clamp(24px, 3vw, 48px);
+      margin-top: 48px;
+    }
+    @media (max-width: 1000px) { .planner-main { grid-template-columns: 1fr; } }
+
+    .outfit-hero {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      padding: 0;
+      overflow: hidden;
+    }
+    .outfit-hero .stage {
+      position: relative;
+      padding: 40px 40px 32px;
+      background:
+        radial-gradient(80% 60% at 50% 20%, rgba(255,255,255,0) 0%, rgba(243,240,232,0.5) 80%),
+        var(--paper);
+      border-bottom: 1px solid var(--line);
+    }
+    .outfit-hero .stage-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 12px;
+      aspect-ratio: 5/4;
+    }
+    @media (max-width: 760px) {
+      .outfit-hero .stage-grid { grid-template-columns: 1fr 1fr; grid-template-rows: auto; aspect-ratio: auto; }
+    }
+    .os-tile { background: var(--mist); border: 1px solid var(--line-soft); border-radius: var(--r-sm); overflow: hidden; position: relative; transition: transform .18s ease, border-color .18s ease; cursor: pointer; }
+    .os-tile:hover { border-color: var(--ink); }
+    .os-tile img { width:100%; height:100%; object-fit:cover; position: absolute; inset: 0; }
+    .os-tile .role {
+      position: absolute;
+      top: 10px; left: 10px;
+      background: rgba(250,250,246,.92);
+      backdrop-filter: blur(6px);
+      color: var(--ink-70);
+      padding: 3px 8px; border-radius: 2px;
+      font-size: 9px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase;
+    }
+    .os-tile.hero { grid-column: span 2; grid-row: span 2; }
+    .os-tile.tall { grid-row: span 2; }
+
+    .outfit-body { padding: 32px 40px 36px; }
+
+    .context-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      padding: 28px 30px;
+    }
+    .weather-hero {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 16px;
+    }
+    .weather-hero .temp {
+      font-family: var(--f-display);
+      font-weight: 300;
+      font-size: 72px;
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+    .weather-hero .temp sup {
+      font-size: 24px;
+      top: -0.7em;
+      position: relative;
+    }
+    .weather-hero .icon {
+      width: 68px; height: 68px;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--ink-70);
+    }
+    .weather-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line-soft);
+    }
+    .weather-meta .wm .lbl {
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ink-60);
+    }
+    .weather-meta .wm .val {
+      font-family: var(--f-display);
+      font-size: 22px;
+      margin-top: 4px;
+    }
+
+    .alt-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .alt-item {
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line-soft);
+      display: grid;
+      grid-template-columns: 88px 1fr auto;
+      gap: 16px;
+      align-items: center;
+      cursor: pointer;
+      transition: opacity .15s ease;
+    }
+    .alt-item:last-child { border-bottom: 0; }
+    .alt-item:hover { opacity: 1; }
+    .alt-item .thumbs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 2px;
+      aspect-ratio: 1;
+      border-radius: 2px;
+      overflow: hidden;
+      background: var(--mist);
+    }
+    .alt-item .thumbs img { width: 100%; height: 100%; object-fit: cover; }
+    .alt-item .title .n { font-family: var(--f-display); font-size: 16px; }
+    .alt-item .title .s { font-size: 11px; color: var(--ink-60); letter-spacing: 0.06em; margin-top: 2px; }
+    .alt-item .chevron {
+      color: var(--ink-40);
+    }
+
+    .reason-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .reason-pills .r {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px;
+      background: var(--mist);
+      color: var(--ink-70);
+      border-radius: var(--r-pill);
+      font-size: 11px;
+      letter-spacing: 0.02em;
+    }
+    .reason-pills .r svg { width: 12px; height: 12px; }
+
+    .laundry-stack {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .laundry-stack i {
+      flex: 1;
+      height: 4px;
+      background: var(--line);
+      border-radius: 2px;
+    }
+    .laundry-stack i.on { background: var(--ink); }
+    .laundry-stack i.warn { background: var(--oxblood); }
+
+    .saved-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+    }
+    @media (max-width: 900px) { .saved-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .saved-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color .15s ease;
+    }
+    .saved-card:hover { border-color: var(--ink); }
+    .saved-card .mini {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      aspect-ratio: 1;
+      background: var(--mist);
+    }
+    .saved-card .mini img { width: 100%; height: 100%; object-fit: cover; }
+    .saved-card .footer { padding: 14px 16px 16px; }
+
+    .micro-dot {
+      width: 8px; height: 8px;
+      background: var(--oxblood);
+      border-radius: 50%;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+
+<header class="pw-top">
+  <div class="pw-top-row pw-shell">
+    <a href="index.html" class="pw-brand"><span class="mark"></span>Pocket Wardrobe</a>
+    <nav class="pw-nav">
+      <a href="wardrobe.html">Wardrobe</a>
+      <a href="lookbook.html">Lookbook</a>
+      <a href="trends.html">Trends</a>
+      <a href="planner.html" class="active">Planner</a>
+      <a href="rules.html">Rules</a>
+    </nav>
+    <div class="pw-user">
+      <button class="icon-btn" aria-label="Search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+      <button class="icon-btn" aria-label="Notifications"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8Z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></button>
+      <div class="avatar">MM</div>
+    </div>
+  </div>
+</header>
+
+<main class="pw-shell">
+  <section class="pw-page">
+
+    <!-- Page head -->
+    <div class="pw-page-head animate-in">
+      <div class="title">
+        <span class="eyebrow">Week of April 20 — April 26, 2026</span>
+        <h1 class="display display-lg">This week.</h1>
+        <p class="caption" style="margin-top: 10px;">5 days planned · 2 open · Amsterdam · 13°–19° · partly cloudy</p>
+      </div>
+      <div class="row-wrap">
+        <button class="btn btn-outline" data-open-modal="#generator-settings">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="4"/></svg>
+          Preferences
+        </button>
+        <button class="btn btn-primary" data-open-modal="#generator-settings">Generate the week</button>
+      </div>
+    </div>
+
+    <!-- View toggle -->
+    <div class="view-toggle" style="margin-bottom: 32px;">
+      <a href="planner.html" class="active">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="1.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        Week <small>· plan</small>
+      </a>
+      <a href="diary.html">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="1.5"/><path d="M3 10h18M8 3v4M16 3v4M8 14h2M12 14h2M16 14h2M8 17h2M12 17h2M16 17h2"/></svg>
+        Month <small>· diary</small>
+      </a>
+    </div>
+
+    <!-- Week strip -->
+    <div class="week-strip animate-in">
+      <div class="day planned">
+        <div class="dow">Mon</div>
+        <div class="date">20</div>
+        <div class="weather">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2"/></svg>
+          17° · clear
+        </div>
+        <div class="occasion">Workwear</div>
+        <div class="pipe-strip"><i></i><i></i><i></i></div>
+      </div>
+      <div class="day planned selected">
+        <div class="dow">Tue</div>
+        <div class="date">21</div>
+        <div class="weather">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 14a5 5 0 0 1 4-8 5 5 0 0 1 9 4 4 4 0 0 1 1 8H8a4 4 0 0 1-4-4Z"/></svg>
+          14° · cloudy
+        </div>
+        <div class="occasion">Workwear</div>
+        <div class="pipe-strip"><i></i><i></i><i></i></div>
+      </div>
+      <div class="day planned">
+        <div class="dow">Wed</div>
+        <div class="date">22</div>
+        <div class="weather">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 14a5 5 0 0 1 4-8 5 5 0 0 1 9 4 4 4 0 0 1 1 8H8"/><path d="m8 20-1 2M12 20l-1 2M16 20l-1 2"/></svg>
+          12° · rain
+        </div>
+        <div class="occasion">Client lunch</div>
+        <div class="pipe-strip"><i></i><i></i><i></i></div>
+      </div>
+      <div class="day planned">
+        <div class="dow">Thu</div>
+        <div class="date">23</div>
+        <div class="weather">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 14a5 5 0 0 1 4-8 5 5 0 0 1 9 4 4 4 0 0 1 1 8H8a4 4 0 0 1-4-4Z"/></svg>
+          15° · cloudy
+        </div>
+        <div class="occasion">Workwear</div>
+        <div class="pipe-strip"><i></i><i></i><i></i></div>
+      </div>
+      <div class="day planned">
+        <div class="dow">Fri</div>
+        <div class="date">24</div>
+        <div class="weather">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2"/></svg>
+          18° · clear
+        </div>
+        <div class="occasion">Evening</div>
+        <div class="pipe-strip"><i></i><i></i><i></i></div>
+      </div>
+      <div class="day">
+        <div class="dow">Sat</div>
+        <div class="date">25</div>
+        <div class="weather">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2"/></svg>
+          19° · clear
+        </div>
+        <div class="occasion">Unplanned</div>
+        <div class="pipe-strip"><i></i><i></i><i></i></div>
+      </div>
+      <div class="day">
+        <div class="dow">Sun</div>
+        <div class="date">26</div>
+        <div class="weather">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 14a5 5 0 0 1 4-8 5 5 0 0 1 9 4 4 4 0 0 1 1 8H8"/></svg>
+          16° · cloudy
+        </div>
+        <div class="occasion">Unplanned</div>
+        <div class="pipe-strip"><i></i><i></i><i></i></div>
+      </div>
+    </div>
+
+    <!-- Variant tabs -->
+    <div class="outfit-variant-tabs" style="margin-top: 40px;">
+      <button class="active" data-tabgroup="variant" data-tabvalue="safe">Safe <small>· reliable</small></button>
+      <button data-tabgroup="variant" data-tabvalue="elevated">Elevated <small>· a little more</small></button>
+      <button data-tabgroup="variant" data-tabvalue="trend">Trend-forward <small>· aligned with signals</small></button>
+      <div style="margin-left:auto; display:flex; align-items:center; gap: 10px;">
+        <span class="eyebrow">Tuesday, Apr 21</span>
+      </div>
+    </div>
+
+    <!-- Main planner layout -->
+    <div class="planner-main animate-in">
+
+      <!-- LEFT: Outfit hero -->
+      <div class="outfit-hero">
+
+        <!-- Stage (outfit composition) -->
+        <div class="stage">
+          <div class="stage-grid">
+            <div class="os-tile hero">
+              <img src="https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=800&q=85" alt="" />
+              <span class="role">Blazer · Anchor</span>
+            </div>
+            <div class="os-tile">
+              <img src="https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=500&q=80" alt="" />
+              <span class="role">Top</span>
+            </div>
+            <div class="os-tile">
+              <img src="https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=500&q=80" alt="" />
+              <span class="role">Trouser</span>
+            </div>
+            <div class="os-tile">
+              <img src="https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=500&q=80" alt="" />
+              <span class="role">Shoes</span>
+            </div>
+            <div class="os-tile">
+              <img src="https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=500&q=80" alt="" />
+              <span class="role">Bag</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Outfit body -->
+        <div class="outfit-body">
+          <div class="row-between" style="margin-bottom: 24px; align-items:flex-start;">
+            <div>
+              <span class="eyebrow">Safe · Tuesday</span>
+              <h2 class="display display-md" style="margin-top: 8px;">
+                Beige, taupe,<br/>a quiet ivory blouse.
+              </h2>
+            </div>
+            <span class="match-badge match-exact" style="flex-shrink: 0;"><i class="dot"></i>Matches 2 signals</span>
+          </div>
+
+          <!-- Reasoning -->
+          <div class="reason-list" style="margin-bottom: 28px;">
+            <div class="reason-item">
+              <div class="i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 2v4M4.93 4.93l2.83 2.83M2 12h4M4.93 19.07l2.83-2.83M12 18v4M19.07 19.07l-2.83-2.83M22 12h-4M19.07 4.93l-2.83 2.83"/></svg></div>
+              <div class="t"><strong>Tonal palette — bone, sand, umber.</strong> Three close LCH distances create a coherent, low-contrast, daytime-appropriate look.</div>
+            </div>
+            <div class="reason-item">
+              <div class="i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 14a5 5 0 0 1 4-8 5 5 0 0 1 9 4 4 4 0 0 1 1 8H8a4 4 0 0 1-4-4Z"/></svg></div>
+              <div class="t"><strong>14° and cloudy.</strong> Wool blazer gives light warmth; silk blouse keeps the torso breathable under it.</div>
+            </div>
+            <div class="reason-item">
+              <div class="i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v6M15 4v6"/></svg></div>
+              <div class="t"><strong>Workwear appropriate.</strong> Closed-toe leather, tailored shoulder, neutral palette. Reads professional without being stiff.</div>
+            </div>
+            <div class="reason-item">
+              <div class="i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-5"/></svg></div>
+              <div class="t"><strong>Lifts 3 underworn pieces.</strong> The Acne taupe trouser (4 wears), Khaite ivory blouse (2 wears), and Manolo pump (5 wears) gain useful rotation.</div>
+            </div>
+          </div>
+
+          <!-- Action bar -->
+          <div class="row-wrap">
+            <button class="btn btn-primary">Wear this today</button>
+            <button class="btn btn-outline">Save outfit</button>
+            <button class="btn btn-outline">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 3v9h9"/></svg>
+              Regenerate
+            </button>
+            <button class="btn btn-ghost"><span class="underline">Swap a piece</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Context + alternatives -->
+      <aside class="stack-5">
+
+        <!-- Weather card -->
+        <div class="context-card">
+          <span class="eyebrow">Tuesday · Amsterdam</span>
+          <div class="weather-hero" style="margin-top: 10px;">
+            <div class="temp">14<sup>°</sup></div>
+            <div class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 14a5 5 0 0 1 4-8 5 5 0 0 1 9 4 4 4 0 0 1 1 8H8a4 4 0 0 1-4-4Z"/></svg></div>
+          </div>
+          <p class="caption" style="margin-top: 10px; max-width: 36ch;">Partly cloudy, still morning, breeze from the east. Light jacket territory.</p>
+          <div class="weather-meta">
+            <div class="wm"><div class="lbl">Low</div><div class="val mono">11°</div></div>
+            <div class="wm"><div class="lbl">High</div><div class="val mono">17°</div></div>
+            <div class="wm"><div class="lbl">Rain</div><div class="val mono">10%</div></div>
+          </div>
+        </div>
+
+        <!-- Occasion card -->
+        <div class="context-card">
+          <div class="row-between">
+            <span class="eyebrow">Occasion</span>
+            <button class="btn btn-ghost btn-sm" style="padding: 0;"><span class="underline">Change</span></button>
+          </div>
+          <div class="display display-sm" style="font-size: 22px; margin-top: 8px;">Workwear — studio</div>
+          <p class="caption" style="font-size: 12px; margin-top: 8px;">Creative office. Smart casual expected, closed shoes, blazer optional but you usually wear one.</p>
+          <div class="reason-pills" style="margin-top: 14px;">
+            <span class="r"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 13 9 17l10-10"/></svg>Closed-toe</span>
+            <span class="r"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 13 9 17l10-10"/></svg>Tailored</span>
+            <span class="r"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 13 9 17l10-10"/></svg>Neutral palette</span>
+          </div>
+        </div>
+
+        <!-- Laundry awareness -->
+        <div class="context-card">
+          <div class="row-between">
+            <span class="eyebrow">Availability</span>
+            <span class="caption" style="font-size: 11px;">2 pieces unavailable</span>
+          </div>
+          <p class="caption" style="font-size: 12px; margin-top: 8px;">Your Burberry trench is out this week (rainproofing) and the black slip is packed for Friday's event.</p>
+          <div class="laundry-stack">
+            <i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i class="warn"></i>
+          </div>
+        </div>
+
+        <!-- Alternatives -->
+        <div class="context-card">
+          <div class="row-between">
+            <span class="eyebrow">Try instead</span>
+            <button class="btn btn-ghost btn-sm" style="padding: 0;"><span class="underline">See all</span></button>
+          </div>
+          <div class="alt-list" style="margin-top: 10px;">
+            <div class="alt-item">
+              <div class="thumbs">
+                <img src="https://images.unsplash.com/photo-1588099768523-f4e6a5679d88?auto=format&fit=crop&w=200&q=70" />
+                <img src="https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=200&q=70" />
+                <img src="https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=200&q=70" />
+                <img src="https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=200&q=70" />
+              </div>
+              <div class="title">
+                <div class="n">Knit &amp; denim</div>
+                <div class="s">Softer, more casual · 4 pieces</div>
+              </div>
+              <div class="chevron"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m9 6 6 6-6 6"/></svg></div>
+            </div>
+            <div class="alt-item">
+              <div class="thumbs">
+                <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=70" />
+                <img src="https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=200&q=70" />
+                <img src="https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=200&q=70" />
+                <img src="https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=200&q=70" />
+              </div>
+              <div class="title">
+                <div class="n">Trench &amp; silk</div>
+                <div class="s">Sharper silhouette · 4 pieces</div>
+              </div>
+              <div class="chevron"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m9 6 6 6-6 6"/></svg></div>
+            </div>
+            <div class="alt-item">
+              <div class="thumbs">
+                <img src="https://images.unsplash.com/photo-1605518216938-7c31b7b14ad0?auto=format&fit=crop&w=200&q=70" />
+                <img src="https://images.unsplash.com/photo-1551232864-3f0890e580d9?auto=format&fit=crop&w=200&q=70" />
+                <img src="https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=200&q=70" />
+                <img src="https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=200&q=70" />
+              </div>
+              <div class="title">
+                <div class="n">Olive dress, knit</div>
+                <div class="s">Trend-forward · 4 pieces</div>
+              </div>
+              <div class="chevron"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m9 6 6 6-6 6"/></svg></div>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+    </div>
+
+    <!-- Saved outfits section -->
+    <section style="margin-top: 88px;">
+      <div class="row-between" style="margin-bottom: 28px;">
+        <div>
+          <span class="eyebrow">Saved · 42 outfits · 9 this month</span>
+          <h2 class="display display-md" style="margin-top: 6px;">Outfits you love.</h2>
+        </div>
+        <div class="row-wrap">
+          <span class="chip active">All</span>
+          <span class="chip">Workwear</span>
+          <span class="chip">Evening</span>
+          <span class="chip">Weekend</span>
+        </div>
+      </div>
+
+      <div class="saved-grid animate-in">
+        <article class="saved-card">
+          <div class="mini">
+            <img src="https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=400&q=75" />
+            <img src="https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=400&q=75" />
+            <img src="https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=400&q=75" />
+            <img src="https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=400&q=75" />
+          </div>
+          <div class="footer">
+            <span class="eyebrow">Workwear · worn 7×</span>
+            <div class="display display-sm" style="font-size: 18px; margin-top: 6px;">The tonal blazer</div>
+            <div class="caption" style="font-size: 11px; margin-top: 4px;">Last worn Apr 14</div>
+          </div>
+        </article>
+
+        <article class="saved-card">
+          <div class="mini">
+            <img src="https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=400&q=75" />
+            <img src="https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=400&q=75" />
+            <img src="https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=400&q=75" />
+            <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=400&q=75" />
+          </div>
+          <div class="footer">
+            <span class="eyebrow">Evening · worn 3×</span>
+            <div class="display display-sm" style="font-size: 18px; margin-top: 6px;">Black slip, trench</div>
+            <div class="caption" style="font-size: 11px; margin-top: 4px;">Last worn Mar 30</div>
+          </div>
+        </article>
+
+        <article class="saved-card">
+          <div class="mini">
+            <img src="https://images.unsplash.com/photo-1588099768523-f4e6a5679d88?auto=format&fit=crop&w=400&q=75" />
+            <img src="https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=400&q=75" />
+            <img src="https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=400&q=75" />
+            <img src="https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=400&q=75" />
+          </div>
+          <div class="footer">
+            <span class="eyebrow">Weekend · worn 12×</span>
+            <div class="display display-sm" style="font-size: 18px; margin-top: 6px;">Knit &amp; denim</div>
+            <div class="caption" style="font-size: 11px; margin-top: 4px;">Last worn Apr 18</div>
+          </div>
+        </article>
+
+        <article class="saved-card">
+          <div class="mini">
+            <img src="https://images.unsplash.com/photo-1605518216938-7c31b7b14ad0?auto=format&fit=crop&w=400&q=75" />
+            <img src="https://images.unsplash.com/photo-1551232864-3f0890e580d9?auto=format&fit=crop&w=400&q=75" />
+            <img src="https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=400&q=75" />
+            <img src="https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=400&q=75" />
+          </div>
+          <div class="footer">
+            <span class="eyebrow">Travel · worn 2×</span>
+            <div class="display display-sm" style="font-size: 18px; margin-top: 6px;">Olive midi, cropped knit</div>
+            <div class="caption" style="font-size: 11px; margin-top: 4px;">Last worn Mar 22</div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+  </section>
+
+  <footer class="pw-foot">
+    <div><span class="eyebrow">Planner uses your weather · occasion profiles · wear history</span></div>
+    <div class="row-wrap" style="gap: var(--s-5);">
+      <a href="wardrobe.html" class="eyebrow">Wardrobe</a>
+      <a href="lookbook.html" class="eyebrow">Lookbook</a>
+      <a href="trends.html" class="eyebrow">Trends</a>
+    </div>
+  </footer>
+</main>
+
+<!-- =========================================================
+     GENERATOR SETTINGS MODAL
+     ========================================================= -->
+<div id="generator-settings" class="overlay">
+  <div class="modal modal-single" style="max-width: 760px;">
+    <div style="padding: 40px 48px 36px; max-height: 92vh; overflow-y: auto;">
+
+      <div class="row-between" style="align-items:flex-start;">
+        <div>
+          <span class="eyebrow">Plan your week</span>
+          <h2 class="display display-md" style="margin: 10px 0 0;">Generate outfits.</h2>
+        </div>
+        <button class="close" data-close-modal aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M6 18 18 6"/></svg></button>
+      </div>
+
+      <p class="caption" style="margin-top: 14px; max-width: 50ch;">We'll generate a safe, elevated, and trend-forward option for each planned day. You can still swap and regenerate any look.</p>
+
+      <!-- Location & week -->
+      <div class="field-grid-2" style="margin-top: 28px;">
+        <div class="field">
+          <label>Week</label>
+          <select>
+            <option>This week · Apr 20 – 26</option>
+            <option>Next week · Apr 27 – May 3</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Location (for weather)</label>
+          <select>
+            <option>Amsterdam, NL</option>
+            <option>Other · enter below</option>
+          </select>
+        </div>
+      </div>
+
+      <hr />
+
+      <!-- Occasion per day -->
+      <span class="eyebrow">Occasion per day</span>
+      <div class="stack-2" style="margin-top: 14px;">
+        <div class="row-between" style="padding: 12px 0; border-bottom: 1px solid var(--line-soft);">
+          <div class="row" style="gap: 16px;"><span class="eyebrow" style="width: 30px;">Mon</span><span style="font-family: var(--f-display); font-size: 16px;">Apr 20</span></div>
+          <select style="max-width: 220px;">
+            <option>Workwear — studio</option>
+            <option>Client meeting</option>
+            <option>Evening</option>
+            <option>Weekend casual</option>
+            <option>Travel</option>
+            <option>None · skip</option>
+          </select>
+        </div>
+        <div class="row-between" style="padding: 12px 0; border-bottom: 1px solid var(--line-soft);">
+          <div class="row" style="gap: 16px;"><span class="eyebrow" style="width: 30px;">Tue</span><span style="font-family: var(--f-display); font-size: 16px;">Apr 21</span></div>
+          <select style="max-width: 220px;"><option>Workwear — studio</option></select>
+        </div>
+        <div class="row-between" style="padding: 12px 0; border-bottom: 1px solid var(--line-soft);">
+          <div class="row" style="gap: 16px;"><span class="eyebrow" style="width: 30px;">Wed</span><span style="font-family: var(--f-display); font-size: 16px;">Apr 22</span></div>
+          <select style="max-width: 220px;"><option>Client lunch</option></select>
+        </div>
+        <div class="row-between" style="padding: 12px 0; border-bottom: 1px solid var(--line-soft);">
+          <div class="row" style="gap: 16px;"><span class="eyebrow" style="width: 30px;">Thu</span><span style="font-family: var(--f-display); font-size: 16px;">Apr 23</span></div>
+          <select style="max-width: 220px;"><option>Workwear — studio</option></select>
+        </div>
+        <div class="row-between" style="padding: 12px 0; border-bottom: 1px solid var(--line-soft);">
+          <div class="row" style="gap: 16px;"><span class="eyebrow" style="width: 30px;">Fri</span><span style="font-family: var(--f-display); font-size: 16px;">Apr 24</span></div>
+          <select style="max-width: 220px;"><option>Evening event</option></select>
+        </div>
+        <div class="row-between" style="padding: 12px 0; border-bottom: 1px solid var(--line-soft);">
+          <div class="row" style="gap: 16px;"><span class="eyebrow" style="width: 30px;">Sat</span><span style="font-family: var(--f-display); font-size: 16px;">Apr 25</span></div>
+          <select style="max-width: 220px;"><option>None · skip</option><option>Weekend casual</option></select>
+        </div>
+        <div class="row-between" style="padding: 12px 0;">
+          <div class="row" style="gap: 16px;"><span class="eyebrow" style="width: 30px;">Sun</span><span style="font-family: var(--f-display); font-size: 16px;">Apr 26</span></div>
+          <select style="max-width: 220px;"><option>None · skip</option><option>Weekend casual</option></select>
+        </div>
+      </div>
+
+      <hr />
+
+      <!-- Style weighting -->
+      <span class="eyebrow">Ranking preferences</span>
+      <div class="stack-3" style="margin-top: 14px;">
+        <div class="row-between" style="padding: 10px 0;">
+          <div><div style="font-family: var(--f-display); font-size: 16px;">Lift underworn pieces</div><div class="caption" style="font-size: 11px; margin-top: 2px;">9 pieces in your wardrobe have been worn fewer than 3 times.</div></div>
+          <span class="chip active">On</span>
+        </div>
+        <div class="row-between" style="padding: 10px 0; border-top: 1px solid var(--line-soft);">
+          <div><div style="font-family: var(--f-display); font-size: 16px;">Avoid repeating pieces</div><div class="caption" style="font-size: 11px; margin-top: 2px;">Don't show any single piece twice in a row.</div></div>
+          <span class="chip active">On</span>
+        </div>
+        <div class="row-between" style="padding: 10px 0; border-top: 1px solid var(--line-soft);">
+          <div><div style="font-family: var(--f-display); font-size: 16px;">Weigh trend signals</div><div class="caption" style="font-size: 11px; margin-top: 2px;">Boost looks aligned with this week's top signals.</div></div>
+          <span class="chip active">Medium</span>
+        </div>
+        <div class="row-between" style="padding: 10px 0; border-top: 1px solid var(--line-soft);">
+          <div><div style="font-family: var(--f-display); font-size: 16px;">Laundry-aware</div><div class="caption" style="font-size: 11px; margin-top: 2px;">Skip pieces marked unavailable or in laundry.</div></div>
+          <span class="chip active">On</span>
+        </div>
+      </div>
+
+      <hr />
+
+      <div class="field">
+        <label>Exclude these pieces</label>
+        <div class="row-wrap" style="margin-top: 8px;">
+          <span class="chip active">Burberry trench <span class="count">×</span></span>
+          <span class="chip active">The Row black slip <span class="count">×</span></span>
+          <span class="chip ghost">+ Add</span>
+        </div>
+      </div>
+
+      <div class="row-wrap" style="margin-top: 36px;">
+        <button class="btn btn-primary btn-lg" data-close-modal>Generate 5 outfits</button>
+        <button class="btn btn-ghost" data-close-modal><span class="underline">Cancel</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

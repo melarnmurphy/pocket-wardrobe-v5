@@ -1,11 +1,15 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { DestructiveActionButton } from "@/components/destructive-action-button";
 import { FormFeedback } from "@/components/form-feedback";
 import { showAppToast } from "@/lib/ui/app-toast";
 import type { StyleRuleListItem } from "@/lib/domain/style-rules/service";
+import type {
+  SemanticSuggestionMatch,
+  SupportedStyleRuleValueType
+} from "@/lib/domain/style-rules/semantic-matching";
 import { formActionState, type FormActionState } from "@/lib/ui/form-action-state";
 
 export function StyleRuleSection({
@@ -116,25 +120,11 @@ function StyleRuleCard({
         <div className="mt-4 space-y-4">
           <details className="pw-panel-soft p-4">
             <summary className="cursor-pointer text-sm font-medium">Edit Rule</summary>
-            <form action={updateFormAction} className="mt-4 space-y-4">
-              <input type="hidden" name="id" value={rule.id} />
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Rule Type" name="rule_type" defaultValue={rule.rule_type} />
-                <Field label="Predicate" name="predicate" defaultValue={rule.predicate} />
-                <Field label="Subject Type" name="subject_type" defaultValue={rule.subject_type} />
-                <Field label="Subject Value" name="subject_value" defaultValue={rule.subject_value} />
-                <Field label="Object Type" name="object_type" defaultValue={rule.object_type} />
-                <Field label="Object Value" name="object_value" defaultValue={rule.object_value} />
-                <Field label="Weight" name="weight" type="number" step="0.01" defaultValue={String(rule.weight)} />
-              </div>
-              <TextAreaField label="Explanation" name="explanation" defaultValue={rule.explanation || ""} />
-              <label className="flex items-center gap-3 text-sm">
-                <input type="checkbox" name="active" defaultChecked={rule.active} />
-                <span>Active</span>
-              </label>
-              <SubmitButton idle="Update Rule" pending="Updating..." tone="light" />
-              <FormFeedback state={updateState} className="mt-3" />
-            </form>
+            <RuleEditForm
+              rule={rule}
+              action={updateFormAction}
+              state={updateState}
+            />
           </details>
           <form action={deleteFormAction}>
             <input type="hidden" name="id" value={rule.id} />
@@ -144,6 +134,208 @@ function StyleRuleCard({
         </div>
       ) : null}
     </article>
+  );
+}
+
+type PreviewState = {
+  loading: boolean;
+  match: SemanticSuggestionMatch | null;
+};
+
+function isPreviewableType(value: string): value is SupportedStyleRuleValueType {
+  return (
+    value === "category" ||
+    value === "colour" ||
+    value === "colour_family" ||
+    value === "occasion" ||
+    value === "season"
+  );
+}
+
+function buildPreviewHelperText(
+  match: SemanticSuggestionMatch | null,
+  currentValue: string
+): string | null {
+  if (!match) {
+    return null;
+  }
+
+  if (match.resolved === currentValue.trim()) {
+    return null;
+  }
+
+  if (match.method === "exact") {
+    return `Will save as "${match.resolved}".`;
+  }
+
+  return `Will likely save as "${match.resolved}" (${Math.round(match.score * 100)}% semantic match).`;
+}
+
+function RuleEditForm({
+  rule,
+  action,
+  state
+}: {
+  rule: StyleRuleListItem;
+  action: (formData: FormData) => void;
+  state: FormActionState;
+}) {
+  const [subjectType, setSubjectType] = useState(rule.subject_type);
+  const [subjectValue, setSubjectValue] = useState(rule.subject_value);
+  const [objectType, setObjectType] = useState(rule.object_type);
+  const [objectValue, setObjectValue] = useState(rule.object_value);
+  const [previewStateByField, setPreviewStateByField] = useState<Record<"subject" | "object", PreviewState>>({
+    subject: { loading: false, match: null },
+    object: { loading: false, match: null }
+  });
+
+  useEffect(() => {
+    setSubjectType(rule.subject_type);
+    setSubjectValue(rule.subject_value);
+    setObjectType(rule.object_type);
+    setObjectValue(rule.object_value);
+    setPreviewStateByField({
+      subject: { loading: false, match: null },
+      object: { loading: false, match: null }
+    });
+  }, [rule.id, rule.object_type, rule.object_value, rule.subject_type, rule.subject_value]);
+
+  useEffect(() => {
+    const requests = [
+      { key: "subject" as const, type: subjectType, value: subjectValue },
+      { key: "object" as const, type: objectType, value: objectValue }
+    ].filter(
+      (request): request is {
+        key: "subject" | "object";
+        type: SupportedStyleRuleValueType;
+        value: string;
+      } => isPreviewableType(request.type) && request.value.trim().length > 0
+    );
+
+    const requestKeys = new Set(requests.map((request) => request.key));
+    setPreviewStateByField((previous) => ({
+      subject: requestKeys.has("subject") ? previous.subject : { loading: false, match: null },
+      object: requestKeys.has("object") ? previous.object : { loading: false, match: null }
+    }));
+
+    if (requests.length === 0) {
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setPreviewStateByField((previous) => {
+        const next = { ...previous };
+        for (const request of requests) {
+          next[request.key] = {
+            loading: true,
+            match: previous[request.key].match
+          };
+        }
+        return next;
+      });
+
+      await Promise.all(
+        requests.map(async (request) => {
+          try {
+            const response = await fetch("/api/style-rules/normalize", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                type: request.type,
+                value: request.value
+              }),
+              signal: controller.signal
+            });
+
+            const payload = (await response.json()) as {
+              match?: SemanticSuggestionMatch | null;
+            };
+
+            if (!response.ok) {
+              throw new Error("normalize_failed");
+            }
+
+            setPreviewStateByField((previous) => ({
+              ...previous,
+              [request.key]: {
+                loading: false,
+                match: payload.match ?? null
+              }
+            }));
+          } catch (error) {
+            if ((error as Error).name === "AbortError") {
+              return;
+            }
+
+            setPreviewStateByField((previous) => ({
+              ...previous,
+              [request.key]: {
+                loading: false,
+                match: null
+              }
+            }));
+          }
+        })
+      );
+    }, 250);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [objectType, objectValue, subjectType, subjectValue]);
+
+  return (
+    <form action={action} className="mt-4 space-y-4">
+      <input type="hidden" name="id" value={rule.id} />
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Rule Type" name="rule_type" defaultValue={rule.rule_type} />
+        <Field label="Predicate" name="predicate" defaultValue={rule.predicate} />
+        <ControlledField
+          label="Subject Type"
+          name="subject_type"
+          value={subjectType}
+          onChange={setSubjectType}
+        />
+        <ControlledField
+          label="Subject Value"
+          name="subject_value"
+          value={subjectValue}
+          onChange={setSubjectValue}
+          helperText={
+            previewStateByField.subject.loading
+              ? "Checking canonical match..."
+              : buildPreviewHelperText(previewStateByField.subject.match, subjectValue)
+          }
+        />
+        <ControlledField
+          label="Object Type"
+          name="object_type"
+          value={objectType}
+          onChange={setObjectType}
+        />
+        <ControlledField
+          label="Object Value"
+          name="object_value"
+          value={objectValue}
+          onChange={setObjectValue}
+          helperText={
+            previewStateByField.object.loading
+              ? "Checking canonical match..."
+              : buildPreviewHelperText(previewStateByField.object.match, objectValue)
+          }
+        />
+        <Field label="Weight" name="weight" type="number" step="0.01" defaultValue={String(rule.weight)} />
+      </div>
+      <TextAreaField label="Explanation" name="explanation" defaultValue={rule.explanation || ""} />
+      <label className="flex items-center gap-3 text-sm">
+        <input type="checkbox" name="active" defaultChecked={rule.active} />
+        <span>Active</span>
+      </label>
+      <SubmitButton idle="Update Rule" pending="Updating..." tone="light" />
+      <FormFeedback state={state} className="mt-3" />
+    </form>
   );
 }
 
@@ -195,6 +387,38 @@ function Field({
         defaultValue={defaultValue}
         step={step}
       />
+    </label>
+  );
+}
+
+function ControlledField({
+  label,
+  name,
+  value,
+  onChange,
+  type = "text",
+  helperText
+}: {
+  label: string;
+  name: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  helperText?: string | null;
+}) {
+  return (
+    <label className="flex flex-col gap-2 text-sm">
+      <span className="font-medium">{label}</span>
+      <input
+        className="rounded-[8px] border border-[var(--line)] bg-white px-4 py-3 outline-none"
+        name={name}
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      {helperText ? (
+        <span className="text-[11px] leading-5 text-[var(--muted)]">{helperText}</span>
+      ) : null}
     </label>
   );
 }

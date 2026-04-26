@@ -58,10 +58,19 @@ export const firedRuleSchema = z.object({
 });
 export type FiredRule = z.infer<typeof firedRuleSchema>;
 
+export const outfitInsightSchema = z.object({
+  key: z.enum(["palette", "layering", "weather", "occasion"]),
+  title: z.string(),
+  body: z.string(),
+  tags: z.array(z.string()).default([])
+});
+export type OutfitInsight = z.infer<typeof outfitInsightSchema>;
+
 // What the generator returns before saving
 export const generatedOutfitSchema = z.object({
   garments: z.array(outfitGarmentPreviewSchema),
   firedRules: z.array(firedRuleSchema),
+  insights: z.array(outfitInsightSchema).default([]),
   explanation: z.string().nullable() // null on free tier; Claude prose on Pro
 });
 export type GeneratedOutfit = z.infer<typeof generatedOutfitSchema>;

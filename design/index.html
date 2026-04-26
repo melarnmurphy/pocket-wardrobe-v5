@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pocket Wardrobe — Design System</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23FAFAF6'/%3E%3Crect x='40' y='40' width='20' height='20' fill='none' stroke='%230B0B0B' stroke-width='3'/%3E%3C/svg%3E" />
+</head>
+<body>
+
+<!-- ============ Top Nav (shared pattern) ============ -->
+<header class="pw-top">
+  <div class="pw-top-row pw-shell">
+    <a href="index.html" class="pw-brand"><span class="mark"></span>Pocket Wardrobe</a>
+    <nav class="pw-nav">
+      <a href="wardrobe.html">Wardrobe</a>
+      <a href="lookbook.html">Lookbook</a>
+      <a href="trends.html">Trends</a>
+      <a href="planner.html">Planner</a>
+      <a href="rules.html">Rules</a>
+    </nav>
+    <div class="pw-user">
+      <button class="icon-btn" aria-label="Search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </button>
+      <button class="icon-btn" aria-label="Notifications">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8Z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+      </button>
+      <div class="avatar">MM</div>
+    </div>
+  </div>
+</header>
+
+<main class="pw-shell">
+
+  <!-- ========== Hero ========== -->
+  <section class="pw-page" style="padding-bottom: 48px;">
+    <div class="stack-5 animate-in" style="max-width: 900px;">
+      <span class="eyebrow">Pocket Wardrobe — Design System, vol. 01</span>
+      <h1 class="display display-xl" style="margin:0;">
+        A quiet, editorial system for<br/>
+        <span class="serif-italic">the clothes you already own.</span>
+      </h1>
+      <p class="caption" style="max-width: 62ch; font-size: 16px; line-height: 1.6;">
+        Designed for focus on the garment, not the interface. Cool ivory, editorial black,
+        hair-thin lines, and a single serif voice. Built to frame wardrobes, lookbooks, trend signals,
+        and weekly outfits with gallery-grade restraint.
+      </p>
+      <div class="row-wrap" style="margin-top: 8px;">
+        <a href="wardrobe.html" class="btn btn-primary">Enter Wardrobe</a>
+        <a href="planner.html" class="btn btn-outline">Open Planner</a>
+        <a href="#system" class="btn btn-ghost"><span class="underline">Read the system</span></a>
+      </div>
+    </div>
+
+    <!-- Navigation tiles -->
+    <div class="grid-4" style="margin-top: 64px;">
+      <a href="wardrobe.html" class="card-soft" style="text-decoration:none; padding: 28px 24px; border: 1px solid var(--line); display:flex; flex-direction:column; gap: 18px; min-height: 260px; transition: border-color .2s ease;">
+        <span class="eyebrow">01 &middot; Wardrobe</span>
+        <div class="flex-1"></div>
+        <h3 class="display display-sm" style="margin:0;">Your<br/>inventory.</h3>
+        <p class="caption">Every piece you own. Filterable, wearable, explainable.</p>
+        <div class="row"><span class="eyebrow">View &rarr;</span></div>
+      </a>
+      <a href="lookbook.html" class="card-soft" style="text-decoration:none; padding: 28px 24px; border: 1px solid var(--line); display:flex; flex-direction:column; gap: 18px; min-height: 260px;">
+        <span class="eyebrow">02 &middot; Lookbook</span>
+        <div class="flex-1"></div>
+        <h3 class="display display-sm" style="margin:0;">Your<br/>aspirations.</h3>
+        <p class="caption">Inspiration, references, missing pieces — separate from what you own.</p>
+        <div class="row"><span class="eyebrow">View &rarr;</span></div>
+      </a>
+      <a href="trends.html" class="card-soft" style="text-decoration:none; padding: 28px 24px; border: 1px solid var(--line); display:flex; flex-direction:column; gap: 18px; min-height: 260px;">
+        <span class="eyebrow">03 &middot; Trends</span>
+        <div class="flex-1"></div>
+        <h3 class="display display-sm" style="margin:0;">Signals, not<br/>articles.</h3>
+        <p class="caption">Global fashion signals matched against your wardrobe.</p>
+        <div class="row"><span class="eyebrow">View &rarr;</span></div>
+      </a>
+      <a href="planner.html" class="card-soft" style="text-decoration:none; padding: 28px 24px; border: 1px solid var(--line); display:flex; flex-direction:column; gap: 18px; min-height: 260px; background: var(--ink); color: var(--ivory); border-color: var(--ink);">
+        <span class="eyebrow on-dark">04 &middot; Planner</span>
+        <div class="flex-1"></div>
+        <h3 class="display display-sm" style="margin:0; color: var(--ivory);">Seven days.<br/>One decision.</h3>
+        <p class="caption" style="color: var(--ink-20);">Weekly outfit generator — weather, occasion, explainable.</p>
+        <div class="row"><span class="eyebrow on-dark">Open &rarr;</span></div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ========== System ========== -->
+  <section id="system" class="sg-section">
+    <div class="head">
+      <div>
+        <span class="eyebrow">Foundations</span>
+        <h2>The palette.</h2>
+      </div>
+      <p class="kicker">
+        A restrained palette — near-white, true ink, warm hairline — with three reserved accents
+        for status, match quality, and emphasis. Use accents sparingly; let the garment carry colour.
+      </p>
+    </div>
+
+    <div class="color-strip">
+      <div class="color-tile"><div class="fill" style="background:#FAFAF6;"></div><div class="info"><span class="name">Ivory</span><span class="hex">#FAFAF6</span></div></div>
+      <div class="color-tile"><div class="fill" style="background:#FFFFFF; border-bottom: 1px solid var(--line);"></div><div class="info"><span class="name">Paper</span><span class="hex">#FFFFFF</span></div></div>
+      <div class="color-tile"><div class="fill" style="background:#F3F0E8;"></div><div class="info"><span class="name">Mist</span><span class="hex">#F3F0E8</span></div></div>
+      <div class="color-tile"><div class="fill" style="background:#ECE8DE;"></div><div class="info"><span class="name">Haze</span><span class="hex">#ECE8DE</span></div></div>
+
+      <div class="color-tile"><div class="fill" style="background:#0B0B0B;"></div><div class="info"><span class="name" style="color:var(--ivory); background:var(--ink); padding: 0 6px; border-radius: 2px;">Ink</span><span class="hex">#0B0B0B</span></div></div>
+      <div class="color-tile"><div class="fill" style="background:#3B3832;"></div><div class="info"><span class="name">Ink 70</span><span class="hex">#3B3832</span></div></div>
+      <div class="color-tile"><div class="fill" style="background:#8F8A82;"></div><div class="info"><span class="name">Ink 40</span><span class="hex">#8F8A82</span></div></div>
+      <div class="color-tile"><div class="fill" style="background:#E5E0D4;"></div><div class="info"><span class="name">Line</span><span class="hex">#E5E0D4</span></div></div>
+
+      <div class="color-tile"><div class="fill" style="background:#6E2B2B;"></div><div class="info"><span class="name">Oxblood</span><span class="hex">#6E2B2B</span></div></div>
+      <div class="color-tile"><div class="fill" style="background:#3E4A34;"></div><div class="info"><span class="name">Moss</span><span class="hex">#3E4A34</span></div></div>
+      <div class="color-tile"><div class="fill" style="background:#B08A3E;"></div><div class="info"><span class="name">Gold</span><span class="hex">#B08A3E</span></div></div>
+      <div class="color-tile"><div class="fill" style="background: repeating-linear-gradient(45deg, #fff, #fff 6px, #f3f0e8 6px, #f3f0e8 12px);"></div><div class="info"><span class="name quiet">Reserved</span><span class="hex">—</span></div></div>
+    </div>
+  </section>
+
+  <!-- Typography -->
+  <section class="sg-section">
+    <div class="head">
+      <div><span class="eyebrow">Foundations</span><h2>The voice.</h2></div>
+      <p class="kicker">Fraunces, variable serif, at display sizes — low weight, negative tracking. Inter for body and controls. A caps-with-track eyebrow sets the hierarchy.</p>
+    </div>
+
+    <div class="type-row"><div class="meta">Display / XL — 88/.98</div><div class="display display-xl">A quiet system.</div></div>
+    <div class="type-row"><div class="meta">Display / LG — 64/.98</div><div class="display display-lg">Your wardrobe, <span class="serif-italic">refined</span>.</div></div>
+    <div class="type-row"><div class="meta">Display / MD — 48/1.02</div><div class="display display-md">Olive tailoring this week.</div></div>
+    <div class="type-row"><div class="meta">Display / SM — 32/1.08</div><div class="display display-sm">Beige blazer · Camel trouser · White knit</div></div>
+    <div class="type-row"><div class="meta">Body — 15/1.55</div><div style="max-width: 62ch;">Designed for focus on the garment, not the interface. A restrained palette of near-white, true ink, and warm hairline; a single serif voice; a single sans for UI.</div></div>
+    <div class="type-row"><div class="meta">Caption — 13/1.5</div><div class="caption" style="max-width: 62ch;">Source count: 9. Types: fashion publications, runway coverage, brand releases. Confidence: high.</div></div>
+    <div class="type-row"><div class="meta">Eyebrow — 11/caps</div><div class="eyebrow">Wardrobe — 142 pieces — 6 categories</div></div>
+    <div class="type-row"><div class="meta">Mono — 13/tabular</div><div class="mono">$ 4.82 / wear · 28 wears · 1.4× versatility</div></div>
+  </section>
+
+  <!-- Buttons / chips -->
+  <section class="sg-section">
+    <div class="head">
+      <div><span class="eyebrow">Components</span><h2>Actions & chips.</h2></div>
+      <p class="kicker">Buttons use 12px caps tracked at .14em. Outline is the default; solid ink is reserved for the one primary decision on screen.</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="stack-5">
+        <div class="row-wrap">
+          <button class="btn btn-primary">Save look</button>
+          <button class="btn btn-outline">Add garment</button>
+          <button class="btn btn-quiet">Archive</button>
+          <button class="btn btn-ghost"><span class="underline">Edit</span></button>
+          <button class="btn-icon" aria-label="Favourite">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"/></svg>
+          </button>
+        </div>
+        <div class="row-wrap">
+          <span class="chip active">All <span class="count">142</span></span>
+          <span class="chip">Outerwear <span class="count">18</span></span>
+          <span class="chip">Knitwear <span class="count">24</span></span>
+          <span class="chip">Trousers <span class="count">19</span></span>
+          <span class="chip">Dresses <span class="count">11</span></span>
+          <span class="chip ghost">+ Shoes</span>
+        </div>
+        <div class="row-wrap">
+          <span class="tag solid">New</span>
+          <span class="tag">Cotton</span>
+          <span class="tag">Tailored</span>
+          <span class="tag moss">Low wear</span>
+          <span class="tag accent">Missing piece</span>
+        </div>
+        <div class="row-wrap">
+          <span class="match-badge match-exact"><i class="dot"></i>Exact match</span>
+          <span class="match-badge match-adjacent"><i class="dot"></i>Adjacent</span>
+          <span class="match-badge match-styling"><i class="dot"></i>Styling match</span>
+          <span class="match-badge match-missing"><i class="dot"></i>Missing piece</span>
+        </div>
+      </div>
+
+      <div class="stack-4">
+        <div class="searchbar">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input placeholder="Search your wardrobe · brand, colour, category" />
+          <span class="kbd">⌘ K</span>
+        </div>
+        <div class="card" style="padding: 20px 22px;">
+          <div class="row-between">
+            <div><span class="eyebrow">Confidence</span><div class="display display-sm" style="margin-top: 4px;">High</div></div>
+            <div class="confidence high" style="display:flex; align-items:center; gap: 10px; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-60);">
+              <span class="bars" style="display:inline-flex; gap:2px;">
+                <i style="width:3px; height:10px; background: var(--ink);"></i>
+                <i style="width:3px; height:14px; background: var(--ink);"></i>
+                <i style="width:3px; height:18px; background: var(--ink);"></i>
+              </span>
+              <span>9 sources</span>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="padding: 18px 22px;">
+          <div class="stat-row"><span class="label">Wear count</span><span class="value mono">28<small>wears</small></span></div>
+          <div class="stat-row"><span class="label">Cost per wear</span><span class="value mono">$4.82</span></div>
+          <div class="stat-row"><span class="label">Last worn</span><span class="value">Apr 14</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cards / garment example -->
+  <section class="sg-section">
+    <div class="head">
+      <div><span class="eyebrow">Components</span><h2>Garment & look cards.</h2></div>
+      <p class="kicker">Cover: 4:5. Meta: small caps brand, serif name, tabular sub. Cards are bordered only on the meta side — the image floats.</p>
+    </div>
+
+    <div class="grid-4">
+      <article class="garment-card">
+        <div class="cover">
+          <img src="https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=700&q=80" alt="" />
+          <span class="state">Worn 14×</span>
+          <div class="overlay-actions">
+            <button class="pill-action" data-toggle-class="active" aria-label="Favourite">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="meta">
+          <span class="brand">Totême</span>
+          <span class="name">Beige wool blazer</span>
+          <span class="sub"><span class="mono">$4.82/wear</span><i class="dot"></i>Cotton · Wool</span>
+        </div>
+      </article>
+
+      <article class="garment-card">
+        <div class="cover">
+          <img src="https://images.unsplash.com/photo-1588099768523-f4e6a5679d88?auto=format&fit=crop&w=700&q=80" alt="" />
+          <div class="overlay-actions">
+            <button class="pill-action active" aria-label="Favourited">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="meta">
+          <span class="brand">Arket</span>
+          <span class="name">Fisherman knit, oatmeal</span>
+          <span class="sub"><span class="mono">$6.40/wear</span><i class="dot"></i>Merino</span>
+        </div>
+      </article>
+
+      <article class="garment-card">
+        <div class="cover">
+          <img src="https://images.unsplash.com/photo-1605518216938-7c31b7b14ad0?auto=format&fit=crop&w=700&q=80" alt="" />
+          <span class="state">Low wear</span>
+        </div>
+        <div class="meta">
+          <span class="brand">Reformation</span>
+          <span class="name">Olive midi dress</span>
+          <span class="sub"><span class="mono">$22.00/wear</span><i class="dot"></i>Linen</span>
+        </div>
+      </article>
+
+      <article class="garment-card">
+        <div class="cover">
+          <img src="https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=700&q=80" alt="" />
+        </div>
+        <div class="meta">
+          <span class="brand">Levi's</span>
+          <span class="name">Straight 501, ecru</span>
+          <span class="sub"><span class="mono">$1.85/wear</span><i class="dot"></i>Denim</span>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- Modal sample -->
+  <section class="sg-section">
+    <div class="head">
+      <div><span class="eyebrow">Pattern</span><h2>Detail modal.</h2></div>
+      <p class="kicker">Image-led. The garment fills the left pane; the right pane is a quiet metadata column with grouped stat rows, swatches, and actions.</p>
+    </div>
+
+    <div class="card" style="padding: 0; overflow: hidden;">
+      <div style="display:grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); min-height: 560px;">
+        <div style="background: var(--haze); position: relative;">
+          <img src="https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=900&q=80" style="width:100%; height: 100%; object-fit: cover; min-height: 560px;" alt="" />
+        </div>
+        <div style="padding: 32px; display:flex; flex-direction: column; gap: 24px;">
+          <div class="row-between" style="align-items:flex-start;">
+            <div>
+              <span class="eyebrow">Totême &middot; F/W 2024</span>
+              <h2 class="display display-md" style="margin: 8px 0 0;">Beige wool<br/>blazer.</h2>
+            </div>
+            <span class="match-badge match-exact"><i class="dot"></i>Versatile</span>
+          </div>
+          <p class="caption" style="max-width: 50ch;">Relaxed, double-breasted, softly structured shoulder. Primary in eleven outfits this season. Reads as business casual, weekend, and evening depending on pairing.</p>
+
+          <div class="row-wrap">
+            <span class="tag">Cotton</span><span class="tag">Wool</span><span class="tag">Tailored</span><span class="tag">Season: AW</span>
+          </div>
+
+          <div>
+            <span class="eyebrow">Colour story</span>
+            <div class="swatch-row" style="margin-top: 10px;">
+              <div class="swatch"><i class="dot" style="background:#D6C8AF;"></i><span class="hex">#D6C8AF</span></div>
+              <div class="swatch"><i class="dot" style="background:#AD9E83;"></i><span class="hex">#AD9E83</span></div>
+              <div class="swatch"><i class="dot" style="background:#5C503C;"></i><span class="hex">#5C503C</span></div>
+            </div>
+          </div>
+
+          <div>
+            <span class="eyebrow">Stats</span>
+            <div style="margin-top: 6px;">
+              <div class="stat-row"><span class="label">Wear count</span><span class="value mono">28 <small>wears</small></span></div>
+              <div class="stat-row"><span class="label">Cost per wear</span><span class="value mono">$4.82</span></div>
+              <div class="stat-row"><span class="label">Last worn</span><span class="value">Apr 14, 2026</span></div>
+              <div class="stat-row"><span class="label">Versatility</span><span class="value">1.4×</span></div>
+            </div>
+          </div>
+
+          <div class="row-wrap" style="margin-top: 8px;">
+            <button class="btn btn-primary">Log wear</button>
+            <button class="btn btn-outline">Edit</button>
+            <button class="btn btn-ghost"><span class="underline">Archive</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Spacing / grid -->
+  <section class="sg-section">
+    <div class="head">
+      <div><span class="eyebrow">Foundations</span><h2>Grid, space, rhythm.</h2></div>
+      <p class="kicker">Max width 1440. 4-up on desktop, 2-up on mobile. Spacing scales at 4·8·12·16·24·32·48·64·96 px. Radii are near-square (2–8 px) except avatars and chips.</p>
+    </div>
+
+    <div class="grid-4">
+      <div class="card" style="padding: 22px;">
+        <span class="eyebrow">Rhythm</span>
+        <div class="stack-2" style="margin-top:14px;">
+          <div style="height: 4px; background: var(--ink); width: 12%;"></div>
+          <div style="height: 4px; background: var(--ink); width: 24%;"></div>
+          <div style="height: 4px; background: var(--ink); width: 36%;"></div>
+          <div style="height: 4px; background: var(--ink); width: 48%;"></div>
+          <div style="height: 4px; background: var(--ink); width: 72%;"></div>
+          <div style="height: 4px; background: var(--ink); width: 96%;"></div>
+        </div>
+      </div>
+      <div class="card" style="padding: 22px;">
+        <span class="eyebrow">Radii</span>
+        <div class="row" style="margin-top:14px; gap: 14px; flex-wrap: wrap;">
+          <div style="width: 46px; height: 46px; background: var(--mist); border: 1px solid var(--line); border-radius: 2px;"></div>
+          <div style="width: 46px; height: 46px; background: var(--mist); border: 1px solid var(--line); border-radius: 4px;"></div>
+          <div style="width: 46px; height: 46px; background: var(--mist); border: 1px solid var(--line); border-radius: 8px;"></div>
+          <div style="width: 46px; height: 46px; background: var(--mist); border: 1px solid var(--line); border-radius: 999px;"></div>
+        </div>
+      </div>
+      <div class="card" style="padding: 22px;">
+        <span class="eyebrow">Elevation</span>
+        <div class="stack-3" style="margin-top: 14px;">
+          <div style="height: 38px; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-sm); border-radius: 4px;"></div>
+          <div style="height: 38px; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-md); border-radius: 4px;"></div>
+          <div style="height: 38px; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-lg); border-radius: 4px;"></div>
+        </div>
+      </div>
+      <div class="card" style="padding: 22px;">
+        <span class="eyebrow">Motion</span>
+        <div class="stack-2" style="margin-top: 14px;">
+          <div class="caption" style="font-size: 12px;">fast &middot; 160ms</div>
+          <div class="caption" style="font-size: 12px;">med &middot; 280ms</div>
+          <div class="caption" style="font-size: 12px;">slow &middot; 420ms</div>
+          <div class="caption" style="font-size: 12px; font-family: var(--f-mono);">cubic-bezier(.22,.61,.36,1)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="pw-foot">
+    <div>
+      <div class="brandmark">Pocket Wardrobe</div>
+      <div class="caption" style="margin-top: 4px;">Design system, volume 01 · Edition of one.</div>
+    </div>
+    <div class="row-wrap" style="gap: var(--s-6);">
+      <a href="wardrobe.html" class="eyebrow">Wardrobe</a>
+      <a href="lookbook.html" class="eyebrow">Lookbook</a>
+      <a href="trends.html" class="eyebrow">Trends</a>
+      <a href="planner.html" class="eyebrow">Planner</a>
+    </div>
+  </footer>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

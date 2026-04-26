@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
 import { createWearEventSchema, wearEventSchema } from "@/lib/domain/wear-events";
+import { getFeatureImagePath } from "@/lib/domain/wardrobe/service";
 import type { Database, TablesInsert } from "@/types/database";
 
 type WearEventRow = Database["public"]["Tables"]["wear_events"]["Row"];
@@ -43,7 +44,114 @@ export async function logWearEvent(input: z.input<typeof createWearEventSchema>)
     throw new Error(error.message);
   }
 
+  const { data: garment, error: garmentError } = await supabase
+    .from("garments")
+    .select("id,wear_count,purchase_price,last_worn_at")
+    .eq("id", payload.garment_id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (garmentError || !garment) {
+    throw new Error(garmentError?.message || "Garment not found.");
+  }
+
+  const parsedGarment = garment as Pick<
+    GarmentRow,
+    "id" | "wear_count" | "purchase_price" | "last_worn_at"
+  >;
+  const wornAt = payload.worn_at ?? new Date().toISOString();
+  const nextWearCount = parsedGarment.wear_count + 1;
+  const nextLastWornAt = latestTimestamp(parsedGarment.last_worn_at, wornAt);
+  const nextCostPerWear =
+    parsedGarment.purchase_price != null
+      ? parsedGarment.purchase_price / Math.max(nextWearCount, 1)
+      : null;
+
+  const { error: updateGarmentError } = await supabase
+    .from("garments")
+    .update({
+      wear_count: nextWearCount,
+      last_worn_at: nextLastWornAt,
+      cost_per_wear: nextCostPerWear
+    } as never)
+    .eq("id", payload.garment_id)
+    .eq("user_id", user.id);
+
+  if (updateGarmentError) {
+    throw new Error(updateGarmentError.message);
+  }
+
   return recentWearEventSchema.parse(data);
+}
+
+export async function incrementWearCount(params: {
+  garmentId: string;
+  wearsToAdd: number;
+  wornAt?: string | null;
+}) {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  const garmentId = z.string().uuid().parse(params.garmentId);
+  const wearsToAdd = z.number().int().positive().parse(params.wearsToAdd);
+
+  const { data: garment, error: garmentError } = await supabase
+    .from("garments")
+    .select("id,wear_count,purchase_price,last_worn_at")
+    .eq("id", garmentId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (garmentError || !garment) {
+    throw new Error(garmentError?.message || "Garment not found.");
+  }
+
+  const parsedGarment = garment as Pick<
+    GarmentRow,
+    "id" | "wear_count" | "purchase_price" | "last_worn_at"
+  >;
+  const effectiveWornAt = params.wornAt?.trim() ? params.wornAt : new Date().toISOString();
+  const nextWearCount = parsedGarment.wear_count + wearsToAdd;
+  const nextLastWornAt = latestTimestamp(parsedGarment.last_worn_at, effectiveWornAt);
+  const nextCostPerWear =
+    parsedGarment.purchase_price != null
+      ? parsedGarment.purchase_price / Math.max(nextWearCount, 1)
+      : null;
+
+  const { error: updateGarmentError } = await supabase
+    .from("garments")
+    .update({
+      wear_count: nextWearCount,
+      last_worn_at: nextLastWornAt,
+      cost_per_wear: nextCostPerWear
+    } as never)
+    .eq("id", garmentId)
+    .eq("user_id", user.id);
+
+  if (updateGarmentError) {
+    throw new Error(updateGarmentError.message);
+  }
+
+  return {
+    wear_count: nextWearCount,
+    last_worn_at: nextLastWornAt,
+    cost_per_wear: nextCostPerWear
+  };
+}
+
+function latestTimestamp(current: string | null, candidate: string) {
+  const currentDate = current ? new Date(current) : null;
+  const candidateDate = new Date(candidate);
+
+  if (Number.isNaN(candidateDate.getTime())) {
+    return current ?? candidate;
+  }
+
+  if (!currentDate || Number.isNaN(currentDate.getTime())) {
+    return candidateDate.toISOString();
+  }
+
+  return candidateDate > currentDate ? candidateDate.toISOString() : currentDate.toISOString();
 }
 
 export async function listRecentWearEvents(limit = 10): Promise<RecentWearEvent[]> {
@@ -100,16 +208,24 @@ export async function listRecentWearEvents(limit = 10): Promise<RecentWearEvent[
     garmentById.set(garment.id, garment);
   }
 
-  const firstImagePathByGarment = new Map<string, string>();
+  const featureImagePathByGarment = new Map<string, string>();
   const garmentImageRows: GarmentImageRow[] = images ?? [];
+  const imagesByGarment = new Map<string, GarmentImageRow[]>();
   for (const image of garmentImageRows) {
-    if (!firstImagePathByGarment.has(image.garment_id)) {
-      firstImagePathByGarment.set(image.garment_id, image.storage_path);
+    const existing = imagesByGarment.get(image.garment_id) ?? [];
+    existing.push(image);
+    imagesByGarment.set(image.garment_id, existing);
+  }
+
+  for (const [garmentId, garmentImages] of imagesByGarment.entries()) {
+    const featurePath = getFeatureImagePath(garmentImages as any);
+    if (featurePath) {
+      featureImagePathByGarment.set(garmentId, featurePath);
     }
   }
 
   const previewUrlsByPath = new Map<string, string | null>();
-  const imagePaths = Array.from(firstImagePathByGarment.values());
+  const imagePaths = Array.from(featureImagePathByGarment.values());
 
   if (imagePaths.length) {
     const { data: signedUrls, error: signedUrlsError } = await supabase.storage
@@ -134,7 +250,7 @@ export async function listRecentWearEvents(limit = 10): Promise<RecentWearEvent[
       garment_brand: garmentById.get(event.garment_id)?.brand ?? null,
       garment_category: garmentById.get(event.garment_id)?.category ?? null,
       garment_preview_url: (() => {
-        const path = firstImagePathByGarment.get(event.garment_id);
+        const path = featureImagePathByGarment.get(event.garment_id);
         return path ? previewUrlsByPath.get(path) ?? null : null;
       })()
     })

@@ -15,6 +15,7 @@ import {
   createReceiptDraftAction,
   deleteGarmentAction,
   logWearAction,
+  setGarmentFeatureImageAction,
   updateGarmentAction,
   toggleGarmentFavouriteAction
 } from "@/app/wardrobe/actions";
@@ -38,15 +39,14 @@ export default async function WardrobePage({
       typeFilter: firstParam(resolvedSearchParams?.type) ?? "all",
       seasonFilter: firstParam(resolvedSearchParams?.season) ?? "all",
       colourFilter: firstParam(resolvedSearchParams?.colour) ?? "all",
-      statusFilter: firstParam(resolvedSearchParams?.status) ?? "all",
       favouritesOnly: firstParam(resolvedSearchParams?.fav) === "1",
       sortBy: firstParam(resolvedSearchParams?.sort) ?? "newest"
     };
-    const initialActiveGarmentId = firstParam(resolvedSearchParams?.item) ?? null;
+    const initialSelectedGarmentId = firstParam(resolvedSearchParams?.garment) ?? null;
     const requestedSource = firstParam(resolvedSearchParams?.source);
     const createRequested = firstParam(resolvedSearchParams?.create) === "1";
     const initialCreateState = {
-      isOpen: createRequested && !initialActiveGarmentId,
+      isOpen: createRequested && !initialSelectedGarmentId,
       sourceMode:
         requestedSource === "photo" ||
         requestedSource === "product_url" ||
@@ -66,7 +66,7 @@ export default async function WardrobePage({
           billingCheckoutEnabled={billingStatus.checkoutEnabled}
           premiumFeatures={premiumFeatures}
           initialBrowseState={initialBrowseState}
-          initialActiveGarmentId={initialActiveGarmentId}
+          initialSelectedGarmentId={initialSelectedGarmentId}
           initialCreateState={initialCreateState}
           createGarmentAction={createGarmentAction}
           createPhotoDraftAction={createPhotoDraftAction}
@@ -74,6 +74,7 @@ export default async function WardrobePage({
           createReceiptDraftAction={createReceiptDraftAction}
           addGarmentImageAction={addGarmentImageAction}
           deleteGarmentAction={deleteGarmentAction}
+          setGarmentFeatureImageAction={setGarmentFeatureImageAction}
           toggleGarmentFavouriteAction={toggleGarmentFavouriteAction}
           logWearAction={logWearAction}
           updateGarmentAction={updateGarmentAction}

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/trend-scanners?archetype=runway",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/trend-scanners?archetype=street_social",
+      "schedule": "30 6 * * *"
+    },
+    {
+      "path": "/api/cron/trend-scanners?archetype=editorial",
+      "schedule": "0 7 * * 1"
+    },
+    {
+      "path": "/api/cron/trend-scanners?archetype=colour_authority",
+      "schedule": "0 8 1 * *"
+    }
+  ]
+}

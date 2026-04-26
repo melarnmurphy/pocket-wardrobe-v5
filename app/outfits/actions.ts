@@ -7,6 +7,7 @@ import {
   type GeneratedOutfit
 } from "@/lib/domain/outfits";
 import {
+  deleteOutfit,
   generateOutfitForUser,
   saveOutfit
 } from "@/lib/domain/outfits/service";
@@ -39,7 +40,7 @@ export async function getSwapCandidatesAction(
   try {
     const garments = await listWardrobeGarments();
     return garments.filter(
-      g => categoryToRole(g.category) === role && g.id !== excludeGarmentId
+      g => categoryToRole(g.category, g.subcategory, g.title) === role && g.id !== excludeGarmentId
     );
   } catch {
     return [];
@@ -58,5 +59,34 @@ export async function saveOutfitAction(
     return { id };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Save failed" };
+  }
+}
+
+export async function deleteOutfitAction(
+  previousState: { status: "idle" | "success" | "error"; message: string | null },
+  formData: FormData
+): Promise<{ status: "idle" | "success" | "error"; message: string | null }> {
+  const outfitId = formData.get("outfit_id");
+
+  if (typeof outfitId !== "string") {
+    return {
+      ...previousState,
+      status: "error",
+      message: "Missing outfit id."
+    };
+  }
+
+  try {
+    await deleteOutfit(outfitId);
+    revalidatePath("/outfits");
+    return {
+      status: "success",
+      message: "Outfit deleted."
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Delete failed."
+    };
   }
 }

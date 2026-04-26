@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trends — Pocket Wardrobe</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="pw-top">
+  <div class="pw-top-row pw-shell">
+    <a href="index.html" class="pw-brand"><span class="mark"></span>Pocket Wardrobe</a>
+    <nav class="pw-nav">
+      <a href="wardrobe.html">Wardrobe</a>
+      <a href="lookbook.html">Lookbook</a>
+      <a href="trends.html" class="active">Trends</a>
+      <a href="planner.html">Planner</a>
+      <a href="rules.html">Rules</a>
+    </nav>
+    <div class="pw-user">
+      <button class="icon-btn" aria-label="Search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+      <button class="icon-btn" aria-label="Notifications"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8Z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></button>
+      <div class="avatar">MM</div>
+    </div>
+  </div>
+</header>
+
+<main class="pw-shell">
+  <section class="pw-page">
+
+    <!-- Head -->
+    <div class="pw-page-head animate-in">
+      <div class="title">
+        <span class="eyebrow">Global signals · Week of April 20, 2026</span>
+        <h1 class="display display-lg">Trends.</h1>
+        <p class="caption" style="margin-top: 10px;">47 normalized signals · 18 match your wardrobe · 6 flagged as missing pieces</p>
+      </div>
+      <div class="row-wrap">
+        <span class="eyebrow">Region:</span>
+        <select style="background: transparent; border: 0; font-family: inherit; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink); cursor: pointer;">
+          <option>Global</option>
+          <option>Europe</option>
+          <option>North America</option>
+          <option>Asia</option>
+        </select>
+        <button class="btn btn-outline">Subscribed sources</button>
+      </div>
+    </div>
+
+    <!-- Tabs (signal categories) -->
+    <div class="outfit-variant-tabs" style="margin-bottom: 40px;">
+      <button class="active" data-tabgroup="trend-cat" data-tabvalue="all">Overall <small>47</small></button>
+      <button data-tabgroup="trend-cat" data-tabvalue="colour">Colour <small>14</small></button>
+      <button data-tabgroup="trend-cat" data-tabvalue="garment">Garment <small>11</small></button>
+      <button data-tabgroup="trend-cat" data-tabvalue="silhouette">Silhouette <small>9</small></button>
+      <button data-tabgroup="trend-cat" data-tabvalue="material">Material <small>8</small></button>
+      <button data-tabgroup="trend-cat" data-tabvalue="aesthetic">Aesthetic <small>5</small></button>
+    </div>
+
+    <!-- Feature trend (editorial hero) -->
+    <article class="card animate-in" data-open-modal="#trend-detail" style="cursor: pointer; margin-bottom: 48px; overflow: hidden;">
+      <div style="display:grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);">
+        <div style="padding: 48px 44px 40px; display:flex; flex-direction: column; gap: 28px; justify-content: space-between; min-height: 420px;">
+          <div>
+            <div class="row-wrap" style="margin-bottom: 20px;">
+              <span class="eyebrow">Signal of the week</span>
+              <span class="match-badge match-exact"><i class="dot"></i>Strong match for you</span>
+            </div>
+            <h2 class="display display-lg" style="margin: 0; max-width: 18ch;">
+              Soft white neutrals,<br/>
+              deep olive,<br/>
+              <span class="serif-italic">relaxed tailoring.</span>
+            </h2>
+            <p class="caption" style="max-width: 52ch; margin-top: 20px; font-size: 15px;">
+              Across European runway coverage and nine ready-to-wear releases, a clear signal: softer
+              whites, grounded greens, and looser shoulder lines. Maps strongly to business-casual and
+              minimal wardrobes. Your wardrobe is already 62% aligned.
+            </p>
+          </div>
+
+          <div class="row-between" style="flex-wrap: wrap; gap: 24px;">
+            <div class="row" style="gap: 24px;">
+              <div>
+                <span class="eyebrow">Confidence</span>
+                <div class="display display-sm" style="font-size: 22px; margin-top: 2px;">High</div>
+              </div>
+              <div>
+                <span class="eyebrow">Sources</span>
+                <div class="display display-sm" style="font-size: 22px; margin-top: 2px;">9</div>
+              </div>
+              <div>
+                <span class="eyebrow">Your pieces</span>
+                <div class="display display-sm" style="font-size: 22px; margin-top: 2px;">11<small class="caption" style="font-size: 12px; margin-left: 4px;">of 18</small></div>
+              </div>
+            </div>
+            <button class="btn btn-primary">Style from this</button>
+          </div>
+        </div>
+        <div style="background: var(--haze); min-height: 420px; display:grid; grid-template-columns: 1fr 1fr; gap: 2px;">
+          <div style="overflow: hidden;"><img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=700&q=80" style="width:100%; height:100%; object-fit:cover;" alt="" /></div>
+          <div style="overflow: hidden;"><img src="https://images.unsplash.com/photo-1605518216938-7c31b7b14ad0?auto=format&fit=crop&w=700&q=80" style="width:100%; height:100%; object-fit:cover;" alt="" /></div>
+          <div style="overflow: hidden; grid-column: span 2;"><img src="https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=1000&q=80" style="width:100%; height:100%; object-fit:cover;" alt="" /></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- Section title -->
+    <div class="row-between" style="margin-bottom: 28px;">
+      <div>
+        <span class="eyebrow">This week · 18 signals</span>
+        <h2 class="display display-md" style="margin-top: 6px;">Matches in your wardrobe.</h2>
+      </div>
+      <div class="row-wrap">
+        <span class="chip active">All matches <span class="count">18</span></span>
+        <span class="chip">Exact <span class="count">4</span></span>
+        <span class="chip">Adjacent <span class="count">8</span></span>
+        <span class="chip">Styling <span class="count">6</span></span>
+      </div>
+    </div>
+
+    <!-- Trend cards grid -->
+    <div class="grid-3 animate-in">
+
+      <article class="trend-card">
+        <div class="head">
+          <span class="eyebrow">Colour</span>
+          <div class="swatches">
+            <i style="background:#D6C8AF;"></i>
+            <i style="background:#EADFC8;"></i>
+            <i style="background:#F4EEDD;"></i>
+          </div>
+        </div>
+        <h3>Soft white neutrals</h3>
+        <p class="caption">Warm ivories and chalky off-whites replacing cool crisp whites across S/S collections.</p>
+        <div class="row-wrap"><span class="match-badge match-exact"><i class="dot"></i>Exact match · 6 pieces</span></div>
+        <div class="sources">
+          <span><span class="n">9</span>sources</span>
+          <span class="quiet">·</span>
+          <span>Publications · Runway</span>
+        </div>
+        <div class="confidence high"><span class="bars"><i></i><i></i><i></i></span><span>High confidence</span></div>
+      </article>
+
+      <article class="trend-card">
+        <div class="head">
+          <span class="eyebrow">Colour</span>
+          <div class="swatches">
+            <i style="background:#3E4A34;"></i>
+            <i style="background:#6B705C;"></i>
+          </div>
+        </div>
+        <h3>Deep olive, grounded green</h3>
+        <p class="caption">A movement toward muted, earthy greens in tailoring and outerwear.</p>
+        <div class="row-wrap"><span class="match-badge match-adjacent"><i class="dot"></i>Adjacent · 2 pieces</span></div>
+        <div class="sources">
+          <span><span class="n">7</span>sources</span>
+          <span class="quiet">·</span>
+          <span>Runway · Brand releases</span>
+        </div>
+        <div class="confidence high"><span class="bars"><i></i><i></i><i></i></span><span>High confidence</span></div>
+      </article>
+
+      <article class="trend-card">
+        <div class="head">
+          <span class="eyebrow">Garment</span>
+          <div class="swatches">
+            <i style="background:#AD9E83;"></i>
+            <i style="background:#D6C8AF;"></i>
+          </div>
+        </div>
+        <h3>Relaxed tailoring</h3>
+        <p class="caption">Dropped shoulders, looser silhouettes, longer break. Replaces mid-2020s sharp tailoring.</p>
+        <div class="row-wrap"><span class="match-badge match-exact"><i class="dot"></i>Exact match · 3 pieces</span></div>
+        <div class="sources">
+          <span><span class="n">11</span>sources</span>
+          <span class="quiet">·</span>
+          <span>Publications · Runway</span>
+        </div>
+        <div class="confidence high"><span class="bars"><i></i><i></i><i></i></span><span>High confidence</span></div>
+      </article>
+
+      <article class="trend-card">
+        <div class="head">
+          <span class="eyebrow">Material</span>
+          <div class="swatches">
+            <i style="background:#EADFC8;"></i>
+            <i style="background:#D6C8AF;"></i>
+            <i style="background:#FFFFFF; border-color: var(--line);"></i>
+          </div>
+        </div>
+        <h3>Heavyweight linen</h3>
+        <p class="caption">Crumpled, textured linens surfacing in resort and early-summer drops.</p>
+        <div class="row-wrap"><span class="match-badge match-styling"><i class="dot"></i>Styling match</span></div>
+        <div class="sources">
+          <span><span class="n">6</span>sources</span>
+          <span class="quiet">·</span>
+          <span>Runway · Press releases</span>
+        </div>
+        <div class="confidence med"><span class="bars"><i></i><i></i><i></i></span><span>Medium confidence</span></div>
+      </article>
+
+      <article class="trend-card">
+        <div class="head">
+          <span class="eyebrow">Silhouette</span>
+          <div class="swatches">
+            <i style="background:#1E2A3A;"></i>
+          </div>
+        </div>
+        <h3>Drop-waist, low-slung</h3>
+        <p class="caption">Returning 1920s reference mixed with modern oversizing. Narrow in uptake.</p>
+        <div class="row-wrap"><span class="match-badge match-missing"><i class="dot"></i>Missing piece</span></div>
+        <div class="sources">
+          <span><span class="n">4</span>sources</span>
+          <span class="quiet">·</span>
+          <span>Runway only</span>
+        </div>
+        <div class="confidence low"><span class="bars"><i></i><i></i><i></i></span><span>Low confidence</span></div>
+      </article>
+
+      <article class="trend-card">
+        <div class="head">
+          <span class="eyebrow">Colour</span>
+          <div class="swatches">
+            <i style="background:#6E2B2B;"></i>
+            <i style="background:#7A3E3E;"></i>
+          </div>
+        </div>
+        <h3>Oxblood &amp; burgundy return</h3>
+        <p class="caption">Deep reds in leather goods, outerwear, and evening. Building steadily.</p>
+        <div class="row-wrap"><span class="match-badge match-adjacent"><i class="dot"></i>Adjacent · 1 piece</span></div>
+        <div class="sources">
+          <span><span class="n">8</span>sources</span>
+          <span class="quiet">·</span>
+          <span>Publications · Brand releases</span>
+        </div>
+        <div class="confidence med"><span class="bars"><i></i><i></i><i></i></span><span>Medium confidence</span></div>
+      </article>
+
+    </div>
+
+    <!-- Not a match yet -->
+    <div style="margin-top: 72px;" class="row-between">
+      <div>
+        <span class="eyebrow">Signals without matches in your wardrobe</span>
+        <h2 class="display display-md" style="margin-top: 6px;">Noticing, not pushing.</h2>
+      </div>
+      <a href="#" class="btn btn-ghost"><span class="underline">See all 29 unmatched signals</span></a>
+    </div>
+
+    <div class="grid-4" style="margin-top: 28px;">
+      <article class="card" style="padding: 20px 22px;">
+        <span class="eyebrow">Pattern</span>
+        <div class="display display-sm" style="font-size: 18px; margin-top: 8px;">Faded tonal stripe</div>
+        <div class="sparkline" style="margin: 14px 0 10px; background-image: linear-gradient(90deg, transparent 0%, #8F8A82 50%, #0B0B0B 100%); opacity: .25; height: 2px;"></div>
+        <div class="caption" style="font-size: 11px;">4 sources · Low confidence</div>
+      </article>
+      <article class="card" style="padding: 20px 22px;">
+        <span class="eyebrow">Silhouette</span>
+        <div class="display display-sm" style="font-size: 18px; margin-top: 8px;">Utility workwear</div>
+        <div class="sparkline" style="margin: 14px 0 10px; background: linear-gradient(90deg, transparent 0%, #0B0B0B 100%); opacity: .35; height: 2px;"></div>
+        <div class="caption" style="font-size: 11px;">5 sources · Medium confidence</div>
+      </article>
+      <article class="card" style="padding: 20px 22px;">
+        <span class="eyebrow">Aesthetic</span>
+        <div class="display display-sm" style="font-size: 18px; margin-top: 8px;">Quiet luxury, cont'd</div>
+        <div class="sparkline" style="margin: 14px 0 10px; background: linear-gradient(90deg, transparent 0%, #0B0B0B 100%); opacity: .5; height: 2px;"></div>
+        <div class="caption" style="font-size: 11px;">12 sources · High confidence</div>
+      </article>
+      <article class="card" style="padding: 20px 22px;">
+        <span class="eyebrow">Garment</span>
+        <div class="display display-sm" style="font-size: 18px; margin-top: 8px;">Buttery leather bomber</div>
+        <div class="sparkline" style="margin: 14px 0 10px; background: linear-gradient(90deg, transparent 0%, #0B0B0B 80%); opacity: .3; height: 2px;"></div>
+        <div class="caption" style="font-size: 11px;">6 sources · Medium confidence</div>
+      </article>
+    </div>
+
+  </section>
+
+  <footer class="pw-foot">
+    <div><span class="eyebrow">Signals ingested from RSS · sitemaps · press releases · manual curation</span></div>
+    <div class="row-wrap" style="gap: var(--s-5);">
+      <a href="wardrobe.html" class="eyebrow">Wardrobe</a>
+      <a href="lookbook.html" class="eyebrow">Lookbook</a>
+      <a href="planner.html" class="eyebrow">Planner</a>
+    </div>
+  </footer>
+</main>
+
+<!-- =========================================================
+     TREND DETAIL MODAL
+     ========================================================= -->
+<div id="trend-detail" class="overlay">
+  <div class="modal modal-wide">
+    <div class="hero" style="aspect-ratio: auto; height: auto;">
+      <img src="https://images.unsplash.com/photo-1605518216938-7c31b7b14ad0?auto=format&fit=crop&w=1200&q=85" alt="" />
+      <button class="close close-floating" data-close-modal aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M6 18 18 6"/></svg>
+      </button>
+      <div style="position: absolute; bottom: 18px; left: 18px; display:flex; gap: 6px;">
+        <span class="tag solid" style="border-color: rgba(250,250,246,.1); background: rgba(10,10,10,.6); color: var(--ivory); backdrop-filter: blur(8px);">Signal of the week</span>
+      </div>
+    </div>
+    <div class="body">
+      <div class="head">
+        <div>
+          <span class="brand-line">Signal · Week 17, 2026</span>
+          <h2>Soft white<br/>neutrals.</h2>
+        </div>
+        <button class="close" data-close-modal aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M6 18 18 6"/></svg></button>
+      </div>
+
+      <p class="caption" style="max-width: 50ch;">
+        Warm ivory, chalk, and bone replacing cooler crisp whites across S/S ready-to-wear, three major
+        European runway shows, and two notable brand releases. Reads best in linen and cotton
+        against muted companions (olive, camel, stone).
+      </p>
+
+      <section>
+        <span class="eyebrow">Canonical palette</span>
+        <div class="swatch-row" style="margin-top: 12px;">
+          <div class="swatch"><i class="dot" style="background:#F4EEDD;"></i><span class="hex">#F4EEDD · Ivory</span></div>
+          <div class="swatch"><i class="dot" style="background:#EADFC8;"></i><span class="hex">#EADFC8 · Bone</span></div>
+          <div class="swatch"><i class="dot" style="background:#D6C8AF;"></i><span class="hex">#D6C8AF · Sand</span></div>
+          <div class="swatch"><i class="dot" style="background:#C2B89E;"></i><span class="hex">#C2B89E · Clay</span></div>
+        </div>
+        <div class="caption" style="font-size: 12px; margin-top: 10px;">Canonical approximation · not tied to any proprietary colour system.</div>
+      </section>
+
+      <section>
+        <span class="eyebrow">Your match · 11 pieces</span>
+        <div class="row" style="gap: 10px; margin-top: 12px; overflow-x: auto; padding-bottom: 4px;">
+          <div style="width: 110px; flex-shrink: 0;">
+            <div style="aspect-ratio: 4/5; overflow: hidden; border-radius: 3px; background: var(--mist);"><img src="https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=260&q=70" style="width:100%; height:100%; object-fit:cover;" /></div>
+            <div style="font-size: 11px; color: var(--ink-60); margin-top: 6px; letter-spacing: 0.06em;">Totême blazer</div>
+            <div class="match-badge match-exact" style="margin-top: 4px;"><i class="dot"></i>Exact</div>
+          </div>
+          <div style="width: 110px; flex-shrink: 0;">
+            <div style="aspect-ratio: 4/5; overflow: hidden; border-radius: 3px; background: var(--mist);"><img src="https://images.unsplash.com/photo-1588099768523-f4e6a5679d88?auto=format&fit=crop&w=260&q=70" style="width:100%; height:100%; object-fit:cover;" /></div>
+            <div style="font-size: 11px; color: var(--ink-60); margin-top: 6px; letter-spacing: 0.06em;">Arket knit</div>
+            <div class="match-badge match-exact" style="margin-top: 4px;"><i class="dot"></i>Exact</div>
+          </div>
+          <div style="width: 110px; flex-shrink: 0;">
+            <div style="aspect-ratio: 4/5; overflow: hidden; border-radius: 3px; background: var(--mist);"><img src="https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=260&q=70" style="width:100%; height:100%; object-fit:cover;" /></div>
+            <div style="font-size: 11px; color: var(--ink-60); margin-top: 6px; letter-spacing: 0.06em;">Khaite blouse</div>
+            <div class="match-badge match-exact" style="margin-top: 4px;"><i class="dot"></i>Exact</div>
+          </div>
+          <div style="width: 110px; flex-shrink: 0;">
+            <div style="aspect-ratio: 4/5; overflow: hidden; border-radius: 3px; background: var(--mist);"><img src="https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=260&q=70" style="width:100%; height:100%; object-fit:cover;" /></div>
+            <div style="font-size: 11px; color: var(--ink-60); margin-top: 6px; letter-spacing: 0.06em;">Veja V-10</div>
+            <div class="match-badge match-adjacent" style="margin-top: 4px;"><i class="dot"></i>Adjacent</div>
+          </div>
+          <div style="width: 110px; flex-shrink: 0;">
+            <div style="aspect-ratio: 4/5; overflow: hidden; border-radius: 3px; background: var(--mist);"><img src="https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=260&q=70" style="width:100%; height:100%; object-fit:cover;" /></div>
+            <div style="font-size: 11px; color: var(--ink-60); margin-top: 6px; letter-spacing: 0.06em;">Levi's 501</div>
+            <div class="match-badge match-adjacent" style="margin-top: 4px;"><i class="dot"></i>Adjacent</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <span class="eyebrow">Why it matters</span>
+        <div class="reason-list" style="margin-top: 8px;">
+          <div class="reason-item">
+            <div class="i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-5"/></svg></div>
+            <div class="t"><strong>Maps to business casual &amp; minimal wardrobes.</strong> The palette aligns with your dominant colour families (ivory, sand, umber).</div>
+          </div>
+          <div class="reason-item">
+            <div class="i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 2v4M12 18v4M4 12H2M22 12h-2M5 5l3 3M19 19l-3-3M5 19l3-3M19 5l-3 3"/></svg></div>
+            <div class="t"><strong>Styling unlock.</strong> Pairs your Totême blazer with the Acne pleated taupe trouser for 4 new outfits this week.</div>
+          </div>
+          <div class="reason-item">
+            <div class="i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 20v-7m-7 7V8m14 12V4"/></svg></div>
+            <div class="t"><strong>Rising, not peaking.</strong> Signal appears in 9 sources this cycle, up from 3 last cycle. Still early.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <span class="eyebrow">Sources · 9</span>
+        <div class="stack-2" style="margin-top: 10px;">
+          <div class="row-between" style="padding: 8px 0; border-bottom: 1px solid var(--line-soft);"><span class="caption" style="color: var(--ink);">Fashion publication (editorial coverage)</span><span class="eyebrow">4 ×</span></div>
+          <div class="row-between" style="padding: 8px 0; border-bottom: 1px solid var(--line-soft);"><span class="caption" style="color: var(--ink);">Runway coverage (S/S 2026)</span><span class="eyebrow">3 ×</span></div>
+          <div class="row-between" style="padding: 8px 0; border-bottom: 1px solid var(--line-soft);"><span class="caption" style="color: var(--ink);">Brand newsroom / press release</span><span class="eyebrow">2 ×</span></div>
+          <div class="caption" style="font-size: 12px; margin-top: 4px;">Links open original sources only · no republished content.</div>
+        </div>
+      </section>
+
+      <div class="actions">
+        <button class="btn btn-primary">Style an outfit</button>
+        <button class="btn btn-outline">Save to lookbook</button>
+        <button class="btn btn-ghost"><span class="underline">Mute this signal</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

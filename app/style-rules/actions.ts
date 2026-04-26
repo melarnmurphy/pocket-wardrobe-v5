@@ -6,7 +6,8 @@ import { formActionState, type FormActionState } from "@/lib/ui/form-action-stat
 import {
   createUserStyleRule,
   deleteUserStyleRule,
-  updateUserStyleRule
+  updateUserStyleRule,
+  type StyleRuleSaveResult
 } from "@/lib/domain/style-rules/service";
 
 const nullableText = (max: number) =>
@@ -45,6 +46,22 @@ function toActionErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function buildSaveMessage(
+  result: StyleRuleSaveResult,
+  baseMessage: string
+) {
+  if (result.normalizedFields.length === 0) {
+    return baseMessage;
+  }
+
+  const fragments = result.normalizedFields.map(({ match }) => {
+    const score = match.method === "semantic" ? ` (${Math.round(match.score * 100)}% match)` : "";
+    return `"${match.input}" -> "${match.resolved}"${score}`;
+  });
+
+  return `${baseMessage} Matched ${fragments.join(", ")}.`;
+}
+
 async function runCreateStyleRule(formData: FormData): Promise<FormActionState> {
   try {
     const values = styleRuleFormSchema.parse({
@@ -59,12 +76,12 @@ async function runCreateStyleRule(formData: FormData): Promise<FormActionState> 
       active: formData.get("active")
     });
 
-    await createUserStyleRule(values);
+    const result = await createUserStyleRule(values);
     revalidatePath("/style-rules");
 
     return {
       status: "success",
-      message: "User rule saved."
+      message: buildSaveMessage(result, "User rule saved.")
     };
   } catch (error) {
     return {
@@ -104,12 +121,12 @@ async function runUpdateStyleRule(formData: FormData): Promise<FormActionState> 
       active: formData.get("active")
     });
 
-    await updateUserStyleRule(id, values);
+    const result = await updateUserStyleRule(id, values);
     revalidatePath("/style-rules");
 
     return {
       status: "success",
-      message: "Rule updated."
+      message: buildSaveMessage(result, "Rule updated.")
     } satisfies FormActionState;
   } catch (error) {
     return {

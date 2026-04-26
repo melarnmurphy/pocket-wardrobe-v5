@@ -41,7 +41,14 @@ const serverEnvSchema = publicEnvSchema.extend({
   OPEN_METEO_API_KEY: optionalString,
   WEATHER_PROVIDER_DEFAULT: z.enum(["weatherapi", "open-meteo"]).optional(),
   BILLING_PROVIDER: z.enum(["stripe"]).optional(),
-  BILLING_SYNC_SECRET: optionalString
+  BILLING_SYNC_SECRET: optionalString,
+  // Gemini Google-Grounding adapter (lib/domain/trends/adapters/gemini-grounding.ts).
+  // Optional so local dev without grounding still boots; the adapter throws
+  // at call time if unset.
+  GEMINI_API_KEY: optionalString,
+  GEMINI_SEARCH_MODEL_ID: optionalString,
+  // Shared secret for cron routes (Vercel passes as Authorization: Bearer <value>).
+  CRON_SECRET: optionalString
 });
 
 const billingEnvSchema = z.object({
@@ -74,7 +81,10 @@ export function getServerEnv(): ServerEnv {
     WEATHER_PROVIDER_DEFAULT: process.env.WEATHER_PROVIDER_DEFAULT,
     NEXT_PUBLIC_PREMIUM_UPGRADE_URL: process.env.NEXT_PUBLIC_PREMIUM_UPGRADE_URL,
     BILLING_PROVIDER: process.env.BILLING_PROVIDER,
-    BILLING_SYNC_SECRET: process.env.BILLING_SYNC_SECRET
+    BILLING_SYNC_SECRET: process.env.BILLING_SYNC_SECRET,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    GEMINI_SEARCH_MODEL_ID: process.env.GEMINI_SEARCH_MODEL_ID,
+    CRON_SECRET: process.env.CRON_SECRET
   });
 }
 

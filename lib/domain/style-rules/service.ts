@@ -2,6 +2,11 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
 import { styleRuleSchema } from "@/lib/domain/style-rules";
+import {
+  resolveStyleRuleValue,
+  type SemanticSuggestionMatch,
+  type SupportedStyleRuleValueType
+} from "@/lib/domain/style-rules/semantic-matching";
 import type { Tables, TablesInsert } from "@/types/database";
 
 type StyleRuleRow = Tables<"style_rules">;
@@ -27,6 +32,66 @@ const createUserStyleRuleSchema = styleRuleSchema.omit({
 const updateUserStyleRuleSchema = createUserStyleRuleSchema;
 
 export type StyleRuleListItem = z.infer<typeof styleRuleListSchema>;
+export type StyleRuleSaveResult = {
+  rule: StyleRuleListItem;
+  normalizedFields: Array<{
+    field: "subject_value" | "object_value";
+    match: SemanticSuggestionMatch;
+  }>;
+};
+
+function isSupportedStyleRuleValueType(value: string): value is SupportedStyleRuleValueType {
+  return (
+    value === "category" ||
+    value === "colour" ||
+    value === "colour_family" ||
+    value === "occasion" ||
+    value === "season"
+  );
+}
+
+async function normalizeStyleRuleInput(
+  input: z.input<typeof createUserStyleRuleSchema>
+): Promise<{
+  payload: z.infer<typeof createUserStyleRuleSchema>;
+  normalizedFields: StyleRuleSaveResult["normalizedFields"];
+}> {
+  const parsed = createUserStyleRuleSchema.parse(input);
+  const normalizedFields: StyleRuleSaveResult["normalizedFields"] = [];
+  const payload = { ...parsed };
+
+  const subjectMatch =
+    isSupportedStyleRuleValueType(parsed.subject_type)
+      ? await resolveStyleRuleValue({
+          type: parsed.subject_type,
+          input: parsed.subject_value
+        }).catch(() => null)
+      : null;
+  if (subjectMatch && subjectMatch.resolved !== parsed.subject_value) {
+    payload.subject_value = subjectMatch.resolved;
+    normalizedFields.push({
+      field: "subject_value",
+      match: subjectMatch
+    });
+  }
+
+  const objectMatch =
+    isSupportedStyleRuleValueType(parsed.object_type)
+      ? await resolveStyleRuleValue({
+          type: parsed.object_type,
+          input: parsed.object_value
+        }).catch(() => null)
+      : null;
+  if (objectMatch && objectMatch.resolved !== parsed.object_value) {
+    payload.object_value = objectMatch.resolved;
+    normalizedFields.push({
+      field: "object_value",
+      match: objectMatch
+    });
+  }
+
+  return { payload, normalizedFields };
+}
 
 export async function listStyleRules(): Promise<StyleRuleListItem[]> {
   const user = await getRequiredUser();
@@ -50,10 +115,10 @@ export async function listStyleRules(): Promise<StyleRuleListItem[]> {
 
 export async function createUserStyleRule(
   input: z.input<typeof createUserStyleRuleSchema>
-) {
+): Promise<StyleRuleSaveResult> {
   const user = await getRequiredUser();
   const supabase = await createClient();
-  const parsed = createUserStyleRuleSchema.parse(input);
+  const { payload: parsed, normalizedFields } = await normalizeStyleRuleInput(input);
   // constraint_type is not yet in the generated DB types — added by migration 005.
   // Cast through unknown until types are regenerated after migration is applied.
   const payload = {
@@ -75,17 +140,20 @@ export async function createUserStyleRule(
     throw new Error(error.message);
   }
 
-  return styleRuleListSchema.parse(data);
+  return {
+    rule: styleRuleListSchema.parse(data),
+    normalizedFields
+  };
 }
 
 export async function updateUserStyleRule(
   ruleId: string,
   input: z.input<typeof updateUserStyleRuleSchema>
-) {
+): Promise<StyleRuleSaveResult> {
   const user = await getRequiredUser();
   const supabase = await createClient();
   const parsedId = z.string().uuid().parse(ruleId);
-  const payload = updateUserStyleRuleSchema.parse(input);
+  const { payload, normalizedFields } = await normalizeStyleRuleInput(input);
 
   const { data, error } = await supabase
     .from("style_rules")
@@ -102,7 +170,10 @@ export async function updateUserStyleRule(
     throw new Error(error.message);
   }
 
-  return styleRuleListSchema.parse(data);
+  return {
+    rule: styleRuleListSchema.parse(data),
+    normalizedFields
+  };
 }
 
 export async function deleteUserStyleRule(ruleId: string) {

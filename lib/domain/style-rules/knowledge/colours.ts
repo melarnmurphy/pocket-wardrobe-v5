@@ -72,6 +72,16 @@ const triadicGroups: Array<[ColourFamily, ColourFamily, ColourFamily, string]> =
   ["green", "orange", "purple", "Green, orange, and purple create a lively but stable triadic story."]
 ];
 
+const neutralAnchorPairs: Array<[ColourFamily, ColourFamily, string]> = [
+  ["black", "blue", "Black acts as a neutral anchor for blue, giving stronger colour contrast a cleaner base."],
+  ["black", "red", "Black acts as a neutral anchor for red, which keeps bold colour from feeling noisy or overworked."],
+  ["black", "green", "Black grounds green and makes the palette feel sharper and more controlled."],
+  ["black", "yellow", "Black gives yellow a crisp, graphic edge that reads intentional rather than chaotic."],
+  ["black", "orange", "Black anchors orange and helps high-energy colour feel more directional."],
+  ["black", "purple", "Black stabilizes purple and gives the pairing more depth."],
+  ["black", "pink", "Black sharpens pink and keeps the palette from reading overly sweet."]
+];
+
 export function buildColourRules(): SeedStyleRule[] {
   const rules: SeedStyleRule[] = [];
 
@@ -94,6 +104,13 @@ export function buildColourRules(): SeedStyleRule[] {
     for (const [left, right] of edges) {
       rules.push({ rule_type: "colour_triadic", subject_type: "colour_family", subject_value: left, predicate: "pairs_with", object_type: "colour_family", object_value: right, weight: 0.8, rule_scope: "global", explanation, constraint_type: "soft" });
     }
+  }
+
+  for (const [neutral, accent, explanation] of neutralAnchorPairs) {
+    rules.push(
+      { rule_type: "colour_neutral_anchor", subject_type: "colour_family", subject_value: neutral, predicate: "grounds", object_type: "colour_family", object_value: accent, weight: 0.72, rule_scope: "global", explanation, constraint_type: "soft" },
+      { rule_type: "colour_neutral_anchor", subject_type: "colour_family", subject_value: accent, predicate: "grounded_by", object_type: "colour_family", object_value: neutral, weight: 0.72, rule_scope: "global", explanation, constraint_type: "soft" }
+    );
   }
 
   return rules;

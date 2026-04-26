@@ -394,6 +394,11 @@ create table if not exists public.trend_signals (
     )
   ),
   label text not null,
+  canonical_label text,
+  vertical text,
+  family text,
+  subfamily text,
+  micro_signal text,
   normalized_attributes_json jsonb not null default '{}'::jsonb,
   season text,
   year integer,
@@ -402,6 +407,11 @@ create table if not exists public.trend_signals (
   authority_score numeric(5,2),
   recency_score numeric(5,2),
   confidence_score numeric(5,2),
+  trend_status text check (
+    trend_status in ('candidate', 'emerging', 'confirmed', 'dominant', 'cooling', 'flat') or trend_status is null
+  ),
+  trend_confidence numeric(5,2),
+  score_30d_delta numeric(8,4),
   first_seen_at timestamptz,
   last_seen_at timestamptz,
   created_at timestamptz not null default now()
@@ -434,6 +444,44 @@ create table if not exists public.trend_colours (
   importance_score numeric(5,2),
   observed_at timestamptz,
   created_at timestamptz not null default now()
+);
+
+create table if not exists public.trend_entities (
+  id uuid primary key default gen_random_uuid(),
+  trend_signal_id uuid not null references public.trend_signals(id) on delete cascade,
+  entity_type text not null check (
+    entity_type in ('brand', 'model', 'collaboration', 'runway_reference', 'retailer_example', 'editorial_example')
+  ),
+  label text not null,
+  normalized_label text not null,
+  brand text,
+  source_count integer not null default 1,
+  first_seen_at timestamptz,
+  last_seen_at timestamptz,
+  metadata_json jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.trend_signal_metrics (
+  id uuid primary key default gen_random_uuid(),
+  trend_signal_id uuid not null references public.trend_signals(id) on delete cascade,
+  metric_date date not null,
+  search_interest numeric(8,4),
+  search_velocity numeric(8,4),
+  editorial_mentions integer not null default 0,
+  editorial_source_count integer not null default 0,
+  commerce_signal numeric(8,4),
+  retailer_count integer not null default 0,
+  resale_signal numeric(8,4),
+  runway_signal numeric(8,4),
+  entity_count integer not null default 0,
+  composite_score numeric(8,4),
+  confidence numeric(8,4),
+  status text check (
+    status in ('candidate', 'emerging', 'confirmed', 'dominant', 'cooling', 'flat', 'rising') or status is null
+  ),
+  created_at timestamptz not null default now(),
+  unique (trend_signal_id, metric_date)
 );
 
 create table if not exists public.user_trend_matches (
@@ -565,6 +613,11 @@ create index if not exists idx_style_rules_subject on public.style_rules(subject
 create index if not exists idx_trend_sources_publish_date on public.trend_sources(publish_date desc);
 create index if not exists idx_trend_signals_type on public.trend_signals(trend_type);
 create index if not exists idx_trend_signals_label on public.trend_signals(label);
+create index if not exists idx_trend_signals_canonical_label on public.trend_signals(canonical_label);
+create index if not exists idx_trend_signals_family on public.trend_signals(family, subfamily);
+create index if not exists idx_trend_entities_signal_id on public.trend_entities(trend_signal_id);
+create index if not exists idx_trend_entities_normalized_label on public.trend_entities(normalized_label);
+create index if not exists idx_trend_signal_metrics_signal_date on public.trend_signal_metrics(trend_signal_id, metric_date desc);
 create index if not exists idx_user_trend_matches_user_id on public.user_trend_matches(user_id);
 create index if not exists idx_weather_snapshots_user_id on public.weather_snapshots(user_id);
 create index if not exists idx_user_entitlements_plan_tier on public.user_entitlements(plan_tier);
@@ -643,6 +696,8 @@ alter table public.trend_sources enable row level security;
 alter table public.trend_signals enable row level security;
 alter table public.trend_signal_sources enable row level security;
 alter table public.trend_colours enable row level security;
+alter table public.trend_entities enable row level security;
+alter table public.trend_signal_metrics enable row level security;
 alter table public.trend_ingestion_jobs enable row level security;
 
 -- User-owned table policies
@@ -1003,6 +1058,12 @@ create policy trend_signal_sources_read_all on public.trend_signal_sources
 for select using (true);
 
 create policy trend_colours_read_all on public.trend_colours
+for select using (true);
+
+create policy trend_entities_read_all on public.trend_entities
+for select using (true);
+
+create policy trend_signal_metrics_read_all on public.trend_signal_metrics
 for select using (true);
 
 create policy trend_ingestion_jobs_no_public_access on public.trend_ingestion_jobs

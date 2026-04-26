@@ -11,6 +11,10 @@ import {
   type Strength,
   type TemplateCategory,
 } from "@/lib/domain/style-rules/templates";
+import type {
+  SemanticSuggestionMatch,
+  SupportedStyleRuleValueType
+} from "@/lib/domain/style-rules/semantic-matching";
 import { StyleRuleBlankInput } from "@/components/style-rule-blank-input";
 import { FormFeedback } from "@/components/form-feedback";
 import { showAppToast } from "@/lib/ui/app-toast";
@@ -47,6 +51,37 @@ function buildExplanation(template: RuleTemplate, values: [string, string], stre
   return `${sentence} — ${strength}`;
 }
 
+type PreviewState = {
+  loading: boolean;
+  match: SemanticSuggestionMatch | null;
+};
+
+function isPreviewableType(value: string): value is SupportedStyleRuleValueType {
+  return (
+    value === "category" ||
+    value === "colour" ||
+    value === "colour_family" ||
+    value === "occasion" ||
+    value === "season"
+  );
+}
+
+function buildPreviewHelperText(match: SemanticSuggestionMatch | null, currentValue: string): string | null {
+  if (!match) {
+    return null;
+  }
+
+  if (match.resolved === currentValue.trim()) {
+    return null;
+  }
+
+  if (match.method === "exact") {
+    return `Will save as "${match.resolved}".`;
+  }
+
+  return `Will likely save as "${match.resolved}" (${Math.round(match.score * 100)}% semantic match).`;
+}
+
 export function StyleRuleTemplateForm({
   action,
 }: {
@@ -59,6 +94,7 @@ export function StyleRuleTemplateForm({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [blankValues, setBlankValues] = useState<Record<string, [string, string]>>({});
   const [strength, setStrength] = useState<Strength>("often");
+  const [previewStateByBlank, setPreviewStateByBlank] = useState<Record<string, PreviewState>>({});
 
   useEffect(() => {
     if (state.status === "success") {
@@ -66,6 +102,7 @@ export function StyleRuleTemplateForm({
       setActiveId(null);
       setBlankValues({});
       setStrength("often");
+      setPreviewStateByBlank({});
       showAppToast({ message: state.message || "Style rule saved", tone: "success" });
     }
   }, [state.message, state.status]);
@@ -103,6 +140,104 @@ export function StyleRuleTemplateForm({
   const explanation = activeTemplate
     ? buildExplanation(activeTemplate, activeValues, strength)
     : "";
+
+  useEffect(() => {
+    if (!activeTemplate || !activeId) {
+      return;
+    }
+
+    const requests = [
+      {
+        key: `${activeId}-0`,
+        type: activeTemplate.subject_type,
+        value: activeValues[0]
+      },
+      {
+        key: `${activeId}-1`,
+        type: activeTemplate.object_type,
+        value: activeValues[1]
+      }
+    ].filter(
+      (request): request is { key: string; type: SupportedStyleRuleValueType; value: string } =>
+        isPreviewableType(request.type) && request.value.trim().length > 0
+    );
+
+    const requestKeys = new Set(requests.map((request) => request.key));
+    setPreviewStateByBlank((previous) =>
+      Object.fromEntries(Object.entries(previous).filter(([key]) => requestKeys.has(key)))
+    );
+
+    if (requests.length === 0) {
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setPreviewStateByBlank((previous) => {
+        const next = { ...previous };
+        for (const request of requests) {
+          next[request.key] = {
+            loading: true,
+            match: previous[request.key]?.match ?? null
+          };
+        }
+        return next;
+      });
+
+      await Promise.all(
+        requests.map(async (request) => {
+          try {
+            const response = await fetch("/api/style-rules/normalize", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                type: request.type,
+                value: request.value
+              }),
+              signal: controller.signal
+            });
+
+            const payload = (await response.json()) as {
+              match?: SemanticSuggestionMatch | null;
+            };
+
+            if (!response.ok) {
+              throw new Error("normalize_failed");
+            }
+
+            setPreviewStateByBlank((previous) => ({
+              ...previous,
+              [request.key]: {
+                loading: false,
+                match: payload.match ?? null
+              }
+            }));
+          } catch (error) {
+            if ((error as Error).name === "AbortError") {
+              return;
+            }
+
+            setPreviewStateByBlank((previous) => ({
+              ...previous,
+              [request.key]: {
+                loading: false,
+                match: null
+              }
+            }));
+          }
+        })
+      );
+    }, 250);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [
+    activeId,
+    activeTemplate,
+    activeValues
+  ]);
 
   return (
     <div className="rounded-[1.75rem] border border-[var(--line)] bg-white/65 p-6 md:p-7">
@@ -150,15 +285,21 @@ export function StyleRuleTemplateForm({
           <input type="hidden" name="predicate" value={activeTemplate.predicate} />
           <input type="hidden" name="object_type" value={activeTemplate.object_type} />
           <input type="hidden" name="object_value" value={objectValue} />
-          <input type="hidden" name="weight" value={STRENGTH_WEIGHTS[strength]} />
-          <input type="hidden" name="explanation" value={explanation} />
-          <input type="hidden" name="active" value="on" />
+              <input type="hidden" name="weight" value={STRENGTH_WEIGHTS[strength]} />
+              <input type="hidden" name="explanation" value={explanation} />
+              <input type="hidden" name="active" value="on" />
 
           {/* Sentence with blanks */}
           <div className="mb-5">
             <p className="mb-3 text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Fill in the blanks</p>
             <div className="flex flex-wrap items-start gap-2 text-sm font-medium text-[#1a1a1a]">
-              {renderSentenceWithBlanks(activeTemplate, activeValues, activeId!, setBlankValue)}
+              {renderSentenceWithBlanks(
+                activeTemplate,
+                activeValues,
+                activeId!,
+                setBlankValue,
+                previewStateByBlank
+              )}
             </div>
           </div>
 
@@ -195,7 +336,8 @@ function renderSentenceWithBlanks(
   template: RuleTemplate,
   values: [string, string],
   templateId: string,
-  setBlankValue: (id: string, index: 0 | 1, value: string) => void
+  setBlankValue: (id: string, index: 0 | 1, value: string) => void,
+  previewStateByBlank: Record<string, PreviewState>
 ): React.ReactNode[] {
   const parts = template.sentence.split("___");
   const renderedBlanks = template.blanks
@@ -208,12 +350,17 @@ function renderSentenceWithBlanks(
     if (partIndex < renderedBlanks.length) {
       const { blank, index } = renderedBlanks[partIndex];
       if (blank.kind === "text") {
+        const previewState = previewStateByBlank[`${templateId}-${index}`];
+        const helperText = previewState?.loading
+          ? "Checking canonical match..."
+          : buildPreviewHelperText(previewState?.match ?? null, values[index]);
         nodes.push(
           <StyleRuleBlankInput
             key={`blank-${index}`}
             blank={blank}
             value={values[index]}
             onChange={(v) => setBlankValue(templateId, index, v)}
+            helperText={helperText}
           />
         );
       } else if (blank.kind === "pick") {

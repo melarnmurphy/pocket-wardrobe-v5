@@ -44,6 +44,7 @@ export function WardrobeShop({
   createReceiptDraftAction,
   addGarmentImageAction,
   deleteGarmentAction,
+  setGarmentFeatureImageAction,
   toggleGarmentFavouriteAction,
   logWearAction,
   updateGarmentAction
@@ -85,6 +86,10 @@ export function WardrobeShop({
     formData: FormData
   ) => Promise<WardrobeActionState>;
   addGarmentImageAction: (
+    state: WardrobeActionState,
+    formData: FormData
+  ) => Promise<WardrobeActionState>;
+  setGarmentFeatureImageAction: (
     state: WardrobeActionState,
     formData: FormData
   ) => Promise<WardrobeActionState>;
@@ -402,7 +407,6 @@ export function WardrobeShop({
       setIsCreateOpen(false);
       setCreateMobileStep(1);
       setIsCreateDetailsOpen(false);
-      setSelectedGarmentId(productUrlDraftState.garmentId);
     }
   }, [productUrlDraftState.garmentId, productUrlDraftState.status]);
 
@@ -1021,6 +1025,7 @@ export function WardrobeShop({
           garment={selectedGarment}
           onClose={() => setSelectedGarmentId(null)}
           addGarmentImageAction={addGarmentImageAction}
+          setGarmentFeatureImageAction={setGarmentFeatureImageAction}
           deleteGarmentAction={deleteGarmentAction}
           toggleGarmentFavouriteAction={toggleGarmentFavouriteAction}
           logWearAction={logWearAction}
@@ -1058,7 +1063,13 @@ function GarmentCard({
   );
   const serverFavourite = Boolean(garment.favourite_score && garment.favourite_score > 0);
   const [optimisticFavourite, setOptimisticFavourite] = useState(serverFavourite);
+  const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
   const costPerWear = displayCostPerWear(garment);
+  const openDeleteConfirmation = (event: React.SyntheticEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDeleteConfirming(true);
+  };
 
   useEffect(() => {
     setOptimisticFavourite(serverFavourite);
@@ -1090,7 +1101,11 @@ function GarmentCard({
 
   return (
     <article className="group relative overflow-hidden rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,246,241,0.94))] shadow-[0_18px_45px_rgba(17,17,17,0.07)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_60px_rgba(17,17,17,0.12)]">
-      <div className="absolute right-2 top-2 z-10 flex gap-1.5 opacity-100 transition-opacity duration-200 sm:right-3 sm:top-3 sm:gap-2 sm:opacity-0 sm:group-hover:opacity-100">
+      <div
+        className={`absolute right-2 top-2 z-10 flex gap-1.5 opacity-100 transition-opacity duration-200 sm:right-3 sm:top-3 sm:gap-2 ${
+          isDeleteConfirming ? "sm:opacity-100" : "sm:opacity-0 sm:group-hover:opacity-100"
+        }`}
+      >
         <QuickIconForm
           action={favouriteFormAction}
           garmentId={garment.id as string}
@@ -1099,21 +1114,32 @@ function GarmentCard({
           tone={optimisticFavourite ? "favourite" : "light"}
           icon={<StarIcon filled={optimisticFavourite} />}
         />
-        <QuickIconForm
-          action={deleteFormAction}
-          garmentId={garment.id as string}
+        <button
+          type="button"
           title="Delete item"
-          tone="danger"
-          icon={<TrashIcon />}
-        />
+          onPointerDown={openDeleteConfirmation}
+          onClick={openDeleteConfirmation}
+          className="rounded-full border border-[rgba(17,17,17,0.08)] bg-white/96 p-2 text-red-600 shadow-sm backdrop-blur transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(17,17,17,0.1)] active:translate-y-0 active:scale-[0.96]"
+        >
+          <TrashIcon />
+        </button>
       </div>
 
-      <button type="button" onClick={onOpen} className="block w-full text-left">
+      <button
+        type="button"
+        onClick={onOpen}
+        className={`block w-full text-left transition duration-200 ${
+          isDeleteConfirming ? "pointer-events-none select-none opacity-40 grayscale" : ""
+        }`}
+        aria-hidden={isDeleteConfirming}
+      >
         <div className="relative aspect-[3/4] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))] sm:aspect-[4/5]">
           {garment.preview_url ? (
             <img
               src={garment.preview_url}
               alt={garment.title || garment.category}
+              loading="lazy"
+              decoding="async"
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
             />
           ) : (
@@ -1160,11 +1186,6 @@ function GarmentCard({
           </div>
 
           <div className="flex flex-wrap gap-1.5 text-[11px] uppercase tracking-[0.12em] text-[var(--muted)] sm:gap-2 sm:text-xs sm:tracking-[0.15em]">
-            {costPerWear != null ? (
-              <span className="rounded-full border border-[var(--line)] bg-white/88 px-2 py-1 sm:px-2.5">
-                Cost Per Wear {garment.purchase_currency || ""} {formatCurrencyValue(costPerWear)}
-              </span>
-            ) : null}
             {garment.primary_colour_family ? (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white/80 px-2 py-1 sm:gap-2 sm:px-2.5">
                 <span
@@ -1182,6 +1203,38 @@ function GarmentCard({
           </div>
         </div>
       </button>
+
+      {isDeleteConfirming ? (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-[rgba(247,244,238,0.78)] p-4 backdrop-blur-[2px]">
+          <div
+            className="w-full max-w-[16rem] rounded-[1.1rem] border border-[rgba(220,38,38,0.12)] bg-white/98 p-4 text-center shadow-[0_18px_38px_rgba(17,17,17,0.12)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p className="text-[10px] uppercase tracking-[0.2em] text-red-600">
+              Confirm Delete
+            </p>
+            <p className="mt-3 text-sm font-medium leading-6 text-[var(--foreground)]">
+              Remove {garment.title || garment.category} from your wardrobe?
+            </p>
+            <form action={deleteFormAction} className="mt-4 space-y-3">
+              <input type="hidden" name="garment_id" value={garment.id} />
+              <button
+                type="submit"
+                className="inline-flex w-full items-center justify-center rounded-full bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700"
+              >
+                Confirm Delete
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsDeleteConfirming(false)}
+                className="pw-button-quiet w-full px-4 py-2 text-sm"
+              >
+                Cancel
+              </button>
+            </form>
+          </div>
+        </div>
+      ) : null}
 
       {deleteState.status === "error" ? (
         <p className="px-4 pb-4 text-sm text-red-600">{deleteState.message}</p>
@@ -1213,48 +1266,18 @@ function QuickIconForm({
   icon: ReactNode;
   tone: "light" | "danger" | "favourite";
 }) {
-  const [isConfirming, setIsConfirming] = useState(false);
-
-  useEffect(() => {
-    if (!isConfirming) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setIsConfirming(false);
-    }, 2200);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [isConfirming]);
-
   return (
     <form action={action} className="relative">
       <input type="hidden" name="garment_id" value={garmentId} />
       <QuickIconButton
-        title={isConfirming && tone === "danger" ? "Confirm delete" : title}
-        tone={isConfirming && tone === "danger" ? "danger-confirm" : tone}
+        title={title}
+        tone={tone}
         onPress={(event) => {
-          if (tone !== "danger") {
-            onOptimisticSubmit?.();
-            return;
-          }
-
-          if (!isConfirming) {
-            event.preventDefault();
-            setIsConfirming(true);
-            return;
-          }
-
-          setIsConfirming(false);
+          onOptimisticSubmit?.();
         }}
       >
         {icon}
       </QuickIconButton>
-      {tone === "danger" && isConfirming ? (
-        <p className="absolute right-0 top-full mt-2 rounded-full bg-[var(--foreground)] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white shadow-[0_10px_24px_rgba(0,0,0,0.14)]">
-          Confirm delete
-        </p>
-      ) : null}
     </form>
   );
 }
@@ -1268,7 +1291,7 @@ function QuickIconButton({
   children: ReactNode;
   onPress?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   title: string;
-  tone: "light" | "danger" | "favourite" | "danger-confirm";
+  tone: "light" | "danger" | "favourite";
 }) {
   const { pending } = useFormStatus();
 
@@ -1279,12 +1302,8 @@ function QuickIconButton({
       disabled={pending}
       onClick={onPress}
       className={`rounded-full border border-[rgba(17,17,17,0.08)] p-2 shadow-sm backdrop-blur transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(17,17,17,0.1)] active:translate-y-0 active:scale-[0.96] disabled:transform-none disabled:opacity-60 disabled:shadow-sm ${
-        tone === "danger"
-          ? "bg-white/96 text-red-600"
-          : tone === "danger-confirm"
-            ? "bg-red-600 text-white"
-          : tone === "favourite"
-            ? "border-[rgba(255,107,157,0.18)] bg-[rgba(255,107,157,0.12)] text-[var(--foreground)]"
+        tone === "favourite"
+          ? "border-[rgba(255,107,157,0.18)] bg-[rgba(255,107,157,0.12)] text-[var(--foreground)]"
           : "bg-white/96 text-[var(--foreground)]"
       }`}
     >
@@ -1297,6 +1316,7 @@ function GarmentDetailDialog({
   garment,
   onClose,
   addGarmentImageAction,
+  setGarmentFeatureImageAction,
   deleteGarmentAction,
   toggleGarmentFavouriteAction,
   logWearAction,
@@ -1305,6 +1325,10 @@ function GarmentDetailDialog({
   garment: GarmentListItem;
   onClose: () => void;
   addGarmentImageAction: (
+    state: WardrobeActionState,
+    formData: FormData
+  ) => Promise<WardrobeActionState>;
+  setGarmentFeatureImageAction: (
     state: WardrobeActionState,
     formData: FormData
   ) => Promise<WardrobeActionState>;
@@ -1327,7 +1351,15 @@ function GarmentDetailDialog({
 }) {
   const [wearState, wearFormAction] = useActionState(logWearAction, wardrobeActionState);
   const [editState, editFormAction] = useActionState(updateGarmentAction, wardrobeActionState);
+  const [featureImageState, featureImageFormAction] = useActionState(
+    setGarmentFeatureImageAction,
+    wardrobeActionState
+  );
   const [showReupload, setShowReupload] = useState(false);
+  const [wearEntryMode, setWearEntryMode] = useState<"quick" | "detail">("quick");
+  const [quickWearCount, setQuickWearCount] = useState(
+    Math.max(garment.wear_count, 1)
+  );
   const wearFormRef = useRef<HTMLFormElement>(null);
   const [deleteState, deleteFormAction] = useActionState(
     deleteGarmentAction,
@@ -1343,6 +1375,10 @@ function GarmentDetailDialog({
   useEffect(() => {
     setOptimisticFavourite(serverFavourite);
   }, [serverFavourite]);
+
+  useEffect(() => {
+    setQuickWearCount(Math.max(garment.wear_count, 1));
+  }, [garment.id, garment.wear_count]);
 
   useEffect(() => {
     if (deleteState.status === "success") {
@@ -1379,6 +1415,15 @@ function GarmentDetailDialog({
   }, [editState.message, editState.status]);
 
   useEffect(() => {
+    if (featureImageState.status === "success") {
+      showAppToast({
+        message: featureImageState.message || "Feature image updated",
+        tone: "success"
+      });
+    }
+  }, [featureImageState.message, featureImageState.status]);
+
+  useEffect(() => {
     if (wearState.status === "success") {
       wearFormRef.current?.reset();
       showAppToast({
@@ -1387,6 +1432,8 @@ function GarmentDetailDialog({
       });
     }
   }, [wearState.message, wearState.status]);
+
+  const featureImage = garment.images.find((image) => image.preview_url === garment.preview_url) ?? null;
 
   return (
     <DialogShell onClose={onClose} size="max-w-5xl">
@@ -1433,56 +1480,115 @@ function GarmentDetailDialog({
       <div className="mt-6 space-y-5">
         <div className="space-y-4">
           {garment.preview_url ? (
-            <>
-              <div className="mx-auto max-w-3xl overflow-hidden rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-white shadow-[0_24px_55px_rgba(17,17,17,0.1)]">
-                <div className="relative group">
-                  <img
-                    src={garment.preview_url}
-                    alt={garment.title || garment.category}
-                    className="h-[18rem] w-full object-contain bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))] sm:h-[25rem] lg:h-[30rem]"
-                  />
-                  <div className="absolute inset-0 flex items-end justify-center bg-black/0 p-4 transition-all duration-200 group-hover:bg-black/12">
-                    <button
-                      type="button"
-                      onClick={() => setShowReupload((v) => !v)}
-                      className="opacity-100 transition-opacity duration-200 rounded-full bg-white/92 px-4 py-2 text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--foreground)] shadow-md hover:bg-white sm:opacity-0 sm:group-hover:opacity-100 sm:text-xs"
-                    >
-                      {showReupload ? "Cancel" : "Reupload Image"}
-                    </button>
-                  </div>
-                </div>
-                <div className="border-t border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))] p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
-                        Shop View
-                      </p>
-                      <p className="mt-2 text-sm text-[var(--muted)]">
-                        The primary image and wardrobe summary your future outfit flows will rely on.
-                      </p>
+            <div className="mx-auto max-w-5xl space-y-4">
+              <div className="grid gap-4 lg:grid-cols-[1.4fr,0.9fr]">
+                <div className="overflow-hidden rounded-[12px] border border-[rgba(17,17,17,0.08)] bg-white shadow-[0_24px_55px_rgba(17,17,17,0.1)]">
+                  <div className="relative">
+                    <img
+                      src={garment.preview_url}
+                      alt={garment.title || garment.category}
+                      className="h-[22rem] w-full object-contain bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))] sm:h-[28rem]"
+                    />
+                    <div className="absolute inset-0 flex items-end justify-center bg-black/0 p-4 transition-all duration-200 hover:bg-black/10">
+                      <button
+                        type="button"
+                        onClick={() => setShowReupload((v) => !v)}
+                        className="rounded-full border border-white/50 bg-white/90 px-4 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--foreground)] shadow-[0_10px_20px_rgba(17,17,17,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--foreground)]"
+                      >
+                        {showReupload ? "Cancel" : "Reupload"}
+                      </button>
                     </div>
-                    <span className="pw-chip bg-white">
-                      Original
+                  </div>
+                  <div className="flex items-center justify-between border-t border-[var(--line)] px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
+                      Feature Image
+                    </p>
+                    <span className="pw-chip bg-white px-3 py-1 text-[10px] uppercase tracking-[0.16em]">
+                      {featureImage ? formatImageTypeLabel(featureImage.image_type) : "Primary"}
                     </span>
                   </div>
                 </div>
+
+                {garment.images.length ? (
+                  <div className="space-y-3 rounded-[12px] border border-[rgba(17,17,17,0.08)] bg-[rgba(255,255,255,0.96)] p-3 shadow-[0_18px_40px_rgba(17,17,17,0.06)]">
+                    <div className="flex items-center justify-between px-2">
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
+                        Image Set
+                      </p>
+                      <span className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
+                        {garment.images.length} stored
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      {garment.images.map((image) => {
+                        const isFeature = image.preview_url === garment.preview_url;
+
+                        return (
+                          <div
+                            key={image.id}
+                            className={`flex flex-col overflow-hidden rounded-[10px] border ${
+                              isFeature
+                                ? "border-[var(--foreground)] bg-white shadow-[0_16px_34px_rgba(17,17,17,0.08)]"
+                                : "border-[var(--line)] bg-[rgba(255,255,255,0.92)]"
+                            }`}
+                          >
+                            <div className="aspect-[3/4] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))]">
+                              {image.preview_url ? (
+                                <img
+                                  src={image.preview_url}
+                                  alt={`${garment.title || garment.category} ${image.image_type}`}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full items-center justify-center text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
+                                  No preview
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center justify-between gap-2 px-3 py-2 text-[10px] uppercase tracking-[0.14em] text-[var(--muted)]">
+                              <span>{formatImageTypeLabel(image.image_type)}</span>
+                              {isFeature ? (
+                                <span className="rounded-full bg-[rgba(17,17,17,0.08)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--foreground)]">
+                                  Feature
+                                </span>
+                              ) : null}
+                            </div>
+                            {!isFeature ? (
+                              <form action={featureImageFormAction} className="border-t border-[var(--line)] px-3 py-2">
+                                <input type="hidden" name="garment_id" value={garment.id as string} />
+                                <input type="hidden" name="image_id" value={image.id} />
+                                <button
+                                  type="submit"
+                                  className="w-full rounded-full border border-[var(--line)] bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--foreground)] transition hover:border-[rgba(17,17,17,0.2)]"
+                                >
+                                  Use as Feature
+                                </button>
+                              </form>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
               </div>
-              {showReupload && (
-                <div className="mx-auto mt-3 max-w-3xl">
+
+              {showReupload ? (
+                <div className="mx-auto max-w-3xl">
                   <GarmentImageUpload
                     garmentId={garment.id as string}
                     action={addGarmentImageAction}
-                    latestPath={garment.images[0]?.storage_path ?? null}
+                    latestPath={featureImage?.storage_path ?? garment.images[0]?.storage_path ?? null}
                   />
                 </div>
-              )}
-            </>
+              ) : null}
+            </div>
           ) : (
             <div className="mx-auto max-w-3xl">
               <GarmentImageUpload
                 garmentId={garment.id as string}
                 action={addGarmentImageAction}
-                latestPath={garment.images[0]?.storage_path ?? null}
+                latestPath={featureImage?.storage_path ?? garment.images[0]?.storage_path ?? null}
               />
             </div>
           )}
@@ -1640,26 +1746,76 @@ function GarmentDetailDialog({
                   Keep the wardrobe history current so cost-per-wear and planning stay accurate.
                 </p>
               </div>
-              <span className="rounded-full bg-[rgba(23,20,17,0.04)] px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                Wear event
-              </span>
             </div>
             <input type="hidden" name="garment_id" value={garment.id} />
-            <div className="mt-4 grid gap-3 lg:grid-cols-[1.15fr_0.95fr_1.2fr]">
-              <FormField label="Worn At" name="worn_at" type="datetime-local" density="compact" />
-              <FormField label="Occasion" name="occasion" placeholder="office" density="compact" />
-              <FormTextAreaField
-                label="Notes"
-                name="notes"
-                placeholder="Paired with loafers"
-                density="compact"
-              />
+            <div className="mt-4 inline-flex rounded-full border border-[var(--line)] bg-white p-1">
+              <button
+                type="button"
+                onClick={() => setWearEntryMode("quick")}
+                className={`rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] transition-colors ${
+                  wearEntryMode === "quick"
+                    ? "bg-[#111111] text-white"
+                    : "text-[var(--muted)]"
+                }`}
+              >
+                Quick Count
+              </button>
+              <button
+                type="button"
+                onClick={() => setWearEntryMode("detail")}
+                className={`rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] transition-colors ${
+                  wearEntryMode === "detail"
+                    ? "bg-[#111111] text-white"
+                    : "text-[var(--muted)]"
+                }`}
+              >
+                Detailed Event
+              </button>
             </div>
+            <input type="hidden" name="entry_mode" value={wearEntryMode} />
+            {wearEntryMode === "quick" ? (
+              <div className="mt-4 flex justify-center">
+                <label className="space-y-2">
+                  <span className="text-[11px] font-medium uppercase tracking-[0.24em] text-[var(--muted)]">
+                    Number Of Wears
+                  </span>
+                  <input
+                    type="number"
+                    name="wears_to_add"
+                    min="1"
+                    step="1"
+                    value={quickWearCount}
+                    onChange={(event) =>
+                      setQuickWearCount(Math.max(1, Number.parseInt(event.target.value || "1", 10) || 1))
+                    }
+                    className="h-20 w-full min-w-[16rem] rounded-[8px] border border-[var(--line)] bg-white px-5 text-center text-3xl font-semibold tracking-[-0.04em] outline-none"
+                  />
+                </label>
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-3 lg:grid-cols-[1.15fr_0.95fr_1.2fr]">
+                <input type="hidden" name="wears_to_add" value="1" />
+                <FormField label="Worn At" name="worn_at" type="datetime-local" density="compact" />
+                <FormField label="Occasion" name="occasion" placeholder="office" density="compact" />
+                <FormTextAreaField
+                  label="Notes"
+                  name="notes"
+                  placeholder="Paired with loafers"
+                  density="compact"
+                />
+              </div>
+            )}
             <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--line)] pt-4">
               <p className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
-                Updates wear count and cost per wear
+                {wearEntryMode === "quick"
+                  ? "Updates wear count and cost per wear"
+                  : "Saves a detailed wear event and updates totals"}
               </p>
-              <PendingButton idle="Save Wear Event" pending="Saving..." compact />
+              <PendingButton
+                idle={wearEntryMode === "quick" ? "Update Wear Count" : "Save Wear Event"}
+                pending="Saving..."
+                compact
+              />
             </div>
             {(wearState.status === "error" || wearState.status === "partial") && wearState.message ? (
               <FormFeedback state={wearState} className="mt-3" />
@@ -2827,6 +2983,21 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 
 function categoryLabel(value: string) {
   return value.replaceAll("_", " ");
+}
+
+function formatImageTypeLabel(value: string) {
+  switch (value) {
+    case "cutout":
+      return "Cutout";
+    case "cropped":
+      return "Cropped";
+    case "thumbnail":
+      return "Thumbnail";
+    case "original":
+      return "Original";
+    default:
+      return categoryLabel(value);
+  }
 }
 
 function applyFilterParam(

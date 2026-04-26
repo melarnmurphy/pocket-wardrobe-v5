@@ -33,7 +33,7 @@ export const STRENGTH_WEIGHTS = {
 
 export type Strength = keyof typeof STRENGTH_WEIGHTS;
 
-const GARMENT_CATEGORY_SUGGESTIONS = [
+export const GARMENT_CATEGORY_SUGGESTIONS = [
   "t-shirt", "shirt", "blouse", "tank", "turtleneck", "knitwear", "vest",
   "bodysuit", "base-layer", "dress", "blazer", "jacket", "coat",
   "denim jacket", "cardigan", "puffer", "waistcoat", "jeans", "trousers",
@@ -86,9 +86,9 @@ export const RULE_TEMPLATES: RuleTemplate[] = [
     sentence: "I like pairing ___ with ___",
     blanks: [colour("a colour"), colour("another colour")],
     rule_type: "colour_pairing",
-    subject_type: "colour",
+    subject_type: "colour_family",
     predicate: "pairs_with",
-    object_type: "colour",
+    object_type: "colour_family",
   },
   {
     id: "colour-avoids",
@@ -96,9 +96,9 @@ export const RULE_TEMPLATES: RuleTemplate[] = [
     sentence: "I avoid wearing ___ with ___",
     blanks: [colour("a colour"), colour("another colour")],
     rule_type: "colour_pairing",
-    subject_type: "colour",
+    subject_type: "colour_family",
     predicate: "avoid_with",
-    object_type: "colour",
+    object_type: "colour_family",
   },
   {
     id: "colour-style",

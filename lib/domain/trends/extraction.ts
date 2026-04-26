@@ -7,6 +7,7 @@ import { TREND_TYPES, type TrendType } from "./index";
 import type { TablesInsert } from "@/types/database";
 import { chunkText, scoreChunkRelevance, extractColoursFromText } from "./content";
 import { resolveSeasonYear } from "./seasons";
+import { resolveTrendTaxonomy } from "./taxonomy";
 
 type TrendSignalInsert = TablesInsert<"trend_signals">;
 type TrendColourInsert = TablesInsert<"trend_colours">;
@@ -22,6 +23,25 @@ interface SourceContext {
   sourceName: string;
 }
 
+/**
+ * Delta marker for trend signals. Defaults to "new" when absent (preserves
+ * back-compat with the RSS-path extraction which doesn't emit this).
+ *
+ * Semantics:
+ *   "new"          — first time this label has been surfaced in this run.
+ *   "intensifying" — label previously surfaced; this run reinforces it.
+ *                    upsertTrendSignal will bump source_count (existing
+ *                    behaviour) and nudge trend_status toward "rising".
+ *   "fading"       — label previously strong, now notably absent from
+ *                    coverage. upsertTrendSignal nudges status toward
+ *                    "cooling" without fabricating a new source link.
+ *
+ * Produced by the Gemini grounding scanner prompts
+ * (lib/domain/trends/prompts/grounding-prompts.ts), which pass
+ * previously-seen labels into the extraction context.
+ */
+export type SignalDelta = "new" | "intensifying" | "fading";
+
 interface ExtractedSignal {
   trend_type: TrendType;
   label: string;
@@ -29,6 +49,7 @@ interface ExtractedSignal {
   season: string | null;
   region: string | null;
   confidence: number;
+  delta?: SignalDelta;
 }
 
 export function buildExtractionPrompt(source: SourceContext): string {
@@ -58,23 +79,36 @@ Return a JSON array. Each signal:
   "normalized_attributes": object,
   "season": string or null,
   "region": string or null,
-  "confidence": number 0-1
+  "confidence": number 0-1,
+  "delta": "new" | "intensifying" | "fading"  (optional; omit if not determinable)
 }`;
 }
+
+const VALID_DELTAS = new Set<SignalDelta>(["new", "intensifying", "fading"]);
 
 async function parseClaudeResponse(content: string): Promise<ExtractedSignal[]> {
   const match = content.match(/\[[\s\S]*\]/);
   if (!match) return [];
   try {
     const parsed = JSON.parse(match[0]) as unknown[];
-    return parsed.filter(
-      (s): s is ExtractedSignal =>
-        typeof s === "object" &&
-        s !== null &&
-        "trend_type" in s &&
-        "label" in s &&
-        TREND_TYPES.includes((s as ExtractedSignal).trend_type)
-    );
+    return parsed
+      .filter(
+        (s): s is ExtractedSignal =>
+          typeof s === "object" &&
+          s !== null &&
+          "trend_type" in s &&
+          "label" in s &&
+          TREND_TYPES.includes((s as ExtractedSignal).trend_type)
+      )
+      .map((s) => {
+        // Drop unknown delta values rather than propagating garbage.
+        const delta = (s as { delta?: unknown }).delta;
+        if (typeof delta === "string" && VALID_DELTAS.has(delta as SignalDelta)) {
+          return { ...s, delta: delta as SignalDelta };
+        }
+        const { delta: _omit, ...rest } = s as ExtractedSignal & { delta?: unknown };
+        return rest as ExtractedSignal;
+      });
   } catch {
     return [];
   }
@@ -86,20 +120,58 @@ async function upsertTrendSignal(
   authorityScore: number
 ): Promise<string> {
   const canonical = canonicalizeLabel(signal.label);
+  const taxonomy = resolveTrendTaxonomy({
+    label: signal.label,
+    trendType: signal.trend_type,
+    attributes: signal.normalized_attributes
+  });
 
   const { data: existing } = await supabase
     .from("trend_signals")
-    .select("id, source_count, authority_score, season, year")
+    .select("id, source_count, authority_score, season, year, canonical_label, vertical, family, subfamily, micro_signal, trend_confidence, trend_status")
     .eq("trend_type", signal.trend_type)
     .ilike("label", canonical)
     .maybeSingle();
 
   if (existing) {
-    const row = existing as { id: string; source_count: number; authority_score: number | null; season: string | null; year: number | null };
-    const newCount = row.source_count + 1;
-    const newAuthority = row.authority_score
-      ? (row.authority_score * row.source_count + authorityScore) / newCount
-      : authorityScore;
+    const row = existing as {
+      id: string;
+      source_count: number;
+      authority_score: number | null;
+      season: string | null;
+      year: number | null;
+      canonical_label: string | null;
+      vertical: string | null;
+      family: string | null;
+      subfamily: string | null;
+      micro_signal: string | null;
+      trend_confidence: number | null;
+      trend_status: string | null;
+    };
+
+    // "fading" signals: don't count as a new source — the LLM flagged that
+    // the trend is notably absent, not reinforced. Just nudge status.
+    const isFading = signal.delta === "fading";
+    const newCount = isFading ? row.source_count : row.source_count + 1;
+    const newAuthority = isFading
+      ? row.authority_score ?? authorityScore
+      : row.authority_score
+        ? (row.authority_score * row.source_count + authorityScore) / newCount
+        : authorityScore;
+
+    // Status transitions: "intensifying" → rising, "fading" → cooling.
+    // Never downgrade dominant/confirmed on a single fading signal; let
+    // aggregation logic in metrics handle the heavier transitions.
+    let nextStatus = row.trend_status;
+    if (signal.delta === "intensifying") {
+      if (row.trend_status === "candidate" || row.trend_status === "cooling" || !row.trend_status) {
+        nextStatus = "rising";
+      }
+    } else if (isFading) {
+      if (row.trend_status === "candidate" || row.trend_status === "rising" || row.trend_status === "emerging") {
+        nextStatus = "cooling";
+      }
+    }
 
     await supabase
       .from("trend_signals")
@@ -107,6 +179,13 @@ async function upsertTrendSignal(
         source_count: newCount,
         authority_score: Math.round(newAuthority * 100) / 100,
         last_seen_at: new Date().toISOString(),
+        canonical_label: row.canonical_label ?? taxonomy.canonical_label,
+        vertical: row.vertical ?? taxonomy.vertical,
+        family: row.family ?? taxonomy.family,
+        subfamily: row.subfamily ?? taxonomy.subfamily,
+        micro_signal: row.micro_signal ?? taxonomy.micro_signal,
+        trend_confidence: row.trend_confidence ?? signal.confidence,
+        ...(nextStatus && nextStatus !== row.trend_status ? { trend_status: nextStatus } : {}),
         ...(signal.season && !row.season ? { season: signal.season } : {}),
         ...(signal.season && !row.year ? { year: new Date().getFullYear() } : {})
       } as never))
@@ -118,6 +197,11 @@ async function upsertTrendSignal(
   const insert: TrendSignalInsert = {
     trend_type: signal.trend_type,
     label: signal.label,
+    canonical_label: taxonomy.canonical_label,
+    vertical: taxonomy.vertical,
+    family: taxonomy.family,
+    subfamily: taxonomy.subfamily,
+    micro_signal: taxonomy.micro_signal,
     normalized_attributes_json: signal.normalized_attributes as never,
     season: signal.season ?? null,
     year: new Date().getFullYear(),
@@ -125,6 +209,12 @@ async function upsertTrendSignal(
     source_count: 1,
     authority_score: authorityScore,
     confidence_score: signal.confidence,
+    trend_confidence: signal.confidence,
+    // New signals start as "candidate"; upgraded to emerging/confirmed by
+    // the scoring/aggregation pass once source_count + authority cross
+    // thresholds. If the scanner flagged this as intensifying despite it
+    // being our first sighting, skip straight to "rising".
+    trend_status: signal.delta === "intensifying" ? "rising" : "candidate",
     first_seen_at: new Date().toISOString(),
     last_seen_at: new Date().toISOString()
   };

@@ -6,6 +6,10 @@ import {
   getCanonicalWardrobeColour,
   type WardrobeColourFamily
 } from "@/lib/domain/wardrobe/colours";
+import {
+  analyseImageColours,
+  buildFeatureDerivative
+} from "@/lib/domain/wardrobe/image-analysis";
 import type { Database, TablesInsert } from "@/types/database";
 
 type Json = Database["public"]["Tables"]["garments"]["Row"]["extraction_metadata_json"];
@@ -40,7 +44,6 @@ type GarmentListRow = Pick<
 >;
 type GarmentInsert = TablesInsert<"garments">;
 type ColourRow = Database["public"]["Tables"]["colours"]["Row"];
-type ColourInsert = TablesInsert<"colours">;
 type GarmentColourRow = Database["public"]["Tables"]["garment_colours"]["Row"];
 type GarmentColourInsert = TablesInsert<"garment_colours">;
 type GarmentImageRow = Database["public"]["Tables"]["garment_images"]["Row"];
@@ -48,6 +51,8 @@ type GarmentImageInsert = TablesInsert<"garment_images">;
 type GarmentSourceInsert = TablesInsert<"garment_sources">;
 type WearEventRow = Database["public"]["Tables"]["wear_events"]["Row"];
 type GarmentFavouriteLookupRow = Pick<GarmentRow, "id" | "favourite_score">;
+
+const PRODUCT_IMAGE_FETCH_TIMEOUT_MS = 2500;
 
 const timestampSchema = z.string().min(1);
 
@@ -69,7 +74,8 @@ const garmentImageSchema = z.object({
   storage_path: z.string().min(1),
   width: z.coerce.number().int().nullable().optional(),
   height: z.coerce.number().int().nullable().optional(),
-  created_at: timestampSchema
+  created_at: timestampSchema,
+  preview_url: z.string().nullable().optional()
 });
 
 const garmentSourceSchema = z.object({
@@ -109,6 +115,54 @@ export type GarmentListItem = z.infer<typeof garmentListItemSchema> & {
   preview_url: string | null;
   recent_wear_events: z.infer<typeof garmentRecentWearSchema>[];
 };
+
+function featureImageTypeRank(imageType: z.infer<typeof garmentImageSchema>["image_type"]) {
+  switch (imageType) {
+    case "cutout":
+      return 0;
+    case "cropped":
+      return 1;
+    case "thumbnail":
+      return 2;
+    case "original":
+    default:
+      return 3;
+  }
+}
+
+function getPreferredFeatureImageId(extractionMetadata: Json | null | undefined) {
+  const value =
+    extractionMetadata &&
+    typeof extractionMetadata === "object" &&
+    "preferred_feature_image_id" in extractionMetadata
+      ? extractionMetadata["preferred_feature_image_id"]
+      : null;
+
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+export function getFeatureImagePath(
+  images: z.infer<typeof garmentImageSchema>[],
+  preferredImageId?: string | null
+) {
+  if (preferredImageId) {
+    const preferredImage = images.find((image) => image.id === preferredImageId);
+    if (preferredImage) {
+      return preferredImage.storage_path;
+    }
+  }
+
+  const featureImage = [...images].sort((left, right) => {
+    const rankDiff = featureImageTypeRank(left.image_type) - featureImageTypeRank(right.image_type);
+    if (rankDiff !== 0) {
+      return rankDiff;
+    }
+
+    return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+  })[0];
+
+  return featureImage?.storage_path ?? null;
+}
 
 async function syncGarmentPrimaryColour(params: {
   supabase: Awaited<ReturnType<typeof createClient>>;
@@ -170,21 +224,15 @@ async function syncGarmentPrimaryColour(params: {
   const parsedExistingColour = existingColour
     ? colourSchema.parse(existingColour satisfies ColourRow)
     : null;
-  let colourId = parsedExistingColour?.id ?? null;
+  const colourId = parsedExistingColour?.id ?? null;
 
+  // Global colour taxonomy must be seeded via migration, not lazily inserted
+  // during a user-owned request path that is protected by read-only RLS.
   if (!colourId) {
-    const payload: ColourInsert = canonicalColour;
-    const { data: insertedColour, error: insertColourError } = await supabase
-      .from("colours")
-      .insert(payload as never)
-      .select("id,family,hex")
-      .single();
-
-    if (insertColourError) {
-      throw new Error(insertColourError.message);
-    }
-
-    colourId = colourSchema.parse(insertedColour).id;
+    return {
+      primary_colour_family: null,
+      primary_colour_hex: null
+    };
   }
 
   const linkForColour = parsedExistingLinks.find((entry) => entry.colour_id === colourId);
@@ -233,6 +281,76 @@ async function syncGarmentPrimaryColour(params: {
     primary_colour_family: canonicalColour.family,
     primary_colour_hex: canonicalColour.hex
   };
+}
+
+export async function setGarmentPrimaryColourFamily(params: {
+  garmentId: string;
+  primaryColourFamily?: WardrobeColourFamily | null;
+}) {
+  const supabase = await createClient();
+  return syncGarmentPrimaryColour({
+    supabase,
+    garmentId: z.string().uuid().parse(params.garmentId),
+    primaryColourFamily: params.primaryColourFamily ?? null
+  });
+}
+
+export async function setGarmentFeatureImage(params: {
+  garmentId: string;
+  imageId: string;
+}) {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const garmentId = z.string().uuid().parse(params.garmentId);
+  const imageId = z.string().uuid().parse(params.imageId);
+
+  const { data: garment, error: garmentError } = await supabase
+    .from("garments")
+    .select("id,extraction_metadata_json")
+    .eq("id", garmentId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (garmentError || !garment) {
+    throw new Error("Garment not found.");
+  }
+
+  const currentGarment = garment as {
+    id: string;
+    extraction_metadata_json: Json | null;
+  };
+
+  const { data: image, error: imageError } = await supabase
+    .from("garment_images")
+    .select("id,garment_id")
+    .eq("id", imageId)
+    .eq("garment_id", garmentId)
+    .single();
+
+  if (imageError || !image) {
+    throw new Error("Garment image not found.");
+  }
+
+  const currentMetadata =
+    currentGarment.extraction_metadata_json &&
+    typeof currentGarment.extraction_metadata_json === "object"
+      ? (currentGarment.extraction_metadata_json as Record<string, Json | undefined>)
+      : {};
+
+  const nextMetadata = {
+    ...currentMetadata,
+    preferred_feature_image_id: imageId
+  } as Json;
+
+  const { error: updateError } = await supabase
+    .from("garments")
+    .update(({ extraction_metadata_json: nextMetadata } satisfies Partial<GarmentInsert>) as never)
+    .eq("id", garmentId)
+    .eq("user_id", user.id);
+
+  if (updateError) {
+    throw new Error(updateError.message);
+  }
 }
 
 export async function listWardrobeGarments(): Promise<GarmentListItem[]> {
@@ -306,7 +424,7 @@ export async function listWardrobeGarments(): Promise<GarmentListItem[]> {
       "id" | "garment_id" | "worn_at" | "occasion" | "notes"
     >[]);
   const imagesByGarment = new Map<string, z.infer<typeof garmentImageSchema>[]>();
-  const firstImagePathByGarment = new Map<string, string>();
+  const featureImagePathByGarment = new Map<string, string>();
   const primaryColourByGarment = new Map<string, z.infer<typeof garmentColourSchema>>();
   const recentWearByGarment = new Map<string, z.infer<typeof garmentRecentWearSchema>[]>();
   const colourIds = Array.from(new Set(parsedGarmentColours.map((entry) => entry.colour_id)));
@@ -315,8 +433,12 @@ export async function listWardrobeGarments(): Promise<GarmentListItem[]> {
     const existing = imagesByGarment.get(image.garment_id) ?? [];
     existing.push(image);
     imagesByGarment.set(image.garment_id, existing);
-    if (!firstImagePathByGarment.has(image.garment_id)) {
-      firstImagePathByGarment.set(image.garment_id, image.storage_path);
+  }
+
+  for (const [garmentId, garmentImages] of imagesByGarment.entries()) {
+    const featureImagePath = getFeatureImagePath(garmentImages);
+    if (featureImagePath) {
+      featureImagePathByGarment.set(garmentId, featureImagePath);
     }
   }
 
@@ -352,7 +474,7 @@ export async function listWardrobeGarments(): Promise<GarmentListItem[]> {
     }
   }
 
-  const firstImagePaths = Array.from(firstImagePathByGarment.values());
+  const firstImagePaths = Array.from(featureImagePathByGarment.values());
   const previewUrlsByPath = new Map<string, string | null>();
 
   if (firstImagePaths.length) {
@@ -371,23 +493,33 @@ export async function listWardrobeGarments(): Promise<GarmentListItem[]> {
     }
   }
 
-  return parsedGarments.map((garment) => ({
-    ...garment,
-    primary_colour_family: (() => {
-      const primaryLink = primaryColourByGarment.get(garment.id as string);
-      return primaryLink ? colourById.get(primaryLink.colour_id)?.family ?? null : null;
-    })(),
-    primary_colour_hex: (() => {
-      const primaryLink = primaryColourByGarment.get(garment.id as string);
-      return primaryLink ? colourById.get(primaryLink.colour_id)?.hex ?? null : null;
-    })(),
-    images: imagesByGarment.get(garment.id as string) ?? [],
-    recent_wear_events: recentWearByGarment.get(garment.id as string) ?? [],
-    preview_url: (() => {
-      const firstPath = firstImagePathByGarment.get(garment.id as string);
-      return firstPath ? previewUrlsByPath.get(firstPath) ?? null : null;
-    })()
-  }));
+  return parsedGarments.map((garment) => {
+    const garmentImages = (imagesByGarment.get(garment.id as string) ?? []).map((image) => ({
+      ...image,
+      preview_url: previewUrlsByPath.get(image.storage_path) ?? null
+    }));
+    const preferredFeatureImageId = getPreferredFeatureImageId(garment.extraction_metadata_json as Json);
+
+    return {
+      ...garment,
+      primary_colour_family: (() => {
+        const primaryLink = primaryColourByGarment.get(garment.id as string);
+        return primaryLink ? colourById.get(primaryLink.colour_id)?.family ?? null : null;
+      })(),
+      primary_colour_hex: (() => {
+        const primaryLink = primaryColourByGarment.get(garment.id as string);
+        return primaryLink ? colourById.get(primaryLink.colour_id)?.hex ?? null : null;
+      })(),
+      images: garmentImages,
+      recent_wear_events: recentWearByGarment.get(garment.id as string) ?? [],
+      preview_url: (() => {
+        const firstPath =
+          getFeatureImagePath(garmentImages, preferredFeatureImageId) ??
+          featureImagePathByGarment.get(garment.id as string);
+        return firstPath ? previewUrlsByPath.get(firstPath) ?? null : null;
+      })()
+    };
+  });
 }
 
 export async function createGarment(
@@ -402,6 +534,8 @@ export async function createGarment(
   });
   const payload: GarmentInsert = {
     ...parsedPayload,
+    cost_per_wear:
+      parsedPayload.purchase_price != null ? parsedPayload.purchase_price : null,
     extraction_metadata_json: parsedPayload.extraction_metadata_json as Json
   };
 
@@ -633,6 +767,117 @@ export async function addGarmentImage(params: {
   };
 }
 
+export async function addGarmentImageFromUrl(params: {
+  garmentId: string;
+  imageUrl: string;
+  fileNameHint?: string | null;
+  cropBox?: [number, number, number, number] | null;
+}) {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const garmentId = z.string().uuid().parse(params.garmentId);
+
+  const { data: garment, error: garmentError } = await supabase
+    .from("garments")
+    .select("id")
+    .eq("id", garmentId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (garmentError || !garment) {
+    throw new Error("Garment not found.");
+  }
+
+  const imageResponse = await fetch(params.imageUrl, {
+    headers: {
+      "user-agent":
+        "Mozilla/5.0 (compatible; PocketWardrobeBot/0.1; +https://example.com/bot)"
+    },
+    cache: "no-store",
+    signal: AbortSignal.timeout(PRODUCT_IMAGE_FETCH_TIMEOUT_MS)
+  });
+
+  if (!imageResponse.ok) {
+    throw new Error(`Image fetch failed with status ${imageResponse.status}.`);
+  }
+
+  const imageBlob = await imageResponse.blob();
+  const imageBuffer = Buffer.from(await imageBlob.arrayBuffer());
+  const parsedImageUrl = new URL(params.imageUrl);
+  const inferredExtension =
+    parsedImageUrl.pathname.split(".").pop()?.replace(/[^a-z0-9]/gi, "").toLowerCase() || "jpg";
+  const baseName =
+    params.fileNameHint?.trim().replace(/[^a-zA-Z0-9._-]/g, "-") ||
+    `product-image.${inferredExtension}`;
+  const safeFileName = baseName.includes(".") ? baseName : `${baseName}.${inferredExtension}`;
+  const storagePath = `${user.id}/${garmentId}/${Date.now()}-${safeFileName}`;
+  const featureDerivative = await buildFeatureDerivative({
+    sourceBuffer: imageBuffer,
+    contentType: imageBlob.type || null,
+    cropBox: params.cropBox ?? null
+  });
+  const derivativePath = `${user.id}/${garmentId}/${Date.now()}-feature-${safeFileName.replace(/\.[^.]+$/, "")}.jpg`;
+  const colourAnalysis = await analyseImageColours(featureDerivative.buffer);
+
+  const { error: uploadError } = await supabase.storage
+    .from("garment-originals")
+    .upload(storagePath, imageBuffer, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: imageBlob.type || undefined
+    });
+
+  if (uploadError) {
+    throw new Error(uploadError.message);
+  }
+
+  const { error: derivativeUploadError } = await supabase.storage
+    .from("garment-originals")
+    .upload(derivativePath, featureDerivative.buffer, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: featureDerivative.contentType
+    });
+
+  if (derivativeUploadError) {
+    await supabase.storage.from("garment-originals").remove([storagePath]);
+    throw new Error(derivativeUploadError.message);
+  }
+
+  const { data: images, error: imageError } = await supabase
+    .from("garment_images")
+    .insert(([
+      {
+        garment_id: garmentId,
+        image_type: "original",
+        storage_path: storagePath,
+        width: null,
+        height: null
+      },
+      {
+        garment_id: garmentId,
+        image_type: params.cropBox ? "cutout" : "cropped",
+        storage_path: derivativePath,
+        width: featureDerivative.width,
+        height: featureDerivative.height
+      }
+    ] satisfies GarmentImageInsert[]) as never)
+    .select("id,garment_id,image_type,storage_path,width,height,created_at")
+    ;
+
+  if (imageError) {
+    await supabase.storage.from("garment-originals").remove([storagePath, derivativePath]);
+    throw new Error(imageError.message);
+  }
+
+  return {
+    images: z.array(garmentImageSchema).parse((images ?? []) satisfies GarmentImageRow[]),
+    storagePath,
+    featureStoragePath: derivativePath,
+    colourAnalysis
+  };
+}
+
 export async function getDashboardStats(): Promise<{
   garmentCount: number;
   favouritesCount: number;
@@ -682,7 +927,7 @@ export async function getRecentGarments(n: number): Promise<
 
   const { data: rawData, error } = await supabase
     .from("garments")
-    .select("id, title, category, garment_images(storage_path)")
+    .select("id, title, category, garment_images(storage_path,image_type,width,height,created_at,id,garment_id)")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(n);
@@ -693,7 +938,7 @@ export async function getRecentGarments(n: number): Promise<
     id: string;
     title: string | null;
     category: string;
-    garment_images: Array<{ storage_path: string }> | null;
+    garment_images: Array<z.infer<typeof garmentImageSchema>> | null;
   };
   const data = (rawData ?? []) as unknown as RawRow[];
 
@@ -701,9 +946,8 @@ export async function getRecentGarments(n: number): Promise<
     id: g.id,
     title: g.title ?? null,
     category: g.category,
-    storagePath:
-      g.garment_images && g.garment_images.length > 0
-        ? g.garment_images[0].storage_path
-        : null,
+    storagePath: g.garment_images && g.garment_images.length > 0
+      ? getFeatureImagePath(g.garment_images)
+      : null,
   }));
 }

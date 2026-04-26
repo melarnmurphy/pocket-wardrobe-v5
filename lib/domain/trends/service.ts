@@ -5,6 +5,9 @@ import { computeUserTrendMatches } from "./matching";
 import {
   trendSignalSchema,
   trendColourSchema,
+  trendSourceSchema,
+  trendEntitySchema,
+  trendSignalMetricSchema,
   userTrendMatchSchema,
   type TrendSignalWithColour,
   type UserTrendMatch
@@ -45,7 +48,7 @@ export async function getTrendSignals(): Promise<TrendSignalWithColour[]> {
   const { data, error } = await supabase
     .from("trend_signals")
     .select(
-      "id,trend_type,label,normalized_attributes_json,season,year,region,source_count,authority_score,recency_score,confidence_score,first_seen_at,last_seen_at,created_at"
+      "id,trend_type,label,canonical_label,vertical,family,subfamily,micro_signal,normalized_attributes_json,season,year,region,source_count,authority_score,recency_score,confidence_score,trend_status,trend_confidence,score_30d_delta,first_seen_at,last_seen_at,created_at"
     )
     .order("last_seen_at", { ascending: false });
 
@@ -58,6 +61,9 @@ export async function getTrendSignals(): Promise<TrendSignalWithColour[]> {
     .map((s) => s.id as string);
 
   const colourById = new Map<string, z.infer<typeof trendColourSchema>>();
+  const sourcesBySignalId = new Map<string, z.infer<typeof trendSourceSchema>[]>();
+  const entitiesBySignalId = new Map<string, z.infer<typeof trendEntitySchema>[]>();
+  const metricsBySignalId = new Map<string, z.infer<typeof trendSignalMetricSchema>[]>();
 
   if (colourSignalIds.length > 0) {
     const { data: colours, error: colourError } = await supabase
@@ -74,9 +80,91 @@ export async function getTrendSignals(): Promise<TrendSignalWithColour[]> {
     }
   }
 
+  const signalIds = signals.map((signal) => signal.id as string).filter(Boolean);
+
+  if (signalIds.length > 0) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+
+    const { data: sourceLinks, error: sourceError } = await supabase
+      .from("trend_signal_sources")
+      .select(
+        "trend_signal_id, trend_source:trend_sources(id,source_name,source_type,source_url,title,publish_date,author,region,season,raw_text_excerpt,ingestion_timestamp)"
+      )
+      .in("trend_signal_id", signalIds);
+
+    if (sourceError) {
+      throw new Error(sourceError.message);
+    }
+
+    for (const row of (sourceLinks ?? []) as Array<{
+      trend_signal_id: string;
+      trend_source: unknown;
+    }>) {
+      const parsedSource = trendSourceSchema.safeParse(row.trend_source);
+      if (!parsedSource.success) {
+        continue;
+      }
+
+      const existingSources = sourcesBySignalId.get(row.trend_signal_id) ?? [];
+      existingSources.push(parsedSource.data);
+      sourcesBySignalId.set(row.trend_signal_id, existingSources);
+    }
+
+    const { data: entities, error: entityError } = await supabase
+      .from("trend_entities")
+      .select(
+        "id,trend_signal_id,entity_type,label,normalized_label,brand,source_count,first_seen_at,last_seen_at,metadata_json,created_at"
+      )
+      .in("trend_signal_id", signalIds)
+      .order("source_count", { ascending: false });
+
+    if (entityError) {
+      throw new Error(entityError.message);
+    }
+
+    for (const entity of z.array(trendEntitySchema).parse(entities ?? [])) {
+      const existingEntities = entitiesBySignalId.get(entity.trend_signal_id) ?? [];
+      existingEntities.push(entity);
+      entitiesBySignalId.set(entity.trend_signal_id, existingEntities);
+    }
+
+    const { data: metrics, error: metricError } = await supabase
+      .from("trend_signal_metrics")
+      .select(
+        "id,trend_signal_id,metric_date,search_interest,search_velocity,editorial_mentions,editorial_source_count,commerce_signal,retailer_count,resale_signal,runway_signal,entity_count,composite_score,confidence,status,created_at"
+      )
+      .in("trend_signal_id", signalIds)
+      .gte("metric_date", cutoff.toISOString().slice(0, 10))
+      .order("metric_date", { ascending: true });
+
+    if (metricError) {
+      throw new Error(metricError.message);
+    }
+
+    for (const metric of z.array(trendSignalMetricSchema).parse(metrics ?? [])) {
+      const existingMetrics = metricsBySignalId.get(metric.trend_signal_id) ?? [];
+      existingMetrics.push(metric);
+      metricsBySignalId.set(metric.trend_signal_id, existingMetrics);
+    }
+  }
+
   return signals.map((s) => ({
     ...s,
-    trend_colour: colourById.get(s.id as string) ?? null
+    trend_colour: colourById.get(s.id as string) ?? null,
+    entities: (entitiesBySignalId.get(s.id as string) ?? []).slice(0, 4),
+    metrics_30d: metricsBySignalId.get(s.id as string) ?? [],
+    latest_metric: (() => {
+      const metrics = metricsBySignalId.get(s.id as string) ?? [];
+      return metrics.at(-1) ?? null;
+    })(),
+    sources: (sourcesBySignalId.get(s.id as string) ?? [])
+      .sort((left, right) => {
+        const leftTime = left.publish_date ? new Date(left.publish_date).getTime() : 0;
+        const rightTime = right.publish_date ? new Date(right.publish_date).getTime() : 0;
+        return rightTime - leftTime;
+      })
+      .slice(0, 3)
   }));
 }
 
@@ -129,6 +217,7 @@ async function getSemanticUpgrades(
 
   // Batch-embed all garments in one call
   const garmentTexts = garments.map(buildGarmentEmbeddingText);
+  if (garmentTexts.length === 0) return [];
   const response = await client.embeddings.create({
     model: "text-embedding-3-small",
     input: garmentTexts

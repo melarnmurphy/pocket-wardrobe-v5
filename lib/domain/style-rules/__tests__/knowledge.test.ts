@@ -81,12 +81,17 @@ describe("buildSeedStyleRules", () => {
     expect(seasonalityRules.length).toBe(15);
   });
 
-  it("produces 32 colour rules (complement + analogous + triadic)", () => {
+  it("produces 46 colour rules (complement + analogous + triadic + neutral anchors)", () => {
     const rules = buildSeedStyleRules();
     const colourRules = rules.filter((r) =>
-      ["colour_complement", "colour_analogous", "colour_triadic"].includes(r.rule_type)
+      [
+        "colour_complement",
+        "colour_analogous",
+        "colour_triadic",
+        "colour_neutral_anchor"
+      ].includes(r.rule_type)
     );
-    expect(colourRules.length).toBe(32);
+    expect(colourRules.length).toBe(46);
   });
 
   it("formality hard rules target dress_code object type", () => {

@@ -129,6 +129,31 @@ export async function listSavedOutfits(): Promise<OutfitWithItems[]> {
   return z.array(outfitWithItemsSchema).parse(data ?? []);
 }
 
+export async function deleteOutfit(outfitId: string) {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedOutfitId = z.string().uuid().parse(outfitId);
+
+  const { error: itemsError } = await supabase
+    .from("outfit_items")
+    .delete()
+    .eq("outfit_id", parsedOutfitId);
+
+  if (itemsError) {
+    throw new Error(itemsError.message);
+  }
+
+  const { error } = await supabase
+    .from("outfits")
+    .delete()
+    .eq("id", parsedOutfitId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 // NOTE: Gallery thumbnails (OutfitWithItems.items[].garment.preview_url) will always be null
 // in this iteration. The `preview_url` field is computed from the garment_images join + signed
 // URLs in listWardrobeGarments — it is not a column on the `garments` table and cannot be

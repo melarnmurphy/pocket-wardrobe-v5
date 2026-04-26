@@ -19,6 +19,11 @@ export const trendSignalSchema = z.object({
   id: z.string().uuid().optional(),
   trend_type: z.enum(TREND_TYPES),
   label: z.string().trim().min(1).max(200),
+  canonical_label: z.string().trim().min(1).max(200).nullable().optional(),
+  vertical: z.string().trim().max(80).nullable().optional(),
+  family: z.string().trim().max(120).nullable().optional(),
+  subfamily: z.string().trim().max(160).nullable().optional(),
+  micro_signal: z.string().trim().max(200).nullable().optional(),
   normalized_attributes_json: z.record(z.string(), z.unknown()).default({}),
   season: z.string().trim().max(80).nullable().optional(),
   year: z.number().int().nullable().optional(),
@@ -27,12 +32,34 @@ export const trendSignalSchema = z.object({
   authority_score: z.number().nullable().optional(),
   recency_score: z.number().nullable().optional(),
   confidence_score: z.number().nullable().optional(),
+  trend_status: z
+    .enum(["candidate", "emerging", "confirmed", "dominant", "cooling", "flat", "rising"])
+    .nullable()
+    .optional(),
+  trend_confidence: z.number().nullable().optional(),
+  score_30d_delta: z.number().nullable().optional(),
   first_seen_at: z.string().nullable().optional(),
   last_seen_at: z.string().nullable().optional(),
   created_at: z.string().optional()
 });
 
 export type TrendSignal = z.infer<typeof trendSignalSchema>;
+
+export const trendSourceSchema = z.object({
+  id: z.string().uuid().optional(),
+  source_name: z.string().min(1),
+  source_type: z.string().min(1),
+  source_url: z.string().url(),
+  title: z.string().min(1),
+  publish_date: z.string().nullable().optional(),
+  author: z.string().nullable().optional(),
+  region: z.string().nullable().optional(),
+  season: z.string().nullable().optional(),
+  raw_text_excerpt: z.string().nullable().optional(),
+  ingestion_timestamp: z.string().optional()
+});
+
+export type TrendSource = z.infer<typeof trendSourceSchema>;
 
 export const trendColourSchema = z.object({
   id: z.string().uuid().optional(),
@@ -56,8 +83,56 @@ export const trendColourSchema = z.object({
 
 export type TrendColour = z.infer<typeof trendColourSchema>;
 
+export const trendEntitySchema = z.object({
+  id: z.string().uuid().optional(),
+  trend_signal_id: z.string().uuid(),
+  entity_type: z.enum([
+    "brand",
+    "model",
+    "collaboration",
+    "runway_reference",
+    "retailer_example",
+    "editorial_example"
+  ]),
+  label: z.string().min(1),
+  normalized_label: z.string().min(1),
+  brand: z.string().nullable().optional(),
+  source_count: z.number().int().default(1),
+  first_seen_at: z.string().nullable().optional(),
+  last_seen_at: z.string().nullable().optional(),
+  metadata_json: z.record(z.string(), z.unknown()).default({}),
+  created_at: z.string().optional()
+});
+
+export type TrendEntity = z.infer<typeof trendEntitySchema>;
+
+export const trendSignalMetricSchema = z.object({
+  id: z.string().uuid().optional(),
+  trend_signal_id: z.string().uuid(),
+  metric_date: z.string(),
+  search_interest: z.number().nullable().optional(),
+  search_velocity: z.number().nullable().optional(),
+  editorial_mentions: z.number().int().default(0),
+  editorial_source_count: z.number().int().default(0),
+  commerce_signal: z.number().nullable().optional(),
+  retailer_count: z.number().int().default(0),
+  resale_signal: z.number().nullable().optional(),
+  runway_signal: z.number().nullable().optional(),
+  entity_count: z.number().int().default(0),
+  composite_score: z.number().nullable().optional(),
+  confidence: z.number().nullable().optional(),
+  status: z.enum(["candidate", "emerging", "confirmed", "dominant", "cooling", "flat", "rising"]).nullable().optional(),
+  created_at: z.string().optional()
+});
+
+export type TrendSignalMetric = z.infer<typeof trendSignalMetricSchema>;
+
 export const trendSignalWithColourSchema = trendSignalSchema.extend({
-  trend_colour: trendColourSchema.nullable().optional()
+  trend_colour: trendColourSchema.nullable().optional(),
+  sources: z.array(trendSourceSchema).default([]),
+  entities: z.array(trendEntitySchema).default([]),
+  metrics_30d: z.array(trendSignalMetricSchema).default([]),
+  latest_metric: trendSignalMetricSchema.nullable().optional()
 });
 
 export type TrendSignalWithColour = z.infer<typeof trendSignalWithColourSchema>;

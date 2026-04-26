@@ -9,6 +9,7 @@ export const localWeatherLookupSchema = z
     location: z.string().trim().min(1).max(160).optional(),
     latitude: z.coerce.number().min(-90).max(90).optional(),
     longitude: z.coerce.number().min(-180).max(180).optional(),
+    weatherDate: z.string().date().optional(),
     profileOverride: weatherProfileSchema.optional(),
     provider: weatherProviderSchema.optional()
   })
@@ -37,7 +38,7 @@ export const localWeatherLookupSchema = z
 export const localWeatherContextSchema = z.object({
   profile: weatherProfileSchema,
   profile_label: z.string().min(1),
-  profile_source: z.enum(["live", "manual_override"]),
+  profile_source: z.enum(["live", "manual_override", "snapshot", "historical_fallback"]),
   location_label: z.string().min(1),
   location_key: z.string().min(1),
   latitude: z.number().min(-90).max(90),

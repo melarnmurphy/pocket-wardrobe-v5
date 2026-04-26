@@ -8,10 +8,12 @@ export function StyleRuleBlankInput({
   blank,
   value,
   onChange,
+  helperText,
 }: {
   blank: TextBlank;
   value: string;
   onChange: (value: string) => void;
+  helperText?: string | null;
 }) {
   return (
     <div className="inline-flex flex-col gap-2">
@@ -40,6 +42,9 @@ export function StyleRuleBlankInput({
           ))}
         </div>
       )}
+      {helperText ? (
+        <p className="max-w-xs text-[11px] leading-5 text-[var(--muted)]">{helperText}</p>
+      ) : null}
     </div>
   );
 }

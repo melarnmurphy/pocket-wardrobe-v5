@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Paste these keys into your real Info.plist after dragging Fraunces, Inter, and -->
+<!-- JetBrains Mono TTFs into Resources/Fonts/. Font filenames must match exactly.  -->
+<plist version="1.0">
+<dict>
+    <key>UIAppFonts</key>
+    <array>
+        <string>Fraunces-Light.ttf</string>
+        <string>Fraunces-LightItalic.ttf</string>
+        <string>Fraunces-Regular.ttf</string>
+        <string>Inter-Light.ttf</string>
+        <string>Inter-Regular.ttf</string>
+        <string>Inter-Medium.ttf</string>
+        <string>Inter-SemiBold.ttf</string>
+        <string>Inter-Bold.ttf</string>
+        <string>JetBrainsMono-Regular.ttf</string>
+    </array>
+</dict>
+</plist>

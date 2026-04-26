@@ -75,6 +75,16 @@ describe("RULE_TEMPLATES", () => {
       expect(t.blanks[1].options).toEqual(["monochrome", "tonal", "contrasting"]);
     }
   });
+
+  it("colour pairing templates store canonical colour_family types", () => {
+    const templates = RULE_TEMPLATES.filter((template) => template.category === "colour");
+    const pairingTemplates = templates.filter((template) => template.rule_type === "colour_pairing");
+
+    for (const template of pairingTemplates) {
+      expect(template.subject_type).toBe("colour_family");
+      expect(template.object_type).toBe("colour_family");
+    }
+  });
 });
 
 describe("STRENGTH_WEIGHTS", () => {
