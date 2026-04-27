@@ -9,8 +9,10 @@ import {
   trendEntitySchema,
   trendSignalMetricSchema,
   userTrendMatchSchema,
+  trendStorySchema,
   type TrendSignalWithColour,
-  type UserTrendMatch
+  type UserTrendMatch,
+  type TrendStory
 } from "./index";
 import { z } from "zod";
 import type { TablesInsert } from "@/types/database";
@@ -346,4 +348,95 @@ export async function upsertUserTrendMatches(
     });
 
   if (error) throw new Error(`Failed to upsert trend matches: ${error.message}`);
+}
+
+export async function getTrendStories(): Promise<TrendStory[]> {
+  const supabase = await createClient();
+  const { data, error } = await (
+    (supabase as unknown as {
+      from: (t: string) => {
+        select: (cols: string) => {
+          order: (
+            col: string,
+            opts: { ascending: boolean; nullsFirst: boolean }
+          ) => {
+            order: (
+              col: string,
+              opts: { ascending: boolean }
+            ) => Promise<{ data: unknown; error: unknown }>;
+          };
+        };
+      };
+    })
+      .from("trend_stories")
+      .select(
+        "id,headline,framing,momentum_label,dominant_type,attributed_houses,attributed_people,signal_ids,status,confidence_score,created_at,refreshed_at"
+      )
+      .order("confidence_score", { ascending: false, nullsFirst: false })
+      .order("refreshed_at", { ascending: false })
+  );
+
+  if (error) throw new Error((error as Error).message ?? String(error));
+  return z.array(trendStorySchema).parse(data ?? []);
+}
+
+export interface TrendStoryWithMatches {
+  story: TrendStory;
+  matchingGarmentIds: string[];
+  bestMatchType: UserTrendMatch["match_type"] | null;
+  bestScore: number;
+}
+
+const MATCH_TYPE_RANK: Record<UserTrendMatch["match_type"], number> = {
+  exact_match: 3,
+  adjacent_match: 2,
+  styling_match: 1,
+  missing_piece: 0
+};
+
+export function assembleStoryMatches(
+  stories: TrendStory[],
+  matches: UserTrendMatch[]
+): TrendStoryWithMatches[] {
+  const matchesBySignalId = new Map<string, UserTrendMatch>();
+  for (const m of matches) {
+    matchesBySignalId.set(m.trend_signal_id, m);
+  }
+
+  return stories.map((story) => {
+    const storyMatches = (story.signal_ids ?? [])
+      .map((sid) => matchesBySignalId.get(sid))
+      .filter((m): m is UserTrendMatch => m != null);
+
+    const garmentIds = [
+      ...new Set(
+        storyMatches.flatMap((m) => {
+          const reasoning = m.reasoning_json as {
+            matched_garment_ids?: string[];
+          };
+          return reasoning.matched_garment_ids ?? [];
+        })
+      )
+    ];
+
+    const bestMatch = [...storyMatches].sort(
+      (a, b) =>
+        MATCH_TYPE_RANK[b.match_type] - MATCH_TYPE_RANK[a.match_type]
+    )[0];
+
+    return {
+      story,
+      matchingGarmentIds: garmentIds,
+      bestMatchType: bestMatch?.match_type ?? null,
+      bestScore: bestMatch?.score ?? 0
+    };
+  });
+}
+
+export async function getUserTrendStoryMatches(
+  userId: string,
+  stories: TrendStory[]
+): Promise<TrendStoryWithMatches[]> {
+  const matches = await getUserTrendMatches(userId);
+  return assembleStoryMatches(stories, matches);
 }
