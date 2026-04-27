@@ -84,6 +84,100 @@ describe("new scanner archetypes", () => {
   });
 });
 
+import {
+  clusterSignals,
+  computeMomentumLabel,
+  buildStoryNamingPrompt
+} from "../stories";
+
+const makeSignal = (overrides: Partial<{
+  id: string;
+  label: string;
+  canonical_label: string | null;
+  trend_type: string;
+  family: string | null;
+  house_attribution: string[] | null;
+  person_attribution: string[] | null;
+  confidence_score: number | null;
+  score_30d_delta: number | null;
+}> = {}) => ({
+  id: "00000000-0000-0000-0000-000000000001",
+  label: "wide-leg trousers",
+  canonical_label: "Wide-Leg Trousers",
+  trend_type: "garment",
+  family: "trousers",
+  house_attribution: null,
+  person_attribution: null,
+  confidence_score: 0.8,
+  score_30d_delta: null,
+  ...overrides
+});
+
+describe("clusterSignals", () => {
+  it("groups signals with same trend_type and family", () => {
+    const signals = [
+      makeSignal({ id: "1", trend_type: "garment", family: "trousers" }),
+      makeSignal({ id: "2", trend_type: "garment", family: "trousers" }),
+      makeSignal({ id: "3", trend_type: "colour", family: "orange" })
+    ];
+    const clusters = clusterSignals(signals);
+    expect(clusters).toHaveLength(2);
+    const trouserCluster = clusters.find((c) => c.signals[0].family === "trousers");
+    expect(trouserCluster?.signals).toHaveLength(2);
+  });
+
+  it("signals without family are grouped by canonical_label", () => {
+    const signals = [
+      makeSignal({ id: "1", family: null, canonical_label: "Quiet Luxury" }),
+      makeSignal({ id: "2", family: null, canonical_label: "Quiet Luxury" })
+    ];
+    const clusters = clusterSignals(signals);
+    expect(clusters).toHaveLength(1);
+    expect(clusters[0].signals).toHaveLength(2);
+  });
+});
+
+describe("computeMomentumLabel", () => {
+  it("returns null when no deltas available", () => {
+    const signals = [makeSignal({ score_30d_delta: null })];
+    expect(computeMomentumLabel(signals)).toBeNull();
+  });
+
+  it("returns positive label for positive avg delta", () => {
+    const signals = [
+      makeSignal({ score_30d_delta: 0.5 }),
+      makeSignal({ score_30d_delta: 0.7 })
+    ];
+    const label = computeMomentumLabel(signals);
+    expect(label).toMatch(/^\+\d+%/);
+  });
+
+  it("returns null when avg delta is below threshold (< 5%)", () => {
+    const signals = [makeSignal({ score_30d_delta: 0.02 })];
+    expect(computeMomentumLabel(signals)).toBeNull();
+  });
+});
+
+describe("buildStoryNamingPrompt", () => {
+  it("includes cluster label in prompt", () => {
+    const clusters = [{
+      groupKey: "garment::trousers",
+      signals: [makeSignal({ label: "wide-leg trousers", canonical_label: null, house_attribution: ["Prada"] })]
+    }];
+    const prompt = buildStoryNamingPrompt(clusters);
+    expect(prompt).toContain("wide-leg trousers");
+    expect(prompt).toContain("Prada");
+  });
+
+  it("lists valid dominant_type values in prompt", () => {
+    const clusters = [{ groupKey: "k", signals: [makeSignal()] }];
+    const prompt = buildStoryNamingPrompt(clusters);
+    expect(prompt).toContain("garment_moment");
+    expect(prompt).toContain("colour_combo");
+    expect(prompt).toContain("it_girl_look");
+  });
+});
+
 import { buildExtractionPrompt } from "../extraction";
 
 describe("buildExtractionPrompt with scanner archetype", () => {
