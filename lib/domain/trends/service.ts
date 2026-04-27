@@ -352,31 +352,17 @@ export async function upsertUserTrendMatches(
 
 export async function getTrendStories(): Promise<TrendStory[]> {
   const supabase = await createClient();
-  const { data, error } = await (
-    (supabase as unknown as {
-      from: (t: string) => {
-        select: (cols: string) => {
-          order: (
-            col: string,
-            opts: { ascending: boolean; nullsFirst: boolean }
-          ) => {
-            order: (
-              col: string,
-              opts: { ascending: boolean }
-            ) => Promise<{ data: unknown; error: unknown }>;
-          };
-        };
-      };
-    })
-      .from("trend_stories")
-      .select(
-        "id,headline,framing,momentum_label,dominant_type,attributed_houses,attributed_people,signal_ids,status,confidence_score,created_at,refreshed_at"
-      )
-      .order("confidence_score", { ascending: false, nullsFirst: false })
-      .order("refreshed_at", { ascending: false })
-  );
+  // trend_stories is not yet in generated Supabase types; cast to bypass
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from("trend_stories")
+    .select(
+      "id,headline,framing,momentum_label,dominant_type,attributed_houses,attributed_people,signal_ids,status,confidence_score,created_at,refreshed_at"
+    )
+    .order("confidence_score", { ascending: false, nullsFirst: false })
+    .order("refreshed_at", { ascending: false });
 
-  if (error) throw new Error((error as Error).message ?? String(error));
+  if (error) throw new Error((error as { message: string }).message);
   return z.array(trendStorySchema).parse(data ?? []);
 }
 

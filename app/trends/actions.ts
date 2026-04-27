@@ -5,7 +5,7 @@ import {
   getUserTrendMatches,
   getTrendSignals,
   getTrendStories,
-  getUserTrendStoryMatches,
+  assembleStoryMatches,
   type TrendStoryWithMatches
 } from "@/lib/domain/trends/service";
 import type { UserTrendMatch, TrendSignalWithColour } from "@/lib/domain/trends/index";
@@ -22,16 +22,24 @@ export interface GarmentPreview {
   preview_url: string | null;
 }
 
-export async function loadUserTrends(): Promise<TrendMatchWithSignal[]> {
+export interface TrendsPageData {
+  trendMatches: TrendMatchWithSignal[];
+  storyMatches: TrendStoryWithMatches[];
+  garmentPreviews: Record<string, GarmentPreview>;
+}
+
+export async function loadTrendsPageData(): Promise<TrendsPageData> {
   const user = await getRequiredUser();
-  const [matches, signals] = await Promise.all([
+
+  const [matches, signals, stories] = await Promise.all([
     getUserTrendMatches(user.id),
-    getTrendSignals()
+    getTrendSignals(),
+    getTrendStories()
   ]);
 
+  // Per-signal view
   const signalById = new Map(signals.map((s) => [s.id, s]));
-
-  return matches
+  const trendMatches: TrendMatchWithSignal[] = matches
     .map((match) => {
       const signal = signalById.get(match.trend_signal_id);
       if (!signal) return null;
@@ -39,25 +47,18 @@ export async function loadUserTrends(): Promise<TrendMatchWithSignal[]> {
     })
     .filter((item): item is TrendMatchWithSignal => item !== null)
     .sort((a, b) => b.match.score - a.match.score);
-}
 
-export async function loadUserTrendStories(): Promise<{
-  storyMatches: TrendStoryWithMatches[];
-  garmentPreviews: Record<string, GarmentPreview>;
-}> {
-  const user = await getRequiredUser();
-  const stories = await getTrendStories();
-  const storyMatches = await getUserTrendStoryMatches(user.id, stories);
+  // Story view — reuse same matches
+  const storyMatches = assembleStoryMatches(stories, matches);
 
+  // Garment previews for story cards
   const allGarmentIds = [
     ...new Set(storyMatches.flatMap((sm) => sm.matchingGarmentIds))
   ];
-
   const garmentPreviews: Record<string, GarmentPreview> = {};
 
   if (allGarmentIds.length > 0) {
     const supabase = await createClient();
-
     const { data: garments } = await supabase
       .from("garments")
       .select(
@@ -88,10 +89,9 @@ export async function loadUserTrendStories(): Promise<{
           .getPublicUrl(featureImage.storage_path);
         preview_url = urlData?.publicUrl ?? null;
       }
-
       garmentPreviews[g.id] = { id: g.id, title: g.title, preview_url };
     }
   }
 
-  return { storyMatches, garmentPreviews };
+  return { trendMatches, storyMatches, garmentPreviews };
 }

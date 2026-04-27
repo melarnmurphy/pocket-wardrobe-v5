@@ -130,21 +130,20 @@ async function nameClustersBatch(
 type AnySupabase = { from: (table: string) => any };
 
 async function upsertStory(
-  supabase: ReturnType<typeof createClient>,
+  supabase: AnySupabase,
   story: Omit<TrendStory, "id" | "created_at">
 ): Promise<void> {
-  const db = supabase as unknown as AnySupabase;
-
-  const { data: existing } = await db
+  // First try to find existing story by headline (case-insensitive)
+  const { data: existing } = await supabase
     .from("trend_stories")
     .select("id, signal_ids")
-    .ilike("headline", story.headline)
+    .filter("lower(headline)", "eq", story.headline.toLowerCase())
     .maybeSingle();
 
   if (existing) {
     const row = existing as { id: string; signal_ids: string[] };
     const merged = [...new Set([...row.signal_ids, ...(story.signal_ids ?? [])])];
-    await db
+    await supabase
       .from("trend_stories")
       .update({
         signal_ids: merged,
@@ -160,7 +159,8 @@ async function upsertStory(
     return;
   }
 
-  await db
+  // Insert — if concurrent insert wins, skip (the other process got it)
+  const { error } = await supabase
     .from("trend_stories")
     .insert({
       headline: story.headline,
@@ -174,6 +174,11 @@ async function upsertStory(
       confidence_score: story.confidence_score ?? null,
       refreshed_at: new Date().toISOString()
     });
+
+  // Ignore unique constraint violation — a concurrent run inserted it first
+  if (error && error.code !== "23505") {
+    throw new Error(`Failed to insert trend story: ${error.message}`);
+  }
 }
 
 export async function generateTrendStories(opts?: {
@@ -205,10 +210,12 @@ export async function generateTrendStories(opts?: {
   const namedByIndex = new Map(named.map((n) => [n.cluster_index, n]));
 
   let upserted = 0;
+  let fallback = 0;
 
   for (let i = 0; i < clusters.length; i++) {
     const cluster = clusters[i];
     const naming = namedByIndex.get(i + 1);
+    if (!naming) fallback++;
     const houses = [
       ...new Set(cluster.signals.flatMap((s) => s.house_attribution ?? []))
     ];
@@ -221,7 +228,7 @@ export async function generateTrendStories(opts?: {
       cluster.signals.length;
     const signalIds = cluster.signals.map((s) => s.id);
 
-    await upsertStory(supabase, {
+    await upsertStory(supabase as unknown as AnySupabase, {
       headline:
         naming?.headline ??
         (cluster.signals[0].canonical_label || cluster.signals[0].label),
@@ -239,5 +246,5 @@ export async function generateTrendStories(opts?: {
     upserted++;
   }
 
-  return { upserted, skipped: 0 };
+  return { upserted, skipped: fallback };
 }

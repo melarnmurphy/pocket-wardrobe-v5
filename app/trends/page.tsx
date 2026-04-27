@@ -1,4 +1,4 @@
-import { loadUserTrends, loadUserTrendStories } from "./actions";
+import { loadTrendsPageData } from "./actions";
 import { TrendSparkline } from "@/components/trend-sparkline";
 
 const MATCH_LABELS: Record<string, string> = {
@@ -20,10 +20,7 @@ const MATCH_COLOURS: Record<string, string> = {
 };
 
 export default async function TrendsPage() {
-  const [{ storyMatches, garmentPreviews }, trendMatches] = await Promise.all([
-    loadUserTrendStories(),
-    loadUserTrends()
-  ]);
+  const { trendMatches, storyMatches, garmentPreviews } = await loadTrendsPageData();
 
   const hasStories = storyMatches.length > 0;
 

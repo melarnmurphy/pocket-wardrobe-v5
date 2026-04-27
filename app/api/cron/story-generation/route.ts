@@ -26,10 +26,8 @@ export async function POST(request: NextRequest) {
     }
 
     const url = new URL(request.url);
-    const lookbackHours = parseInt(
-      url.searchParams.get("lookback_hours") ?? "24",
-      10
-    );
+    const parsed = parseInt(url.searchParams.get("lookback_hours") ?? "24", 10);
+    const lookbackHours = Number.isNaN(parsed) ? 24 : parsed;
 
     const result = await generateTrendStories({ lookbackHours });
 
