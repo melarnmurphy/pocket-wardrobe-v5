@@ -398,15 +398,17 @@ export function assembleStoryMatches(
   stories: TrendStory[],
   matches: UserTrendMatch[]
 ): TrendStoryWithMatches[] {
-  const matchesBySignalId = new Map<string, UserTrendMatch>();
+  const matchesBySignalId = new Map<string, UserTrendMatch[]>();
   for (const m of matches) {
-    matchesBySignalId.set(m.trend_signal_id, m);
+    const group = matchesBySignalId.get(m.trend_signal_id) ?? [];
+    group.push(m);
+    matchesBySignalId.set(m.trend_signal_id, group);
   }
 
   return stories.map((story) => {
-    const storyMatches = (story.signal_ids ?? [])
-      .map((sid) => matchesBySignalId.get(sid))
-      .filter((m): m is UserTrendMatch => m != null);
+    const storyMatches = (story.signal_ids ?? []).flatMap(
+      (sid) => matchesBySignalId.get(sid) ?? []
+    );
 
     const garmentIds = [
       ...new Set(
