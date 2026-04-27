@@ -6,16 +6,32 @@
       "schedule": "0 6 * * *"
     },
     {
-      "path": "/api/cron/trend-scanners?archetype=street_social",
+      "path": "/api/cron/trend-scanners?archetype=fashion_week",
       "schedule": "30 6 * * *"
     },
     {
+      "path": "/api/cron/trend-scanners?archetype=street_social",
+      "schedule": "0 7 * * *"
+    },
+    {
       "path": "/api/cron/trend-scanners?archetype=editorial",
-      "schedule": "0 7 * * 1"
+      "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/cron/trend-scanners?archetype=design_house",
+      "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/cron/trend-scanners?archetype=it_girl_discovery",
+      "schedule": "0 10 * * 2,5"
     },
     {
       "path": "/api/cron/trend-scanners?archetype=colour_authority",
       "schedule": "0 8 1 * *"
+    },
+    {
+      "path": "/api/cron/story-generation",
+      "schedule": "0 11 * * *"
     }
   ]
 }
