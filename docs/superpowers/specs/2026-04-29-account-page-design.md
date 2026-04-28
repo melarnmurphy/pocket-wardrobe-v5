@@ -17,7 +17,8 @@ Redesign the `/account` page and its entry points (desktop nav, mobile header) t
 - `app/account/account-profile-form.tsx` — form component
 - `components/auth-shell.tsx` — desktop nav header (MM avatar circle)
 - `components/atelier-shell.tsx` — mobile header (MM avatar circle replacing hamburger)
-- No new data fields, no new server actions, no schema changes
+- `display_name` added to `user_metadata` (no DB migration needed — stored in existing Supabase auth metadata JSON)
+- `lib/domain/account/service.ts` and `app/account/actions.ts` updated to handle the new field
 
 ---
 
@@ -54,9 +55,16 @@ The page uses the existing `pw-shell` wrapper with a single column structure. Se
 - Feature list with dot indicators:
   - Filled dark dot = included on current plan
   - Faded dot = locked / Premium only
-  - Features shown: Unlimited wardrobe items, Outfit generation (included); AI feature labels & garment tagging, Trend intelligence & match scoring, Style rules engine (locked on Free)
+  - Features derived from actual entitlement flags:
+    - Unlimited wardrobe items (always included)
+    - Outfit generation (always included)
+    - AI feature labels & garment tagging (`feature_labels_enabled` — locked on Free)
+    - Receipt photo scanning (`receipt_ocr_enabled` — locked on Free)
+    - Product URL ingestion (`product_url_ingestion_enabled` — locked on Free)
+    - Outfit decomposition (`outfit_decomposition_enabled` — locked on Free)
 - "Upgrade to Premium →" filled dark button at the bottom of the expanded panel
 - Toggle is client-side only (no server round-trip); implemented with a `useState` boolean
+- The panel reads live entitlement values so locked/unlocked dots reflect the user's actual plan
 
 ### 4. Footer
 
@@ -73,7 +81,7 @@ The page uses the existing `pw-shell` wrapper with a single column structure. Se
 **New:**
 - Remove email chip and Sign Out button from nav bar
 - Add an **MM avatar circle** (28×28px, filled `--foreground`, `--accent-foreground` text, 700 weight) on the far right
-- Initials derived from the authenticated user's email local part: if it contains a dot (e.g. `mel.murphy@example.com`), take the first character of each dot-separated segment and uppercase them → "MM". Otherwise take the first two characters uppercased (e.g. `melarn@11point2.io` → "ME").
+- Initials derived from the user's **display name** (see Display Name section). Split by spaces, take the first character of each word, uppercased, up to two characters. E.g. "Melarn Murphy" → "MM", "Melarn" → "M".
 - `auth-shell.tsx` is a server component. The avatar + dropdown must be extracted into a `AvatarMenu` client component that receives `email` as a prop and manages open/close state internally.
 - Clicking the avatar circle opens a small **dropdown panel** (white card, `border-radius: 10px`, `shadow-strong`):
   - Header: email address (small, muted) + derived initials or email prefix (slightly larger, bold)
@@ -128,7 +136,30 @@ No changes to the dock. The MM circle in the header is the sole entry point to a
 
 ## Display Name
 
-The app does not currently store a display name. The menu panel shows the email address. Initials are derived from the email as described above. No name field is added to this spec — that is a future extension.
+A `display_name` field is added to the account profile as part of this spec.
+
+**Storage:** Stored in Supabase `auth.users.user_metadata` as `display_name`, alongside `preferred_location`. Max 80 characters, optional.
+
+**Account Info section:** Add a "Name" input field above the email field. Editable. Placeholder: "Melarn Murphy". Saved alongside `preferred_location` via `updateAccountProfileAction`.
+
+**Service changes:**
+- `accountProfileSchema` in `lib/domain/account/service.ts`: add `display_name: z.string().trim().max(80).nullable()`
+- `getAccountProfile()`: read `display_name` from `user_metadata`
+- `updateAccountProfile()`: accept and persist `display_name`
+- `updateAccountProfileAction` in `app/account/actions.ts`: add `display_name` to the Zod input schema
+
+**Initials derivation** (`lib/ui/initials.ts`):
+```ts
+export function deriveInitials(displayName: string | null, email: string): string {
+  if (displayName?.trim()) {
+    return displayName.trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  }
+  // fallback: first two chars of email local part
+  return (email.split("@")[0] ?? "?").slice(0, 2).toUpperCase();
+}
+```
+
+**Menu panel** shows `display_name` if set, otherwise shows the email address.
 
 ---
 
@@ -137,7 +168,9 @@ The app does not currently store a display name. The menu panel shows the email 
 | File | Change |
 |---|---|
 | `app/account/page.tsx` | Full redesign — editorial header, plan section with ? toggle |
-| `app/account/account-profile-form.tsx` | Update form styling; plan section extracted to new component |
+| `app/account/account-profile-form.tsx` | Add Name field; update form styling; plan section with ? toggle |
+| `app/account/actions.ts` | Add `display_name` to input schema |
+| `lib/domain/account/service.ts` | Add `display_name` to profile schema, get/update functions |
 | `components/auth-shell.tsx` | Replace email chip + sign out with MM avatar circle + dropdown; extract `AvatarMenu` client component |
 | `components/atelier-shell.tsx` | Replace hamburger with MM avatar circle + slide-down menu; extract `AtelierMenu` client component |
 | `lib/ui/initials.ts` | New — `deriveInitials(email)` utility |
@@ -146,7 +179,6 @@ The app does not currently store a display name. The menu panel shows the email 
 
 ## Out of Scope
 
-- Display name / profile name field
 - Notification preferences
 - Style profile / body type / aesthetic preferences
 - Avatar image upload
