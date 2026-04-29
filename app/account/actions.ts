@@ -5,6 +5,7 @@ import { z } from "zod";
 import { updateAccountProfile } from "@/lib/domain/account/service";
 
 const updateAccountProfileSchema = z.object({
+  display_name: z.string().trim().max(80).optional(),
   preferred_location: z.string().trim().max(160).optional()
 });
 
@@ -24,10 +25,12 @@ export async function updateAccountProfileAction(
 ): Promise<AccountProfileActionState> {
   try {
     const values = updateAccountProfileSchema.parse({
+      display_name: formData.get("display_name") ?? undefined,
       preferred_location: formData.get("preferred_location") ?? undefined
     });
 
     await updateAccountProfile({
+      display_name: values.display_name?.trim() || null,
       preferred_location: values.preferred_location?.trim() || null
     });
 
@@ -35,10 +38,7 @@ export async function updateAccountProfileAction(
     revalidatePath("/outfits");
     revalidatePath("/");
 
-    return {
-      status: "success",
-      message: "Account details updated."
-    };
+    return { status: "success", message: "Account details updated." };
   } catch (error) {
     return {
       status: "error",
