@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { deriveInitials } from "@/lib/ui/initials";
 import { signOutAction } from "@/app/auth/actions";
@@ -8,7 +8,7 @@ import { signOutAction } from "@/app/auth/actions";
 type AtelierMenuProps = {
   email: string;
   displayName: string | null;
-  planTier: string;
+  planTier: "free" | "pro" | "premium";
   isAdmin: boolean;
   pathname: string;
 };
@@ -22,6 +22,15 @@ const NAV_ITEMS = [
 export function AtelierMenu({ email, displayName, planTier, isAdmin, pathname }: AtelierMenuProps) {
   const [open, setOpen] = useState(false);
   const initials = deriveInitials(displayName, email);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [open]);
   const tierLabel =
     planTier === "free" ? "Free plan" : planTier === "pro" ? "Pro plan" : "Premium plan";
   const label = displayName?.trim() || email;
@@ -33,6 +42,7 @@ export function AtelierMenu({ email, displayName, planTier, isAdmin, pathname }:
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Open menu"
+        aria-expanded={open}
         className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-[var(--foreground)] text-[0.5rem] font-bold tracking-wide text-[var(--accent-foreground)]"
       >
         {initials}
@@ -43,6 +53,8 @@ export function AtelierMenu({ email, displayName, planTier, isAdmin, pathname }:
         <>
           {/* dim overlay */}
           <div
+            role="presentation"
+            aria-hidden="true"
             className="fixed inset-0 z-40 bg-[var(--foreground)]/20"
             onClick={() => setOpen(false)}
           />
