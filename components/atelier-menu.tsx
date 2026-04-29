@@ -33,7 +33,7 @@ export function AtelierMenu({ email, displayName, planTier, isAdmin, pathname }:
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Open menu"
-        className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--foreground)] text-[0.5rem] font-bold tracking-wide text-[var(--accent-foreground)]"
+        className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-[var(--foreground)] text-[0.5rem] font-bold tracking-wide text-[var(--accent-foreground)]"
       >
         {initials}
       </button>
