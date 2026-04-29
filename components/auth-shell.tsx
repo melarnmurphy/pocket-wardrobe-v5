@@ -6,8 +6,12 @@ import { AvatarMenu } from "@/components/avatar-menu";
 
 export async function AuthShell() {
   const user = await getOptionalUser();
-  const isAdmin = user ? await isCurrentUserAdmin() : false;
-  const profile = user ? await getAccountProfile().catch(() => null) : null;
+  const [isAdmin, profile] = user
+    ? await Promise.all([
+        isCurrentUserAdmin().catch(() => false),
+        getAccountProfile().catch(() => null)
+      ])
+    : [false, null];
 
   return (
     <header className="pw-shell-header sticky top-0 z-40">

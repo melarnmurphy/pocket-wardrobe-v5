@@ -7,13 +7,13 @@ import { AtelierMenu } from "@/components/atelier-menu";
 
 export async function AtelierShell({ pathname }: { pathname: string }) {
   const user = await getOptionalUser();
-  const isAdmin = user ? await isCurrentUserAdmin() : false;
-  const [profile, entitlements] = user
+  const [isAdmin, profile, entitlements] = user
     ? await Promise.all([
+        isCurrentUserAdmin().catch(() => false),
         getAccountProfile().catch(() => null),
         getUserEntitlements().catch(() => null)
       ])
-    : [null, null];
+    : [false, null, null];
 
   return (
     <>
