@@ -11,9 +11,11 @@ import {
 
 export function AccountProfileForm({
   email,
+  displayName,
   preferredLocation
 }: {
   email: string | null;
+  displayName: string | null;
   preferredLocation: string | null;
 }) {
   const [state, formAction] = useActionState<AccountProfileActionState, FormData>(
@@ -34,18 +36,25 @@ export function AccountProfileForm({
         <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em]">
           Keep your planner grounded in a real place.
         </h2>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-          Your preferred location is used to seed local weather in the outfits planner so auto
-          mode starts from somewhere meaningful.
-        </p>
       </div>
+
+      <label className="flex flex-col gap-2 text-sm">
+        <span className="font-medium">Name</span>
+        <input
+          name="display_name"
+          defaultValue={displayName ?? ""}
+          placeholder="Melarn Murphy"
+          maxLength={80}
+          className="rounded-[10px] border border-[var(--line)] bg-white px-4 py-3 outline-none focus:border-[var(--foreground)]"
+        />
+      </label>
 
       <label className="flex flex-col gap-2 text-sm">
         <span className="font-medium">Email</span>
         <input
           value={email ?? ""}
           readOnly
-          className="rounded-[10px] border border-[var(--line)] bg-[rgba(255,255,255,0.72)] px-4 py-3 text-[var(--muted)] outline-none"
+          className="rounded-[10px] border border-[var(--line)] bg-[var(--paper)] px-4 py-3 text-[var(--muted)] outline-none"
         />
       </label>
 
@@ -55,12 +64,12 @@ export function AccountProfileForm({
           name="preferred_location"
           defaultValue={preferredLocation ?? ""}
           placeholder="Adelaide, Sydney, Melbourne..."
-          className="rounded-[10px] border border-[var(--line)] bg-white px-4 py-3 outline-none"
+          className="rounded-[10px] border border-[var(--line)] bg-white px-4 py-3 outline-none focus:border-[var(--foreground)]"
         />
       </label>
 
-      <button type="submit" className="pw-button-primary">
-        Save Account Info
+      <button type="submit" className="pw-button-primary w-full md:w-auto">
+        Save account info
       </button>
 
       <FormFeedback state={state} />
