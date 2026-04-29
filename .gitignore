@@ -16,3 +16,6 @@ __pycache__/
 .DS_Store
 tsconfig.tsbuildinfo
 .worktrees/
+
+# iOS secrets
+ios/**/Secrets.plist
