@@ -43,7 +43,7 @@ export function AccountProfileForm({
         <input
           name="display_name"
           defaultValue={displayName ?? ""}
-          placeholder="Melarn Murphy"
+          placeholder="Jane Smith"
           maxLength={80}
           className="rounded-[10px] border border-[var(--line)] bg-white px-4 py-3 outline-none focus:border-[var(--foreground)]"
         />
