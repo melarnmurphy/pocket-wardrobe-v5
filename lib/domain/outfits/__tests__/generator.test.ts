@@ -87,6 +87,7 @@ function makeGarment(overrides: Partial<GarmentListItem> & { id: string; categor
     primary_colour_hex: null,
     preview_url: null,
     images: [],
+    three_d_assets: [],
     recent_wear_events: [],
     ...overrides
   };

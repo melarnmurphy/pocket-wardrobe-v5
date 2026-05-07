@@ -51,8 +51,16 @@ const PRIORITY_CATEGORY_KEYWORDS: Array<{
     keywords: ["dress", "midi", "maxi", "mini"]
   },
   {
+    category: "blazer",
+    keywords: ["blazer"]
+  },
+  {
+    category: "cami",
+    keywords: ["cami", "camisole"]
+  },
+  {
     category: "outerwear",
-    keywords: ["coat", "jacket", "blazer", "cardigan", "trench", "parka", "duffle", "puffer"]
+    keywords: ["coat", "jacket", "cardigan", "trench", "parka", "duffle", "puffer"]
   },
   {
     category: "bottom",
@@ -60,7 +68,7 @@ const PRIORITY_CATEGORY_KEYWORDS: Array<{
   },
   {
     category: "top",
-    keywords: ["top", "tee", "t-shirt", "shirt", "blouse", "tank", "cami", "bodysuit"]
+    keywords: ["top", "tee", "t-shirt", "shirt", "blouse", "tank", "bodysuit"]
   }
 ];
 
