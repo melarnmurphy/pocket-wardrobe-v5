@@ -21,6 +21,7 @@ struct Garment: Identifiable, Hashable {
     let match: MatchKind?         // nil if not relevant in current context
     let season: Season
     let tags: [String]
+    let isFavourite: Bool
 
     enum Category: String, CaseIterable, Hashable {
         case outerwear  = "Outerwear"
