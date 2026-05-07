@@ -165,6 +165,9 @@ describe("createDraftsFromPipelineResult", () => {
     expect(mockUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ source_type: "outfit_decomposition" })
     );
+
+    const firstInsertPayload = (mockInsert.mock.calls[0][0] as { draft_payload_json: { source_type: string } });
+    expect(firstInsertPayload.draft_payload_json.source_type).toBe("outfit_decomposition");
   });
 
   it("does not update garment_sources when a single garment is detected", async () => {

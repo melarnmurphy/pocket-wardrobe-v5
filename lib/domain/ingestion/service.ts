@@ -539,7 +539,7 @@ export async function listPendingDrafts(): Promise<PendingDraft[]> {
     }
 
     const bucket =
-      sourceType === "direct_upload"
+      sourceType === "direct_upload" || sourceType === "outfit_decomposition"
         ? "garment-originals"
         : sourceType === "receipt"
           ? "receipt-uploads"
