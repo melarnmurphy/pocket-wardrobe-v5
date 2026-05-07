@@ -139,6 +139,49 @@ describe("createDraftsFromPipelineResult", () => {
     expect(mockInsert).not.toHaveBeenCalled();
     expect(draftIds).toEqual([]);
   });
+
+  it("updates garment_sources to outfit_decomposition when 2+ garments are detected", async () => {
+    const { createDraftsFromPipelineResult } = await import(
+      "@/lib/domain/ingestion/service"
+    );
+
+    mockSingle
+      .mockResolvedValueOnce({ data: { id: "draft-uuid-1" }, error: null })
+      .mockResolvedValueOnce({ data: { id: "draft-uuid-2" }, error: null });
+
+    const result: PipelineAnalyzeResponse = {
+      garments: [
+        validGarment,
+        { ...validGarment, category: "pants", tag: "black denim pants" }
+      ]
+    };
+
+    await createDraftsFromPipelineResult({ sourceId: "source-uuid-abc", result });
+
+    const garmentSourcesCalls = (mockFrom as ReturnType<typeof vi.fn>).mock.calls.filter(
+      (args: unknown[]) => args[0] === "garment_sources"
+    );
+    expect(garmentSourcesCalls).toHaveLength(1);
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ source_type: "outfit_decomposition" })
+    );
+  });
+
+  it("does not update garment_sources when a single garment is detected", async () => {
+    const { createDraftsFromPipelineResult } = await import(
+      "@/lib/domain/ingestion/service"
+    );
+
+    await createDraftsFromPipelineResult({
+      sourceId: "source-uuid-abc",
+      result: { garments: [validGarment] }
+    });
+
+    const garmentSourcesCalls = (mockFrom as ReturnType<typeof vi.fn>).mock.calls.filter(
+      (args: unknown[]) => args[0] === "garment_sources"
+    );
+    expect(garmentSourcesCalls).toHaveLength(0);
+  });
 });
 
 // ---- createGarmentSource tests -------------------------------------------

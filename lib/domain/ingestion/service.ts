@@ -25,6 +25,8 @@ export async function createDraftsFromPipelineResult(
 
   const user = await getRequiredUser();
   const supabase = await createClient();
+  const isOutfitDecomposition = result.garments.length >= 2;
+  const fileName = storagePath?.split("/").pop() ?? "photo upload";
   const drafts: Array<{
     draftId: string;
     garment: PipelineAnalyzeResponse["garments"][number];
@@ -32,10 +34,10 @@ export async function createDraftsFromPipelineResult(
   }> = [];
 
   for (const garment of result.garments) {
-    const draftPayload = directUploadAdapter.buildDraft({
-      fileName: storagePath?.split("/").pop() ?? "photo upload",
-      detected: garment
-    });
+    const draftPayload = isOutfitDecomposition
+      ? outfitDecompositionAdapter.buildDraft({ fileName, detected: garment })
+      : directUploadAdapter.buildDraft({ fileName, detected: garment });
+
     const draftInsert: GarmentDraftInsert = {
       user_id: user.id,
       source_id: sourceId,
@@ -77,6 +79,14 @@ export async function createDraftsFromPipelineResult(
     }
 
     drafts.push({ draftId: (data as { id: string }).id, garment, draftPayload });
+  }
+
+  if (isOutfitDecomposition) {
+    await supabase
+      .from("garment_sources")
+      .update({ source_type: "outfit_decomposition" } as never)
+      .eq("id", sourceId)
+      .eq("user_id", user.id);
   }
 
   if (storagePath) {
