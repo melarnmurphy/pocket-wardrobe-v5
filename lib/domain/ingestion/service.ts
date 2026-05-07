@@ -56,7 +56,9 @@ export async function createDraftsFromPipelineResult(
         purchase_price: draftPayload.purchasePrice,
         purchase_currency: draftPayload.purchaseCurrency,
         extraction_source: draftPayload.extractionSource,
-        metadata: draftPayload.metadata as Json
+        metadata: draftPayload.metadata as Json,
+        field_confidence: draftPayload.fieldConfidence ?? null,
+        field_provenance: draftPayload.fieldProvenance ?? null
       },
       confidence: draftPayload.confidence,
       status: "pending"
@@ -177,6 +179,8 @@ async function createDraftCrops(params: {
           purchase_currency: existingDraftPayload.purchaseCurrency,
           extraction_source: existingDraftPayload.extractionSource,
           metadata: existingDraftPayload.metadata,
+          field_confidence: existingDraftPayload.fieldConfidence ?? null,
+          field_provenance: existingDraftPayload.fieldProvenance ?? null,
           crop_path: cropPath,
           crop_width: crop.width,
           crop_height: crop.height
@@ -242,6 +246,8 @@ export interface PendingDraft {
     purchase_currency: string | null;
     extraction_source: string | null;
     metadata: Record<string, unknown>;
+    field_confidence?: Record<string, number>;
+    field_provenance?: Record<string, string>;
   };
 }
 
@@ -393,6 +399,8 @@ export async function createManualReviewDraft(params: {
   purchaseCurrency?: string | null;
   extractionSource?: string | null;
   metadata?: Record<string, unknown>;
+  fieldConfidence?: Partial<Record<string, number>> | null;
+  fieldProvenance?: Partial<Record<string, string>> | null;
 }): Promise<string> {
   const user = await getRequiredUser();
   const supabase = await createClient();
@@ -416,7 +424,9 @@ export async function createManualReviewDraft(params: {
       purchase_price: params.purchasePrice ?? null,
       purchase_currency: params.purchaseCurrency ?? null,
       extraction_source: params.extractionSource ?? null,
-      metadata: (params.metadata ?? {}) as Json
+      metadata: (params.metadata ?? {}) as Json,
+      field_confidence: params.fieldConfidence ?? null,
+      field_provenance: params.fieldProvenance ?? null
     },
     confidence: params.confidence ?? 0.18,
     status: "pending"
@@ -621,7 +631,19 @@ export async function listPendingDrafts(): Promise<PendingDraft[]> {
         metadata:
           p.metadata && typeof p.metadata === "object" && !Array.isArray(p.metadata)
             ? (p.metadata as Record<string, unknown>)
-            : {}
+            : {},
+        field_confidence:
+          p.field_confidence &&
+          typeof p.field_confidence === "object" &&
+          !Array.isArray(p.field_confidence)
+            ? (p.field_confidence as Record<string, number>)
+            : undefined,
+        field_provenance:
+          p.field_provenance &&
+          typeof p.field_provenance === "object" &&
+          !Array.isArray(p.field_provenance)
+            ? (p.field_provenance as Record<string, string>)
+            : undefined
       },
     };
   });
