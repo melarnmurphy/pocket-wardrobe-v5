@@ -147,6 +147,7 @@ struct TrendDetailSheet: View {
                     .padding(.top, 8)
                     .padding(.bottom, 24)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, PWSpacing.pageGutter)
                 .padding(.top, 24)
             }

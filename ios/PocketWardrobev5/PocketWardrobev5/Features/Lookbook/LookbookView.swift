@@ -34,6 +34,7 @@ struct LookbookView: View {
 
                     Text("148 references across 6 boards. 12 flagged as missing pieces, 23 on wishlist.")
                         .caption(size: 14)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, PWSpacing.pageGutter)
                 .padding(.top, 24)
@@ -43,7 +44,7 @@ struct LookbookView: View {
                     .padding(.horizontal, PWSpacing.pageGutter)
                     .padding(.top, 24)
 
-                // Board chips
+                // Board chips — edge-to-edge
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         FilterChip(label: "All boards", count: 148,
@@ -78,8 +79,8 @@ struct LookbookView: View {
                 .padding(.horizontal, PWSpacing.pageGutter)
                 .padding(.top, 40)
 
-                // Masonry grid — two columns with alternating aspect ratios for variance
-                masonry
+                // Uniform two-column grid
+                grid
                     .padding(.horizontal, PWSpacing.pageGutter)
                     .padding(.top, 20)
 
@@ -137,30 +138,18 @@ struct LookbookView: View {
         }
     }
 
-    // MARK: - Masonry
+    // MARK: - Grid
 
-    private var masonry: some View {
-        let entries = filteredEntries
-        let mid = (entries.count + 1) / 2
-        let left = Array(entries.prefix(mid))
-        let right = Array(entries.suffix(from: mid))
+    private let gridColumns = [
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12),
+    ]
 
-        // aspects that visually vary but cap their range
-        let aspects: [CGFloat] = [0.72, 0.88, 0.64, 0.80, 0.68, 0.82, 0.70, 0.90]
-
-        return HStack(alignment: .top, spacing: 12) {
-            VStack(spacing: 16) {
-                ForEach(Array(left.enumerated()), id: \.element.id) { idx, entry in
-                    LookbookCardView(entry: entry, aspect: aspects[idx % aspects.count]) {
-                        selectedEntry = entry
-                    }
-                }
-            }
-            VStack(spacing: 16) {
-                ForEach(Array(right.enumerated()), id: \.element.id) { idx, entry in
-                    LookbookCardView(entry: entry, aspect: aspects[(idx + 3) % aspects.count]) {
-                        selectedEntry = entry
-                    }
+    private var grid: some View {
+        LazyVGrid(columns: gridColumns, spacing: 20) {
+            ForEach(filteredEntries) { entry in
+                LookbookCardView(entry: entry) {
+                    selectedEntry = entry
                 }
             }
         }

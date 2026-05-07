@@ -10,37 +10,33 @@ struct GarmentCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ZStack(alignment: .topTrailing) {
-                // Image — 4/5 aspect, muted fallback
-                AsyncImage(url: garment.imageURL, transaction: .init(animation: .easeIn)) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable()
-                            .aspectRatio(contentMode: .fill)
-                    case .failure(_), .empty:
-                        ZStack {
-                            PWColor.mist
-                            Image(systemName: "photo")
-                                .foregroundStyle(PWColor.ink20)
-                                .font(.system(size: 22, weight: .light))
-                        }
-                    @unknown default:
-                        PWColor.mist
-                    }
-                }
-                .frame(maxWidth: .infinity)
+            // Image — 4/5 aspect box, image fills + clips
+            Color.clear
                 .aspectRatio(4.0/5.0, contentMode: .fit)
+                .overlay(
+                    AsyncImage(url: garment.imageURL, transaction: .init(animation: .easeIn)) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable()
+                                .aspectRatio(contentMode: .fill)
+                        case .failure(_), .empty:
+                            ZStack {
+                                PWColor.mist
+                                Image(systemName: "photo")
+                                    .foregroundStyle(PWColor.ink20)
+                                    .font(.system(size: 22, weight: .light))
+                            }
+                        @unknown default:
+                            PWColor.mist
+                        }
+                    }
+                )
+                .clipped()
                 .clipShape(RoundedRectangle(cornerRadius: PWRadius.sm))
                 .overlay(
                     RoundedRectangle(cornerRadius: PWRadius.sm)
                         .stroke(PWColor.line, lineWidth: 1)
                 )
-
-                if let match = garment.match {
-                    MatchBadge(kind: match)
-                        .padding(10)
-                }
-            }
 
             // Brand · name
             VStack(alignment: .leading, spacing: 2) {
@@ -52,7 +48,7 @@ struct GarmentCard: View {
                 Text(garment.name)
                     .font(PWFont.display(size: 18))
                     .foregroundStyle(PWColor.ink)
-                    .lineLimit(2)
+                    .lineLimit(2, reservesSpace: true)
                     .minimumScaleFactor(0.9)
                     .multilineTextAlignment(.leading)
             }

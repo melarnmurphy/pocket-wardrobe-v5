@@ -58,11 +58,12 @@ struct TrendsView: View {
 
                     Text("47 normalized signals · 18 match your wardrobe · 6 flagged as missing pieces")
                         .caption(size: 14)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, PWSpacing.pageGutter)
                 .padding(.top, 24)
 
-                // Category chips
+                // Category chips — edge-to-edge
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(Category.allCases, id: \.self) { cat in
@@ -127,6 +128,7 @@ struct TrendsView: View {
 
                 Spacer(minLength: 56)
             }
+            .border(Color.red, width: 2)   // DEBUG: delete me — shows VStack bounds
         }
         .background(PWColor.ivory)
         .sheet(item: $selectedSignal) { signal in

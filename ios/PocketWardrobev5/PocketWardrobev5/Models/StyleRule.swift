@@ -14,7 +14,7 @@ struct StyleRule: Identifiable, Hashable {
     let subject: String          // human-readable, e.g., "Beige"
     let predicate: Predicate
     let object: String           // "Navy", "workwear", "cold rain"
-    let weight: Double           // 0...1
+    var weight: Double           // 0...1
     let scope: Scope
     var isActive: Bool
     let usage: Usage

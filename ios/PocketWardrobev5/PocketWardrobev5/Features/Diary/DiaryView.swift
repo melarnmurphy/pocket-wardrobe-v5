@@ -92,6 +92,7 @@ struct DiaryView: View {
                     }
                     Text(statsLine)
                         .caption(size: 13)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, PWSpacing.pageGutter)
                 .padding(.top, 24)

@@ -14,18 +14,20 @@ struct LookbookCardView: View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 10) {
                 ZStack(alignment: .topTrailing) {
-                    AsyncImage(url: entry.imageURL) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image.resizable().aspectRatio(contentMode: .fill)
-                        default:
-                            PWColor.mist
-                        }
-                    }
-                    .aspectRatio(aspect, contentMode: .fit)
-                    .frame(maxWidth: .infinity)
-                    .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: PWRadius.sm))
+                    Color.clear
+                        .aspectRatio(aspect, contentMode: .fit)
+                        .overlay(
+                            AsyncImage(url: entry.imageURL) { phase in
+                                switch phase {
+                                case .success(let image):
+                                    image.resizable().aspectRatio(contentMode: .fill)
+                                default:
+                                    PWColor.mist
+                                }
+                            }
+                        )
+                        .clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: PWRadius.sm))
 
                     if entry.matchKind == .missing {
                         HStack(spacing: 4) {
@@ -50,7 +52,7 @@ struct LookbookCardView: View {
                         .font(PWFont.display(size: 16))
                         .foregroundStyle(PWColor.ink)
                         .multilineTextAlignment(.leading)
-                        .lineLimit(2)
+                        .lineLimit(2, reservesSpace: true)
                 }
                 .padding(.horizontal, 2)
             }
