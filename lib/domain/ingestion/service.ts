@@ -82,11 +82,15 @@ export async function createDraftsFromPipelineResult(
   }
 
   if (isOutfitDecomposition) {
-    await supabase
+    const { error: sourceUpdateError } = await supabase
       .from("garment_sources")
       .update({ source_type: "outfit_decomposition" } as never)
       .eq("id", sourceId)
       .eq("user_id", user.id);
+
+    if (sourceUpdateError) {
+      throw new Error(`Failed to update source type: ${sourceUpdateError.message}`);
+    }
   }
 
   if (storagePath) {
