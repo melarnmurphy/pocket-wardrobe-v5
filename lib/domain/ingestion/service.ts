@@ -2,19 +2,21 @@ import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
 import type { PipelineAnalyzeResponse } from "./index";
 import type { TablesInsert } from "@/types/database";
+import sharp from "sharp";
 
 type GarmentDraftInsert = TablesInsert<"garment_drafts">;
 type GarmentSourceInsert = TablesInsert<"garment_sources">;
 
 export interface CreateDraftsParams {
   sourceId: string;
+  storagePath?: string | null;
   result: PipelineAnalyzeResponse;
 }
 
 export async function createDraftsFromPipelineResult(
   params: CreateDraftsParams
 ): Promise<string[]> {
-  const { sourceId, result } = params;
+  const { sourceId, storagePath, result } = params;
 
   if (result.garments.length === 0) {
     return [];
@@ -22,7 +24,10 @@ export async function createDraftsFromPipelineResult(
 
   const user = await getRequiredUser();
   const supabase = await createClient();
-  const draftIds: string[] = [];
+  const drafts: Array<{
+    draftId: string;
+    garment: PipelineAnalyzeResponse["garments"][number];
+  }> = [];
 
   for (const garment of result.garments) {
     const draftInsert: GarmentDraftInsert = {
@@ -53,10 +58,131 @@ export async function createDraftsFromPipelineResult(
       throw new Error(`Failed to create draft: ${error.message}`);
     }
 
-    draftIds.push((data as { id: string }).id);
+    drafts.push({ draftId: (data as { id: string }).id, garment });
   }
 
-  return draftIds;
+  if (storagePath) {
+    await createDraftCrops({
+      supabase,
+      userId: user.id,
+      sourceId,
+      storagePath,
+      drafts
+    });
+  }
+
+  return drafts.map((draft) => draft.draftId);
+}
+
+async function createDraftCrops(params: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  userId: string;
+  sourceId: string;
+  storagePath: string;
+  drafts: Array<{
+    draftId: string;
+    garment: PipelineAnalyzeResponse["garments"][number];
+  }>;
+}) {
+  const { supabase, userId, sourceId, storagePath, drafts } = params;
+  const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+    .from("garment-originals")
+    .createSignedUrl(storagePath, 5 * 60);
+
+  if (signedUrlError || !signedUrlData?.signedUrl) {
+    console.warn("createDraftsFromPipelineResult: could not sign source image for crops");
+    return;
+  }
+
+  const sourceResponse = await fetch(signedUrlData.signedUrl);
+  if (!sourceResponse.ok) {
+    console.warn(
+      `createDraftsFromPipelineResult: source image fetch failed with ${sourceResponse.status}`
+    );
+    return;
+  }
+
+  const sourceBuffer = Buffer.from(await sourceResponse.arrayBuffer());
+  const metadata = await sharp(sourceBuffer).metadata();
+  const width = metadata.width ?? 0;
+  const height = metadata.height ?? 0;
+
+  if (width <= 0 || height <= 0) {
+    console.warn("createDraftsFromPipelineResult: source image has no usable dimensions");
+    return;
+  }
+
+  await Promise.all(
+    drafts.map(async ({ draftId, garment }) => {
+      const crop = normalizeCropBox(garment.bbox, width, height);
+      if (!crop) return;
+
+      try {
+        const cropBuffer = await sharp(sourceBuffer)
+          .extract(crop)
+          .jpeg({ quality: 90 })
+          .toBuffer();
+
+        const cropPath = `${userId}/draft-crops/${sourceId}/${draftId}.jpg`;
+        const { error: uploadError } = await supabase.storage
+          .from("garment-cutouts")
+          .upload(cropPath, cropBuffer, {
+            cacheControl: "3600",
+            contentType: "image/jpeg",
+            upsert: true
+          });
+
+        if (uploadError) {
+          console.warn(
+            `createDraftsFromPipelineResult: crop upload failed for ${draftId}: ${uploadError.message}`
+          );
+          return;
+        }
+
+        const payload = {
+          category: garment.category,
+          confidence: garment.confidence,
+          bbox: garment.bbox,
+          colour: garment.colour,
+          material: garment.material,
+          style: garment.style,
+          tag: garment.tag,
+          embedding: garment.embedding,
+          crop_path: cropPath,
+          crop_width: crop.width,
+          crop_height: crop.height
+        };
+
+        await supabase
+          .from("garment_drafts")
+          .update({ draft_payload_json: payload } as never)
+          .eq("id", draftId)
+          .eq("user_id", userId);
+      } catch (error) {
+        console.warn(`createDraftsFromPipelineResult: crop failed for ${draftId}`, error);
+      }
+    })
+  );
+}
+
+function normalizeCropBox(
+  bbox: [number, number, number, number],
+  imageWidth: number,
+  imageHeight: number
+): { left: number; top: number; width: number; height: number } | null {
+  const [rawX1, rawY1, rawX2, rawY2] = bbox;
+  const x1 = Math.max(0, Math.min(imageWidth - 1, Math.floor(rawX1)));
+  const y1 = Math.max(0, Math.min(imageHeight - 1, Math.floor(rawY1)));
+  const x2 = Math.max(x1 + 1, Math.min(imageWidth, Math.ceil(rawX2)));
+  const y2 = Math.max(y1 + 1, Math.min(imageHeight, Math.ceil(rawY2)));
+  const width = x2 - x1;
+  const height = y2 - y1;
+
+  if (width <= 0 || height <= 0) {
+    return null;
+  }
+
+  return { left: x1, top: y1, width, height };
 }
 
 export interface PendingDraft {

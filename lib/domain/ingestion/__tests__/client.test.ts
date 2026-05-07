@@ -52,7 +52,7 @@ describe("callPipelineService", () => {
 
     // Second call should hit the /analyse endpoint
     const [analyseUrl, analyseOpts] = mockFetch.mock.calls[1];
-    expect(analyseUrl).toBe(
+    expect(String(analyseUrl)).toBe(
       "https://example--fashion-pipeline-api.modal.run/analyse?threshold=0.5"
     );
     expect((analyseOpts as RequestInit).method).toBe("POST");
@@ -115,7 +115,7 @@ describe("callReceiptOcrService", () => {
     expect(result).toContain("Basque Wool Blend Blazer");
 
     const [ocrUrl, ocrOpts] = mockFetch.mock.calls[0];
-    expect(ocrUrl).toBe("https://example--fashion-pipeline-api.modal.run/receipt-ocr");
+    expect(String(ocrUrl)).toBe("https://example--fashion-pipeline-api.modal.run/receipt-ocr");
     expect((ocrOpts as RequestInit).method).toBe("POST");
     expect((ocrOpts as RequestInit).body).toBeInstanceOf(FormData);
   });

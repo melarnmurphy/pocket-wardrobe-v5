@@ -1,17 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { PipelineAnalyzeResponse } from "@/lib/domain/ingestion";
+import sharp from "sharp";
 
 const mockSingle = vi.fn();
 const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
 const mockInsert = vi.fn().mockReturnValue({ select: mockSelect });
-const mockFrom = vi.fn().mockReturnValue({ insert: mockInsert });
+const mockUpdateEqUser = vi.fn();
+const mockUpdateEqId = vi.fn().mockReturnValue({ eq: mockUpdateEqUser });
+const mockUpdate = vi.fn().mockReturnValue({ eq: mockUpdateEqId });
+const mockFrom = vi.fn().mockReturnValue({ insert: mockInsert, update: mockUpdate });
 const mockSupabase = { from: mockFrom };
 
 const mockStorageUpload = vi.fn();
 const mockStorageRemove = vi.fn();
+const mockCreateSignedUrl = vi.fn();
+const mockCreateSignedUrls = vi.fn();
 const mockStorageFrom = vi.fn(() => ({
   upload: mockStorageUpload,
   remove: mockStorageRemove,
+  createSignedUrl: mockCreateSignedUrl,
+  createSignedUrls: mockCreateSignedUrls,
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -42,6 +50,9 @@ describe("createDraftsFromPipelineResult", () => {
     mockInsert.mockReturnValue({ select: mockSelect });
     mockSelect.mockReturnValue({ single: mockSingle });
     mockSingle.mockResolvedValue({ data: { id: "draft-uuid-1" }, error: null });
+    mockUpdate.mockReturnValue({ eq: mockUpdateEqId });
+    mockUpdateEqId.mockReturnValue({ eq: mockUpdateEqUser });
+    mockUpdateEqUser.mockResolvedValue({ error: null });
   });
 
   it("inserts one draft per detected garment and returns their IDs", async () => {
@@ -61,6 +72,58 @@ describe("createDraftsFromPipelineResult", () => {
     expect(mockFrom).toHaveBeenCalledWith("garment_drafts");
     expect(mockInsert).toHaveBeenCalledTimes(2);
     expect(draftIds).toHaveLength(2);
+  });
+
+  it("crops detected garments when the source storage path is available", async () => {
+    const image = await sharp({
+      create: {
+        width: 120,
+        height: 160,
+        channels: 3,
+        background: { r: 255, g: 255, b: 255 }
+      }
+    }).jpeg().toBuffer();
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: async () => image.buffer.slice(
+        image.byteOffset,
+        image.byteOffset + image.byteLength
+      )
+    });
+    vi.stubGlobal("fetch", mockFetch);
+    mockCreateSignedUrl.mockResolvedValue({
+      data: { signedUrl: "https://signed.example/source.jpg" },
+      error: null
+    });
+    mockStorageUpload.mockResolvedValue({ error: null });
+
+    const { createDraftsFromPipelineResult } = await import(
+      "@/lib/domain/ingestion/service"
+    );
+
+    await createDraftsFromPipelineResult({
+      sourceId: "source-uuid-abc",
+      storagePath: "user-uuid-123/pipeline-uploads/outfit.jpg",
+      result: { garments: [validGarment] },
+    });
+
+    expect(mockStorageFrom).toHaveBeenCalledWith("garment-originals");
+    expect(mockStorageFrom).toHaveBeenCalledWith("garment-cutouts");
+    expect(mockStorageUpload).toHaveBeenCalledWith(
+      "user-uuid-123/draft-crops/source-uuid-abc/draft-uuid-1.jpg",
+      expect.any(Buffer),
+      expect.objectContaining({ contentType: "image/jpeg", upsert: true })
+    );
+    expect(mockUpdate).toHaveBeenCalledWith({
+      draft_payload_json: expect.objectContaining({
+        crop_path: "user-uuid-123/draft-crops/source-uuid-abc/draft-uuid-1.jpg",
+        crop_width: 90,
+        crop_height: 140
+      })
+    });
+
+    vi.unstubAllGlobals();
   });
 
   it("returns empty array when no garments detected", async () => {

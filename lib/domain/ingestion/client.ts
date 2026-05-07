@@ -22,10 +22,10 @@ export async function callPipelineService(
   const formData = new FormData();
   formData.append("file", imageBlob, "image.jpg");
 
-  const response = await fetch(
-    `${serviceUrl}/analyse?threshold=${threshold}`,
-    { method: "POST", body: formData }
-  );
+  const url = new URL("/analyse", serviceUrl);
+  url.searchParams.set("threshold", String(threshold));
+
+  const response = await fetch(url, { method: "POST", body: formData });
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
@@ -49,7 +49,7 @@ export async function callReceiptOcrService(
   const formData = new FormData();
   formData.append("file", params.file, params.file.name || "receipt");
 
-  const response = await fetch(`${params.serviceUrl}/receipt-ocr`, {
+  const response = await fetch(new URL("/receipt-ocr", params.serviceUrl), {
     method: "POST",
     body: formData
   });
@@ -83,7 +83,7 @@ export async function callScraperService(params: {
   serviceUrl: string;
   url: string;
 }): Promise<string | null> {
-  const response = await fetch(`${params.serviceUrl}/scrape`, {
+  const response = await fetch(new URL("/scrape", params.serviceUrl), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ url: params.url }),

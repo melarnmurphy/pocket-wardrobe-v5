@@ -1,5 +1,7 @@
 # Fashion AI Vision Pipeline — Implementation Plan
 
+> **Status note, reconciled 2026-05-07:** This plan is partially superseded. The active image analysis service is `modal_fashion_app.py` deployed via Modal and called through `PIPELINE_SERVICE_URL` at `POST /analyse`. The local `pipeline/` FastAPI package described below was not created. Keep this file for design history and use `docs/implementation-status.md` for current status.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Implement the YOLOS + FashionSigLIP pipeline as a Python FastAPI service and wire it into the Next.js app so that uploading an outfit photo automatically creates garment drafts with colour/material/style attributes and 768-dim embeddings.

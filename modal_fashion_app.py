@@ -207,6 +207,16 @@ def api():
     async def health():
         return {"status": "ok"}
 
+    @web.get("/capabilities")
+    async def capabilities():
+        return {
+            "image_analysis": True,
+            "product_page_scrape": True,
+            "receipt_ocr": False,
+            "outfit_decomposition": True,
+            "endpoints": ["/health", "/capabilities", "/analyse", "/scrape"],
+        }
+
     @web.post("/analyse")
     async def analyse(
         file: UploadFile = File(...),

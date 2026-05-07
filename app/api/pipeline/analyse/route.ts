@@ -69,6 +69,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const draftIds = await createDraftsFromPipelineResult({
       sourceId,
+      storagePath: source.storage_path,
       result: pipelineResult,
     });
 

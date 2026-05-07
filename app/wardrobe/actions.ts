@@ -315,6 +315,7 @@ export async function createPhotoDraftAction(
 
     const draftIds = await createDraftsFromPipelineResult({
       sourceId,
+      storagePath,
       result
     });
 

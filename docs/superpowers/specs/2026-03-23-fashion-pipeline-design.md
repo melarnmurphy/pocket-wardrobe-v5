@@ -6,6 +6,8 @@ status: approved
 
 # Fashion AI Vision Pipeline
 
+> **Status note, reconciled 2026-05-07:** The implemented service path is Modal-based: `modal_fashion_app.py` exposes `POST /analyse`, and the web app calls it through `PIPELINE_SERVICE_URL`. The `pipeline/` package and `/analyze` spelling below are historical design details unless that local service is explicitly revived.
+
 ## Overview
 
 Implement the two-stage AI pipeline described in `FASHION_PIPELINE.md` and integrate it with the existing Next.js + Supabase wardrobe app. The pipeline detects garments in uploaded photos, classifies their attributes (colour, material, style), and generates semantic embeddings for similarity search. Results flow into the existing garment draft review system.

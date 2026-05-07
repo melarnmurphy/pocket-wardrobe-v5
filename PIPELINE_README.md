@@ -79,6 +79,16 @@ Modal prints the deployment URL when it finishes, e.g.:
 
 ## API reference
 
+## Web app integration
+
+The Next.js app uses this Modal service as the active image-analysis pipeline. Set:
+
+```bash
+PIPELINE_SERVICE_URL=https://<your-workspace>--fashion-pipeline-api.modal.run
+```
+
+The app calls `POST /analyse` through `app/api/pipeline/analyse/route.ts` and writes detected garments into `garment_drafts`. When the original upload path is available, detected bounding boxes are cropped into the `garment-cutouts` bucket and attached to each draft as `crop_path` metadata for review.
+
 ### `GET /health`
 
 Liveness probe.
@@ -90,6 +100,28 @@ curl https://<your-workspace>--fashion-pipeline-api.modal.run/health
 ```json
 {"status": "ok"}
 ```
+
+---
+
+### `GET /capabilities`
+
+Service contract probe used by the web app and deploy smoke tests.
+
+```bash
+curl https://<your-workspace>--fashion-pipeline-api.modal.run/capabilities
+```
+
+```json
+{
+  "image_analysis": true,
+  "product_page_scrape": true,
+  "receipt_ocr": false,
+  "outfit_decomposition": true,
+  "endpoints": ["/health", "/capabilities", "/analyse", "/scrape"]
+}
+```
+
+Receipt OCR is intentionally reported as unavailable until a real OCR provider is wired. The web app treats OCR as best-effort and still creates review drafts from pasted text, text-readable files, or filename fallback.
 
 ---
 

@@ -52,7 +52,7 @@ export async function uploadAndAnalyseAction(
       imageUrl: signedUrlData.signedUrl,
     });
 
-    await createDraftsFromPipelineResult({ sourceId, result });
+    await createDraftsFromPipelineResult({ sourceId, storagePath, result });
   } catch (error) {
     return {
       status: "error",
