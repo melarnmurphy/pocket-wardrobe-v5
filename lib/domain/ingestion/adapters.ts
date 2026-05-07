@@ -140,6 +140,7 @@ export const directUploadAdapter: IngestionAdapter<{
       .trim();
 
     if (input.detected) {
+      const c = input.detected.confidence;
       return {
         sourceType: "direct_upload",
         title: input.detected.tag,
@@ -150,7 +151,7 @@ export const directUploadAdapter: IngestionAdapter<{
         style: input.detected.style,
         notes: input.notes ?? null,
         sourceLabel: input.fileName,
-        confidence: input.detected.confidence,
+        confidence: c,
         retailer: null,
         purchasePrice: null,
         purchaseCurrency: null,
@@ -161,6 +162,14 @@ export const directUploadAdapter: IngestionAdapter<{
         metadata: {
           original_filename: input.fileName,
           extraction_source: "image analysis"
+        },
+        fieldConfidence: { title: c, category: c, colour: c, material: c, style: c },
+        fieldProvenance: {
+          title: "ai_vision",
+          category: "ai_vision",
+          colour: "ai_vision",
+          material: "ai_vision",
+          style: "ai_vision"
         }
       };
     }

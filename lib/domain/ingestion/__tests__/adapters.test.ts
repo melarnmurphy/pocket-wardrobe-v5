@@ -59,6 +59,8 @@ describe("directUploadAdapter", () => {
     expect(draft.title).toBe("black linen dress");
     expect(draft.confidence).toBe(0.05);
     expect(draft.extractionSource).toBe("manual entry");
+    expect(draft.fieldConfidence).toBeUndefined();
+    expect(draft.fieldProvenance).toBeUndefined();
   });
 
   it("builds a detector-backed review draft with bbox provenance", () => {
@@ -80,6 +82,15 @@ describe("directUploadAdapter", () => {
     expect(draft.category).toBe("blazer");
     expect(draft.bbox).toEqual([10, 20, 100, 180]);
     expect(draft.extractionSource).toBe("image analysis");
+    expect(draft.fieldConfidence?.category).toBe(0.88);
+    expect(draft.fieldConfidence?.colour).toBe(0.88);
+    expect(draft.fieldConfidence?.material).toBe(0.88);
+    expect(draft.fieldConfidence?.style).toBe(0.88);
+    expect(draft.fieldConfidence?.title).toBe(0.88);
+    expect(draft.fieldProvenance?.category).toBe("ai_vision");
+    expect(draft.fieldProvenance?.colour).toBe("ai_vision");
+    expect(draft.fieldConfidence?.brand).toBeUndefined();
+    expect(draft.fieldConfidence?.retailer).toBeUndefined();
   });
 });
 
