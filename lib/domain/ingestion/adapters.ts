@@ -79,6 +79,54 @@ export const productUrlAdapter: IngestionAdapter<{
         : "URL fallback";
     const confidence = input.extracted.title || input.extracted.category ? 0.72 : 0.42;
 
+    const fieldConfidence: Partial<Record<DraftFieldName, number>> = {};
+    const fieldProvenance: Partial<Record<DraftFieldName, string>> = {};
+
+    if (input.extracted.title) {
+      fieldConfidence.title = 0.8;
+      fieldProvenance.title = "ai_text";
+    } else if (input.titleHint) {
+      fieldConfidence.title = 0.45;
+      fieldProvenance.title = "url_parse";
+    }
+
+    if (input.extracted.category) {
+      fieldConfidence.category = 0.75;
+      fieldProvenance.category = "ai_text";
+    } else {
+      fieldConfidence.category = 0.2;
+      fieldProvenance.category = "rule_based";
+    }
+
+    if (input.extracted.colour) {
+      fieldConfidence.colour = 0.7;
+      fieldProvenance.colour = "ai_text";
+    }
+    if (input.extracted.brand) {
+      fieldConfidence.brand = 0.8;
+      fieldProvenance.brand = "ai_text";
+    }
+    if (input.extracted.material) {
+      fieldConfidence.material = 0.7;
+      fieldProvenance.material = "ai_text";
+    }
+    if (input.extracted.fit) {
+      fieldConfidence.style = 0.65;
+      fieldProvenance.style = "ai_text";
+    }
+    if (input.extracted.retailer) {
+      fieldConfidence.retailer = 0.85;
+      fieldProvenance.retailer = "ai_text";
+    }
+    if (extractedPrice !== null) {
+      fieldConfidence.purchase_price = 0.85;
+      fieldProvenance.purchase_price = "ai_text";
+    }
+    if (input.extracted.currency) {
+      fieldConfidence.purchase_currency = 0.85;
+      fieldProvenance.purchase_currency = "ai_text";
+    }
+
     return {
       sourceType: "product_url",
       title: input.extracted.title || input.titleHint,
@@ -113,7 +161,9 @@ export const productUrlAdapter: IngestionAdapter<{
         extracted_material: input.extracted.material,
         extracted_attributes: input.extracted.attributes,
         extracted_styling_suggestions: input.extracted.styling_suggestions
-      }
+      },
+      fieldConfidence,
+      fieldProvenance
     };
   }
 };

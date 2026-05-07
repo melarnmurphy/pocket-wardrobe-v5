@@ -47,6 +47,51 @@ describe("productUrlAdapter", () => {
     expect(draft.extractionSource).toBe("retailer metadata");
     expect(draft.metadata.extracted_image_url).toBe("https://cdn.example.com/trench.jpg");
   });
+
+  it("sets ai_text provenance on fields extracted from retailer metadata", () => {
+    const draft = productUrlAdapter.buildDraft({
+      productUrl: "https://example.com/products/ivory-trench",
+      titleHint: "ivory trench",
+      extracted: baseProductMetadata
+    });
+
+    expect(draft.fieldConfidence?.title).toBe(0.8);
+    expect(draft.fieldProvenance?.title).toBe("ai_text");
+    expect(draft.fieldConfidence?.category).toBe(0.75);
+    expect(draft.fieldProvenance?.category).toBe("ai_text");
+    expect(draft.fieldConfidence?.colour).toBe(0.7);
+    expect(draft.fieldConfidence?.brand).toBe(0.8);
+    expect(draft.fieldConfidence?.retailer).toBe(0.85);
+    expect(draft.fieldConfidence?.purchase_price).toBe(0.85);
+    expect(draft.fieldConfidence?.purchase_currency).toBe(0.85);
+  });
+
+  it("sets url_parse provenance for title when only titleHint available", () => {
+    const draft = productUrlAdapter.buildDraft({
+      productUrl: "https://example.com/products/mystery-item",
+      titleHint: "mystery item",
+      extracted: {
+        title: null,
+        brand: null,
+        category: null,
+        colour: null,
+        fit: null,
+        material: null,
+        retailer: null,
+        description: null,
+        price: null,
+        currency: null,
+        image_url: null,
+        attributes: [],
+        styling_suggestions: []
+      }
+    });
+
+    expect(draft.fieldConfidence?.title).toBe(0.45);
+    expect(draft.fieldProvenance?.title).toBe("url_parse");
+    expect(draft.fieldConfidence?.category).toBe(0.2);
+    expect(draft.fieldProvenance?.category).toBe("rule_based");
+  });
 });
 
 describe("directUploadAdapter", () => {
