@@ -25,7 +25,7 @@ enum PWFont {
         UIFont.familyNames.contains { UIFont.fontNames(forFamilyName: $0).contains(name) }
     }
 
-    private static let hasFraunces  = isRegistered("Fraunces-Light")
+    private static let hasFraunces  = isRegistered("Fraunces9pt-Light")
     private static let hasInter     = isRegistered("Inter-Regular")
     private static let hasJBMono    = isRegistered("JetBrainsMono-Regular")
 
@@ -33,7 +33,7 @@ enum PWFont {
 
     static func display(size: CGFloat) -> Font {
         if hasFraunces {
-            return .custom("Fraunces-Light", size: size)
+            return .custom("Fraunces9pt-Light", size: size)
         } else {
             return .system(size: size, weight: .light, design: .serif)
         }
@@ -41,7 +41,7 @@ enum PWFont {
 
     static func displayItalic(size: CGFloat) -> Font {
         if hasFraunces {
-            return .custom("Fraunces-LightItalic", size: size)
+            return .custom("Fraunces9pt-LightItalic", size: size)
         } else {
             return .system(size: size, weight: .light, design: .serif).italic()
         }
