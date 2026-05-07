@@ -321,6 +321,8 @@ export default function DraftReviewList({
                   id={fieldId(draft.id, "title")}
                   label="Title"
                   value={draftEdit.title}
+                  confidence={draft.payload.field_confidence?.title}
+                  provenance={draft.payload.field_provenance?.title}
                   onChange={(value) =>
                     setEdits((prev) => ({
                       ...prev,
@@ -333,6 +335,8 @@ export default function DraftReviewList({
                   label="Category"
                   value={draftEdit.category}
                   placeholder="top, trousers, blazer"
+                  confidence={draft.payload.field_confidence?.category}
+                  provenance={draft.payload.field_provenance?.category}
                   onChange={(value) =>
                     setEdits((prev) => ({
                       ...prev,
@@ -344,6 +348,8 @@ export default function DraftReviewList({
                   id={fieldId(draft.id, "colour")}
                   label="Colour"
                   value={draftEdit.colour}
+                  confidence={draft.payload.field_confidence?.colour}
+                  provenance={draft.payload.field_provenance?.colour}
                   onChange={(value) =>
                     setEdits((prev) => ({
                       ...prev,
@@ -355,6 +361,8 @@ export default function DraftReviewList({
                   id={fieldId(draft.id, "brand")}
                   label="Brand"
                   value={draftEdit.brand}
+                  confidence={draft.payload.field_confidence?.brand}
+                  provenance={draft.payload.field_provenance?.brand}
                   onChange={(value) =>
                     setEdits((prev) => ({
                       ...prev,
@@ -366,6 +374,8 @@ export default function DraftReviewList({
                   id={fieldId(draft.id, "material")}
                   label="Material"
                   value={draftEdit.material}
+                  confidence={draft.payload.field_confidence?.material}
+                  provenance={draft.payload.field_provenance?.material}
                   onChange={(value) =>
                     setEdits((prev) => ({
                       ...prev,
@@ -377,6 +387,8 @@ export default function DraftReviewList({
                   id={fieldId(draft.id, "style")}
                   label="Style Notes"
                   value={draftEdit.style}
+                  confidence={draft.payload.field_confidence?.style}
+                  provenance={draft.payload.field_provenance?.style}
                   onChange={(value) =>
                     setEdits((prev) => ({
                       ...prev,
@@ -388,6 +400,8 @@ export default function DraftReviewList({
                   id={fieldId(draft.id, "retailer")}
                   label="Retailer"
                   value={draftEdit.retailer}
+                  confidence={draft.payload.field_confidence?.retailer}
+                  provenance={draft.payload.field_provenance?.retailer}
                   onChange={(value) =>
                     setEdits((prev) => ({
                       ...prev,
@@ -401,6 +415,8 @@ export default function DraftReviewList({
                   type="number"
                   step="0.01"
                   value={draftEdit.purchase_price}
+                  confidence={draft.payload.field_confidence?.purchase_price}
+                  provenance={draft.payload.field_provenance?.purchase_price}
                   onChange={(value) =>
                     setEdits((prev) => ({
                       ...prev,
@@ -413,6 +429,8 @@ export default function DraftReviewList({
                   label="Currency"
                   value={draftEdit.purchase_currency}
                   placeholder="AUD"
+                  confidence={draft.payload.field_confidence?.purchase_currency}
+                  provenance={draft.payload.field_provenance?.purchase_currency}
                   onChange={(value) =>
                     setEdits((prev) => ({
                       ...prev,
@@ -469,6 +487,8 @@ function Field({
   placeholder,
   type = "text",
   step,
+  confidence,
+  provenance,
   onChange
 }: {
   id?: string;
@@ -477,10 +497,34 @@ function Field({
   placeholder?: string;
   type?: "text" | "number";
   step?: string;
+  confidence?: number;
+  provenance?: string;
   onChange: (value: string) => void;
 }) {
+  const borderColor =
+    confidence === undefined || confidence >= 0.8
+      ? undefined
+      : confidence >= 0.5
+        ? "rgba(200,140,40,0.55)"
+        : "rgba(208,80,60,0.5)";
+
+  const bgColor =
+    confidence === undefined || confidence >= 0.8
+      ? undefined
+      : confidence >= 0.5
+        ? "rgba(200,140,40,0.06)"
+        : "rgba(208,80,60,0.05)";
+
+  const tooltipText =
+    borderColor && confidence !== undefined
+      ? `${provenanceLabel(provenance)} · ${Math.round(confidence * 100)}%`
+      : undefined;
+
   return (
-    <label className="flex flex-col gap-2 text-[12px] text-[var(--muted)]">
+    <label
+      className="flex flex-col gap-2 text-[12px] text-[var(--muted)]"
+      title={tooltipText}
+    >
       <span className="font-medium">{label}</span>
       <input
         id={id}
@@ -490,6 +534,10 @@ function Field({
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
         className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
+        style={{
+          borderLeft: borderColor ? `2px solid ${borderColor}` : undefined,
+          background: bgColor
+        }}
       />
     </label>
   );
@@ -665,6 +713,19 @@ function TextAreaField({
       />
     </label>
   );
+}
+
+const PROVENANCE_LABELS: Record<string, string> = {
+  ai_vision: "AI vision",
+  ai_text: "AI text",
+  url_parse: "URL",
+  filename_text: "Filename",
+  rule_based: "Rule-based",
+  user_manual: "Manual",
+};
+
+function provenanceLabel(provenance: string | undefined): string {
+  return provenance ? (PROVENANCE_LABELS[provenance] ?? provenance) : "Unknown source";
 }
 
 function sourceLabel(sourceType: string) {
