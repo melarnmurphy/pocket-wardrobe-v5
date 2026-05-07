@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getServerEnv } from "@/lib/env";
 import { createServiceClient as createClient } from "@/lib/supabase/service";
 import { processExtractionJob } from "@/lib/domain/trends/extraction";
 
@@ -6,7 +7,19 @@ export const dynamic = "force-dynamic";
 
 const BATCH_SIZE = 5;
 
-export async function POST() {
+function isAuthorized(request: NextRequest): boolean {
+  const { CRON_SECRET } = getServerEnv();
+  if (!CRON_SECRET) return false;
+  const bearer = request.headers.get("authorization");
+  if (bearer === `Bearer ${CRON_SECRET}`) return true;
+  const custom = request.headers.get("x-cron-secret");
+  return custom === CRON_SECRET;
+}
+
+export async function POST(request: NextRequest) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
   const supabase = createClient();
 
   const { data: jobs, error } = await supabase

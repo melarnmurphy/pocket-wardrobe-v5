@@ -22,10 +22,13 @@ export const getRequiredUser = cache(async () => {
 });
 
 export const getOptionalUser = cache(async () => {
-  const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-
-  return user;
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    return user;
+  } catch {
+    return null;
+  }
 });

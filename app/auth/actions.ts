@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit, RateLimitError } from "@/lib/rate-limit";
 
 const signInSchema = z.object({
   email: z.string().trim().email(),
@@ -78,6 +79,16 @@ export async function signInWithMagicLinkAction(formData: FormData) {
   });
 
   const next = sanitizeNextPath(values.next);
+
+  try {
+    await checkRateLimit("magic-link", 5, 600);
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      redirect(buildAuthPageRedirect({ next, email: values.email, error: error.message }) as never);
+    }
+    throw error;
+  }
+
   const origin = await getRequestOrigin();
 
   if (!origin) {
@@ -108,6 +119,16 @@ export async function signInWithPasswordAction(formData: FormData) {
   });
 
   const next = sanitizeNextPath(values.next);
+
+  try {
+    await checkRateLimit("sign-in-password", 10, 60);
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      redirect(buildAuthPageRedirect({ mode: "password", next, email: values.email, error: error.message }) as never);
+    }
+    throw error;
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
     email: values.email,
@@ -138,6 +159,16 @@ export async function signUpWithPasswordAction(formData: FormData) {
   });
 
   const next = sanitizeNextPath(values.next);
+
+  try {
+    await checkRateLimit("sign-up", 3, 3600);
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      redirect(buildAuthPageRedirect({ mode: "signup", next, email: values.email, error: error.message }) as never);
+    }
+    throw error;
+  }
+
   const origin = await getRequestOrigin();
 
   if (!origin) {
@@ -185,6 +216,16 @@ export async function sendPasswordResetAction(formData: FormData) {
   });
 
   const next = sanitizeNextPath(values.next);
+
+  try {
+    await checkRateLimit("password-reset", 3, 600);
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      redirect(buildAuthPageRedirect({ mode: "reset", next, email: values.email, error: error.message }) as never);
+    }
+    throw error;
+  }
+
   const origin = await getRequestOrigin();
 
   if (!origin) {
