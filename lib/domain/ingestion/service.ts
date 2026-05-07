@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
 import type { PipelineAnalyzeResponse } from "./index";
-import { directUploadAdapter, type IngestionAdapterKind } from "./adapters";
+import { directUploadAdapter, outfitDecompositionAdapter, type ReviewDraftAdapterPayload, type IngestionAdapterKind } from "./adapters";
 import type { Json, TablesInsert } from "@/types/database";
 import sharp from "sharp";
 
@@ -28,6 +28,7 @@ export async function createDraftsFromPipelineResult(
   const drafts: Array<{
     draftId: string;
     garment: PipelineAnalyzeResponse["garments"][number];
+    draftPayload: ReviewDraftAdapterPayload;
   }> = [];
 
   for (const garment of result.garments) {
@@ -75,7 +76,7 @@ export async function createDraftsFromPipelineResult(
       throw new Error(`Failed to create draft: ${error.message}`);
     }
 
-    drafts.push({ draftId: (data as { id: string }).id, garment });
+    drafts.push({ draftId: (data as { id: string }).id, garment, draftPayload });
   }
 
   if (storagePath) {
@@ -99,6 +100,7 @@ async function createDraftCrops(params: {
   drafts: Array<{
     draftId: string;
     garment: PipelineAnalyzeResponse["garments"][number];
+    draftPayload: ReviewDraftAdapterPayload;
   }>;
 }) {
   const { supabase, userId, sourceId, storagePath, drafts } = params;
@@ -130,7 +132,7 @@ async function createDraftCrops(params: {
   }
 
   await Promise.all(
-    drafts.map(async ({ draftId, garment }) => {
+    drafts.map(async ({ draftId, garment, draftPayload }) => {
       const crop = normalizeCropBox(garment.bbox, width, height);
       if (!crop) return;
 
@@ -156,31 +158,27 @@ async function createDraftCrops(params: {
           return;
         }
 
-        const existingDraftPayload = directUploadAdapter.buildDraft({
-          fileName: storagePath.split("/").pop() ?? "photo upload",
-          detected: garment
-        });
         const payload = {
-          title: existingDraftPayload.title,
-          category: existingDraftPayload.category ?? "",
-          confidence: existingDraftPayload.confidence,
-          bbox: existingDraftPayload.bbox,
-          colour: existingDraftPayload.colour ?? "",
-          brand: existingDraftPayload.brand,
-          material: existingDraftPayload.material,
-          style: existingDraftPayload.style ?? "",
-          tag: existingDraftPayload.tag ?? existingDraftPayload.title ?? "Photo upload draft",
-          embedding: existingDraftPayload.embedding,
-          source_type: existingDraftPayload.sourceType,
-          source_label: existingDraftPayload.sourceLabel,
-          notes: existingDraftPayload.notes,
-          retailer: existingDraftPayload.retailer,
-          purchase_price: existingDraftPayload.purchasePrice,
-          purchase_currency: existingDraftPayload.purchaseCurrency,
-          extraction_source: existingDraftPayload.extractionSource,
-          metadata: existingDraftPayload.metadata,
-          field_confidence: existingDraftPayload.fieldConfidence ?? null,
-          field_provenance: existingDraftPayload.fieldProvenance ?? null,
+          title: draftPayload.title,
+          category: draftPayload.category ?? "",
+          confidence: draftPayload.confidence,
+          bbox: draftPayload.bbox,
+          colour: draftPayload.colour ?? "",
+          brand: draftPayload.brand,
+          material: draftPayload.material,
+          style: draftPayload.style ?? "",
+          tag: draftPayload.tag ?? draftPayload.title ?? "Photo upload draft",
+          embedding: draftPayload.embedding,
+          source_type: draftPayload.sourceType,
+          source_label: draftPayload.sourceLabel,
+          notes: draftPayload.notes,
+          retailer: draftPayload.retailer,
+          purchase_price: draftPayload.purchasePrice,
+          purchase_currency: draftPayload.purchaseCurrency,
+          extraction_source: draftPayload.extractionSource,
+          metadata: draftPayload.metadata,
+          field_confidence: draftPayload.fieldConfidence ?? null,
+          field_provenance: draftPayload.fieldProvenance ?? null,
           crop_path: cropPath,
           crop_width: crop.width,
           crop_height: crop.height
