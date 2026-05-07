@@ -1,4 +1,5 @@
 import type { ProductMetadata, ReceiptDraftCandidate } from "./extractors";
+import { PIPELINE_MODEL_ID } from "./index";
 
 export type IngestionAdapterKind =
   | "direct_upload"
@@ -211,7 +212,8 @@ export const directUploadAdapter: IngestionAdapter<{
         embedding: input.detected.embedding,
         metadata: {
           original_filename: input.fileName,
-          extraction_source: "image analysis"
+          extraction_source: "image analysis",
+          detector_model: PIPELINE_MODEL_ID
         },
         fieldConfidence: { title: c, category: c, colour: c, material: c, style: c },
         fieldProvenance: {

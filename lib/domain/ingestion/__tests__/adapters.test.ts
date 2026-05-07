@@ -136,6 +136,7 @@ describe("directUploadAdapter", () => {
     expect(draft.fieldProvenance?.colour).toBe("ai_vision");
     expect(draft.fieldConfidence?.brand).toBeUndefined();
     expect(draft.fieldConfidence?.retailer).toBeUndefined();
+    expect(draft.metadata.detector_model).toBe("modal-v1");
   });
 });
 
