@@ -6,6 +6,17 @@ export type IngestionAdapterKind =
   | "receipt"
   | "outfit_decomposition";
 
+export type DraftFieldName =
+  | "title"
+  | "category"
+  | "colour"
+  | "brand"
+  | "material"
+  | "style"
+  | "retailer"
+  | "purchase_price"
+  | "purchase_currency";
+
 export type ReviewDraftAdapterPayload = {
   sourceType: IngestionAdapterKind;
   title: string | null;
@@ -25,6 +36,8 @@ export type ReviewDraftAdapterPayload = {
   bbox?: [number, number, number, number] | null;
   tag?: string | null;
   embedding?: number[] | null;
+  fieldConfidence?: Partial<Record<DraftFieldName, number>>;
+  fieldProvenance?: Partial<Record<DraftFieldName, string>>;
 };
 
 export interface IngestionAdapter<TInput, TOutput = ReviewDraftAdapterPayload> {
