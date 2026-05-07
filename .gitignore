@@ -16,6 +16,14 @@ __pycache__/
 .DS_Store
 tsconfig.tsbuildinfo
 .worktrees/
+.mcp.json
+
+# Supabase local CLI state
+supabase/.temp/
 
 # iOS secrets
 ios/**/Secrets.plist
+
+# Xcode user-local state
+ios/**/*.xcuserstate
+ios/**/xcuserdata/
