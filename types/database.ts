@@ -39,6 +39,92 @@ export type Database = {
   }
   public: {
     Tables: {
+      avatar_measurement_sets: {
+        Row: {
+          avatar_profile_id: string | null
+          body_measurements_json: Json
+          capture_method: string
+          confidence: number | null
+          created_at: string
+          id: string
+          measurement_system: string
+          provenance_metadata_json: Json
+          shape_profile_json: Json
+          skin_tone_json: Json
+          source_type: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_profile_id?: string | null
+          body_measurements_json?: Json
+          capture_method?: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          measurement_system?: string
+          provenance_metadata_json?: Json
+          shape_profile_json?: Json
+          skin_tone_json?: Json
+          source_type?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_profile_id?: string | null
+          body_measurements_json?: Json
+          capture_method?: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          measurement_system?: string
+          provenance_metadata_json?: Json
+          shape_profile_json?: Json
+          skin_tone_json?: Json
+          source_type?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avatar_measurement_sets_avatar_profile_id_fkey"
+            columns: ["avatar_profile_id"]
+            isOneToOne: false
+            referencedRelation: "avatar_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      avatar_profiles: {
+        Row: {
+          avatar_storage_path: string | null
+          created_at: string
+          id: string
+          layout_json: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_storage_path?: string | null
+          created_at?: string
+          id?: string
+          layout_json?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_storage_path?: string | null
+          created_at?: string
+          id?: string
+          layout_json?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       colour_relationships: {
         Row: {
           colour_id_a: string
@@ -176,6 +262,62 @@ export type Database = {
           },
           {
             foreignKeyName: "garment_colours_garment_id_fkey"
+            columns: ["garment_id"]
+            isOneToOne: false
+            referencedRelation: "garments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      garment_3d_assets: {
+        Row: {
+          asset_type: string
+          confidence: number | null
+          created_at: string
+          file_format: string | null
+          garment_id: string
+          id: string
+          material_profile_json: Json
+          physics_profile_json: Json
+          renderer_metadata_json: Json
+          source_type: string
+          status: string
+          storage_path: string | null
+          updated_at: string
+        }
+        Insert: {
+          asset_type: string
+          confidence?: number | null
+          created_at?: string
+          file_format?: string | null
+          garment_id: string
+          id?: string
+          material_profile_json?: Json
+          physics_profile_json?: Json
+          renderer_metadata_json?: Json
+          source_type?: string
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+        }
+        Update: {
+          asset_type?: string
+          confidence?: number | null
+          created_at?: string
+          file_format?: string | null
+          garment_id?: string
+          id?: string
+          material_profile_json?: Json
+          physics_profile_json?: Json
+          renderer_metadata_json?: Json
+          source_type?: string
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "garment_3d_assets_garment_id_fkey"
             columns: ["garment_id"]
             isOneToOne: false
             referencedRelation: "garments"
