@@ -204,5 +204,40 @@ describe("outfitDecompositionAdapter", () => {
     expect(draft.category).toBe("");
     expect(draft.style).toBe("outerwear");
     expect(draft.extractionSource).toBe("outfit decomposition scaffold");
+    expect(draft.fieldConfidence).toBeUndefined();
+    expect(draft.fieldProvenance).toBeUndefined();
+  });
+
+  it("builds a detector-backed outfit draft with field confidence when detected is provided", () => {
+    const draft = outfitDecompositionAdapter.buildDraft({
+      fileName: "outfit.jpg",
+      detected: {
+        category: "coat",
+        confidence: 0.82,
+        bbox: [5, 10, 90, 200],
+        colour: "camel",
+        material: "wool",
+        style: "classic",
+        tag: "camel wool coat",
+        embedding: Array(768).fill(0.2)
+      }
+    });
+
+    expect(draft.sourceType).toBe("outfit_decomposition");
+    expect(draft.category).toBe("coat");
+    expect(draft.colour).toBe("camel");
+    expect(draft.material).toBe("wool");
+    expect(draft.confidence).toBe(0.82);
+    expect(draft.extractionSource).toBe("image analysis");
+    expect(draft.bbox).toEqual([5, 10, 90, 200]);
+    expect(draft.fieldConfidence?.category).toBe(0.82);
+    expect(draft.fieldConfidence?.colour).toBe(0.82);
+    expect(draft.fieldConfidence?.material).toBe(0.82);
+    expect(draft.fieldConfidence?.style).toBe(0.82);
+    expect(draft.fieldConfidence?.title).toBe(0.82);
+    expect(draft.fieldProvenance?.category).toBe("ai_vision");
+    expect(draft.fieldProvenance?.colour).toBe("ai_vision");
+    expect(draft.fieldConfidence?.brand).toBeUndefined();
+    expect(draft.metadata.detector_model).toBe("modal-v1");
   });
 });

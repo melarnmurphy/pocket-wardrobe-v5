@@ -315,11 +315,57 @@ export const receiptAdapter: IngestionAdapter<{
 
 export const outfitDecompositionAdapter: IngestionAdapter<{
   fileName: string;
+  detected?: {
+    category: string;
+    confidence: number;
+    bbox: [number, number, number, number];
+    colour: string;
+    material: string;
+    style: string;
+    tag: string;
+    embedding: number[];
+  } | null;
   role?: string | null;
   notes?: string | null;
 }> = {
   kind: "outfit_decomposition",
   buildDraft(input) {
+    if (input.detected) {
+      const c = input.detected.confidence;
+      return {
+        sourceType: "outfit_decomposition",
+        title: input.detected.tag,
+        category: input.detected.category,
+        colour: input.detected.colour,
+        brand: null,
+        material: input.detected.material,
+        style: input.detected.style,
+        notes: input.notes ?? "Review this outfit-derived candidate before saving it as an owned garment.",
+        sourceLabel: input.fileName,
+        confidence: c,
+        retailer: null,
+        purchasePrice: null,
+        purchaseCurrency: null,
+        extractionSource: "image analysis",
+        bbox: input.detected.bbox,
+        tag: input.detected.tag,
+        embedding: input.detected.embedding,
+        metadata: {
+          original_filename: input.fileName,
+          extraction_source: "image analysis",
+          detector_model: PIPELINE_MODEL_ID
+        },
+        fieldConfidence: { title: c, category: c, colour: c, material: c, style: c },
+        fieldProvenance: {
+          title: "ai_vision",
+          category: "ai_vision",
+          colour: "ai_vision",
+          material: "ai_vision",
+          style: "ai_vision"
+        }
+      };
+    }
+
     const normalizedTitle = input.fileName
       .replace(/\.[^.]+$/, "")
       .replace(/[-_]+/g, " ")
