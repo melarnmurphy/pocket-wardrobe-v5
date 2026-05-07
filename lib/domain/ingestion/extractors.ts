@@ -107,7 +107,7 @@ export type StylingSuggestion = {
   source: "retailer_copy";
 };
 
-type ProductMetadata = {
+export type ProductMetadata = {
   title: string | null;
   brand: string | null;
   category: string | null;

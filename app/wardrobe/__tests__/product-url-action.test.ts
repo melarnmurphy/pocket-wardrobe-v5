@@ -23,12 +23,13 @@ vi.mock("@/lib/domain/wardrobe/service", () => ({
 }));
 
 const createProductUrlSource = vi.fn();
+const createManualReviewDraft = vi.fn();
 
 vi.mock("@/lib/domain/ingestion/service", () => ({
   createGarmentSource: vi.fn(),
   createDraftsFromPipelineResult: vi.fn(),
   createManualPhotoReviewDraft: vi.fn(),
-  createManualReviewDraft: vi.fn(),
+  createManualReviewDraft,
   createProductUrlSource,
   createReceiptSource: vi.fn()
 }));
@@ -77,6 +78,7 @@ describe("createProductUrlDraftAction", () => {
     createProductUrlSource.mockResolvedValue({
       sourceId: "11111111-1111-4111-8111-111111111111"
     });
+    createManualReviewDraft.mockResolvedValue("33333333-3333-4333-8333-333333333333");
     getServerEnv.mockReturnValue({});
     createGarment.mockResolvedValue({
       id: "22222222-2222-4222-8222-222222222222"
@@ -108,7 +110,7 @@ describe("createProductUrlDraftAction", () => {
     });
   });
 
-  it("creates a garment immediately from a product URL and attaches an image when available", async () => {
+  it("creates a product URL source and review draft without creating a final garment", async () => {
     const { createProductUrlDraftAction } = await import("@/app/wardrobe/actions");
 
     const formData = new FormData();
@@ -120,20 +122,29 @@ describe("createProductUrlDraftAction", () => {
     );
 
     expect(result.status).toBe("success");
-    expect(result.garmentId).toBe("22222222-2222-4222-8222-222222222222");
-    expect(result.nextPath).toBeUndefined();
-    expect(result.message).toContain("product image");
-    expect(createGarment).toHaveBeenCalled();
-    expect(addGarmentImageFromUrl).toHaveBeenCalledWith({
-      garmentId: "22222222-2222-4222-8222-222222222222",
-      imageUrl: "https://cdn.example.com/trench.jpg",
-      fileNameHint: "ivory-trench-coat",
-      cropBox: null
+    expect(result.nextPath).toBe("/wardrobe/review");
+    expect(result.draftIds).toEqual(["33333333-3333-4333-8333-333333333333"]);
+    expect(result.garmentId).toBeUndefined();
+    expect(result.message).toContain("Review");
+    expect(createProductUrlSource).toHaveBeenCalledWith({
+      url: "https://example.com/products/ivory-trench"
     });
-    expect(createGarment).toHaveBeenCalledWith(
-      expect.any(Object),
-      { primaryColourFamily: "white" }
+    expect(createManualReviewDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceId: "11111111-1111-4111-8111-111111111111",
+        sourceType: "product_url",
+        title: "Ivory Trench Coat",
+        category: "coat",
+        colour: "ivory",
+        brand: "Test Brand",
+        confidence: 0.72,
+        metadata: expect.objectContaining({
+          extracted_image_url: "https://cdn.example.com/trench.jpg"
+        })
+      })
     );
+    expect(createGarment).not.toHaveBeenCalled();
+    expect(addGarmentImageFromUrl).not.toHaveBeenCalled();
     expect(setGarmentPrimaryColourFamily).not.toHaveBeenCalled();
   });
 });

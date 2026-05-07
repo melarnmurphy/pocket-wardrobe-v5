@@ -365,7 +365,8 @@ create table if not exists public.trend_sources (
       'manual_curated',
       'trend_report',
       'runway_coverage',
-      'fashion_publication'
+      'fashion_publication',
+      'gemini_grounded'
     )
   ),
   source_url text not null,

@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
 import type { PipelineAnalyzeResponse } from "./index";
-import type { TablesInsert } from "@/types/database";
+import { directUploadAdapter, type IngestionAdapterKind } from "./adapters";
+import type { Json, TablesInsert } from "@/types/database";
 import sharp from "sharp";
 
 type GarmentDraftInsert = TablesInsert<"garment_drafts">;
@@ -30,20 +31,34 @@ export async function createDraftsFromPipelineResult(
   }> = [];
 
   for (const garment of result.garments) {
+    const draftPayload = directUploadAdapter.buildDraft({
+      fileName: storagePath?.split("/").pop() ?? "photo upload",
+      detected: garment
+    });
     const draftInsert: GarmentDraftInsert = {
       user_id: user.id,
       source_id: sourceId,
       draft_payload_json: {
-        category: garment.category,
-        confidence: garment.confidence,
-        bbox: garment.bbox,
-        colour: garment.colour,
-        material: garment.material,
-        style: garment.style,
-        tag: garment.tag,
-        embedding: garment.embedding
+        title: draftPayload.title,
+        category: draftPayload.category ?? "",
+        confidence: draftPayload.confidence,
+        bbox: draftPayload.bbox,
+        colour: draftPayload.colour ?? "",
+        brand: draftPayload.brand,
+        material: draftPayload.material,
+        style: draftPayload.style ?? "",
+        tag: draftPayload.tag ?? draftPayload.title ?? "Photo upload draft",
+        embedding: draftPayload.embedding,
+        source_type: draftPayload.sourceType,
+        source_label: draftPayload.sourceLabel,
+        notes: draftPayload.notes,
+        retailer: draftPayload.retailer,
+        purchase_price: draftPayload.purchasePrice,
+        purchase_currency: draftPayload.purchaseCurrency,
+        extraction_source: draftPayload.extractionSource,
+        metadata: draftPayload.metadata as Json
       },
-      confidence: garment.confidence,
+      confidence: draftPayload.confidence,
       status: "pending"
     };
 
@@ -139,15 +154,29 @@ async function createDraftCrops(params: {
           return;
         }
 
+        const existingDraftPayload = directUploadAdapter.buildDraft({
+          fileName: storagePath.split("/").pop() ?? "photo upload",
+          detected: garment
+        });
         const payload = {
-          category: garment.category,
-          confidence: garment.confidence,
-          bbox: garment.bbox,
-          colour: garment.colour,
-          material: garment.material,
-          style: garment.style,
-          tag: garment.tag,
-          embedding: garment.embedding,
+          title: existingDraftPayload.title,
+          category: existingDraftPayload.category ?? "",
+          confidence: existingDraftPayload.confidence,
+          bbox: existingDraftPayload.bbox,
+          colour: existingDraftPayload.colour ?? "",
+          brand: existingDraftPayload.brand,
+          material: existingDraftPayload.material,
+          style: existingDraftPayload.style ?? "",
+          tag: existingDraftPayload.tag ?? existingDraftPayload.title ?? "Photo upload draft",
+          embedding: existingDraftPayload.embedding,
+          source_type: existingDraftPayload.sourceType,
+          source_label: existingDraftPayload.sourceLabel,
+          notes: existingDraftPayload.notes,
+          retailer: existingDraftPayload.retailer,
+          purchase_price: existingDraftPayload.purchasePrice,
+          purchase_currency: existingDraftPayload.purchaseCurrency,
+          extraction_source: existingDraftPayload.extractionSource,
+          metadata: existingDraftPayload.metadata,
           crop_path: cropPath,
           crop_width: crop.width,
           crop_height: crop.height
@@ -212,6 +241,7 @@ export interface PendingDraft {
     purchase_price: number | null;
     purchase_currency: string | null;
     extraction_source: string | null;
+    metadata: Record<string, unknown>;
   };
 }
 
@@ -348,7 +378,7 @@ export async function createProductUrlSource(params: {
 
 export async function createManualReviewDraft(params: {
   sourceId: string;
-  sourceType: "direct_upload" | "product_url" | "receipt";
+  sourceType: IngestionAdapterKind;
   title?: string | null;
   category?: string | null;
   colour?: string | null;
@@ -362,6 +392,7 @@ export async function createManualReviewDraft(params: {
   purchasePrice?: number | null;
   purchaseCurrency?: string | null;
   extractionSource?: string | null;
+  metadata?: Record<string, unknown>;
 }): Promise<string> {
   const user = await getRequiredUser();
   const supabase = await createClient();
@@ -384,7 +415,8 @@ export async function createManualReviewDraft(params: {
       retailer: params.retailer ?? null,
       purchase_price: params.purchasePrice ?? null,
       purchase_currency: params.purchaseCurrency ?? null,
-      extraction_source: params.extractionSource ?? null
+      extraction_source: params.extractionSource ?? null,
+      metadata: (params.metadata ?? {}) as Json
     },
     confidence: params.confidence ?? 0.18,
     status: "pending"
@@ -408,24 +440,28 @@ export async function createManualPhotoReviewDraft(params: {
   fileName: string;
   notes?: string | null;
 }): Promise<string> {
-  const normalizedTitle = params.fileName
-    .replace(/\.[^.]+$/, "")
-    .replace(/[-_]+/g, " ")
-    .trim();
+  const draftPayload = directUploadAdapter.buildDraft({
+    fileName: params.fileName,
+    notes: params.notes
+  });
 
   return createManualReviewDraft({
     sourceId: params.sourceId,
-    sourceType: "direct_upload",
-    title: normalizedTitle || "Photo upload",
-    category: "",
-    colour: "",
-    sourceLabel: params.fileName,
-    style: "manual photo entry",
-    notes:
-      params.notes ??
-      "Uploaded without assisted feature labelling. Fill in the garment details manually.",
-    confidence: 0.05,
-    extractionSource: "manual entry"
+    sourceType: draftPayload.sourceType,
+    title: draftPayload.title,
+    category: draftPayload.category,
+    colour: draftPayload.colour,
+    brand: draftPayload.brand,
+    material: draftPayload.material,
+    sourceLabel: draftPayload.sourceLabel,
+    style: draftPayload.style,
+    notes: draftPayload.notes,
+    confidence: draftPayload.confidence,
+    retailer: draftPayload.retailer,
+    purchasePrice: draftPayload.purchasePrice,
+    purchaseCurrency: draftPayload.purchaseCurrency,
+    extractionSource: draftPayload.extractionSource,
+    metadata: draftPayload.metadata
   });
 }
 
@@ -581,16 +617,28 @@ export async function listPendingDrafts(): Promise<PendingDraft[]> {
         purchase_currency:
           typeof p.purchase_currency === "string" ? p.purchase_currency : null,
         extraction_source:
-          typeof p.extraction_source === "string" ? p.extraction_source : null
+          typeof p.extraction_source === "string" ? p.extraction_source : null,
+        metadata:
+          p.metadata && typeof p.metadata === "object" && !Array.isArray(p.metadata)
+            ? (p.metadata as Record<string, unknown>)
+            : {}
       },
     };
   });
 }
 
-function sourceFallbackTag(sourceType: "direct_upload" | "product_url" | "receipt") {
+function sourceFallbackTag(sourceType: IngestionAdapterKind) {
   if (sourceType === "direct_upload") {
     return "Photo upload draft";
   }
 
-  return sourceType === "product_url" ? "Product link draft" : "Receipt draft";
+  if (sourceType === "product_url") {
+    return "Product link draft";
+  }
+
+  if (sourceType === "receipt") {
+    return "Receipt draft";
+  }
+
+  return "Outfit item draft";
 }

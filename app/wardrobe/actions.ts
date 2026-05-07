@@ -7,7 +7,6 @@ import { getServerEnv } from "@/lib/env";
 import {
   createGarment,
   addGarment3dAsset,
-  addGarmentImageFromUrl,
   addGarmentImage,
   deleteGarment,
   setGarmentFeatureImage,
@@ -16,7 +15,6 @@ import {
   updateGarment
 } from "@/lib/domain/wardrobe/service";
 import {
-  inferWardrobeColourFamily,
   type WardrobeColourFamily
 } from "@/lib/domain/wardrobe/colours";
 import type { WardrobeActionState } from "@/lib/domain/wardrobe/action-state";
@@ -40,6 +38,7 @@ import {
   parseReceiptDraftCandidates,
   readReceiptTextFromFile
 } from "@/lib/domain/ingestion/extractors";
+import { productUrlAdapter, receiptAdapter } from "@/lib/domain/ingestion/adapters";
 
 const nullableText = (max: number) =>
   z.preprocess(
@@ -371,193 +370,54 @@ export async function createProductUrlDraftAction(
       url.hostname;
     const { sourceId } = await createProductUrlSource({ url: values.product_url });
     const extracted = await extractProductMetadataFromUrl(values.product_url);
-    const extractedPrice =
-      extracted.price && extracted.price.trim().length > 0
-        ? Number(extracted.price.replace(/[^0-9.]+/g, ""))
-        : null;
-    const usedRetailerMetadata = Boolean(
-      extracted.brand ||
-        extracted.category ||
-        extracted.price ||
-        extracted.image_url ||
-        extracted.description ||
-        (extracted.title && extracted.title !== titleHint)
-    );
-    const extractionSource = usedRetailerMetadata
-      ? "retailer metadata"
-      : values.title_hint
-        ? "manual hint"
-        : "URL fallback";
-    const titleSource =
-      extracted.title && extracted.title !== titleHint
-        ? "retailer metadata"
-        : values.title_hint
-          ? "manual hint"
-          : "URL fallback";
-    const categorySource = extracted.category ? "retailer metadata" : "category fallback";
-    const colourSource = extracted.colour ? "retailer metadata" : "unavailable";
-    const brandSource = extracted.brand ? "retailer metadata" : "unavailable";
-    const priceSource = extracted.price ? "retailer metadata" : "unavailable";
-    const primaryColourFamily = inferWardrobeColourFamily(extracted.colour);
-    const normalizedExtractedCategory = normalizeCategoryParts(extracted.category);
-    const garment = await createGarment({
-      title: extracted.title || titleHint,
-      category: normalizedExtractedCategory.primaryCategory ?? extracted.category ?? "top",
-      brand: extracted.brand,
-      retailer: extracted.retailer,
-      subcategory: normalizedExtractedCategory.descriptors.length
-        ? normalizedExtractedCategory.descriptors.join(", ")
-        : undefined,
-      fit: extracted.fit ?? undefined,
-      material: extracted.material ?? undefined,
-      size: extractSizeFromNotes(values.notes) ?? undefined,
-      purchase_price: Number.isFinite(extractedPrice) ? extractedPrice : undefined,
-      purchase_currency: extracted.currency,
-      description:
-        values.notes ??
-        (
-          [
-            extracted.description,
-            extracted.price ? `Price: ${extracted.currency || ""} ${extracted.price}`.trim() : null
-          ]
-            .filter(Boolean)
-            .join(" · ") || `Added from ${url.hostname}`
-        ),
-      extraction_metadata_json: {
-        source_type: "product_url",
-        source_url: values.product_url,
-        extraction_source: extractionSource,
-        extracted_colour: extracted.colour,
-        extracted_image_url: extracted.image_url,
-        category_descriptors: normalizedExtractedCategory.descriptors,
-        // Structured garment attributes with knowledge-graph mappings.
-        // Each entry has a kg_predicate ("has_attribute") and kg_object_value
-        // that maps to style rule vocabulary (outer_layer, oversized, etc.).
-        attributes: extracted.attributes,
-        styling_suggestions: extracted.styling_suggestions,
-        import_summary: {
-          source_label: url.hostname,
-          title: { value: extracted.title || titleHint, source: titleSource },
-          category: {
-            value: normalizedExtractedCategory.primaryCategory ?? extracted.category,
-            source: categorySource
-          },
-          colour: { value: extracted.colour, source: colourSource },
-          brand: { value: extracted.brand, source: brandSource },
-          fit: { value: extracted.fit, source: extracted.fit ? "retailer metadata" : "unavailable" },
-          material: { value: extracted.material, source: extracted.material ? "retailer metadata" : "unavailable" },
-          retailer: {
-            value: extracted.retailer,
-            source: extracted.retailer ? "retailer metadata" : "hostname fallback"
-          },
-          price: {
-            value: Number.isFinite(extractedPrice) ? extractedPrice : null,
-            currency: extracted.currency,
-            source: priceSource
-          },
-          image: {
-            value: extracted.image_url,
-            source: extracted.image_url ? "retailer metadata" : "unavailable"
-          }
-        }
-      }
-    }, {
-      primaryColourFamily
+    const draftPayload = productUrlAdapter.buildDraft({
+      productUrl: values.product_url,
+      titleHint,
+      notes: values.notes,
+      extracted
     });
-
-    let imageStatus: "attached" | "failed" | "missing" = "missing";
-    let uploadedStoragePath: string | null = null;
-    let sampledImageColour:
-      | {
-          dominant_hex: string | null;
-          inferred_family: WardrobeColourFamily | null;
-          lightness_band: "low" | "medium" | "high" | null;
-          relative_luminance: number | null;
-        }
-      | null = null;
-
-    if (extracted.image_url) {
-      try {
-        const uploadedImage = await addGarmentImageFromUrl({
-          garmentId: garment.id as string,
-          imageUrl: extracted.image_url,
-          fileNameHint: `${(extracted.title || titleHint || "product-image").replace(/\s+/g, "-").toLowerCase()}`,
-          cropBox: null
-        });
-        uploadedStoragePath = uploadedImage.featureStoragePath ?? uploadedImage.storagePath;
-        sampledImageColour = {
-          dominant_hex: uploadedImage.colourAnalysis.dominantHex,
-          inferred_family: uploadedImage.colourAnalysis.inferredFamily,
-          lightness_band: uploadedImage.colourAnalysis.lightnessBand,
-          relative_luminance: uploadedImage.colourAnalysis.relativeLuminance
-        };
-        if (!primaryColourFamily && uploadedImage.colourAnalysis.inferredFamily) {
-          await setGarmentPrimaryColourFamily({
-            garmentId: garment.id as string,
-            primaryColourFamily: uploadedImage.colourAnalysis.inferredFamily
-          });
-        }
-        imageStatus = "attached";
-      } catch {
-        imageStatus = "failed";
-      }
-    }
+    const normalizedCategory = normalizeCategoryParts(draftPayload.category);
+    const draftMetadata = {
+      ...draftPayload.metadata,
+      category_descriptors: normalizedCategory.descriptors,
+      size_hint: extractSizeFromNotes(values.notes)
+    };
+    const draftId = await createManualReviewDraft({
+      sourceId,
+      sourceType: draftPayload.sourceType,
+      title: draftPayload.title,
+      category: normalizedCategory.primaryCategory ?? draftPayload.category,
+      colour: draftPayload.colour,
+      brand: draftPayload.brand,
+      material: draftPayload.material,
+      style: draftPayload.style,
+      notes: draftPayload.notes,
+      sourceLabel: draftPayload.sourceLabel,
+      confidence: draftPayload.confidence,
+      retailer: draftPayload.retailer,
+      purchasePrice: draftPayload.purchasePrice,
+      purchaseCurrency: draftPayload.purchaseCurrency,
+      extractionSource: draftPayload.extractionSource,
+      metadata: draftMetadata
+    });
 
     const supabase = await createClient();
     await supabase
       .from("garment_sources")
       .update({
-        garment_id: garment.id,
-        storage_path: uploadedStoragePath,
-        parse_status: "completed",
-        confidence: extracted.title || extracted.category ? 0.82 : 0.58,
-        source_metadata_json: {
-          title_hint: titleHint,
-          extraction_source: extractionSource,
-          extracted_title: extracted.title,
-          extracted_category: extracted.category,
-          extracted_colour: extracted.colour,
-          extracted_brand: extracted.brand,
-          extracted_retailer: extracted.retailer,
-          extracted_price: extracted.price,
-          extracted_currency: extracted.currency,
-          extracted_image_url: extracted.image_url,
-          feature_image_path: uploadedStoragePath,
-          feature_image_type:
-            imageStatus === "attached"
-              ? "cropped"
-              : null,
-          detected_image_garment: null,
-          sampled_image_colour: sampledImageColour,
-          extracted_fit: extracted.fit,
-          extracted_material: extracted.material,
-          extracted_attributes: extracted.attributes,
-          extracted_styling_suggestions: extracted.styling_suggestions,
-          image_status: imageStatus,
-          import_summary: {
-            title_source: titleSource,
-            category_source: categorySource,
-            colour_source: colourSource,
-            brand_source: brandSource,
-            fit_source: extracted.fit ? "retailer metadata" : "unavailable",
-            material_source: extracted.material ? "retailer metadata" : "unavailable",
-            price_source: priceSource
-          }
-        }
+        parse_status: "requires_review",
+        confidence: draftPayload.confidence,
+        source_metadata_json: draftMetadata
       } as never)
       .eq("id", sourceId);
 
-    revalidatePath("/wardrobe");
+    revalidatePath("/wardrobe/review");
 
     return {
-      status: imageStatus === "failed" ? "partial" : "success",
-      garmentId: garment.id as string,
-      message:
-        imageStatus === "attached"
-          ? "Added from product link with product image."
-          : imageStatus === "failed"
-            ? "Added from product link, but the product image could not be saved."
-            : "Added from product link."
+      status: "success",
+      draftIds: [draftId],
+      nextPath: "/wardrobe/review",
+      message: "Product link draft created. Review the inferred details before saving."
     };
   } catch (error) {
     return {
@@ -619,21 +479,29 @@ export async function createReceiptDraftAction(
     const draftIds: string[] = [];
 
     for (const candidate of candidates) {
+      const draftPayload = receiptAdapter.buildDraft({
+        candidate,
+        fileName: file.name,
+        notes: values.notes,
+        extractionSource
+      });
       const draftId = await createManualReviewDraft({
         sourceId,
-        sourceType: "receipt",
-        title: candidate.title,
-        category: candidate.category,
-        colour: candidate.colour,
-        brand: candidate.brand,
-        sourceLabel: file.name,
-        style: "receipt import",
-        notes: values.notes ?? candidate.notes ?? "Review this receipt-derived draft.",
-        confidence: candidate.confidence,
-        retailer: candidate.retailer,
-        purchasePrice: candidate.price,
-        purchaseCurrency: candidate.currency,
-        extractionSource
+        sourceType: draftPayload.sourceType,
+        title: draftPayload.title,
+        category: draftPayload.category,
+        colour: draftPayload.colour,
+        brand: draftPayload.brand,
+        material: draftPayload.material,
+        sourceLabel: draftPayload.sourceLabel,
+        style: draftPayload.style,
+        notes: draftPayload.notes,
+        confidence: draftPayload.confidence,
+        retailer: draftPayload.retailer,
+        purchasePrice: draftPayload.purchasePrice,
+        purchaseCurrency: draftPayload.purchaseCurrency,
+        extractionSource: draftPayload.extractionSource,
+        metadata: draftPayload.metadata
       });
 
       draftIds.push(draftId);

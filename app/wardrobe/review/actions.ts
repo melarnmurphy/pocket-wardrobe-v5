@@ -3,7 +3,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { createGarment } from "@/lib/domain/wardrobe/service";
+import {
+  addGarmentImageFromUrl,
+  createGarment,
+  setGarmentPrimaryColourFamily
+} from "@/lib/domain/wardrobe/service";
 import { getCanonicalWardrobeColour } from "@/lib/domain/wardrobe/colours";
 import { z } from "zod";
 
@@ -49,7 +53,7 @@ export async function acceptDraftAction(
 
     const { data: draft, error } = await supabase
       .from("garment_drafts")
-      .select("id, source_id, draft_payload_json, status")
+      .select("id, source_id, draft_payload_json, status, garment_sources(storage_path, source_type, source_metadata_json)")
       .eq("id", draftId)
       .eq("user_id", user.id)
       .single();
@@ -61,7 +65,18 @@ export async function acceptDraftAction(
       return { status: "success" };
     }
 
+    const source = (draft as {
+      garment_sources?: {
+        storage_path: string | null;
+        source_type: string;
+        source_metadata_json: Record<string, unknown> | null;
+      } | null;
+    }).garment_sources;
     const p = (draft as { draft_payload_json: Record<string, unknown> }).draft_payload_json;
+    const draftMetadata =
+      p.metadata && typeof p.metadata === "object" && !Array.isArray(p.metadata)
+        ? (p.metadata as Record<string, unknown>)
+        : {};
     const values = acceptDraftSchema.parse({
       draftId,
       title: typeof input === "string" ? String(p.title ?? p.tag ?? "") : input.title,
@@ -114,7 +129,9 @@ export async function acceptDraftAction(
           draft_style: values.style?.trim() || p.style || null,
           draft_colour: colour,
           draft_brand: brand ?? null,
-          draft_retailer: retailer ?? null
+          draft_retailer: retailer ?? null,
+          source_id: (draft as { source_id?: string | null }).source_id ?? null,
+          ...draftMetadata
         }
       },
       { primaryColourFamily: canonicalColour ? canonicalColour.family : null }
@@ -140,6 +157,47 @@ export async function acceptDraftAction(
           width: typeof p.crop_width === "number" ? p.crop_width : null,
           height: typeof p.crop_height === "number" ? p.crop_height : null,
         } as never);
+    } else if (source?.source_type === "direct_upload" && source.storage_path) {
+      await supabase
+        .from("garment_images")
+        .insert({
+          garment_id: garment.id,
+          image_type: "original",
+          storage_path: source.storage_path,
+          width:
+            source.source_metadata_json &&
+            typeof source.source_metadata_json.width === "number"
+              ? source.source_metadata_json.width
+              : null,
+          height:
+            source.source_metadata_json &&
+            typeof source.source_metadata_json.height === "number"
+              ? source.source_metadata_json.height
+              : null
+        } as never);
+    } else if (
+      p.source_type === "product_url" &&
+      typeof draftMetadata.extracted_image_url === "string" &&
+      draftMetadata.extracted_image_url.length > 0
+    ) {
+      try {
+        const uploadedImage = await addGarmentImageFromUrl({
+          garmentId: garment.id as string,
+          imageUrl: draftMetadata.extracted_image_url,
+          fileNameHint: values.title.replace(/\s+/g, "-").toLowerCase(),
+          cropBox: null
+        });
+
+        if (!canonicalColour && uploadedImage.colourAnalysis.inferredFamily) {
+          await setGarmentPrimaryColourFamily({
+            garmentId: garment.id as string,
+            primaryColourFamily: uploadedImage.colourAnalysis.inferredFamily
+          });
+        }
+      } catch {
+        // Product images are useful provenance, but a failed remote fetch should
+        // not block saving an already-reviewed garment.
+      }
     }
 
     const { error: updateError } = await supabase
