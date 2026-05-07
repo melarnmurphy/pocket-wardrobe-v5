@@ -398,7 +398,9 @@ export async function createProductUrlDraftAction(
       purchasePrice: draftPayload.purchasePrice,
       purchaseCurrency: draftPayload.purchaseCurrency,
       extractionSource: draftPayload.extractionSource,
-      metadata: draftMetadata
+      metadata: draftMetadata,
+      fieldConfidence: draftPayload.fieldConfidence,
+      fieldProvenance: draftPayload.fieldProvenance
     });
 
     const supabase = await createClient();
@@ -501,7 +503,9 @@ export async function createReceiptDraftAction(
         purchasePrice: draftPayload.purchasePrice,
         purchaseCurrency: draftPayload.purchaseCurrency,
         extractionSource: draftPayload.extractionSource,
-        metadata: draftPayload.metadata
+        metadata: draftPayload.metadata,
+        fieldConfidence: draftPayload.fieldConfidence,
+        fieldProvenance: draftPayload.fieldProvenance
       });
 
       draftIds.push(draftId);
