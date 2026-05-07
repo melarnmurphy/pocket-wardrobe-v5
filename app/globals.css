@@ -1,27 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f5f2;
-  --foreground: #111111;
-  --muted: #6d677a;
-  --surface: rgba(249, 247, 243, 0.9);
-  --surface-strong: rgba(255, 255, 255, 0.94);
-  --line: rgba(17, 17, 17, 0.1);
-  --line-strong: rgba(17, 17, 17, 0.18);
-  --accent: #7b5cf0;
-  --accent-strong: #2d1b69;
-  --accent-foreground: #fbf9ff;
-  --accent-secondary: #ff6b9d;
-  --accent-highlight: #ffd166;
-  --trend-accent: #0dffe8;
-  --trend-accent-ink: #003f39;
-  --hero-gradient:
-    linear-gradient(120deg, #2d1b69 0%, #7b5cf0 38%, #ff6b9d 72%, #ffd166 100%);
-  --hero-gradient-soft:
-    linear-gradient(140deg, rgba(45, 27, 105, 0.96), rgba(123, 92, 240, 0.94), rgba(255, 107, 157, 0.9), rgba(255, 209, 102, 0.84));
-  --shadow-soft: 0 28px 70px rgba(17, 17, 17, 0.08);
-  --shadow-strong: 0 36px 100px rgba(17, 17, 17, 0.12);
-  --radius-card: 8px;
+  /* Atelier palette — paper, warm ink, hairlines */
+  --paper: #f5f2ec;
+  --paper-tile: #eeeae3;
+  --background: #f5f2ec;
+  --foreground: #1a1916;
+  --muted: #807a70;
+  --surface: rgba(255, 255, 255, 0.92);
+  --surface-strong: #ffffff;
+  --line: rgba(26, 25, 22, 0.12);
+  --line-strong: rgba(26, 25, 22, 0.22);
+  --accent: #1a1916;
+  --accent-strong: #0e0d0b;
+  --accent-foreground: #f5f2ec;
+  --accent-secondary: #1a1916;
+  --accent-highlight: #1a1916;
+  --trend-accent: #1a1916;
+  --trend-accent-ink: #f5f2ec;
+  --hero-gradient: #1a1916;
+  --hero-gradient-soft: #1a1916;
+  --shadow-soft: 0 24px 60px -28px rgba(26, 25, 22, 0.18);
+  --shadow-strong: 0 36px 90px -36px rgba(26, 25, 22, 0.28);
+  --radius-card: 14px;
   --radius-pill: 999px;
 }
 
@@ -30,10 +31,7 @@ html {
 }
 
 body {
-  background:
-    radial-gradient(circle at top left, rgba(123, 92, 240, 0.08), transparent 26%),
-    radial-gradient(circle at top right, rgba(255, 107, 157, 0.06), transparent 20%),
-    linear-gradient(180deg, #fbfaf8 0%, #f5f1eb 100%);
+  background: var(--paper);
   color: var(--foreground);
   font-family: var(--font-body), "Plus Jakarta Sans", "Avenir Next", sans-serif;
   min-height: 100vh;
@@ -54,7 +52,8 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-display), "Space Grotesk", "Avenir Next", sans-serif;
+  font-family: var(--font-display), "Fraunces", "Avenir Next", serif;
+  letter-spacing: -0.02em;
 }
 
 ::view-transition-group(*),
@@ -323,9 +322,9 @@ h6 {
 }
 
 .pw-pill-toggle a[data-active="true"] {
-  background: linear-gradient(135deg, #7b5cf0, #ff6b9d);
-  box-shadow: 0 12px 28px rgba(123, 92, 240, 0.24);
-  color: #fffdfc;
+  background: var(--accent);
+  box-shadow: 0 10px 22px -14px rgba(26, 25, 22, 0.45);
+  color: var(--accent-foreground);
 }
 
 .pw-pill-toggle a[data-active="false"] {
@@ -341,44 +340,30 @@ h6 {
 }
 
 .pw-trends-shell::before {
-  background:
-    radial-gradient(circle at top right, rgba(13, 255, 232, 0.18), transparent 20%),
-    radial-gradient(circle at top left, rgba(123, 92, 240, 0.14), transparent 24%);
   content: "";
-  inset: 0 0 auto;
-  height: 18rem;
-  pointer-events: none;
-  position: absolute;
+  display: none;
 }
 
 .pw-trends-banner {
-  background:
-    linear-gradient(135deg, rgba(19, 15, 36, 0.98), rgba(45, 27, 105, 0.94)),
-    var(--hero-gradient);
-  border: 0.5px solid rgba(13, 255, 232, 0.24);
+  background: var(--accent);
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-card);
-  box-shadow: 0 28px 80px rgba(8, 6, 20, 0.34);
-  color: #f7fffd;
+  box-shadow: var(--shadow-strong);
+  color: var(--accent-foreground);
   overflow: hidden;
   position: relative;
 }
 
 .pw-trends-banner::after {
-  background:
-    radial-gradient(circle at 78% 24%, rgba(13, 255, 232, 0.28), transparent 16%),
-    radial-gradient(circle at 14% 10%, rgba(255, 107, 157, 0.16), transparent 18%);
   content: "";
-  inset: 0;
-  pointer-events: none;
-  position: absolute;
+  display: none;
 }
 
 .pw-trends-panel {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(231, 255, 252, 0.9));
-  border: 0.5px solid rgba(13, 255, 232, 0.22);
+  background: var(--surface-strong);
+  border: 0.5px solid var(--line);
   border-radius: var(--radius-card);
-  box-shadow: 0 22px 60px rgba(0, 88, 79, 0.1);
+  box-shadow: var(--shadow-soft);
   transition:
     transform 220ms cubic-bezier(0.19, 1, 0.22, 1),
     box-shadow 220ms cubic-bezier(0.19, 1, 0.22, 1),
@@ -418,11 +403,10 @@ h6 {
 
 .pw-wordmark::before {
   content: "";
-  width: 0.45rem;
-  height: 0.45rem;
+  width: 0.4rem;
+  height: 0.4rem;
   border-radius: 999px;
-  background: var(--accent-secondary);
-  box-shadow: 0 0 0 4px rgba(255, 107, 157, 0.12);
+  background: var(--accent);
 }
 
 .pw-nav-rail {
@@ -607,4 +591,264 @@ h6 {
   textarea::placeholder {
     color: rgba(108, 102, 135, 0.82);
   }
+}
+
+/* Atelier shell — web top navigation */
+
+.atelier-top {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1rem 1.25rem;
+  background: rgba(245, 242, 236, 0.86);
+  backdrop-filter: blur(14px);
+  border-bottom: 0.5px solid var(--line);
+}
+
+.atelier-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: var(--font-display), serif;
+  font-style: italic;
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  color: var(--foreground);
+  line-height: 1;
+}
+
+.atelier-wordmark__dot {
+  margin-left: -0.05em;
+  transform: translateY(0.1em);
+}
+
+.atelier-primary-nav {
+  display: none;
+  align-items: center;
+  gap: 0.35rem;
+  border: 0.5px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.62);
+  padding: 0.25rem;
+}
+
+.atelier-primary-nav__link {
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  min-height: 2.15rem;
+  padding: 0.62rem 0.9rem;
+  text-transform: uppercase;
+  transition:
+    background-color 160ms ease-out,
+    color 160ms ease-out;
+}
+
+.atelier-primary-nav__link[data-active="true"] {
+  background: var(--foreground);
+  color: var(--accent-foreground);
+}
+
+.atelier-primary-nav__link[data-active="false"]:hover {
+  background: rgba(26, 25, 22, 0.06);
+  color: var(--foreground);
+}
+
+@media (min-width: 760px) {
+  .atelier-primary-nav {
+    display: flex;
+  }
+}
+
+.atelier-menu {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.atelier-menu summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-pill);
+  transition: background-color 160ms ease-out;
+}
+
+.atelier-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.atelier-menu summary:hover {
+  background: rgba(26, 25, 22, 0.06);
+}
+
+.atelier-menu summary > span {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 20px;
+}
+
+.atelier-menu summary > span > span {
+  height: 1px;
+  background: var(--foreground);
+  display: block;
+}
+
+.atelier-menu summary > span > span:nth-child(1) {
+  width: 100%;
+}
+.atelier-menu summary > span > span:nth-child(2) {
+  width: 70%;
+  margin-left: auto;
+}
+.atelier-menu summary > span > span:nth-child(3) {
+  width: 100%;
+}
+
+.atelier-menu__panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 16rem;
+  padding: 1.25rem 1.25rem 1rem;
+  background: var(--surface-strong);
+  border: 0.5px solid var(--line);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+}
+
+.atelier-menu__kicker {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.atelier-menu__email {
+  margin-top: 0.25rem;
+  font-family: var(--font-display), serif;
+  font-style: italic;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+  color: var(--foreground);
+  word-break: break-all;
+}
+
+.atelier-menu__list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 1rem;
+  border-top: 0.5px solid var(--line);
+}
+
+.atelier-menu__list a {
+  display: block;
+  padding: 0.85rem 0;
+  font-family: var(--font-display), serif;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  color: var(--foreground);
+  border-bottom: 0.5px solid var(--line);
+  transition: opacity 160ms ease-out;
+}
+
+.atelier-menu__list a:hover {
+  opacity: 0.6;
+}
+
+.atelier-menu__actions {
+  margin-top: 0.75rem;
+}
+
+.atelier-menu__sign {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  border: none;
+  border-radius: var(--radius-pill);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity 160ms ease-out;
+}
+
+.atelier-menu__sign:hover {
+  opacity: 0.85;
+}
+
+main {
+  padding-bottom: 3rem;
+}
+
+/* ── Closet tab toggle ─────────────────────────────── */
+
+.closet-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 0.5px solid var(--line);
+  padding: 0 1.25rem;
+  padding-top: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .closet-tabs {
+    padding: 0;
+    padding-top: 1.5rem;
+  }
+}
+
+.closet-tab {
+  position: relative;
+  padding: 0 0 0.75rem;
+  margin-right: 1.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  transition: color 0.15s;
+}
+
+.closet-tab::after {
+  content: "";
+  position: absolute;
+  bottom: -0.5px;
+  left: 0;
+  right: 0;
+  height: 1.5px;
+  background: var(--foreground);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.closet-tab[data-active="true"] {
+  color: var(--foreground);
+}
+
+.closet-tab[data-active="true"]::after {
+  opacity: 1;
+}
+
+.closet-tab:hover {
+  color: var(--foreground);
 }
