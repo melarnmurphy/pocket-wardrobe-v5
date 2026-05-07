@@ -6,6 +6,7 @@ import {
   getCanonicalWardrobeColour,
   type WardrobeColourFamily
 } from "@/lib/domain/wardrobe/colours";
+import { garment3dAssetSchema } from "@/lib/domain/avatar";
 import {
   analyseImageColours,
   buildFeatureDerivative
@@ -48,6 +49,8 @@ type GarmentColourRow = Database["public"]["Tables"]["garment_colours"]["Row"];
 type GarmentColourInsert = TablesInsert<"garment_colours">;
 type GarmentImageRow = Database["public"]["Tables"]["garment_images"]["Row"];
 type GarmentImageInsert = TablesInsert<"garment_images">;
+type Garment3dAssetRow = Database["public"]["Tables"]["garment_3d_assets"]["Row"];
+type Garment3dAssetInsert = TablesInsert<"garment_3d_assets">;
 type GarmentSourceInsert = TablesInsert<"garment_sources">;
 type WearEventRow = Database["public"]["Tables"]["wear_events"]["Row"];
 type GarmentFavouriteLookupRow = Pick<GarmentRow, "id" | "favourite_score">;
@@ -82,6 +85,13 @@ const garmentSourceSchema = z.object({
   id: z.string().uuid()
 });
 
+const garment3dAssetRowSchema = garment3dAssetSchema.extend({
+  id: z.string().uuid(),
+  garment_id: z.string().uuid(),
+  created_at: timestampSchema,
+  updated_at: timestampSchema
+});
+
 const garmentFavouriteLookupSchema = z.object({
   id: z.string().uuid(),
   favourite_score: z.coerce.number().nullable().optional()
@@ -112,6 +122,7 @@ const garmentRecentWearSchema = z.object({
 
 export type GarmentListItem = z.infer<typeof garmentListItemSchema> & {
   images: z.infer<typeof garmentImageSchema>[];
+  three_d_assets: z.infer<typeof garment3dAssetRowSchema>[];
   preview_url: string | null;
   recent_wear_events: z.infer<typeof garmentRecentWearSchema>[];
 };
@@ -401,12 +412,29 @@ export async function listWardrobeGarments(): Promise<GarmentListItem[]> {
     throw new Error(garmentColourError.message);
   }
 
+  const { data: threeDAssets, error: threeDAssetsError } = await supabase
+    .from("garment_3d_assets")
+    .select(
+      "id,garment_id,asset_type,storage_path,file_format,material_profile_json,physics_profile_json,renderer_metadata_json,source_type,confidence,status,created_at,updated_at"
+    )
+    .in("garment_id", garmentIds)
+    .order("created_at", { ascending: false });
+
+  if (threeDAssetsError) {
+    if (!isMissingRelationError(threeDAssetsError.message)) {
+      throw new Error(threeDAssetsError.message);
+    }
+  }
+
   const parsedImages = z
     .array(garmentImageSchema)
     .parse((images ?? []) satisfies GarmentImageRow[]);
   const parsedGarmentColours = z
     .array(garmentColourSchema)
     .parse((garmentColours ?? []) satisfies GarmentColourRow[]);
+  const parsedThreeDAssets = z
+    .array(garment3dAssetRowSchema)
+    .parse((threeDAssetsError ? [] : (threeDAssets ?? [])) satisfies Garment3dAssetRow[]);
   const { data: wearEvents, error: wearEventsError } = await supabase
     .from("wear_events")
     .select("id,garment_id,worn_at,occasion,notes")
@@ -427,6 +455,7 @@ export async function listWardrobeGarments(): Promise<GarmentListItem[]> {
   const featureImagePathByGarment = new Map<string, string>();
   const primaryColourByGarment = new Map<string, z.infer<typeof garmentColourSchema>>();
   const recentWearByGarment = new Map<string, z.infer<typeof garmentRecentWearSchema>[]>();
+  const threeDAssetsByGarment = new Map<string, z.infer<typeof garment3dAssetRowSchema>[]>();
   const colourIds = Array.from(new Set(parsedGarmentColours.map((entry) => entry.colour_id)));
 
   for (const image of parsedImages) {
@@ -454,6 +483,12 @@ export async function listWardrobeGarments(): Promise<GarmentListItem[]> {
       existing.push(wearEvent);
       recentWearByGarment.set(wearEvent.garment_id, existing);
     }
+  }
+
+  for (const asset of parsedThreeDAssets) {
+    const existing = threeDAssetsByGarment.get(asset.garment_id) ?? [];
+    existing.push(asset);
+    threeDAssetsByGarment.set(asset.garment_id, existing);
   }
 
   const colourById = new Map<string, z.infer<typeof colourSchema>>();
@@ -493,7 +528,7 @@ export async function listWardrobeGarments(): Promise<GarmentListItem[]> {
     }
   }
 
-  return parsedGarments.map((garment) => {
+  return parsedGarments.map((garment): GarmentListItem => {
     const garmentImages = (imagesByGarment.get(garment.id as string) ?? []).map((image) => ({
       ...image,
       preview_url: previewUrlsByPath.get(image.storage_path) ?? null
@@ -511,6 +546,7 @@ export async function listWardrobeGarments(): Promise<GarmentListItem[]> {
         return primaryLink ? colourById.get(primaryLink.colour_id)?.hex ?? null : null;
       })(),
       images: garmentImages,
+      three_d_assets: threeDAssetsByGarment.get(garment.id as string) ?? [],
       recent_wear_events: recentWearByGarment.get(garment.id as string) ?? [],
       preview_url: (() => {
         const firstPath =
@@ -572,7 +608,11 @@ export async function createGarment(
 
   return {
     ...garment,
-    ...colourState
+    ...colourState,
+    images: [],
+    three_d_assets: [],
+    recent_wear_events: [],
+    preview_url: null
   };
 }
 
@@ -626,7 +666,11 @@ export async function updateGarment(
 
   return {
     ...garment,
-    ...colourState
+    ...colourState,
+    images: [],
+    three_d_assets: [],
+    recent_wear_events: [],
+    preview_url: null
   };
 }
 
@@ -765,6 +809,102 @@ export async function addGarmentImage(params: {
     image: garmentImageSchema.parse(image),
     sourceId: parsedSource.id
   };
+}
+
+export async function addGarment3dAsset(params: {
+  garmentId: string;
+  file?: File | null;
+  assetType: z.input<typeof garment3dAssetSchema>["asset_type"];
+  fileFormat?: string | null;
+  materialProfile?: Record<string, unknown>;
+  physicsProfile?: Record<string, unknown>;
+  rendererMetadata?: Record<string, unknown>;
+  sourceType?: z.input<typeof garment3dAssetSchema>["source_type"];
+  confidence?: number | null;
+  status?: z.input<typeof garment3dAssetSchema>["status"];
+}) {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const garmentId = z.string().uuid().parse(params.garmentId);
+
+  const { data: garment, error: garmentError } = await supabase
+    .from("garments")
+    .select("id")
+    .eq("id", garmentId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (garmentError || !garment) {
+    throw new Error("Garment not found.");
+  }
+
+  let storagePath: string | null = null;
+  const inferredFormat = params.file
+    ? inferAssetFormat(params.file.name, params.file.type)
+    : params.fileFormat;
+
+  if (params.file && params.file.size > 0) {
+    const safeName = safeStorageFileName(params.file.name || `garment-asset.${inferredFormat || "bin"}`);
+    storagePath = `${user.id}/${garmentId}/${Date.now()}-${safeName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("garment-3d-assets")
+      .upload(storagePath, params.file, {
+        cacheControl: "3600",
+        contentType: params.file.type || undefined,
+        upsert: false
+      });
+
+    if (uploadError) {
+      throw new Error(uploadError.message);
+    }
+  }
+
+  const parsedAsset = garment3dAssetSchema.parse({
+    asset_type: params.assetType,
+    storage_path: storagePath,
+    file_format: inferredFormat,
+    material_profile_json: params.materialProfile ?? {},
+    physics_profile_json: params.physicsProfile ?? {},
+    renderer_metadata_json: {
+      ...(params.rendererMetadata ?? {}),
+      original_filename: params.file?.name ?? null,
+      mime_type: params.file?.type ?? null
+    },
+    source_type: params.sourceType ?? "manual",
+    confidence: params.confidence ?? (params.file ? 0.75 : null),
+    status: params.status ?? (params.file ? "ready" : "draft")
+  });
+
+  const payload: Garment3dAssetInsert = {
+    garment_id: garmentId,
+    asset_type: parsedAsset.asset_type,
+    storage_path: parsedAsset.storage_path ?? null,
+    file_format: parsedAsset.file_format ?? null,
+    material_profile_json: parsedAsset.material_profile_json as Json,
+    physics_profile_json: parsedAsset.physics_profile_json as Json,
+    renderer_metadata_json: parsedAsset.renderer_metadata_json as Json,
+    source_type: parsedAsset.source_type,
+    confidence: parsedAsset.confidence ?? null,
+    status: parsedAsset.status
+  };
+
+  const { data, error } = await supabase
+    .from("garment_3d_assets")
+    .insert(payload as never)
+    .select(
+      "id,garment_id,asset_type,storage_path,file_format,material_profile_json,physics_profile_json,renderer_metadata_json,source_type,confidence,status,created_at,updated_at"
+    )
+    .single();
+
+  if (error) {
+    if (storagePath) {
+      await supabase.storage.from("garment-3d-assets").remove([storagePath]);
+    }
+    throw new Error(error.message);
+  }
+
+  return garment3dAssetRowSchema.parse(data as Garment3dAssetRow);
 }
 
 export async function addGarmentImageFromUrl(params: {
@@ -950,4 +1090,42 @@ export async function getRecentGarments(n: number): Promise<
       ? getFeatureImagePath(g.garment_images)
       : null,
   }));
+}
+
+function inferAssetFormat(fileName: string, contentType?: string | null) {
+  const extension = fileName.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  if (extension) {
+    return extension;
+  }
+
+  if (contentType?.includes("gltf")) {
+    return "gltf";
+  }
+
+  if (contentType?.includes("glb")) {
+    return "glb";
+  }
+
+  if (contentType?.includes("json")) {
+    return "json";
+  }
+
+  return null;
+}
+
+function safeStorageFileName(fileName: string) {
+  return fileName
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120) || "garment-asset.bin";
+}
+
+function isMissingRelationError(message: string) {
+  return (
+    message.includes("Could not find the table") ||
+    message.includes("schema cache") ||
+    message.includes("does not exist")
+  );
 }

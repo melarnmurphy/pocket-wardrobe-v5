@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AuthenticationError } from "@/lib/auth";
 import {
   getBillingStatus,
@@ -5,9 +6,23 @@ import {
 } from "@/lib/domain/billing/service";
 import { getUserEntitlements } from "@/lib/domain/entitlements/service";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
+import { listSavedOutfits } from "@/lib/domain/outfits/service";
+import {
+  getActiveAvatarMeasurementSet,
+  getAvatarProfile
+} from "@/lib/domain/avatar/service";
 import { AuthRequiredCard } from "@/components/auth-required-card";
 import { WardrobeShop } from "@/components/wardrobe-shop";
+import { OutfitGallery } from "@/components/outfit-gallery";
+import { AvatarStyler } from "@/components/avatar-styler";
 import {
+  generateAvatarPhotoAction,
+  saveAvatarMeasurementsAction,
+  saveAvatarLayoutAction,
+  uploadAvatarPhotoAction
+} from "@/app/wardrobe/avatar-actions";
+import {
+  addGarment3dAssetAction,
   addGarmentImageAction,
   createGarmentAction,
   createPhotoDraftAction,
@@ -27,9 +42,16 @@ export default async function WardrobePage({
 }) {
   try {
     const resolvedSearchParams = searchParams ? await searchParams : undefined;
-    const [garments, entitlements] = await Promise.all([
+    const view = firstParam(resolvedSearchParams?.view) ?? "items";
+    const isOutfitsView = view === "outfits";
+    const isAvatarView = view === "avatar";
+
+    const [garments, entitlements, savedOutfits, avatarProfile, avatarMeasurementSet] = await Promise.all([
       listWardrobeGarments(),
-      getUserEntitlements()
+      getUserEntitlements(),
+      isOutfitsView ? listSavedOutfits() : Promise.resolve([]),
+      isAvatarView ? getAvatarProfile() : Promise.resolve(null),
+      isAvatarView ? getActiveAvatarMeasurementSet() : Promise.resolve(null)
     ]);
     const billingStatus = getBillingStatus();
     const premiumFeatures = getPremiumFeatureSummary();
@@ -57,28 +79,50 @@ export default async function WardrobePage({
     } as const;
 
     return (
-      <main className="pw-shell flex min-h-screen max-w-7xl flex-col gap-8 md:px-10">
-        <WardrobeShop
-          garments={garments}
-          planTier={entitlements.plan_tier}
-          canUseFeatureLabels={entitlements.feature_labels_enabled}
-          premiumUpgradeUrl={billingStatus.upgradeUrl}
-          billingCheckoutEnabled={billingStatus.checkoutEnabled}
-          premiumFeatures={premiumFeatures}
-          initialBrowseState={initialBrowseState}
-          initialSelectedGarmentId={initialSelectedGarmentId}
-          initialCreateState={initialCreateState}
-          createGarmentAction={createGarmentAction}
-          createPhotoDraftAction={createPhotoDraftAction}
-          createProductUrlDraftAction={createProductUrlDraftAction}
-          createReceiptDraftAction={createReceiptDraftAction}
-          addGarmentImageAction={addGarmentImageAction}
-          deleteGarmentAction={deleteGarmentAction}
-          setGarmentFeatureImageAction={setGarmentFeatureImageAction}
-          toggleGarmentFavouriteAction={toggleGarmentFavouriteAction}
-          logWearAction={logWearAction}
-          updateGarmentAction={updateGarmentAction}
-        />
+      <main className="pw-shell flex min-h-screen max-w-7xl flex-col md:px-10">
+        <ClosetTabs active={isAvatarView ? "avatar" : isOutfitsView ? "outfits" : "items"} />
+
+        {isAvatarView ? (
+          <div className="flex flex-col gap-6 px-4 py-6 md:px-0">
+            <AvatarStyler
+              garments={garments}
+              initialAvatarUrl={avatarProfile?.avatar_url ?? null}
+              initialLayout={avatarProfile?.layout_json ?? null}
+              initialMeasurementSet={avatarMeasurementSet}
+              uploadAvatarPhotoAction={uploadAvatarPhotoAction}
+              generateAvatarPhotoAction={generateAvatarPhotoAction}
+              saveAvatarLayoutAction={saveAvatarLayoutAction}
+              saveAvatarMeasurementsAction={saveAvatarMeasurementsAction}
+            />
+          </div>
+        ) : isOutfitsView ? (
+          <div className="flex flex-col gap-6 px-4 py-6 md:px-0">
+            <OutfitGallery outfits={savedOutfits} />
+          </div>
+        ) : (
+          <WardrobeShop
+            garments={garments}
+            planTier={entitlements.plan_tier}
+            canUseFeatureLabels={entitlements.feature_labels_enabled}
+            premiumUpgradeUrl={billingStatus.upgradeUrl}
+            billingCheckoutEnabled={billingStatus.checkoutEnabled}
+            premiumFeatures={premiumFeatures}
+            initialBrowseState={initialBrowseState}
+            initialSelectedGarmentId={initialSelectedGarmentId}
+            initialCreateState={initialCreateState}
+            createGarmentAction={createGarmentAction}
+            createPhotoDraftAction={createPhotoDraftAction}
+            createProductUrlDraftAction={createProductUrlDraftAction}
+            createReceiptDraftAction={createReceiptDraftAction}
+            addGarment3dAssetAction={addGarment3dAssetAction}
+            addGarmentImageAction={addGarmentImageAction}
+            deleteGarmentAction={deleteGarmentAction}
+            setGarmentFeatureImageAction={setGarmentFeatureImageAction}
+            toggleGarmentFavouriteAction={toggleGarmentFavouriteAction}
+            logWearAction={logWearAction}
+            updateGarmentAction={updateGarmentAction}
+          />
+        )}
       </main>
     );
   } catch (error) {
@@ -94,6 +138,37 @@ export default async function WardrobePage({
 
     throw error;
   }
+}
+
+function ClosetTabs({ active }: { active: "items" | "avatar" | "outfits" }) {
+  return (
+    <div className="closet-tabs">
+      <Link
+        href="/wardrobe"
+        className="closet-tab"
+        data-active={active === "items" ? "true" : "false"}
+        aria-current={active === "items" ? "page" : undefined}
+      >
+        Items
+      </Link>
+      <Link
+        href="/wardrobe?view=outfits"
+        className="closet-tab"
+        data-active={active === "outfits" ? "true" : "false"}
+        aria-current={active === "outfits" ? "page" : undefined}
+      >
+        Outfits
+      </Link>
+      <Link
+        href="/wardrobe?view=avatar"
+        className="closet-tab"
+        data-active={active === "avatar" ? "true" : "false"}
+        aria-current={active === "avatar" ? "page" : undefined}
+      >
+        Avatar
+      </Link>
+    </div>
+  );
 }
 
 function firstParam(value: string | string[] | undefined) {

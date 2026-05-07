@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServerEnv } from "@/lib/env";
 import {
   createGarment,
+  addGarment3dAsset,
   addGarmentImageFromUrl,
   addGarmentImage,
   deleteGarment,
@@ -118,6 +119,18 @@ const addGarmentImageFormSchema = z.object({
 
     return Number.parseInt(value, 10);
   }, z.number().int().positive().optional())
+});
+
+const addGarment3dAssetFormSchema = z.object({
+  garment_id: z.string().uuid(),
+  asset_type: z.enum(["model", "texture", "material", "simulation_preset", "thumbnail"]),
+  source_type: z.enum(["manual", "designer_asset", "generated", "partner_import", "scan"]).default("manual"),
+  file_format: nullableText(24),
+  material_name: nullableText(80),
+  fabric_weight: nullableText(80),
+  stretch: nullableText(80),
+  drape: nullableText(80),
+  notes: nullableText(1000)
 });
 
 const logWearFormSchema = z.object({
@@ -468,7 +481,8 @@ export async function createProductUrlDraftAction(
         const uploadedImage = await addGarmentImageFromUrl({
           garmentId: garment.id as string,
           imageUrl: extracted.image_url,
-          fileNameHint: `${(extracted.title || titleHint || "product-image").replace(/\s+/g, "-").toLowerCase()}`
+          fileNameHint: `${(extracted.title || titleHint || "product-image").replace(/\s+/g, "-").toLowerCase()}`,
+          cropBox: null
         });
         uploadedStoragePath = uploadedImage.featureStoragePath ?? uploadedImage.storagePath;
         sampledImageColour = {
@@ -684,6 +698,61 @@ export async function addGarmentImageAction(
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Unable to attach image."
+    };
+  }
+}
+
+export async function addGarment3dAssetAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const file = formData.get("asset_file");
+    const values = addGarment3dAssetFormSchema.parse({
+      garment_id: formData.get("garment_id"),
+      asset_type: formData.get("asset_type"),
+      source_type: formData.get("source_type"),
+      file_format: formData.get("file_format"),
+      material_name: formData.get("material_name"),
+      fabric_weight: formData.get("fabric_weight"),
+      stretch: formData.get("stretch"),
+      drape: formData.get("drape"),
+      notes: formData.get("notes")
+    });
+
+    await addGarment3dAsset({
+      garmentId: values.garment_id,
+      file: file instanceof File && file.size > 0 ? file : null,
+      assetType: values.asset_type,
+      sourceType: values.source_type,
+      fileFormat: values.file_format,
+      materialProfile: {
+        name: values.material_name,
+        fabric_weight: values.fabric_weight,
+        stretch: values.stretch,
+        drape: values.drape
+      },
+      physicsProfile: {
+        fabric_weight: values.fabric_weight,
+        stretch: values.stretch,
+        drape: values.drape
+      },
+      rendererMetadata: {
+        notes: values.notes
+      }
+    });
+
+    revalidatePath("/wardrobe");
+
+    return {
+      status: "success",
+      garmentId: values.garment_id,
+      message: "3D asset saved."
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to save 3D asset."
     };
   }
 }

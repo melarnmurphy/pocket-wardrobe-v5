@@ -42,6 +42,7 @@ export function WardrobeShop({
   createPhotoDraftAction,
   createProductUrlDraftAction,
   createReceiptDraftAction,
+  addGarment3dAssetAction,
   addGarmentImageAction,
   deleteGarmentAction,
   setGarmentFeatureImageAction,
@@ -82,6 +83,10 @@ export function WardrobeShop({
     formData: FormData
   ) => Promise<WardrobeActionState>;
   createReceiptDraftAction: (
+    state: WardrobeActionState,
+    formData: FormData
+  ) => Promise<WardrobeActionState>;
+  addGarment3dAssetAction: (
     state: WardrobeActionState,
     formData: FormData
   ) => Promise<WardrobeActionState>;
@@ -1024,6 +1029,7 @@ export function WardrobeShop({
         <GarmentDetailDialog
           garment={selectedGarment}
           onClose={() => setSelectedGarmentId(null)}
+          addGarment3dAssetAction={addGarment3dAssetAction}
           addGarmentImageAction={addGarmentImageAction}
           setGarmentFeatureImageAction={setGarmentFeatureImageAction}
           deleteGarmentAction={deleteGarmentAction}
@@ -1315,6 +1321,7 @@ function QuickIconButton({
 function GarmentDetailDialog({
   garment,
   onClose,
+  addGarment3dAssetAction,
   addGarmentImageAction,
   setGarmentFeatureImageAction,
   deleteGarmentAction,
@@ -1324,6 +1331,10 @@ function GarmentDetailDialog({
 }: {
   garment: GarmentListItem;
   onClose: () => void;
+  addGarment3dAssetAction: (
+    state: WardrobeActionState,
+    formData: FormData
+  ) => Promise<WardrobeActionState>;
   addGarmentImageAction: (
     state: WardrobeActionState,
     formData: FormData
@@ -1350,6 +1361,7 @@ function GarmentDetailDialog({
   ) => Promise<WardrobeActionState>;
 }) {
   const [wearState, wearFormAction] = useActionState(logWearAction, wardrobeActionState);
+  const [assetState, assetFormAction] = useActionState(addGarment3dAssetAction, wardrobeActionState);
   const [editState, editFormAction] = useActionState(updateGarmentAction, wardrobeActionState);
   const [featureImageState, featureImageFormAction] = useActionState(
     setGarmentFeatureImageAction,
@@ -1432,6 +1444,15 @@ function GarmentDetailDialog({
       });
     }
   }, [wearState.message, wearState.status]);
+
+  useEffect(() => {
+    if (assetState.status === "success") {
+      showAppToast({
+        message: assetState.message || "3D asset saved",
+        tone: "success"
+      });
+    }
+  }, [assetState.message, assetState.status]);
 
   const featureImage = garment.images.find((image) => image.preview_url === garment.preview_url) ?? null;
 
@@ -1611,6 +1632,11 @@ function GarmentDetailDialog({
           </div>
 
           <ProductImportSummaryCard garment={garment} />
+          <Garment3dAssetPanel
+            garment={garment}
+            action={assetFormAction}
+            state={assetState}
+          />
         </div>
 
         <div className="space-y-4">
@@ -2898,6 +2924,130 @@ function StatCard({ label, value }: { label: string; value: string }) {
   );
 }
 
+function Garment3dAssetPanel({
+  garment,
+  action,
+  state
+}: {
+  garment: GarmentListItem;
+  action: (formData: FormData) => void;
+  state: WardrobeActionState;
+}) {
+  return (
+    <section className="rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-white/88 p-4 sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
+            3D Asset Readiness
+          </h4>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+            Attach model, texture, material, or simulation preset files for later try-on rendering.
+          </p>
+        </div>
+        <span className="rounded-full bg-[rgba(23,20,17,0.04)] px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+          {garment.three_d_assets.length} stored
+        </span>
+      </div>
+
+      {garment.three_d_assets.length ? (
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {garment.three_d_assets.map((asset) => (
+            <div
+              key={asset.id}
+              className="rounded-[8px] border border-[rgba(17,17,17,0.07)] bg-[rgba(255,255,255,0.78)] px-4 py-3"
+            >
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
+                {formatAssetType(asset.asset_type)}
+              </p>
+              <p className="mt-2 text-sm font-medium text-[var(--foreground)]">
+                {asset.file_format ? asset.file_format.toUpperCase() : "Metadata only"}
+              </p>
+              <p className="mt-2 line-clamp-1 text-xs text-[var(--muted)]">
+                {asset.storage_path || asset.status}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="rounded-full bg-[rgba(17,17,17,0.05)] px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-[var(--muted)]">
+                  {asset.status}
+                </span>
+                <span className="rounded-full bg-[rgba(17,17,17,0.05)] px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-[var(--muted)]">
+                  {formatAssetType(asset.source_type)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-4 rounded-[8px] border border-dashed border-[var(--line)] bg-[rgba(255,255,255,0.7)] px-4 py-5 text-sm text-[var(--muted)]">
+          No 3D assets yet. Start with a GLB/GLTF model, texture image, material profile, or cloth simulation preset.
+        </div>
+      )}
+
+      <form action={action} className="mt-5 grid gap-3">
+        <input type="hidden" name="garment_id" value={garment.id as string} />
+        <div className="grid gap-3 md:grid-cols-3">
+          <label className="grid gap-2">
+            <span className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+              Asset Type
+            </span>
+            <select
+              name="asset_type"
+              defaultValue="model"
+              className="rounded-[8px] border border-[var(--line)] bg-white px-3 py-2 text-sm"
+            >
+              <option value="model">Model</option>
+              <option value="texture">Texture</option>
+              <option value="material">Material</option>
+              <option value="simulation_preset">Simulation Preset</option>
+              <option value="thumbnail">Thumbnail</option>
+            </select>
+          </label>
+          <label className="grid gap-2">
+            <span className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+              Source
+            </span>
+            <select
+              name="source_type"
+              defaultValue="manual"
+              className="rounded-[8px] border border-[var(--line)] bg-white px-3 py-2 text-sm"
+            >
+              <option value="manual">Manual</option>
+              <option value="designer_asset">Designer Asset</option>
+              <option value="generated">Generated</option>
+              <option value="partner_import">Partner Import</option>
+              <option value="scan">Scan</option>
+            </select>
+          </label>
+          <FormField label="Format" name="file_format" placeholder="glb, gltf, png, json" density="compact" />
+        </div>
+
+        <label className="grid gap-2">
+          <span className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+            Asset File
+          </span>
+          <input
+            name="asset_file"
+            type="file"
+            accept=".glb,.gltf,.obj,.fbx,.png,.jpg,.jpeg,.webp,.json,model/gltf-binary,model/gltf+json,image/*,application/json"
+            className="rounded-[8px] border border-[var(--line)] bg-white px-3 py-2 text-sm file:mr-3 file:rounded-full file:border-0 file:bg-[var(--foreground)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:uppercase file:tracking-[0.14em] file:text-white"
+          />
+        </label>
+
+        <div className="grid gap-3 md:grid-cols-4">
+          <FormField label="Material" name="material_name" placeholder="silk satin" density="compact" />
+          <FormField label="Weight" name="fabric_weight" placeholder="lightweight" density="compact" />
+          <FormField label="Stretch" name="stretch" placeholder="low" density="compact" />
+          <FormField label="Drape" name="drape" placeholder="fluid" density="compact" />
+        </div>
+        <FormField label="Notes" name="notes" placeholder="Renderer or cloth setup notes" density="compact" />
+        <button type="submit" className="pw-button-primary w-full justify-center px-4 py-2 text-sm sm:w-auto sm:justify-self-start">
+          Save 3D Asset
+        </button>
+        <FormFeedback state={state} className="mt-1" />
+      </form>
+    </section>
+  );
+}
+
 function ProductImportSummaryCard({ garment }: { garment: GarmentListItem }) {
   const summary = getProductImportSummary(garment.extraction_metadata_json);
 
@@ -2998,6 +3148,10 @@ function formatImageTypeLabel(value: string) {
     default:
       return categoryLabel(value);
   }
+}
+
+function formatAssetType(value: string) {
+  return categoryLabel(value).replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function applyFilterParam(
