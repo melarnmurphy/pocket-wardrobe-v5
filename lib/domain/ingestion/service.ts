@@ -471,7 +471,9 @@ export async function createManualPhotoReviewDraft(params: {
     purchasePrice: draftPayload.purchasePrice,
     purchaseCurrency: draftPayload.purchaseCurrency,
     extractionSource: draftPayload.extractionSource,
-    metadata: draftPayload.metadata
+    metadata: draftPayload.metadata,
+    fieldConfidence: draftPayload.fieldConfidence,
+    fieldProvenance: draftPayload.fieldProvenance
   });
 }
 
