@@ -128,7 +128,6 @@ struct TrendsView: View {
 
                 Spacer(minLength: 56)
             }
-            .border(Color.red, width: 2)   // DEBUG: delete me — shows VStack bounds
         }
         .background(PWColor.ivory)
         .sheet(item: $selectedSignal) { signal in
