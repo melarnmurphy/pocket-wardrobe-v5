@@ -162,6 +162,34 @@ describe("receiptAdapter", () => {
     expect(draft.purchasePrice).toBe(179.95);
     expect(draft.metadata.receipt_retailer).toBe("Myer");
   });
+
+  it("sets ai_text provenance on populated receipt fields using candidate confidence", () => {
+    const draft = receiptAdapter.buildDraft({
+      fileName: "receipt.pdf",
+      extractionSource: "pasted text",
+      candidate: {
+        title: "Wool Blazer",
+        category: "blazer",
+        colour: null,
+        brand: "Basque",
+        retailer: "Myer",
+        price: 179.95,
+        currency: "AUD",
+        notes: null,
+        confidence: 0.74
+      }
+    });
+
+    expect(draft.fieldConfidence?.title).toBe(0.74);
+    expect(draft.fieldProvenance?.title).toBe("ai_text");
+    expect(draft.fieldConfidence?.category).toBe(0.74);
+    expect(draft.fieldProvenance?.category).toBe("ai_text");
+    expect(draft.fieldConfidence?.colour).toBeUndefined();
+    expect(draft.fieldConfidence?.brand).toBe(0.74);
+    expect(draft.fieldConfidence?.retailer).toBe(0.74);
+    expect(draft.fieldConfidence?.purchase_price).toBe(0.74);
+    expect(draft.fieldConfidence?.purchase_currency).toBe(0.74);
+  });
 });
 
 describe("outfitDecompositionAdapter", () => {

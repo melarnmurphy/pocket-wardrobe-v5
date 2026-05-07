@@ -257,6 +257,32 @@ export const receiptAdapter: IngestionAdapter<{
 }> = {
   kind: "receipt",
   buildDraft(input) {
+    const c = input.candidate.confidence;
+    const fieldConfidence: Partial<Record<DraftFieldName, number>> = {};
+    const fieldProvenance: Partial<Record<DraftFieldName, string>> = {};
+
+    if (input.candidate.title) {
+      fieldConfidence.title = c; fieldProvenance.title = "ai_text";
+    }
+    if (input.candidate.category) {
+      fieldConfidence.category = c; fieldProvenance.category = "ai_text";
+    }
+    if (input.candidate.colour) {
+      fieldConfidence.colour = c; fieldProvenance.colour = "ai_text";
+    }
+    if (input.candidate.brand) {
+      fieldConfidence.brand = c; fieldProvenance.brand = "ai_text";
+    }
+    if (input.candidate.retailer) {
+      fieldConfidence.retailer = c; fieldProvenance.retailer = "ai_text";
+    }
+    if (input.candidate.price !== null && input.candidate.price !== undefined) {
+      fieldConfidence.purchase_price = c; fieldProvenance.purchase_price = "ai_text";
+    }
+    if (input.candidate.currency) {
+      fieldConfidence.purchase_currency = c; fieldProvenance.purchase_currency = "ai_text";
+    }
+
     return {
       sourceType: "receipt",
       title: input.candidate.title,
@@ -267,7 +293,7 @@ export const receiptAdapter: IngestionAdapter<{
       style: "receipt import",
       notes: input.notes ?? input.candidate.notes ?? "Review this receipt-derived draft.",
       sourceLabel: input.fileName,
-      confidence: input.candidate.confidence,
+      confidence: c,
       retailer: input.candidate.retailer,
       purchasePrice: input.candidate.price,
       purchaseCurrency: input.candidate.currency,
@@ -278,7 +304,9 @@ export const receiptAdapter: IngestionAdapter<{
         receipt_retailer: input.candidate.retailer,
         receipt_price: input.candidate.price,
         receipt_currency: input.candidate.currency
-      }
+      },
+      fieldConfidence,
+      fieldProvenance
     };
   }
 };
