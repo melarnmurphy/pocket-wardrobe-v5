@@ -53,7 +53,7 @@ enum PWFont {
         if hasInter {
             let face: String = {
                 switch weight {
-                case .light:    return "Inter-Light"
+                case .light:    return "Inter-Regular"
                 case .medium:   return "Inter-Medium"
                 case .semibold: return "Inter-SemiBold"
                 case .bold:     return "Inter-Bold"
