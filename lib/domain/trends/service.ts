@@ -22,6 +22,17 @@ type UserTrendMatchInsert = TablesInsert<"user_trend_matches">;
 
 const STALENESS_MS = 24 * 60 * 60 * 1000;
 
+function isMissingRelationError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const maybeError = error as { code?: string; message?: string };
+  return (
+    maybeError.code === "PGRST205" ||
+    maybeError.code === "42P01" ||
+    maybeError.message?.includes("Could not find the table") === true ||
+    maybeError.message?.includes("relation \"public.trend_stories\" does not exist") === true
+  );
+}
+
 function buildGarmentEmbeddingText(garment: {
   title?: string | null;
   category?: string | null;
@@ -362,7 +373,15 @@ export async function getTrendStories(): Promise<TrendStory[]> {
     .order("confidence_score", { ascending: false, nullsFirst: false })
     .order("refreshed_at", { ascending: false });
 
-  if (error) throw new Error((error as { message: string }).message);
+  if (error) {
+    if (isMissingRelationError(error)) {
+      console.warn(
+        "[trends] trend_stories table is not available; rendering trend signals without story cards."
+      );
+      return [];
+    }
+    throw new Error((error as { message: string }).message);
+  }
   return z.array(trendStorySchema).parse(data ?? []);
 }
 
