@@ -81,6 +81,21 @@ describe("parseReceiptDraftCandidates", () => {
     expect(result[0]?.price).toBe(179.95);
   });
 
+  it("merges item name and price when price line includes a currency code", () => {
+    const result = parseReceiptDraftCandidates({
+      receiptText: `
+        COUNTRY ROAD
+        Cashmere Blend Sweater
+        AUD 149.00
+        Total AUD 149.00
+      `
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.title.toLowerCase()).toContain("cashmere blend sweater");
+    expect(result[0]?.price).toBe(149);
+  });
+
   it("merges item name and price when split across consecutive lines", () => {
     const result = parseReceiptDraftCandidates({
       receiptText: `

@@ -303,7 +303,7 @@ function mergeMultiLineItems(lines: string[]): string[] {
     const next = lines[i + 1];
     const currentHasPrice = /(?:\$|aud|usd|eur)?\s?\d+[.,]\d{2}$/i.test(current);
     const nextIsPriceOnly =
-      next != null && /^\s*[$€£]?\s?\d+[.,]\d{2}\s*$/.test(next);
+      next != null && /^\s*(?:\$|€|£|aud|usd|eur)?\s?\d+[.,]\d{2}\s*$/i.test(next);
     if (!currentHasPrice && nextIsPriceOnly) {
       merged.push(`${current} ${next.trim()}`);
       i += 2;
