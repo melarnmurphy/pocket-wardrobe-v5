@@ -42,7 +42,7 @@ struct GarmentCard: View {
                         .stroke(PWColor.line, lineWidth: 1)
                 )
 
-            // Brand · category + name
+            // Brand · subcategory + name
             VStack(alignment: .leading, spacing: 2) {
                 if let brand = garment.brand {
                     Text("\(brand) · \(garment.category.rawValue.lowercased())")
