@@ -114,6 +114,35 @@ describe("parseReceiptDraftCandidates", () => {
     expect(result[1]?.title.toLowerCase()).toContain("linen trousers");
     expect(result[1]?.price).toBe(89);
   });
+
+  it("picks up item lines that have no price tail and no clothing keyword", () => {
+    const result = parseReceiptDraftCandidates({
+      receiptText: `
+        DAVID JONES
+        CASHMERE BLEND CREW AUD 189.00
+        MERINO RIBBED TANK AUD 89.00
+        WIDE LEG PULL-ON AUD 149.00
+        Subtotal AUD 427.00
+      `
+    });
+
+    // All three items should be extracted
+    expect(result.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("does not include the retailer header line as an item", () => {
+    const result = parseReceiptDraftCandidates({
+      receiptText: `
+        COUNTRY ROAD
+        Linen Shirt AUD 89.00
+        Total AUD 89.00
+      `
+    });
+
+    expect(result).toHaveLength(1);
+    const titles = result.map((r) => r.title.toLowerCase());
+    expect(titles.every((t) => !t.includes("country road"))).toBe(true);
+  });
 });
 
 describe("extractProductMetadataFromUrl", () => {

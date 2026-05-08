@@ -373,7 +373,7 @@ export function parseReceiptDraftCandidates(params: {
   const inferredCurrency = inferReceiptCurrency(normalizedText);
 
   const candidates = mergedLines
-    .filter((line) => looksLikeReceiptItem(line))
+    .filter((line) => looksLikeReceiptItem(line, inferredRetailer))
     .map((line) => {
       const cleaned = cleanReceiptLine(line) || line.trim();
       const price = parseReceiptLinePrice(line);
@@ -626,10 +626,11 @@ function hasWholeWordMatch(haystack: string, token: string) {
   return new RegExp(`\\b${escapeRegExp(token)}\\b`, "i").test(haystack);
 }
 
-function looksLikeReceiptItem(line: string) {
+function looksLikeReceiptItem(line: string, inferredRetailer: string | null = null) {
   const normalized = line.toLowerCase();
+  const trimmed = line.trim();
 
-  if (normalized.length < 4) {
+  if (trimmed.length < 3 || trimmed.length > 80) {
     return false;
   }
 
@@ -637,10 +638,23 @@ function looksLikeReceiptItem(line: string) {
     return false;
   }
 
+  // Exclude the retailer header line itself
+  if (
+    inferredRetailer &&
+    normalized === inferredRetailer.toLowerCase()
+  ) {
+    return false;
+  }
+
   const hasCurrencyTail = /(\$|aud|usd|eur)?\s?\d+[.,]\d{2}$/i.test(normalized);
   const mentionsClothing = CLOTHING_KEYWORDS.some((keyword) => normalized.includes(keyword));
+  // Relaxed: also accept lines that look like product names (letters present, no pure-digit content)
+  const looksLikeProductName =
+    /[a-z]/i.test(trimmed) &&
+    !/^\d+$/.test(trimmed) &&
+    trimmed.length >= 3;
 
-  return hasCurrencyTail || mentionsClothing;
+  return hasCurrencyTail || mentionsClothing || looksLikeProductName;
 }
 
 function cleanReceiptLine(line: string) {
