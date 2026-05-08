@@ -2,6 +2,8 @@
 import SwiftData
 import Foundation
 
+private let fallbackImageURL = URL(string: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=680")!
+
 @Model
 final class CDGarment {
     @Attribute(.unique) var id: String
@@ -23,23 +25,39 @@ final class CDGarment {
         imageURLString: String?, costPerWear: Double, timesWorn: Int,
         isFavourite: Bool, seasonality: [String], cachedAt: Date
     ) {
-        self.id = id; self.title = title; self.brand = brand
-        self.category = category; self.colourName = colourName
-        self.colourHex = colourHex; self.imageURLString = imageURLString
-        self.costPerWear = costPerWear; self.timesWorn = timesWorn
-        self.isFavourite = isFavourite; self.seasonality = seasonality
+        self.id = id
+        self.title = title
+        self.brand = brand
+        self.category = category
+        self.colourName = colourName
+        self.colourHex = colourHex
+        self.imageURLString = imageURLString
+        self.costPerWear = costPerWear
+        self.timesWorn = timesWorn
+        self.isFavourite = isFavourite
+        self.seasonality = seasonality
         self.cachedAt = cachedAt
     }
 
     func toGarment() -> Garment {
-        Garment(
+        let resolvedCategory: Garment.Category
+        if let cat = Garment.Category(rawValue: category.capitalized) {
+            resolvedCategory = cat
+        } else {
+            #if DEBUG
+            print("[CDGarment] Unknown category '\(category)', falling back to .top")
+            #endif
+            resolvedCategory = .top
+        }
+
+        return Garment(
             id: UUID(uuidString: id) ?? UUID(),
             name: title,
             brand: brand,
-            category: Garment.Category(rawValue: category.capitalized) ?? .top,
+            category: resolvedCategory,
             colourName: colourName,
             colourHex: colourHex,
-            imageURL: imageURLString.flatMap(URL.init(string:)) ?? URL(string: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=680")!,
+            imageURL: imageURLString.flatMap(URL.init(string:)) ?? fallbackImageURL,
             costPerWear: costPerWear,
             timesWorn: timesWorn,
             match: nil,

@@ -17,8 +17,12 @@ final class CDOutfit {
         pieceIDStrings: [String], isSaved: Bool,
         plannedFor: Date?, cachedAt: Date
     ) {
-        self.id = id; self.title = title; self.occasion = occasion
-        self.pieceIDStrings = pieceIDStrings; self.isSaved = isSaved
-        self.plannedFor = plannedFor; self.cachedAt = cachedAt
+        self.id = id
+        self.title = title
+        self.occasion = occasion
+        self.pieceIDStrings = pieceIDStrings
+        self.isSaved = isSaved
+        self.plannedFor = plannedFor
+        self.cachedAt = cachedAt
     }
 }

@@ -18,9 +18,13 @@ final class CDTrendSignal {
         confidenceScore: Double, sourcesCount: Int,
         lastSeenAt: Date, cachedAt: Date
     ) {
-        self.id = id; self.category = category; self.title = title
-        self.summary = summary; self.confidenceScore = confidenceScore
-        self.sourcesCount = sourcesCount; self.lastSeenAt = lastSeenAt
+        self.id = id
+        self.category = category
+        self.title = title
+        self.summary = summary
+        self.confidenceScore = confidenceScore
+        self.sourcesCount = sourcesCount
+        self.lastSeenAt = lastSeenAt
         self.cachedAt = cachedAt
     }
 }
