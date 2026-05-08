@@ -292,6 +292,30 @@ export async function extractProductMetadataFromUrl(
 }
 
 /**
+ * Merge consecutive lines where an item name is followed by a standalone price.
+ * e.g. ["Cashmere Blend Sweater", "149.00"] → ["Cashmere Blend Sweater 149.00"]
+ */
+function mergeMultiLineItems(lines: string[]): string[] {
+  const merged: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const current = lines[i]!;
+    const next = lines[i + 1];
+    const currentHasPrice = /(?:\$|aud|usd|eur)?\s?\d+[.,]\d{2}$/i.test(current);
+    const nextIsPriceOnly =
+      next != null && /^\s*[$€£]?\s?\d+[.,]\d{2}\s*$/.test(next);
+    if (!currentHasPrice && nextIsPriceOnly) {
+      merged.push(`${current} ${next.trim()}`);
+      i += 2;
+    } else {
+      merged.push(current);
+      i += 1;
+    }
+  }
+  return merged;
+}
+
+/**
  * Extract a size hint from free-text notes.
  * Conservative — only matches explicit letter sizes, system-prefixed
  * numerics (AU 10, US 6), or numbers preceded by the word "size".
@@ -343,11 +367,12 @@ export function parseReceiptDraftCandidates(params: {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
-  const inferredRetailer = inferReceiptRetailer(lines);
+  const mergedLines = mergeMultiLineItems(lines);
+  const inferredRetailer = inferReceiptRetailer(mergedLines);
   const inferredBrand = inferBrandFromReceiptText(normalizedText);
   const inferredCurrency = inferReceiptCurrency(normalizedText);
 
-  const candidates = lines
+  const candidates = mergedLines
     .filter((line) => looksLikeReceiptItem(line))
     .map((line) => {
       const cleaned = cleanReceiptLine(line) || line.trim();

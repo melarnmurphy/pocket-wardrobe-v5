@@ -80,6 +80,25 @@ describe("parseReceiptDraftCandidates", () => {
     expect(result[0]?.title).toBe("Wool Blend Blazer");
     expect(result[0]?.price).toBe(179.95);
   });
+
+  it("merges item name and price when split across consecutive lines", () => {
+    const result = parseReceiptDraftCandidates({
+      receiptText: `
+        COUNTRY ROAD
+        Cashmere Blend Sweater
+        149.00
+        Linen Trousers
+        89.00
+        Total 238.00
+      `
+    });
+
+    expect(result).toHaveLength(2);
+    expect(result[0]?.title.toLowerCase()).toContain("cashmere blend sweater");
+    expect(result[0]?.price).toBe(149);
+    expect(result[1]?.title.toLowerCase()).toContain("linen trousers");
+    expect(result[1]?.price).toBe(89);
+  });
 });
 
 describe("extractProductMetadataFromUrl", () => {
