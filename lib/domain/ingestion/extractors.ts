@@ -295,6 +295,9 @@ export async function extractProductMetadataFromUrl(
  * Merge consecutive lines where an item name is followed by a standalone price.
  * e.g. ["Cashmere Blend Sweater", "149.00"] → ["Cashmere Blend Sweater 149.00"]
  */
+const RECEIPT_NON_ITEM_KEYWORDS =
+  /subtotal|total|tax|gst|visa|eftpos|change|receipt|invoice|auth|terminal|balance|tender|cash\b/i;
+
 function mergeMultiLineItems(lines: string[]): string[] {
   const merged: string[] = [];
   let i = 0;
@@ -304,8 +307,24 @@ function mergeMultiLineItems(lines: string[]): string[] {
     const currentHasPrice = /(?:\$|aud|usd|eur)?\s?\d+[.,]\d{2}$/i.test(current);
     const nextIsPriceOnly =
       next != null && /^\s*(?:\$|€|£|aud|usd|eur)?\s?\d+[.,]\d{2}\s*$/i.test(next);
-    if (!currentHasPrice && nextIsPriceOnly) {
-      merged.push(`${current} ${next.trim()}`);
+    // Receipts often wrap an item across two lines: the product name on one
+    // line and its colour/size + price on the next (e.g. "Country Road Wool
+    // Coat" / "Navy Size M  AUD 299.95"). Merge when the current line names a
+    // garment and the next line carries a trailing price that isn't a totals
+    // or payment row. Gating on a clothing keyword avoids swallowing the
+    // retailer header (which has no garment word) into the first item.
+    const nextHasTrailingPrice =
+      next != null && /(?:\$|€|£|aud|usd|eur)?\s?\d+[.,]\d{2}\s*$/i.test(next);
+    const nextIsNonItem = next != null && RECEIPT_NON_ITEM_KEYWORDS.test(next);
+    const currentNamesGarment = CLOTHING_KEYWORDS.some((keyword) =>
+      hasWholeWordMatch(current.toLowerCase(), keyword)
+    );
+    if (
+      !currentHasPrice &&
+      (nextIsPriceOnly ||
+        (currentNamesGarment && nextHasTrailingPrice && !nextIsNonItem))
+    ) {
+      merged.push(`${current} ${next!.trim()}`);
       i += 2;
     } else {
       merged.push(current);
@@ -313,6 +332,41 @@ function mergeMultiLineItems(lines: string[]): string[] {
     }
   }
   return merged;
+}
+
+/**
+ * Detect store address / location lines so they are not mistaken for items.
+ * Matches AU state + postcode lines ("Melbourne VIC 3000"), street-number
+ * addresses ("123 Bourke St"), and lines ending in a location suffix
+ * ("Bourke Street Mall"). Kept conservative — garment names ending in these
+ * tokens or carrying a state+postcode are effectively nonexistent.
+ */
+function looksLikeAddressLine(line: string): boolean {
+  const normalized = line.trim();
+
+  if (/\b(?:VIC|NSW|QLD|WA|SA|TAS|ACT|NT)\b\s*\d{3,4}\b/i.test(normalized)) {
+    return true;
+  }
+
+  if (
+    /^\d+[a-z]?\s+\S.*\b(?:st|street|rd|road|ave|avenue|blvd|hwy|highway|lane|ln|drive|dr|place|pl|court|ct|mall|arcade|plaza)\b\.?$/i.test(
+      normalized
+    )
+  ) {
+    return true;
+  }
+
+  const mentionsGarment = CLOTHING_KEYWORDS.some((keyword) =>
+    hasWholeWordMatch(normalized.toLowerCase(), keyword)
+  );
+  if (
+    !mentionsGarment &&
+    /\b(?:mall|arcade|plaza|centre|center|shopping\s+centre)\b\s*$/i.test(normalized)
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -638,6 +692,11 @@ function looksLikeReceiptItem(line: string, inferredRetailer: string | null = nu
     return false;
   }
 
+  // Exclude store address / location lines
+  if (looksLikeAddressLine(trimmed)) {
+    return false;
+  }
+
   // Exclude the retailer header line itself
   if (
     inferredRetailer &&
@@ -764,6 +823,43 @@ function inferBrandFromReceiptLine(line: string) {
   return value && value.length >= 3 ? value : null;
 }
 
+// Common fashion brands that appear as a prefix on itemised receipt lines.
+// Listed in canonical casing; longer (multi-word) names are matched first so
+// "Country Road" wins over a bare "Country". Used to split brand from title
+// without the blind first-token heuristic that mangled multi-word brands.
+const KNOWN_FASHION_BRANDS = [
+  "Country Road",
+  "Viktoria & Woods",
+  "Seed Heritage",
+  "Levi's",
+  "Levis",
+  "Bonds",
+  "Basque",
+  "Sportscraft",
+  "Trenery",
+  "Witchery",
+  "Cue",
+  "Gorman",
+  "Assembly Label"
+];
+
+function matchKnownBrandPrefix(
+  line: string
+): { brand: string; title: string } | null {
+  const candidates = [...KNOWN_FASHION_BRANDS].sort(
+    (a, b) => b.length - a.length
+  );
+
+  for (const brand of candidates) {
+    const pattern = new RegExp(`^${escapeRegExp(brand)}\\b[:\\-\\s]*`, "i");
+    if (pattern.test(line)) {
+      return { brand, title: line.replace(pattern, "").trim() };
+    }
+  }
+
+  return null;
+}
+
 function parseReceiptLineMetadata(params: {
   cleanedLine: string;
   retailer: string | null;
@@ -780,6 +876,16 @@ function parseReceiptLineMetadata(params: {
     return {
       title: title || cleanedLine,
       brand: "Viktoria & Woods"
+    };
+  }
+
+  // Prefer a known multi-word brand prefix before any retailer-specific
+  // heuristic, so "Country Road Wool Coat" keeps the full brand and title.
+  const knownBrand = matchKnownBrandPrefix(cleanedLine);
+  if (knownBrand) {
+    return {
+      title: knownBrand.title || cleanedLine,
+      brand: knownBrand.brand
     };
   }
 
