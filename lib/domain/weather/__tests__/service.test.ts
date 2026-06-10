@@ -100,6 +100,12 @@ describe("localWeatherBatchLookupSchema", () => {
     ).toThrow();
   });
 
+  it("rejects latitude supplied without longitude", () => {
+    expect(() =>
+      localWeatherBatchLookupSchema.parse({ latitude: -34.9, dates: ["2026-06-10"] })
+    ).toThrow();
+  });
+
   it("rejects more than 14 dates and requires a location or coordinates", () => {
     const tooMany = Array.from({ length: 15 }, (_, i) =>
       `2026-06-${String(i + 1).padStart(2, "0")}`

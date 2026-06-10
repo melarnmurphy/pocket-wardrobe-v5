@@ -46,6 +46,7 @@ export const localWeatherBatchLookupSchema = z
       .array(isoDateSchema)
       .min(1, "Provide at least one date.")
       .max(14, "A batch request supports at most 14 dates.")
+      // Dedupe after max(14) so 15 distinct dates is rejected, not silently collapsed.
       .transform((dates) => Array.from(new Set(dates))),
     profileOverride: weatherProfileSchema.optional(),
     provider: weatherProviderSchema.optional()
