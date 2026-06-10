@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { OutfitWithItems } from "@/lib/domain/outfits";
-import { buildMonthGrid, bucketOutfitsByDate } from "@/lib/domain/outfits/calendar";
+import { buildMonthGrid, bucketOutfitsByDate, pickHeroImage } from "@/lib/domain/outfits/calendar";
 import { planOutfitForDateAction, unplanOutfitAction } from "@/app/calendar/actions";
 import { showAppToast } from "@/lib/ui/app-toast";
 
@@ -89,21 +89,31 @@ export function OutfitCalendar({
         ))}
         {grid.weeks.flat().map((cell, i) => {
           if (!cell) return <div key={`b${i}`} />;
-          const has = byDate.has(cell.date);
+          const dayOutfit = byDate.get(cell.date);
+          const hero = dayOutfit ? pickHeroImage(dayOutfit) : null;
           const isToday = cell.date === todayKey;
           const isSel = cell.date === selected;
           return (
             <button
               key={cell.date}
               onClick={() => setSelected(cell.date)}
-              className="relative aspect-square rounded-lg text-sm"
+              className="relative aspect-square overflow-hidden rounded-lg text-sm"
               style={{
                 border: isSel ? "1px solid var(--accent)" : "1px solid var(--line)",
                 fontWeight: isToday ? 700 : 400
               }}
             >
-              {cell.day}
-              {has && (
+              {hero && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={hero} alt="" className="absolute inset-0 h-full w-full object-cover" />
+              )}
+              <span
+                className="absolute left-1 top-1 rounded px-1"
+                style={hero ? { background: "rgba(0,0,0,0.55)", color: "#fff" } : undefined}
+              >
+                {cell.day}
+              </span>
+              {dayOutfit && !hero && (
                 <span className="absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full"
                   style={{ background: "var(--accent)" }} />
               )}
@@ -122,10 +132,21 @@ export function OutfitCalendar({
               <p className="text-lg" style={{ fontFamily: "var(--font-display), serif" }}>
                 {selectedOutfit.title ?? "Planned outfit"}
               </p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {outfitChips(selectedOutfit).map((c, idx) => (
-                  <span key={idx} className="rounded-full px-2.5 py-1 text-[0.72rem]"
-                    style={{ border: "1px solid var(--line)" }}>{c}</span>
+              <div className="mt-3 flex gap-2 overflow-x-auto">
+                {selectedOutfit.items.map((it) => (
+                  <div key={it.id} className="flex w-16 shrink-0 flex-col items-center gap-1">
+                    <div className="h-16 w-16 overflow-hidden rounded-lg"
+                      style={{ border: "1px solid var(--line)" }}>
+                      {it.garment.preview_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={it.garment.preview_url} alt={it.garment.title ?? it.garment.category}
+                          className="h-full w-full object-cover" />
+                      ) : null}
+                    </div>
+                    <span className="text-center text-[0.62rem]" style={{ color: "var(--muted)" }}>
+                      {it.garment.category}
+                    </span>
+                  </div>
                 ))}
               </div>
               <button
