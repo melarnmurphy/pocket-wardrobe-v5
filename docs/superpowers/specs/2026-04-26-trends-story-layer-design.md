@@ -7,7 +7,7 @@
 
 ## Problem
 
-The current trends feature surfaces atomic signals (single colors, single garments) from Vogue RSS and 4 Gemini grounding archetypes. The experience lacks:
+The current trends feature surfaces atomic signals (single colors, single garments) from Vogue RSS and 4 web-search scanner archetypes (originally Gemini grounding, replaced by Tavily 2026-05-07). The experience lacks:
 
 - Editorial framing that groups related signals into named trend stories (e.g. "Transparent Denim", "Taupe & Persimmon")
 - Design house attribution (which house is doing what)
@@ -151,7 +151,7 @@ Stories are sorted by confidence_score × recency. No change to the 4-tier match
 
 ## Out of Scope
 
-- Social media API integrations (Instagram, TikTok) — Gemini grounding via Google Search is the source of truth for social signal
+- Social media API integrations (Instagram, TikTok) — Tavily web search is the source of truth for social signal
 - User-curated it-girl lists — discovery is fully automatic
 - Story editing by users
 - Per-story notifications / alerts

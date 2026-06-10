@@ -27,7 +27,7 @@ import {
   type ScannerArchetype,
   type ScannerRunInput
 } from "@/lib/domain/trends/prompts/grounding-prompts";
-import { runGroundingScan } from "@/lib/domain/trends/adapters/gemini-grounding";
+import { runGroundingScan } from "@/lib/domain/trends/adapters/tavily-search";
 
 export const dynamic = "force-dynamic";
 // Grounding calls + extraction queue writes can exceed the default 10s.
@@ -65,7 +65,7 @@ async function lastSuccessfulRun(
 
   for (const row of rows) {
     if (
-      row.metadata_json?.adapter === "gemini_grounding" &&
+      row.metadata_json?.adapter === "tavily_search" &&
       row.metadata_json.scanner_archetype === archetype
     ) {
       return row.completed_at;

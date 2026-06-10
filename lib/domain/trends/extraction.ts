@@ -102,7 +102,7 @@ Return a JSON array. Each signal:
 
 const VALID_DELTAS = new Set<SignalDelta>(["new", "intensifying", "fading"]);
 
-async function parseClaudeResponse(content: string): Promise<ExtractedSignal[]> {
+async function parseExtractionResponse(content: string): Promise<ExtractedSignal[]> {
   const match = content.match(/\[[\s\S]*\]/);
   if (!match) return [];
   try {
@@ -413,7 +413,7 @@ export async function processExtractionJob(jobId: string): Promise<void> {
       });
 
       const text = response.choices[0]?.message?.content ?? "";
-      const signals = await parseClaudeResponse(text);
+      const signals = await parseExtractionResponse(text);
 
       for (const signal of signals) {
         const canonical = canonicalizeLabel(signal.label);

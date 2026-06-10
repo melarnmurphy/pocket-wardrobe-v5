@@ -181,61 +181,24 @@ export function WardrobeShop({
       ).sort(),
     [garments]
   );
-  const activeFilterChips = useMemo(
-    () =>
-      [
-        query.trim()
-          ? {
-              key: "query",
-              label: `Search: ${query.trim()}`,
-              onClear: () => setQuery("")
-            }
-          : null,
-        occasionFilter !== "all"
-          ? {
-              key: "occasion",
-              label: `Occasion: ${occasionLabel(occasionFilter)}`,
-              onClear: () => setOccasionFilter("all")
-            }
-          : null,
-        typeFilter !== "all"
-          ? {
-              key: "type",
-              label: `Type: ${categoryLabel(typeFilter)}`,
-              onClear: () => setTypeFilter("all")
-            }
-          : null,
-        seasonFilter !== "all"
-          ? {
-              key: "season",
-              label: `Season: ${categoryLabel(seasonFilter)}`,
-              onClear: () => setSeasonFilter("all")
-            }
-          : null,
-        colourFilter !== "all"
-          ? {
-              key: "colour",
-              label: `Colour: ${categoryLabel(colourFilter)}`,
-              onClear: () => setColourFilter("all")
-            }
-          : null,
-        favouritesOnly
-          ? {
-              key: "favourites",
-              label: "Favourites only",
-              onClear: () => setFavouritesOnly(false)
-            }
-          : null,
-        sortBy !== "newest"
-          ? {
-              key: "sort",
-              label: `Sort: ${sortLabel(sortBy)}`,
-              onClear: () => setSortBy("newest")
-            }
-          : null
-      ].filter((chip): chip is { key: string; label: string; onClear: () => void } => Boolean(chip)),
-    [colourFilter, favouritesOnly, occasionFilter, query, seasonFilter, sortBy, typeFilter]
-  );
+  const hasActiveFilters =
+    query.trim() !== "" ||
+    occasionFilter !== "all" ||
+    typeFilter !== "all" ||
+    seasonFilter !== "all" ||
+    colourFilter !== "all" ||
+    favouritesOnly ||
+    sortBy !== "newest";
+
+  const resetFilters = () => {
+    setQuery("");
+    setOccasionFilter("all");
+    setTypeFilter("all");
+    setSeasonFilter("all");
+    setColourFilter("all");
+    setFavouritesOnly(false);
+    setSortBy("newest");
+  };
 
   const filteredGarments = useMemo(() => {
     const normalizedQuery = deferredQuery.trim().toLowerCase();
@@ -503,7 +466,6 @@ export function WardrobeShop({
       <section className="space-y-5">
         <div className="pw-page-head gap-4">
           <div className="space-y-3">
-            <p className="pw-kicker">Wardrobe</p>
             <h1 className="pw-page-title max-w-[9ch]">Dress from a system, not from memory.</h1>
             <div className="pw-meta-row">
               <span>{garments.length} items</span>
@@ -531,200 +493,159 @@ export function WardrobeShop({
             isFilterBarCondensed ? "p-3 shadow-[0_18px_36px_rgba(17,17,17,0.08)]" : "p-4 md:p-5"
           }`}
         >
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div>
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+            <div className="min-w-0">
               <p className="text-xs uppercase tracking-[0.32em] text-[var(--muted)]">
                 Refine View
               </p>
               {!isFilterBarCondensed ? (
-                <p className="mt-2 max-w-2xl text-sm text-[var(--muted)]">
+                <p className="mt-2 max-w-xl text-sm text-[var(--muted)]">
                   Search by brand or garment, then narrow by occasion, season, colour, or sort
                   order.
                 </p>
               ) : null}
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted)] sm:text-sm">
-              <span className="inline-flex items-center gap-2 rounded-full bg-[rgba(17,17,17,0.04)] px-3 py-2">
-                <GridIcon />
-                {filteredGarments.length} visible
-              </span>
-              <span className="inline-flex items-center gap-2 rounded-full bg-[rgba(17,17,17,0.04)] px-3 py-2">
-                <StarIcon filled />
-                {garments.filter((garment) => garment.favourite_score && garment.favourite_score > 0).length} favourites
-              </span>
-              <span className="hidden items-center gap-2 rounded-full bg-[rgba(17,17,17,0.04)] px-3 py-2 sm:inline-flex">
-                <WearIcon />
-                {garments.reduce((total, garment) => total + garment.wear_count, 0)} wears
-              </span>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm tabular-nums text-[var(--muted)]">
+                <span className="font-semibold text-[var(--foreground)]">
+                  {filteredGarments.length}
+                </span>
+                {" / "}
+                {garments.length}
+                <span className="ml-1.5 hidden sm:inline">shown</span>
+              </p>
+              {hasActiveFilters ? (
+                <button type="button" onClick={resetFilters} className="pw-reset-link">
+                  <ResetIcon />
+                  Reset
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="-mx-1 mt-4 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex min-w-max gap-2.5 xl:grid xl:min-w-0 xl:grid-cols-[minmax(16rem,1.4fr)_repeat(4,minmax(0,1fr))]">
+              <label
+                className="pw-filter-control min-w-[15rem] flex-1 sm:min-w-[17rem]"
+                data-active={query.trim() ? "true" : "false"}
+              >
+                <span className="pw-filter-icon">
+                  <SearchIcon />
+                </span>
+                <input
+                  suppressHydrationWarning
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--muted)]"
+                  placeholder="Search brand, type, occasion"
+                />
+                {query.trim() ? (
+                  <button
+                    type="button"
+                    onClick={() => setQuery("")}
+                    className="pw-filter-clear"
+                    aria-label="Clear search"
+                  >
+                    <CloseIcon />
+                  </button>
+                ) : null}
+              </label>
+
+              <FilterSelect
+                icon={<OccasionIcon />}
+                label="Occasion"
+                value={occasionFilter}
+                onChange={setOccasionFilter}
+                options={[
+                  { value: "all", label: "All occasions" },
+                  ...occasions.map((occasion) => ({
+                    value: occasion as string,
+                    label: occasionLabel(occasion as string)
+                  }))
+                ]}
+              />
+
+              <FilterSelect
+                icon={<HangerIcon />}
+                label="Type"
+                value={typeFilter}
+                onChange={setTypeFilter}
+                options={[
+                  { value: "all", label: "All types" },
+                  ...categories.map((category) => ({
+                    value: category,
+                    label: categoryLabel(category)
+                  }))
+                ]}
+              />
+
+              <FilterSelect
+                icon={<SunIcon />}
+                label="Season"
+                value={seasonFilter}
+                onChange={setSeasonFilter}
+                options={[
+                  { value: "all", label: "Any season" },
+                  ...seasonOptions.map((season) => ({
+                    value: season,
+                    label: categoryLabel(season)
+                  }))
+                ]}
+              />
+
+              <FilterSelect
+                icon={<SortIcon />}
+                label="Sort"
+                value={sortBy}
+                onChange={setSortBy}
+                options={[
+                  { value: "newest", label: "Newest first" },
+                  { value: "cost_desc", label: "Cost per wear: high to low" },
+                  { value: "cost_asc", label: "Cost per wear: low to high" },
+                  { value: "favourites", label: "Favourites first" },
+                  { value: "most_worn", label: "Most worn" },
+                  { value: "price_desc", label: "Price: high to low" }
+                ]}
+              />
+            </div>
+          </div>
+
+          <div className="-mx-1 mt-3 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex min-w-max items-center gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setQuery("");
-                  setOccasionFilter("all");
-                  setTypeFilter("all");
-                  setSeasonFilter("all");
-                  setColourFilter("all");
-                  setFavouritesOnly(false);
-                  setSortBy("newest");
-                }}
-                className="pw-button-quiet px-3 py-2 text-xs sm:text-sm"
+                onClick={() => setFavouritesOnly((current) => !current)}
+                aria-pressed={favouritesOnly}
+                className="pw-swatch"
+                data-tone="favourite"
+                data-active={favouritesOnly ? "true" : "false"}
               >
-                Reset
+                <StarIcon filled={favouritesOnly} />
+                Favourites
               </button>
+              <span className="mx-1 h-5 w-px shrink-0 bg-[var(--line)]" aria-hidden="true" />
+              {canonicalWardrobeColours.map((colour) => {
+                const active = colourFilter === colour.family;
+                return (
+                  <button
+                    key={colour.family}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() =>
+                      setColourFilter((current) =>
+                        current === colour.family ? "all" : colour.family
+                      )
+                    }
+                    className="pw-swatch"
+                    data-active={active ? "true" : "false"}
+                  >
+                    <span className="pw-swatch-dot" style={{ backgroundColor: colour.hex }} />
+                    {categoryLabel(colour.family)}
+                  </button>
+                );
+              })}
             </div>
           </div>
-
-          <div className="-mx-1 mt-4 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex min-w-max gap-3 xl:grid xl:min-w-max xl:flex-none xl:grid-cols-[minmax(18rem,1.15fr)_repeat(6,minmax(11rem,1fr))]">
-            <label className="pw-filter-frame flex min-w-[15rem] items-center gap-3 px-4 py-3 text-sm sm:min-w-[18rem]">
-              <SearchIcon />
-              <input
-                suppressHydrationWarning
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                className="w-full bg-transparent outline-none placeholder:text-[var(--muted)]"
-                placeholder="Search brand, type, occasion"
-              />
-            </label>
-
-            <FilterSelect
-              icon={<OccasionIcon />}
-              label="Occasion"
-              value={occasionFilter}
-              onChange={setOccasionFilter}
-              options={[
-                { value: "all", label: "All occasions" },
-                ...occasions.map((occasion) => ({
-                  value: occasion as string,
-                  label: occasionLabel(occasion as string)
-                }))
-              ]}
-            />
-
-            <FilterSelect
-              icon={<HangerIcon />}
-              label="Type"
-              value={typeFilter}
-              onChange={setTypeFilter}
-              options={[
-                { value: "all", label: "All types" },
-                ...categories.map((category) => ({
-                  value: category,
-                  label: categoryLabel(category)
-                }))
-              ]}
-            />
-
-            <FilterSelect
-              icon={<SunIcon />}
-              label="Season"
-              value={seasonFilter}
-              onChange={setSeasonFilter}
-              options={[
-                { value: "all", label: "Any season" },
-                ...seasonOptions.map((season) => ({
-                  value: season,
-                  label: categoryLabel(season)
-                }))
-              ]}
-            />
-
-            <FilterSelect
-              icon={<PaletteIcon />}
-              label="Colour"
-              value={colourFilter}
-              onChange={setColourFilter}
-              options={[
-                { value: "all", label: "Any colour" },
-                ...canonicalWardrobeColours.map((colour) => ({
-                  value: colour.family,
-                  label: categoryLabel(colour.family)
-                }))
-              ]}
-            />
-
-            <FilterSelect
-              icon={<SortIcon />}
-              label="Sort"
-              value={sortBy}
-              onChange={setSortBy}
-              options={[
-                { value: "newest", label: "Newest first" },
-                { value: "cost_desc", label: "Cost per wear: high to low" },
-                { value: "cost_asc", label: "Cost per wear: low to high" },
-                { value: "favourites", label: "Favourites first" },
-                { value: "most_worn", label: "Most worn" },
-                { value: "price_desc", label: "Price: high to low" }
-              ]}
-            />
-            </div>
-          </div>
-
-          <div className="-mx-1 mt-4 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex min-w-max items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setFavouritesOnly((current) => !current)}
-                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${
-                favouritesOnly
-                  ? "border-[rgba(255,107,157,0.24)] bg-[rgba(255,107,157,0.1)] text-[var(--foreground)]"
-                  : "border-[var(--line)] bg-white text-[var(--muted)] hover:bg-[var(--surface)]"
-              }`}
-            >
-              <StarIcon filled={favouritesOnly} />
-              Favourites
-            </button>
-            <div className="flex flex-wrap gap-2">
-              {canonicalWardrobeColours.slice(0, 6).map((colour) => (
-                <button
-                  key={colour.family}
-                  type="button"
-                  onClick={() =>
-                    setColourFilter((current) =>
-                      current === colour.family ? "all" : colour.family
-                    )
-                  }
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition-colors ${
-                    colourFilter === colour.family
-                      ? "border-[var(--foreground)] bg-white text-[var(--foreground)]"
-                      : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)]"
-                  }`}
-                >
-                  <span
-                    className="h-2.5 w-2.5 rounded-full border border-black/10"
-                    style={{ backgroundColor: colour.hex }}
-                  />
-                  {categoryLabel(colour.family)}
-                </button>
-              ))}
-            </div>
-            <span className="text-sm text-[var(--muted)]">
-              {filteredGarments.length} result{filteredGarments.length === 1 ? "" : "s"}
-            </span>
-            </div>
-          </div>
-
-          {activeFilterChips.length ? (
-            <div className="mt-4 border-t border-[var(--line)] pt-4">
-              <div className="-mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <div className="flex min-w-max items-center gap-2">
-                  {activeFilterChips.map((chip) => (
-                    <button
-                      key={chip.key}
-                      type="button"
-                      onClick={chip.onClear}
-                      className="pw-button-quiet px-3 py-2 text-xs sm:text-sm"
-                    >
-                      {chip.label}
-                      <span className="text-[var(--muted)]">
-                        <CloseIcon />
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : null}
         </div>
 
         {createState.message ? (
@@ -2206,15 +2127,16 @@ function FilterSelect({
   onChange: (value: string) => void;
   options: Array<{ value: string; label: string }>;
 }) {
+  const active = value !== (options[0]?.value ?? "all");
+
   return (
-    <label className="pw-filter-frame flex min-w-[11rem] items-center gap-3 px-4 py-3 text-sm">
-      <span className="text-[var(--muted)]">{icon}</span>
+    <label className="pw-filter-control min-w-[11rem]" data-active={active ? "true" : "false"}>
+      <span className="pw-filter-icon">{icon}</span>
       <select
         suppressHydrationWarning
         value={value}
         onChange={(event) => onChange(event.target.value)}
         aria-label={label}
-        className="min-w-0 flex-1 bg-transparent outline-none"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -2222,6 +2144,9 @@ function FilterSelect({
           </option>
         ))}
       </select>
+      <span className="pw-filter-caret" aria-hidden="true">
+        <ChevronIcon open={false} />
+      </span>
     </label>
   );
 }
@@ -3266,23 +3191,6 @@ function humanizeImportSource(value: string | null | undefined) {
   return categoryLabel(value);
 }
 
-function sortLabel(value: string) {
-  switch (value) {
-    case "cost_desc":
-      return "Cost per wear: high to low";
-    case "cost_asc":
-      return "Cost per wear: low to high";
-    case "favourites":
-      return "Favourites first";
-    case "most_worn":
-      return "Most worn";
-    case "price_desc":
-      return "Price: high to low";
-    default:
-      return "Newest first";
-  }
-}
-
 function SearchIcon() {
   return (
     <svg viewBox="0 0 20 20" className="h-4 w-4 fill-none stroke-current stroke-[1.8]">
@@ -3405,30 +3313,11 @@ function SortIcon() {
   );
 }
 
-function PaletteIcon() {
+function ResetIcon() {
   return (
-    <svg viewBox="0 0 20 20" className="h-4 w-4 fill-none stroke-current stroke-[1.8]">
-      <path d="M10 3a7 7 0 1 0 0 14h1.2c1.4 0 2.3-1.5 1.6-2.7-.5-.9.1-2.1 1.2-2.1H15a4 4 0 0 0 0-8h-5Z" />
-      <circle cx="6.5" cy="9" r="1" />
-      <circle cx="9.5" cy="7" r="1" />
-      <circle cx="12.5" cy="8.5" r="1" />
-    </svg>
-  );
-}
-
-function GridIcon() {
-  return (
-    <svg viewBox="0 0 20 20" className="h-4 w-4 fill-none stroke-current stroke-[1.8]">
-      <path d="M4 4h5v5H4zM11 4h5v5h-5zM4 11h5v5H4zM11 11h5v5h-5z" />
-    </svg>
-  );
-}
-
-function WearIcon() {
-  return (
-    <svg viewBox="0 0 20 20" className="h-4 w-4 fill-none stroke-current stroke-[1.8]">
-      <path d="M10 3v7l4 2" />
-      <circle cx="10" cy="10" r="6.5" />
+    <svg viewBox="0 0 20 20" className="h-3.5 w-3.5 fill-none stroke-current stroke-[1.8]">
+      <path d="M5 5.5A6 6 0 1 1 3.6 11" />
+      <path d="M3 3.5v3h3" />
     </svg>
   );
 }

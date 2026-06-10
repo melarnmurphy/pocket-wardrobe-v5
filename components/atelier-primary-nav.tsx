@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
 const PRIMARY_NAV_ITEMS = [
   { id: "closet", label: "Closet", href: "/wardrobe" },
@@ -11,8 +12,21 @@ const PRIMARY_NAV_ITEMS = [
 ] as const;
 
 export function AtelierPrimaryNav() {
+  const router = useRouter();
   const pathname = usePathname();
-  const active = activeId(pathname);
+  const pathnameActive = activeId(pathname);
+  const [optimisticActive, setOptimisticActive] = useState<string | null>(null);
+  const active = optimisticActive ?? pathnameActive;
+
+  const navHrefs = useMemo(() => PRIMARY_NAV_ITEMS.map((item) => item.href), []);
+
+  useEffect(() => {
+    setOptimisticActive(null);
+  }, [pathname]);
+
+  useEffect(() => {
+    navHrefs.forEach((href) => router.prefetch(href));
+  }, [navHrefs, router]);
 
   return (
     <nav className="atelier-primary-nav" aria-label="Primary">
@@ -20,8 +34,12 @@ export function AtelierPrimaryNav() {
         <Link
           key={item.href}
           href={item.href}
+          onClick={() => setOptimisticActive(item.id)}
+          onMouseEnter={() => router.prefetch(item.href)}
+          onTouchStart={() => router.prefetch(item.href)}
           className="atelier-primary-nav__link"
           data-active={active === item.id ? "true" : "false"}
+          data-pending={optimisticActive === item.id && pathnameActive !== item.id ? "true" : "false"}
           aria-current={active === item.id ? "page" : undefined}
         >
           {item.label}

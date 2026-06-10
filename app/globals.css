@@ -510,6 +510,201 @@ h6 {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
 }
 
+/* Refine toolbar — minimal/playful controls */
+.pw-filter-control {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.55);
+  border: 0.5px solid var(--line);
+  border-radius: 0.75rem;
+  display: flex;
+  gap: 0.6rem;
+  min-height: 2.85rem;
+  padding-inline: 0.95rem 0.55rem;
+  transition:
+    border-color 200ms ease,
+    background-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.pw-filter-control:hover {
+  background: var(--surface-strong);
+  border-color: var(--line-strong);
+}
+
+.pw-filter-control:focus-within {
+  background: var(--surface-strong);
+  border-color: var(--foreground);
+  box-shadow: 0 0 0 3px rgba(26, 25, 22, 0.06);
+}
+
+.pw-filter-control[data-active="true"] {
+  background: var(--surface-strong);
+  border-color: var(--foreground);
+}
+
+.pw-filter-icon {
+  color: var(--muted);
+  display: inline-flex;
+  flex: none;
+  transition: color 200ms ease;
+}
+
+.pw-filter-control[data-active="true"] .pw-filter-icon {
+  color: var(--foreground);
+}
+
+.pw-filter-control select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: var(--foreground);
+  cursor: pointer;
+  flex: 1 1 auto;
+  font-size: 0.875rem;
+  min-width: 0;
+  outline: none;
+  padding: 0;
+}
+
+.pw-filter-caret {
+  color: var(--muted);
+  display: inline-flex;
+  flex: none;
+  margin-left: auto;
+  padding-right: 0.4rem;
+  pointer-events: none;
+  transition: transform 200ms ease;
+}
+
+.pw-filter-control:hover .pw-filter-caret {
+  transform: translateY(1px);
+}
+
+.pw-filter-clear {
+  align-items: center;
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  display: inline-flex;
+  flex: none;
+  height: 1.6rem;
+  justify-content: center;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+  width: 1.6rem;
+}
+
+.pw-filter-clear:hover {
+  background: rgba(26, 25, 22, 0.06);
+  color: var(--foreground);
+}
+
+/* Playful colour + favourites strip */
+.pw-swatch {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.5);
+  border: 0.5px solid var(--line);
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  display: inline-flex;
+  flex: none;
+  font-size: 0.8rem;
+  font-weight: 500;
+  gap: 0.5rem;
+  padding: 0.42rem 0.85rem 0.42rem 0.6rem;
+  transition:
+    transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.pw-swatch:hover {
+  border-color: var(--line-strong);
+  color: var(--foreground);
+  transform: translateY(-2px);
+}
+
+.pw-swatch:active {
+  transform: translateY(0) scale(0.96);
+}
+
+.pw-swatch[data-active="true"] {
+  background: var(--surface-strong);
+  border-color: var(--foreground);
+  color: var(--foreground);
+}
+
+.pw-swatch[data-tone="favourite"][data-active="true"] {
+  background: rgba(255, 107, 157, 0.12);
+  border-color: rgba(255, 107, 157, 0.5);
+  color: var(--accent-strong);
+}
+
+.pw-swatch-dot {
+  border-radius: var(--radius-pill);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.55);
+  flex: none;
+  height: 0.85rem;
+  outline: 0.5px solid rgba(26, 25, 22, 0.12);
+  outline-offset: -0.5px;
+  transition: transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  width: 0.85rem;
+}
+
+.pw-swatch[data-active="true"] .pw-swatch-dot {
+  transform: scale(1.15);
+}
+
+/* Reset — quiet ghost shown only when filters are active */
+.pw-reset-link {
+  align-items: center;
+  animation: pw-reset-in 280ms cubic-bezier(0.19, 1, 0.22, 1) both;
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 0.8rem;
+  font-weight: 600;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.pw-reset-link:hover {
+  background: rgba(26, 25, 22, 0.05);
+  color: var(--foreground);
+}
+
+@keyframes pw-reset-in {
+  from {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pw-swatch,
+  .pw-swatch-dot,
+  .pw-filter-caret,
+  .pw-reset-link {
+    animation: none;
+    transition: none;
+  }
+
+  .pw-swatch:hover {
+    transform: none;
+  }
+}
+
 @keyframes pw-fade-up {
   from {
     opacity: 0;
@@ -654,6 +849,10 @@ h6 {
 .atelier-primary-nav__link[data-active="true"] {
   background: var(--foreground);
   color: var(--accent-foreground);
+}
+
+.atelier-primary-nav__link[data-pending="true"] {
+  cursor: progress;
 }
 
 .atelier-primary-nav__link[data-active="false"]:hover {

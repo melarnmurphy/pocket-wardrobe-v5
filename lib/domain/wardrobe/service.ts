@@ -364,154 +364,88 @@ export async function setGarmentFeatureImage(params: {
   }
 }
 
+const garmentColourWithColourSchema = garmentColourSchema.extend({
+  colours: colourSchema.nullable().optional()
+});
+
+const GARMENT_LIST_SELECT =
+  "id,user_id,title,description,brand,category,subcategory,pattern,material,size,fit,formality_level,seasonality,wardrobe_status,purchase_price,purchase_currency,purchase_date,retailer,favourite_score,wear_count,last_worn_at,cost_per_wear,extraction_metadata_json,created_at,updated_at," +
+  "garment_images(id,garment_id,image_type,storage_path,width,height,created_at)," +
+  "garment_colours(id,garment_id,colour_id,dominance,is_primary,created_at,colours(id,family,hex))," +
+  "garment_3d_assets(id,garment_id,asset_type,storage_path,file_format,material_profile_json,physics_profile_json,renderer_metadata_json,source_type,confidence,status,created_at,updated_at)," +
+  "wear_events(id,garment_id,worn_at,occasion,notes)";
+
 export async function listWardrobeGarments(): Promise<GarmentListItem[]> {
   const user = await getRequiredUser();
   const supabase = await createClient();
 
+  // Fetch the garments and all of their child rows (images, colour links + the
+  // joined colour, 3d assets, recent wears) in a single embedded request. The
+  // alternative — a base query followed by one query per child table — costs an
+  // extra sequential round-trip per child, which dominates page latency when the
+  // database is remote. Embedded resources are ordered individually below.
   const { data: garments, error } = await supabase
     .from("garments")
-    .select(
-      "id,user_id,title,description,brand,category,subcategory,pattern,material,size,fit,formality_level,seasonality,wardrobe_status,purchase_price,purchase_currency,purchase_date,retailer,wear_count,last_worn_at,cost_per_wear,extraction_metadata_json,created_at,updated_at"
-      .replace("retailer,", "retailer,favourite_score,")
-    )
+    .select(GARMENT_LIST_SELECT)
     .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("created_at", { ascending: false, referencedTable: "garment_images" })
+    .order("is_primary", { ascending: false, referencedTable: "garment_colours" })
+    .order("dominance", { ascending: false, referencedTable: "garment_colours" })
+    .order("created_at", { ascending: false, referencedTable: "garment_3d_assets" })
+    .order("worn_at", { ascending: false, referencedTable: "wear_events" });
 
   if (error) {
     throw new Error(error.message);
   }
 
-  const parsedGarments = z
-    .array(garmentListItemSchema)
-    .parse((garments ?? []) satisfies GarmentListRow[]);
+  const rawRows = (garments ?? []) as Array<Record<string, unknown>>;
+  const parsedGarments = z.array(garmentListItemSchema).parse(rawRows);
 
   if (!parsedGarments.length) {
     return [];
   }
 
-  const garmentIds = parsedGarments.map((garment) => garment.id as string);
-
-  const { data: images, error: imageError } = await supabase
-    .from("garment_images")
-    .select("id,garment_id,image_type,storage_path,width,height,created_at")
-    .in("garment_id", garmentIds)
-    .order("created_at", { ascending: false });
-
-  if (imageError) {
-    throw new Error(imageError.message);
-  }
-
-  const { data: garmentColours, error: garmentColourError } = await supabase
-    .from("garment_colours")
-    .select("id,garment_id,colour_id,dominance,is_primary,created_at")
-    .in("garment_id", garmentIds)
-    .order("is_primary", { ascending: false })
-    .order("dominance", { ascending: false });
-
-  if (garmentColourError) {
-    throw new Error(garmentColourError.message);
-  }
-
-  const { data: threeDAssets, error: threeDAssetsError } = await supabase
-    .from("garment_3d_assets")
-    .select(
-      "id,garment_id,asset_type,storage_path,file_format,material_profile_json,physics_profile_json,renderer_metadata_json,source_type,confidence,status,created_at,updated_at"
-    )
-    .in("garment_id", garmentIds)
-    .order("created_at", { ascending: false });
-
-  if (threeDAssetsError) {
-    if (!isMissingRelationError(threeDAssetsError.message)) {
-      throw new Error(threeDAssetsError.message);
-    }
-  }
-
-  const parsedImages = z
-    .array(garmentImageSchema)
-    .parse((images ?? []) satisfies GarmentImageRow[]);
-  const parsedGarmentColours = z
-    .array(garmentColourSchema)
-    .parse((garmentColours ?? []) satisfies GarmentColourRow[]);
-  const parsedThreeDAssets = z
-    .array(garment3dAssetRowSchema)
-    .parse((threeDAssetsError ? [] : (threeDAssets ?? [])) satisfies Garment3dAssetRow[]);
-  const { data: wearEvents, error: wearEventsError } = await supabase
-    .from("wear_events")
-    .select("id,garment_id,worn_at,occasion,notes")
-    .in("garment_id", garmentIds)
-    .order("worn_at", { ascending: false });
-
-  if (wearEventsError) {
-    throw new Error(wearEventsError.message);
-  }
-
-  const parsedWearEvents = z
-    .array(garmentRecentWearSchema)
-    .parse((wearEvents ?? []) satisfies Pick<
-      WearEventRow,
-      "id" | "garment_id" | "worn_at" | "occasion" | "notes"
-    >[]);
   const imagesByGarment = new Map<string, z.infer<typeof garmentImageSchema>[]>();
   const featureImagePathByGarment = new Map<string, string>();
-  const primaryColourByGarment = new Map<string, z.infer<typeof garmentColourSchema>>();
+  const primaryColourByGarment = new Map<string, { family: string | null; hex: string | null }>();
   const recentWearByGarment = new Map<string, z.infer<typeof garmentRecentWearSchema>[]>();
   const threeDAssetsByGarment = new Map<string, z.infer<typeof garment3dAssetRowSchema>[]>();
-  const colourIds = Array.from(new Set(parsedGarmentColours.map((entry) => entry.colour_id)));
 
-  for (const image of parsedImages) {
-    const existing = imagesByGarment.get(image.garment_id) ?? [];
-    existing.push(image);
-    imagesByGarment.set(image.garment_id, existing);
-  }
+  for (const row of rawRows) {
+    const garmentId = row.id as string;
 
-  for (const [garmentId, garmentImages] of imagesByGarment.entries()) {
+    const garmentImages = z.array(garmentImageSchema).parse(row.garment_images ?? []);
+    imagesByGarment.set(garmentId, garmentImages);
     const featureImagePath = getFeatureImagePath(garmentImages);
     if (featureImagePath) {
       featureImagePathByGarment.set(garmentId, featureImagePath);
     }
-  }
 
-  for (const entry of parsedGarmentColours) {
-    if (!primaryColourByGarment.has(entry.garment_id) && entry.is_primary) {
-      primaryColourByGarment.set(entry.garment_id, entry);
-    }
-  }
-
-  for (const wearEvent of parsedWearEvents) {
-    const existing = recentWearByGarment.get(wearEvent.garment_id) ?? [];
-    if (existing.length < 3) {
-      existing.push(wearEvent);
-      recentWearByGarment.set(wearEvent.garment_id, existing);
-    }
-  }
-
-  for (const asset of parsedThreeDAssets) {
-    const existing = threeDAssetsByGarment.get(asset.garment_id) ?? [];
-    existing.push(asset);
-    threeDAssetsByGarment.set(asset.garment_id, existing);
-  }
-
-  const colourById = new Map<string, z.infer<typeof colourSchema>>();
-
-  if (colourIds.length) {
-    const { data: colours, error: colourError } = await supabase
-      .from("colours")
-      .select("id,family,hex")
-      .in("id", colourIds);
-
-    if (colourError) {
-      throw new Error(colourError.message);
+    // Rows arrive ordered is_primary desc, dominance desc, so the first primary
+    // link is the dominant primary colour — same selection as before.
+    const colourLinks = z.array(garmentColourWithColourSchema).parse(row.garment_colours ?? []);
+    const primaryLink = colourLinks.find((link) => link.is_primary);
+    if (primaryLink) {
+      primaryColourByGarment.set(garmentId, {
+        family: primaryLink.colours?.family ?? null,
+        hex: primaryLink.colours?.hex ?? null
+      });
     }
 
-    const parsedColours = z.array(colourSchema).parse((colours ?? []) satisfies ColourRow[]);
-    for (const colour of parsedColours) {
-      colourById.set(colour.id, colour);
-    }
+    const assets = z.array(garment3dAssetRowSchema).parse(row.garment_3d_assets ?? []);
+    threeDAssetsByGarment.set(garmentId, assets);
+
+    // Already ordered worn_at desc; keep the three most recent.
+    const wears = z.array(garmentRecentWearSchema).parse(row.wear_events ?? []);
+    recentWearByGarment.set(garmentId, wears.slice(0, 3));
   }
 
   const firstImagePaths = Array.from(featureImagePathByGarment.values());
   const previewUrlsByPath = new Map<string, string | null>();
 
+  // Signed URLs are a Storage-API call (not a PostgREST query), so they remain a
+  // separate round-trip — but it's the only one left after the embedded read.
   if (firstImagePaths.length) {
     const { data: signedUrls, error: signedUrlError } = await supabase.storage
       .from("garment-originals")
@@ -534,17 +468,12 @@ export async function listWardrobeGarments(): Promise<GarmentListItem[]> {
       preview_url: previewUrlsByPath.get(image.storage_path) ?? null
     }));
     const preferredFeatureImageId = getPreferredFeatureImageId(garment.extraction_metadata_json as Json);
+    const primaryColour = primaryColourByGarment.get(garment.id as string);
 
     return {
       ...garment,
-      primary_colour_family: (() => {
-        const primaryLink = primaryColourByGarment.get(garment.id as string);
-        return primaryLink ? colourById.get(primaryLink.colour_id)?.family ?? null : null;
-      })(),
-      primary_colour_hex: (() => {
-        const primaryLink = primaryColourByGarment.get(garment.id as string);
-        return primaryLink ? colourById.get(primaryLink.colour_id)?.hex ?? null : null;
-      })(),
+      primary_colour_family: primaryColour?.family ?? null,
+      primary_colour_hex: primaryColour?.hex ?? null,
       images: garmentImages,
       three_d_assets: threeDAssetsByGarment.get(garment.id as string) ?? [],
       recent_wear_events: recentWearByGarment.get(garment.id as string) ?? [],
@@ -1120,12 +1049,4 @@ function safeStorageFileName(fileName: string) {
     .replace(/[^a-z0-9._-]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 120) || "garment-asset.bin";
-}
-
-function isMissingRelationError(message: string) {
-  return (
-    message.includes("Could not find the table") ||
-    message.includes("schema cache") ||
-    message.includes("does not exist")
-  );
 }

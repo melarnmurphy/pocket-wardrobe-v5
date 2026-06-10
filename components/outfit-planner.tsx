@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
@@ -126,9 +126,11 @@ export function OutfitPlanner({
   const [days, setDays] = useState<WeeklyPlanDay[]>(() =>
     createInitialWeek(preferredLocation, wardrobeItems, savedOutfits)
   );
-  const [activeDayKey, setActiveDayKey] = useState(
-    () => createInitialWeek(preferredLocation, wardrobeItems, savedOutfits)[0]?.key ?? "monday"
-  );
+  const [activeDayKey, setActiveDayKey] = useState(() => {
+    const week = createInitialWeek(preferredLocation, wardrobeItems, savedOutfits);
+    const todayIso = toDateIso(new Date());
+    return week.find((day) => day.dateIso === todayIso)?.key ?? week[0]?.key ?? "monday";
+  });
   const [canvasMode, setCanvasMode] = useState<PlannerCanvasMode>("weather");
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -436,15 +438,24 @@ export function OutfitPlanner({
       ? activeDay.weatherContext.profile_label
       : weatherProfileLabels[activeDay.manualWeatherProfile];
   const activeWeatherPresentation = getWeatherPresentation(activeDay);
+  const hasGeneratedOutfit = Boolean(activeDay.generatedOutfit);
 
   return (
     <section className="space-y-6">
       <div className="pw-editorial-frame overflow-hidden p-5 md:p-6">
-        <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+        <div
+          className={`grid gap-5 ${
+            hasGeneratedOutfit ? "xl:grid-cols-[0.82fr_1.18fr]" : "xl:grid-cols-[1.1fr_0.9fr]"
+          }`}
+        >
           <div className="space-y-5">
             <div>
               <p className="pw-kicker">Outfit Planning</p>
-              <h1 className="mt-3 max-w-[10ch] text-4xl font-semibold tracking-[-0.08em] md:text-6xl">
+              <h1
+                className={`mt-3 max-w-[10ch] font-semibold tracking-[-0.08em] ${
+                  hasGeneratedOutfit ? "text-4xl md:text-5xl" : "text-4xl md:text-6xl"
+                }`}
+              >
                 Monday to Sunday, planned like an issue.
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--muted)] md:text-base">
@@ -461,6 +472,10 @@ export function OutfitPlanner({
                 value={`${plannedDayCount} of ${days.length} days shaped`}
               />
             </div>
+
+            {activeDay.generatedOutfit ? (
+              <OutfitExplanationSummary outfit={activeDay.generatedOutfit} />
+            ) : null}
           </div>
 
           <div className="pw-panel-soft flex flex-col gap-4 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.92))] p-5">
@@ -484,6 +499,7 @@ export function OutfitPlanner({
                   isSaved={Boolean(activeDay.savedOutfitId)}
                   onSave={handleSave}
                   onClear={() => updateActiveDay({ generatedOutfit: null, savedOutfitId: null })}
+                  showExplanation={false}
                 />
               ) : (
                 <div className="flex flex-1 items-center justify-center">
@@ -585,17 +601,6 @@ export function OutfitPlanner({
             )}
         </div>
 
-        <ActiveDayCard
-          day={activeDay}
-          weatherLabel={activeWeatherLabel}
-          weatherPresentation={activeWeatherPresentation}
-          isLoadingWeather={isLoadingWeather}
-          error={error}
-          onUpdateDay={updateActiveDay}
-          onResetDay={handleResetDay}
-          onLocationLookup={handleLocationLookup}
-          onCurrentLocation={handleCurrentLocation}
-        />
       </div>
 
       {isGenerateDialogOpen ? (
@@ -661,16 +666,18 @@ function PlannedOutfitCard({
   isSaving,
   isSaved,
   onSave,
-  onClear
+  onClear,
+  showExplanation = true
 }: {
   outfit: GeneratedOutfit;
   isSaving: boolean;
   isSaved: boolean;
   onSave: () => void;
   onClear: () => void;
+  showExplanation?: boolean;
 }) {
   return (
-    <div className="flex flex-1 flex-col space-y-4 rounded-[10px] bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(247,244,238,0.76))] p-4 md:p-5">
+    <div className="flex flex-1 flex-col space-y-4 rounded-[10px] bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(247,244,238,0.76))] p-3 md:p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="pw-kicker">Planned Outfit</p>
@@ -703,9 +710,9 @@ function PlannedOutfitCard({
         {outfit.garments.map((garment) => (
           <div
             key={garment.id}
-            className="flex items-center gap-3 rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.92))] px-3 py-3"
+            className="flex items-center gap-3 rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.92))] px-3 py-2.5"
           >
-            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[6px] bg-[rgba(17,17,17,0.04)]">
+            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-[6px] bg-[rgba(17,17,17,0.04)] md:h-16 md:w-16">
               {garment.preview_url ? (
                 <img
                   src={garment.preview_url}
@@ -727,14 +734,62 @@ function PlannedOutfitCard({
         ))}
       </div>
 
-      {outfit.explanation ? (
+      {showExplanation && outfit.explanation ? (
         <p className="rounded-[8px] border border-[rgba(17,17,17,0.06)] bg-[rgba(17,17,17,0.03)] px-4 py-4 text-sm leading-7 text-[var(--muted)]">
           {outfit.explanation}
         </p>
       ) : null}
 
-      {outfit.insights.length ? <OutfitInsightGrid outfit={outfit} /> : null}
+      {showExplanation && outfit.insights.length ? <OutfitInsightGrid outfit={outfit} /> : null}
 
+    </div>
+  );
+}
+
+function OutfitExplanationSummary({ outfit }: { outfit: GeneratedOutfit }) {
+  const primaryInsights = outfit.insights.slice(0, 2);
+
+  if (!outfit.explanation && !primaryInsights.length) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-[10px] border border-[var(--line)] bg-[rgba(255,255,255,0.72)] p-4 md:p-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="pw-kicker">Why It Works</p>
+          <p className="mt-2 text-2xl font-semibold tracking-[-0.06em]">
+            The logic behind this look
+          </p>
+        </div>
+        <span className="pw-chip w-fit normal-case tracking-normal">
+          {outfit.garments.length} pieces
+        </span>
+      </div>
+
+      {outfit.explanation ? (
+        <p className="mt-4 text-sm leading-7 text-[var(--foreground)]">
+          {outfit.explanation}
+        </p>
+      ) : null}
+
+      {primaryInsights.length ? (
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+          {primaryInsights.map((insight) => (
+            <div
+              key={insight.key}
+              className="rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(247,244,238,0.86))] p-3"
+            >
+              <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">
+                {insight.title}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-[var(--foreground)]">
+                {insight.body}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -931,6 +986,17 @@ function CalendarPlannerGrid({
   const [addLookDayKey, setAddLookDayKey] = useState<string | null>(null);
   const addLookDay = days.find((day) => day.key === addLookDayKey) ?? null;
 
+  function handleCellKeyDown(event: KeyboardEvent<HTMLDivElement>, dayKey: string) {
+    if (event.target !== event.currentTarget) {
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onSelectDay(dayKey);
+    }
+  }
+
   return (
     <>
       <div className="overflow-hidden rounded-[10px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(246,243,238,0.88))]">
@@ -961,10 +1027,13 @@ function CalendarPlannerGrid({
             const isPlanned = Boolean(day.generatedOutfit || day.occasion.trim());
 
             return (
-              <button
+              <div
                 key={cell.key}
-                type="button"
+                role="button"
+                tabIndex={0}
+                aria-pressed={isActive}
                 onClick={() => onSelectDay(day.key)}
+                onKeyDown={(event) => handleCellKeyDown(event, day.key)}
                 className={`group relative min-h-[118px] border-r border-b border-[var(--line)] px-2 py-2 text-left transition ${
                   isActive
                     ? "bg-[rgba(255,255,255,0.98)] shadow-[inset_0_0_0_1px_rgba(17,17,17,0.08)]"
@@ -996,7 +1065,7 @@ function CalendarPlannerGrid({
                     }}
                   />
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -2097,6 +2166,8 @@ function formatWeatherTemperature(day: WeeklyPlanDay) {
     if (low != null) {
       return `${Math.round(low)}C`;
     }
+
+    return "";
   }
 
   switch (day.manualWeatherProfile) {

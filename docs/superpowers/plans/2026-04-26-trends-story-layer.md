@@ -6,7 +6,7 @@
 
 **Architecture:** New scanner archetypes extend the existing `SCANNERS` array in `grounding-prompts.ts` and are wired into `vercel.json` crons. A new `generateTrendStories()` function clusters signals by type+family, calls `gpt-4o-mini` to name each cluster editorially, and upserts `trend_stories`. The trends page renders story cards sourced from a new `loadUserTrendStories()` action, with the existing signal view preserved as fallback.
 
-**Tech Stack:** TypeScript, Next.js App Router, Supabase (Postgres + Storage), OpenAI SDK (`gpt-4o-mini`), Gemini grounding adapter, Zod, Vitest
+**Tech Stack:** TypeScript, Next.js App Router, Supabase (Postgres + Storage), OpenAI SDK (`gpt-4o-mini`), Tavily web-search adapter (replaced Gemini grounding 2026-05-07), Zod, Vitest
 
 ---
 

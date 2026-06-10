@@ -4,10 +4,14 @@ import { useActionState, useEffect } from "react";
 import { FormFeedback } from "@/components/form-feedback";
 import { showAppToast } from "@/lib/ui/app-toast";
 import {
-  accountProfileActionState,
   updateAccountProfileAction,
   type AccountProfileActionState
 } from "@/app/account/actions";
+
+const accountProfileActionState: AccountProfileActionState = {
+  status: "idle",
+  message: null
+};
 
 export function AccountProfileForm({
   email,

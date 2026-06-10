@@ -149,7 +149,7 @@ function ClosetTabs({ active }: { active: "items" | "avatar" | "outfits" }) {
         data-active={active === "items" ? "true" : "false"}
         aria-current={active === "items" ? "page" : undefined}
       >
-        Items
+        Wardrobe
       </Link>
       <Link
         href="/wardrobe?view=outfits"

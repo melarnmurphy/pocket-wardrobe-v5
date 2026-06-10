@@ -42,11 +42,10 @@ const serverEnvSchema = publicEnvSchema.extend({
   WEATHER_PROVIDER_DEFAULT: z.enum(["weatherapi", "open-meteo"]).optional(),
   BILLING_PROVIDER: z.enum(["stripe"]).optional(),
   BILLING_SYNC_SECRET: optionalString,
-  // Gemini Google-Grounding adapter (lib/domain/trends/adapters/gemini-grounding.ts).
-  // Optional so local dev without grounding still boots; the adapter throws
+  // Tavily web-search adapter (lib/domain/trends/adapters/tavily-search.ts).
+  // Optional so local dev without search still boots; the adapter throws
   // at call time if unset.
-  GEMINI_API_KEY: optionalString,
-  GEMINI_SEARCH_MODEL_ID: optionalString,
+  TAVILY_API_KEY: optionalString,
   // Shared secret for cron routes (Vercel passes as Authorization: Bearer <value>).
   CRON_SECRET: optionalString
 });
@@ -82,8 +81,7 @@ export function getServerEnv(): ServerEnv {
     NEXT_PUBLIC_PREMIUM_UPGRADE_URL: process.env.NEXT_PUBLIC_PREMIUM_UPGRADE_URL,
     BILLING_PROVIDER: process.env.BILLING_PROVIDER,
     BILLING_SYNC_SECRET: process.env.BILLING_SYNC_SECRET,
-    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-    GEMINI_SEARCH_MODEL_ID: process.env.GEMINI_SEARCH_MODEL_ID,
+    TAVILY_API_KEY: process.env.TAVILY_API_KEY,
     CRON_SECRET: process.env.CRON_SECRET
   });
 }

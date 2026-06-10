@@ -14,11 +14,6 @@ export type AccountProfileActionState = {
   message: string | null;
 };
 
-export const accountProfileActionState: AccountProfileActionState = {
-  status: "idle",
-  message: null
-};
-
 export async function updateAccountProfileAction(
   _previousState: AccountProfileActionState,
   formData: FormData
