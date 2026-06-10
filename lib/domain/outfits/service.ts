@@ -116,7 +116,7 @@ export async function listSavedOutfits(): Promise<OutfitWithItems[]> {
     .from("outfits")
     .select(`
       id, user_id, title, occasion, dress_code, weather_context_json,
-      explanation, explanation_json, source_type, created_at,
+      explanation, explanation_json, source_type, created_at, planned_for,
       items:outfit_items(
         id, outfit_id, garment_id, role, created_at,
         garment:garments(id, title, category)
@@ -152,6 +152,32 @@ export async function deleteOutfit(outfitId: string) {
   if (error) {
     throw new Error(error.message);
   }
+}
+
+export async function setOutfitPlannedDate(params: {
+  outfitId: string;
+  date: string | null; // "YYYY-MM-DD" to plan, null to un-plan
+}): Promise<void> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  // Enforce one outfit per day: clear any other outfit already on this date.
+  if (params.date) {
+    const { error: clearError } = await supabase
+      .from("outfits")
+      .update({ planned_for: null } as never)
+      .eq("user_id", user.id)
+      .eq("planned_for", params.date)
+      .neq("id", params.outfitId);
+    if (clearError) throw new Error(clearError.message);
+  }
+
+  const { error } = await supabase
+    .from("outfits")
+    .update({ planned_for: params.date } as never)
+    .eq("id", params.outfitId)
+    .eq("user_id", user.id);
+  if (error) throw new Error(error.message);
 }
 
 // NOTE: Gallery thumbnails (OutfitWithItems.items[].garment.preview_url) will always be null

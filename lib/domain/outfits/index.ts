@@ -107,6 +107,7 @@ export type SaveOutfitInput = z.infer<typeof saveOutfitInputSchema>;
 export const outfitWithItemsSchema = outfitSchema.extend({
   id: z.string().uuid(),
   created_at: z.string().optional(),
+  planned_for: z.string().nullable().optional(),
   items: z.array(outfitItemSchema.extend({
     id: z.string().uuid(),
     garment: z.object({
