@@ -5,6 +5,7 @@ import {
   normalizeWeatherProfile,
   weatherProfileLabel
 } from "@/lib/domain/weather/service";
+import { localWeatherBatchLookupSchema } from "@/lib/domain/weather";
 
 describe("normalizeWeatherProfile", () => {
   it("maps warm clear conditions to warm_sun", () => {
@@ -73,5 +74,42 @@ describe("weather helpers", () => {
     expect(weatherProfileLabel("warm_sun")).toBe("Warm sun");
     expect(describeWeatherCode(63)).toBe("Moderate rain");
     expect(describeWeatherCode(null)).toBeNull();
+  });
+});
+
+describe("localWeatherBatchLookupSchema", () => {
+  it("accepts a location with a list of ISO dates", () => {
+    const parsed = localWeatherBatchLookupSchema.parse({
+      location: "Adelaide",
+      dates: ["2026-06-10", "2026-06-11"],
+      provider: "weatherapi"
+    });
+    expect(parsed.dates).toEqual(["2026-06-10", "2026-06-11"]);
+  });
+
+  it("deduplicates dates and rejects an empty list", () => {
+    expect(
+      localWeatherBatchLookupSchema.parse({
+        location: "Adelaide",
+        dates: ["2026-06-10", "2026-06-10"]
+      }).dates
+    ).toEqual(["2026-06-10"]);
+
+    expect(() =>
+      localWeatherBatchLookupSchema.parse({ location: "Adelaide", dates: [] })
+    ).toThrow();
+  });
+
+  it("rejects more than 14 dates and requires a location or coordinates", () => {
+    const tooMany = Array.from({ length: 15 }, (_, i) =>
+      `2026-06-${String(i + 1).padStart(2, "0")}`
+    );
+    expect(() =>
+      localWeatherBatchLookupSchema.parse({ location: "Adelaide", dates: tooMany })
+    ).toThrow();
+
+    expect(() =>
+      localWeatherBatchLookupSchema.parse({ dates: ["2026-06-10"] })
+    ).toThrow();
   });
 });

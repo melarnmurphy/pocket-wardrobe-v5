@@ -35,6 +35,43 @@ export const localWeatherLookupSchema = z
     }
   });
 
+const isoDateSchema = z.string().date();
+
+export const localWeatherBatchLookupSchema = z
+  .object({
+    location: z.string().trim().min(1).max(160).optional(),
+    latitude: z.coerce.number().min(-90).max(90).optional(),
+    longitude: z.coerce.number().min(-180).max(180).optional(),
+    dates: z
+      .array(isoDateSchema)
+      .min(1, "Provide at least one date.")
+      .max(14, "A batch request supports at most 14 dates.")
+      .transform((dates) => Array.from(new Set(dates))),
+    profileOverride: weatherProfileSchema.optional(),
+    provider: weatherProviderSchema.optional()
+  })
+  .superRefine((value, context) => {
+    const hasCoordinates =
+      typeof value.latitude === "number" && typeof value.longitude === "number";
+
+    if (!value.location && !hasCoordinates) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide either a location name or latitude and longitude."
+      });
+    }
+
+    if (
+      (typeof value.latitude === "number" && typeof value.longitude !== "number") ||
+      (typeof value.longitude === "number" && typeof value.latitude !== "number")
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Latitude and longitude must be supplied together."
+      });
+    }
+  });
+
 export const localWeatherContextSchema = z.object({
   profile: weatherProfileSchema,
   profile_label: z.string().min(1),
@@ -59,4 +96,5 @@ export const localWeatherContextSchema = z.object({
 export type WeatherProfile = z.infer<typeof weatherProfileSchema>;
 export type WeatherProvider = z.infer<typeof weatherProviderSchema>;
 export type LocalWeatherLookupInput = z.infer<typeof localWeatherLookupSchema>;
+export type LocalWeatherBatchLookupInput = z.infer<typeof localWeatherBatchLookupSchema>;
 export type LocalWeatherContext = z.infer<typeof localWeatherContextSchema>;
