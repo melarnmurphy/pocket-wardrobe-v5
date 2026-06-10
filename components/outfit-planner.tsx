@@ -184,31 +184,35 @@ export function OutfitPlanner({
         day.locationQuery.trim() === normalizedPreferredLocation
     );
 
-    void Promise.all(
-      daysToHydrate.map(async (day) => {
-        const weatherContext = await fetchLocalWeather(
-          new URLSearchParams({
-            location: normalizedPreferredLocation,
-            weather_date: day.dateIso,
-            provider: defaultWeatherProvider
+    void fetchLocalWeatherBatch(
+      new URLSearchParams({
+        location: normalizedPreferredLocation,
+        dates: daysToHydrate.map((day) => day.dateIso).join(","),
+        provider: defaultWeatherProvider
+      })
+    )
+      .then((weatherContexts) => {
+        setDays((currentDays) =>
+          currentDays.map((currentDay) => {
+            const context = weatherContexts[currentDay.dateIso];
+            if (!context) {
+              return currentDay;
+            }
+            const matchesHydration = daysToHydrate.some((day) => day.key === currentDay.key);
+            if (!matchesHydration) {
+              return currentDay;
+            }
+            return {
+              ...currentDay,
+              weatherContext: context,
+              locationQuery: context.location_label || currentDay.locationQuery
+            };
           })
         );
-
-        setDays((currentDays) =>
-          currentDays.map((currentDay) =>
-            currentDay.key === day.key
-              ? {
-                  ...currentDay,
-                  weatherContext,
-                  locationQuery: weatherContext.location_label || currentDay.locationQuery
-                }
-              : currentDay
-          )
-        );
       })
-    ).catch(() => {
-      hydratedPreferredLocationsRef.current.delete(normalizedPreferredLocation);
-    });
+      .catch(() => {
+        hydratedPreferredLocationsRef.current.delete(normalizedPreferredLocation);
+      });
   }, [days, preferredLocation, defaultWeatherProvider]);
 
   function updateDay(dayKey: string, updater: (day: WeeklyPlanDay) => WeeklyPlanDay) {
@@ -259,6 +263,22 @@ export function OutfitPlanner({
     }
 
     return payload.weather_context;
+  }
+
+  async function fetchLocalWeatherBatch(params: URLSearchParams) {
+    const response = await fetch(`/api/weather/local/batch?${params.toString()}`, {
+      method: "GET"
+    });
+    const payload = (await response.json()) as {
+      error?: string;
+      weather_contexts?: Record<string, LocalWeatherContext>;
+    };
+
+    if (!response.ok || !payload.weather_contexts) {
+      throw new Error(payload.error ?? "Unable to load local weather.");
+    }
+
+    return payload.weather_contexts;
   }
 
   async function loadWeatherForActiveDay(params: URLSearchParams) {
