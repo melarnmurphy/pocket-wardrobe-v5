@@ -192,14 +192,11 @@ export function OutfitPlanner({
       })
     )
       .then((weatherContexts) => {
+        const hydrateKeys = new Set(daysToHydrate.map((day) => day.key));
         setDays((currentDays) =>
           currentDays.map((currentDay) => {
             const context = weatherContexts[currentDay.dateIso];
-            if (!context) {
-              return currentDay;
-            }
-            const matchesHydration = daysToHydrate.some((day) => day.key === currentDay.key);
-            if (!matchesHydration) {
+            if (!context || !hydrateKeys.has(currentDay.key)) {
               return currentDay;
             }
             return {
