@@ -1,65 +1,60 @@
-import Link from "next/link";
+import { AuthenticationError } from "@/lib/auth";
+import { listSavedOutfits } from "@/lib/domain/outfits/service";
+import { AuthRequiredCard } from "@/components/auth-required-card";
+import { OutfitCalendar } from "@/components/outfit-calendar";
 
 export const metadata = {
   title: "Calendar — Pocket Wardrobe"
 };
 
-export default function CalendarPage() {
-  return (
-    <main className="pw-shell">
-      <div className="mx-auto max-w-2xl pt-6 text-center">
-        <p
-          className="text-[0.72rem] font-semibold uppercase"
-          style={{ letterSpacing: "0.32em", color: "var(--muted)" }}
-        >
-          The Calendar
-        </p>
-        <h1
-          className="mt-4 italic"
-          style={{
-            fontFamily: "var(--font-display), serif",
-            fontSize: "clamp(3rem, 8vw, 5rem)",
-            fontWeight: 400,
-            letterSpacing: "-0.03em",
-            lineHeight: 0.95
-          }}
-        >
-          Coming
-          <br />
-          shortly.
-        </h1>
-        <p
-          className="mx-auto mt-6 max-w-md"
-          style={{ color: "var(--muted)", lineHeight: 1.65 }}
-        >
-          A day-by-day fitting view tied to your planner, with a month grid and
-          editable outfits per day. The plan you make in the Planner will land here.
-        </p>
-        <div className="mt-8 flex justify-center gap-3">
-          <Link
-            href="/outfits"
-            className="rounded-full px-5 py-2.5 text-[0.78rem] font-semibold uppercase"
+function localTodayKey(): string {
+  const now = new Date();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${mm}-${dd}`;
+}
+
+export default async function CalendarPage() {
+  try {
+    const outfits = await listSavedOutfits();
+    return (
+      <main className="pw-shell">
+        <div className="mx-auto max-w-2xl pt-6 text-center">
+          <p
+            className="text-[0.72rem] font-semibold uppercase"
+            style={{ letterSpacing: "0.32em", color: "var(--muted)" }}
+          >
+            The Calendar
+          </p>
+          <h1
+            className="mt-3 italic"
             style={{
-              background: "var(--accent)",
-              color: "var(--accent-foreground)",
-              letterSpacing: "0.18em"
+              fontFamily: "var(--font-display), serif",
+              fontSize: "clamp(2rem, 6vw, 3rem)",
+              fontWeight: 400,
+              letterSpacing: "-0.03em"
             }}
           >
-            Open planner
-          </Link>
-          <Link
-            href="/wardrobe"
-            className="rounded-full border px-5 py-2.5 text-[0.78rem] font-semibold uppercase"
-            style={{
-              borderColor: "var(--line)",
-              color: "var(--foreground)",
-              letterSpacing: "0.18em"
-            }}
-          >
-            Closet
-          </Link>
+            Plan your week.
+          </h1>
         </div>
-      </div>
-    </main>
-  );
+        <div className="mt-8">
+          <OutfitCalendar outfits={outfits} todayKey={localTodayKey()} />
+        </div>
+      </main>
+    );
+  } catch (error) {
+    if (error instanceof AuthenticationError) {
+      return (
+        <main className="pw-shell">
+          <AuthRequiredCard
+            next="/calendar"
+            title="Sign in with Supabase to use the calendar."
+            description="This page reads and writes user-owned outfits protected by RLS, so it requires an authenticated Supabase session."
+          />
+        </main>
+      );
+    }
+    throw error;
+  }
 }
