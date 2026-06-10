@@ -523,10 +523,9 @@ export function WardrobeShop({
             </div>
           </div>
 
-          <div className="-mx-1 mt-4 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex min-w-max gap-2.5 xl:grid xl:min-w-0 xl:grid-cols-[minmax(16rem,1.4fr)_repeat(4,minmax(0,1fr))]">
+          <div className="mt-4 flex flex-wrap gap-2.5">
               <label
-                className="pw-filter-control min-w-[15rem] flex-1 sm:min-w-[17rem]"
+                className="pw-filter-control min-w-[15rem] flex-[2_1_15rem] sm:min-w-[17rem]"
                 data-active={query.trim() ? "true" : "false"}
               >
                 <span className="pw-filter-icon">
@@ -607,7 +606,6 @@ export function WardrobeShop({
                   { value: "price_desc", label: "Price: high to low" }
                 ]}
               />
-            </div>
           </div>
 
           <div className="-mx-1 mt-3 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -2127,27 +2125,78 @@ function FilterSelect({
   onChange: (value: string) => void;
   options: Array<{ value: string; label: string }>;
 }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selected = options.find((option) => option.value === value) ?? options[0];
   const active = value !== (options[0]?.value ?? "all");
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
   return (
-    <label className="pw-filter-control min-w-[11rem]" data-active={active ? "true" : "false"}>
-      <span className="pw-filter-icon">{icon}</span>
-      <select
-        suppressHydrationWarning
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
+    <div ref={rootRef} className="pw-filter-select min-w-[11rem] flex-1">
+      <button
+        type="button"
+        className="pw-filter-control pw-filter-trigger"
+        data-active={active ? "true" : "false"}
+        aria-haspopup="listbox"
+        aria-expanded={open}
         aria-label={label}
+        onClick={() => setOpen((current) => !current)}
       >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <span className="pw-filter-caret" aria-hidden="true">
-        <ChevronIcon open={false} />
-      </span>
-    </label>
+        <span className="pw-filter-icon">{icon}</span>
+        <span className="pw-filter-value">{selected?.label}</span>
+        <span className="pw-filter-caret" aria-hidden="true">
+          <ChevronIcon open={open} />
+        </span>
+      </button>
+      {open ? (
+        <div className="pw-filter-menu" role="listbox" aria-label={label}>
+          {options.map((option) => {
+            const isSelected = option.value === value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                data-selected={isSelected ? "true" : "false"}
+                className="pw-filter-option"
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+              >
+                <span className="truncate">{option.label}</span>
+                {isSelected ? <CheckIcon /> : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
