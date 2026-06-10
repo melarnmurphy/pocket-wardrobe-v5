@@ -14,6 +14,13 @@ const GEOCODING_API_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const FORECAST_API_URL = "https://api.open-meteo.com/v1/forecast";
 const WEATHERAPI_BASE_URL = "https://api.weatherapi.com/v1";
 
+// Forecast data moves slowly, so cache provider responses in Next's Data Cache
+// rather than hitting the upstream API on every request. A planner view fans out
+// one request per day; without this each was a fresh ~2s round-trip on every load.
+const WEATHER_FORECAST_REVALIDATE_SECONDS = 30 * 60;
+// A location's coordinates never change, so geocoding can be cached aggressively.
+const WEATHER_GEOCODE_REVALIDATE_SECONDS = 24 * 60 * 60;
+
 const openMeteoGeocodingSchema = {
   parse(payload: unknown) {
     const data = payload as {
@@ -307,7 +314,9 @@ async function resolveLocation(
   url.searchParams.set("language", "en");
   url.searchParams.set("format", "json");
 
-  const response = await fetchImpl(url, { next: { revalidate: 0 } });
+  const response = await fetchImpl(url, {
+    next: { revalidate: WEATHER_GEOCODE_REVALIDATE_SECONDS }
+  });
 
   if (!response.ok) {
     throw new Error(`Weather geocoding failed: ${response.status} ${response.statusText}`);
@@ -382,7 +391,9 @@ async function fetchWeatherApiWeather(
   url.searchParams.set("aqi", "no");
   url.searchParams.set("alerts", "no");
 
-  const response = await fetchImpl(url, { next: { revalidate: 0 } });
+  const response = await fetchImpl(url, {
+    next: { revalidate: WEATHER_FORECAST_REVALIDATE_SECONDS }
+  });
 
   if (!response.ok) {
     throw new Error(`WeatherAPI forecast failed: ${response.status} ${response.statusText}`);
@@ -484,7 +495,9 @@ async function fetchForecast(location: ResolvedLocation, input: LocalWeatherLook
   );
   url.searchParams.set("forecast_days", String(resolveForecastDays(input.weatherDate)));
 
-  const response = await fetchImpl(url, { next: { revalidate: 0 } });
+  const response = await fetchImpl(url, {
+    next: { revalidate: WEATHER_FORECAST_REVALIDATE_SECONDS }
+  });
 
   if (!response.ok) {
     throw new Error(`Weather forecast failed: ${response.status} ${response.statusText}`);
