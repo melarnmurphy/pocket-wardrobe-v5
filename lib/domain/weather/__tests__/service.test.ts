@@ -8,6 +8,16 @@ import {
   weatherProfileLabel
 } from "@/lib/domain/weather/service";
 
+function isoOffsetFromToday(offsetDays: number) {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + offsetDays);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 // A fixed Open-Meteo forecast payload covering three consecutive days.
 function openMeteoPayload() {
   return {
@@ -19,7 +29,7 @@ function openMeteoPayload() {
       wind_speed_10m: 20
     },
     daily: {
-      time: ["2026-06-10", "2026-06-11", "2026-06-12"],
+      time: [isoOffsetFromToday(0), isoOffsetFromToday(1), isoOffsetFromToday(2)],
       temperature_2m_max: [16, 22, 12],
       temperature_2m_min: [8, 12, 6],
       precipitation_probability_max: [10, 5, 70],
@@ -159,13 +169,13 @@ describe("getLocalWeather single-date (characterization)", () => {
       {
         latitude: -34.928,
         longitude: 138.6,
-        weatherDate: "2026-06-11",
+        weatherDate: isoOffsetFromToday(1),
         provider: "open-meteo"
       },
       { fetchImpl, provider: "open-meteo" }
     );
 
-    expect(context.weather_date).toBe("2026-06-11");
+    expect(context.weather_date).toBe(isoOffsetFromToday(1));
     expect(context.profile_source).toBe("live");
     expect(context.temp_max_c).toBe(22);
     expect(context.temp_min_c).toBe(12);
@@ -194,20 +204,18 @@ describe("getLocalWeatherForDates", () => {
       {
         latitude: -34.928,
         longitude: 138.6,
-        dates: ["2026-06-10", "2026-06-11", "2026-06-12"],
+        dates: [isoOffsetFromToday(0), isoOffsetFromToday(1), isoOffsetFromToday(2)],
         provider: "open-meteo"
       },
       { fetchImpl, provider: "open-meteo" }
     );
 
     expect(calls).toBe(1);
-    expect(Object.keys(result).sort()).toEqual([
-      "2026-06-10",
-      "2026-06-11",
-      "2026-06-12"
-    ]);
-    expect(result["2026-06-11"].temp_max_c).toBe(22);
-    expect(result["2026-06-11"].profile_source).toBe("live");
+    expect(Object.keys(result).sort()).toEqual(
+      [isoOffsetFromToday(0), isoOffsetFromToday(1), isoOffsetFromToday(2)].sort()
+    );
+    expect(result[isoOffsetFromToday(1)].temp_max_c).toBe(22);
+    expect(result[isoOffsetFromToday(1)].profile_source).toBe("live");
   });
 
   it("gives a seasonal fallback for dates beyond the returned horizon without extra calls", async () => {
@@ -226,14 +234,14 @@ describe("getLocalWeatherForDates", () => {
       {
         latitude: -34.928,
         longitude: 138.6,
-        dates: ["2026-06-11", "2026-06-20"],
+        dates: [isoOffsetFromToday(1), isoOffsetFromToday(10)],
         provider: "open-meteo"
       },
       { fetchImpl, provider: "open-meteo" }
     );
 
     expect(calls).toBe(1);
-    expect(result["2026-06-11"].profile_source).toBe("live");
-    expect(result["2026-06-20"].profile_source).toBe("historical_fallback");
+    expect(result[isoOffsetFromToday(1)].profile_source).toBe("live");
+    expect(result[isoOffsetFromToday(10)].profile_source).toBe("historical_fallback");
   });
 });
