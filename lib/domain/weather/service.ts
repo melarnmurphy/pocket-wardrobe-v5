@@ -255,18 +255,20 @@ export async function getLocalWeatherForDates(
   const result: Record<string, LocalWeatherContext> = {};
 
   // Past dates: snapshot or seasonal fallback, no forecast call.
+  const pastLocation = pastDates.length
+    ? await resolveLocation(
+        {
+          location: values.location,
+          latitude: values.latitude,
+          longitude: values.longitude,
+          provider: values.provider
+        },
+        fetchImpl
+      )
+    : null;
+
   for (const date of pastDates) {
-    const location = await resolveLocation(
-      {
-        location: values.location,
-        latitude: values.latitude,
-        longitude: values.longitude,
-        weatherDate: date,
-        provider: values.provider,
-        profileOverride: values.profileOverride
-      },
-      fetchImpl
-    );
+    const location = pastLocation!;
 
     let context: LocalWeatherContext | null = null;
     if (options?.supabase && options.userId) {
