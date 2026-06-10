@@ -703,8 +703,12 @@ async function fetchWeatherApiForecastAll(
     if (typeof forecastDay.date !== "string") {
       continue;
     }
+    // Prefer each forecast day's own condition over the real-time `current`
+    // block, which only describes today — otherwise every future day inherits
+    // today's condition. `current` remains the fallback for the day it actually
+    // describes when a forecast day omits its own condition.
     const weatherCode = mapWeatherApiConditionToWmo(
-      currentConditionCode ?? coerceNumber(forecastDay.day?.condition?.code)
+      coerceNumber(forecastDay.day?.condition?.code) ?? currentConditionCode
     );
     const dayConditionText =
       typeof forecastDay.day?.condition?.text === "string"
@@ -716,7 +720,7 @@ async function fetchWeatherApiForecastAll(
       tempMaxC: coerceNumber(forecastDay.day?.maxtemp_c),
       precipitationChance: coerceNumber(forecastDay.day?.daily_chance_of_rain),
       weatherCode,
-      conditionSummary: currentConditionText ?? dayConditionText ?? describeWeatherCode(weatherCode)
+      conditionSummary: dayConditionText ?? currentConditionText ?? describeWeatherCode(weatherCode)
     });
   }
 
