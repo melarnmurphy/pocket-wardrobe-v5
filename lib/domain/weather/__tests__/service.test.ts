@@ -2,9 +2,40 @@ import { describe, expect, it } from "vitest";
 import {
   buildLocationKey,
   describeWeatherCode,
+  getLocalWeather,
   normalizeWeatherProfile,
   weatherProfileLabel
 } from "@/lib/domain/weather/service";
+
+// A fixed Open-Meteo forecast payload covering three consecutive days.
+function openMeteoPayload() {
+  return {
+    timezone: "Australia/Adelaide",
+    current: {
+      temperature_2m: 14,
+      apparent_temperature: 13,
+      weather_code: 3,
+      wind_speed_10m: 20
+    },
+    daily: {
+      time: ["2026-06-10", "2026-06-11", "2026-06-12"],
+      temperature_2m_max: [16, 22, 12],
+      temperature_2m_min: [8, 12, 6],
+      precipitation_probability_max: [10, 5, 70],
+      weather_code: [3, 1, 63]
+    }
+  };
+}
+
+function jsonFetch(payload: unknown) {
+  return (async () =>
+    ({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => payload
+    })) as unknown as typeof fetch;
+}
 import { localWeatherBatchLookupSchema } from "@/lib/domain/weather";
 
 describe("normalizeWeatherProfile", () => {
@@ -117,5 +148,30 @@ describe("localWeatherBatchLookupSchema", () => {
     expect(() =>
       localWeatherBatchLookupSchema.parse({ dates: ["2026-06-10"] })
     ).toThrow();
+  });
+});
+
+describe("getLocalWeather single-date (characterization)", () => {
+  it("returns the live context for the requested future day", async () => {
+    const fetchImpl = jsonFetch(openMeteoPayload());
+    const context = await getLocalWeather(
+      {
+        latitude: -34.928,
+        longitude: 138.6,
+        weatherDate: "2026-06-11",
+        provider: "open-meteo"
+      },
+      { fetchImpl, provider: "open-meteo" }
+    );
+
+    expect(context.weather_date).toBe("2026-06-11");
+    expect(context.profile_source).toBe("live");
+    expect(context.temp_max_c).toBe(22);
+    expect(context.temp_min_c).toBe(12);
+    expect(context.precipitation_chance).toBe(5);
+    expect(context.current_temperature_c).toBe(14);
+    // apparent_temperature 13 (<=16) -> cool_breeze per normalizeWeatherProfile
+    expect(context.profile).toBe("cool_breeze");
+    expect(context.provider).toBe("open-meteo");
   });
 });
