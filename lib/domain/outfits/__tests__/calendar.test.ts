@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toDateKey, buildMonthGrid, bucketOutfitsByDate } from "@/lib/domain/outfits/calendar";
+import { toDateKey, buildMonthGrid, bucketOutfitsByDate, pickHeroImage } from "@/lib/domain/outfits/calendar";
 
 describe("toDateKey", () => {
   it("zero-pads month and day", () => {
@@ -44,5 +44,33 @@ describe("bucketOutfitsByDate", () => {
       mk("new", "2026-06-07", "2026-06-05T00:00:00Z"),
     ]);
     expect(map.get("2026-06-07")?.id).toBe("new");
+  });
+});
+
+describe("pickHeroImage", () => {
+  const item = (role: string, preview_url: string | null) =>
+    ({
+      id: "00000000-0000-0000-0000-000000000000", outfit_id: "x", garment_id: "g",
+      role, garment: { id: "g", category: role, preview_url }
+    } as never);
+  const outfit = (items: unknown[]) => ({ id: "o", items } as never);
+
+  it("returns the dress image when present", () => {
+    expect(pickHeroImage(outfit([item("shoes", "shoe.jpg"), item("dress", "dress.jpg")])))
+      .toBe("dress.jpg");
+  });
+
+  it("respects role priority (outerwear over shoes)", () => {
+    expect(pickHeroImage(outfit([item("shoes", "shoe.jpg"), item("outerwear", "coat.jpg")])))
+      .toBe("coat.jpg");
+  });
+
+  it("skips items with no image and picks the next priority", () => {
+    expect(pickHeroImage(outfit([item("dress", null), item("top", "top.jpg")])))
+      .toBe("top.jpg");
+  });
+
+  it("returns null when no item has an image", () => {
+    expect(pickHeroImage(outfit([item("top", null), item("shoes", "")]))).toBeNull();
   });
 });

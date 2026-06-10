@@ -28,6 +28,22 @@ export function buildMonthGrid(year: number, month: number): MonthGrid {
   return { weeks };
 }
 
+const HERO_ROLE_PRIORITY = [
+  "dress", "outerwear", "top", "bottom", "shoes", "bag", "accessory", "jewellery", "other"
+];
+
+export function pickHeroImage(outfit: OutfitWithItems): string | null {
+  for (const role of HERO_ROLE_PRIORITY) {
+    const match = outfit.items.find(
+      (it) => it.role === role && !!it.garment.preview_url
+    );
+    if (match?.garment.preview_url) return match.garment.preview_url;
+  }
+  // Any item with an image, regardless of role.
+  const anyWithImage = outfit.items.find((it) => !!it.garment.preview_url);
+  return anyWithImage?.garment.preview_url ?? null;
+}
+
 export function bucketOutfitsByDate(
   outfits: OutfitWithItems[]
 ): Map<string, OutfitWithItems> {
