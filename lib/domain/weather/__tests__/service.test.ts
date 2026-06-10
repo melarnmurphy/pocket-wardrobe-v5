@@ -3,6 +3,7 @@ import {
   buildLocationKey,
   describeWeatherCode,
   getLocalWeather,
+  getLocalWeatherForDates,
   normalizeWeatherProfile,
   weatherProfileLabel
 } from "@/lib/domain/weather/service";
@@ -173,5 +174,66 @@ describe("getLocalWeather single-date (characterization)", () => {
     // apparent_temperature 13 (<=16) -> cool_breeze per normalizeWeatherProfile
     expect(context.profile).toBe("cool_breeze");
     expect(context.provider).toBe("open-meteo");
+  });
+});
+
+describe("getLocalWeatherForDates", () => {
+  it("makes exactly one forecast call for multiple future dates", async () => {
+    let calls = 0;
+    const fetchImpl = (async () => {
+      calls += 1;
+      return {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        json: async () => openMeteoPayload()
+      };
+    }) as unknown as typeof fetch;
+
+    const result = await getLocalWeatherForDates(
+      {
+        latitude: -34.928,
+        longitude: 138.6,
+        dates: ["2026-06-10", "2026-06-11", "2026-06-12"],
+        provider: "open-meteo"
+      },
+      { fetchImpl, provider: "open-meteo" }
+    );
+
+    expect(calls).toBe(1);
+    expect(Object.keys(result).sort()).toEqual([
+      "2026-06-10",
+      "2026-06-11",
+      "2026-06-12"
+    ]);
+    expect(result["2026-06-11"].temp_max_c).toBe(22);
+    expect(result["2026-06-11"].profile_source).toBe("live");
+  });
+
+  it("gives a seasonal fallback for dates beyond the returned horizon without extra calls", async () => {
+    let calls = 0;
+    const fetchImpl = (async () => {
+      calls += 1;
+      return {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        json: async () => openMeteoPayload() // only covers 06-10..06-12
+      };
+    }) as unknown as typeof fetch;
+
+    const result = await getLocalWeatherForDates(
+      {
+        latitude: -34.928,
+        longitude: 138.6,
+        dates: ["2026-06-11", "2026-06-20"],
+        provider: "open-meteo"
+      },
+      { fetchImpl, provider: "open-meteo" }
+    );
+
+    expect(calls).toBe(1);
+    expect(result["2026-06-11"].profile_source).toBe("live");
+    expect(result["2026-06-20"].profile_source).toBe("historical_fallback");
   });
 });

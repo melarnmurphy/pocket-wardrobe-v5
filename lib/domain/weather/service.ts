@@ -2,8 +2,10 @@ import type { Tables, TablesInsert } from "@/types/database";
 import { getServerEnv } from "@/lib/env";
 import { weatherProfiles } from "@/lib/domain/style-rules/knowledge/weather";
 import {
+  localWeatherBatchLookupSchema,
   localWeatherContextSchema,
   localWeatherLookupSchema,
+  type LocalWeatherBatchLookupInput,
   type LocalWeatherContext,
   type LocalWeatherLookupInput,
   type WeatherProvider,
@@ -232,6 +234,107 @@ export async function getLocalWeather(
   }
 
   return context;
+}
+
+export async function getLocalWeatherForDates(
+  input: LocalWeatherBatchLookupInput,
+  options?: {
+    fetchImpl?: FetchLike;
+    supabase?: WeatherSnapshotClient;
+    userId?: string | null;
+    provider?: WeatherProvider;
+  }
+): Promise<Record<string, LocalWeatherContext>> {
+  const values = localWeatherBatchLookupSchema.parse(input);
+  const fetchImpl = options?.fetchImpl ?? fetch;
+  const provider = resolveWeatherProvider(values.provider ?? options?.provider);
+
+  const pastDates = values.dates.filter((date) => isPastDate(date));
+  const futureDates = values.dates.filter((date) => !isPastDate(date));
+
+  const result: Record<string, LocalWeatherContext> = {};
+
+  // Past dates: snapshot or seasonal fallback, no forecast call.
+  for (const date of pastDates) {
+    const location = await resolveLocation(
+      {
+        location: values.location,
+        latitude: values.latitude,
+        longitude: values.longitude,
+        weatherDate: date,
+        provider: values.provider,
+        profileOverride: values.profileOverride
+      },
+      fetchImpl
+    );
+
+    let context: LocalWeatherContext | null = null;
+    if (options?.supabase && options.userId) {
+      const snapshot = await getCachedWeatherSnapshot(
+        options.supabase,
+        options.userId,
+        location.locationKey,
+        date
+      );
+      if (snapshot) {
+        context = buildSnapshotWeatherContext({ snapshot, location, provider });
+      }
+    }
+
+    result[date] =
+      context ??
+      buildHistoricalFallbackWeatherContext({ location, weatherDate: date, provider });
+  }
+
+  if (!futureDates.length) {
+    return result;
+  }
+
+  // Future dates: one forecast call covering the furthest requested day.
+  const furthestDate = futureDates.reduce(
+    (max, date) => (date > max ? date : max),
+    futureDates[0]
+  );
+  const forecast = await fetchAllForecast(
+    provider,
+    {
+      location: values.location,
+      latitude: values.latitude,
+      longitude: values.longitude,
+      weatherDate: furthestDate,
+      provider: values.provider,
+      profileOverride: values.profileOverride
+    },
+    fetchImpl
+  );
+
+  for (const date of futureDates) {
+    const day = forecast.daysByDate.get(date);
+    if (day) {
+      result[date] = buildLiveWeatherContext({
+        location: forecast.location,
+        weatherDate: date,
+        currentTemperatureC: forecast.currentTemperatureC,
+        apparentTemperatureC: forecast.apparentTemperatureC,
+        windSpeedKph: forecast.windSpeedKph,
+        day,
+        provider,
+        profileOverride: values.profileOverride
+      });
+    } else {
+      result[date] = buildHistoricalFallbackWeatherContext({
+        location: forecast.location,
+        weatherDate: date,
+        provider
+      });
+    }
+
+    if (options?.supabase && options.userId && result[date].profile_source === "live") {
+      await upsertWeatherSnapshot(options.supabase, options.userId, result[date]);
+    }
+  }
+
+  return result;
 }
 
 export function resolveWeatherProvider(preferred?: WeatherProvider): WeatherProvider {
