@@ -1,5 +1,6 @@
 import { AuthenticationError } from "@/lib/auth";
 import { listSavedOutfits } from "@/lib/domain/outfits/service";
+import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import { AuthRequiredCard } from "@/components/auth-required-card";
 import { OutfitCalendar } from "@/components/outfit-calendar";
 
@@ -16,7 +17,26 @@ function localTodayKey(): string {
 
 export default async function CalendarPage() {
   try {
-    const outfits = await listSavedOutfits();
+    const [outfits, garments] = await Promise.all([
+      listSavedOutfits(),
+      listWardrobeGarments()
+    ]);
+
+    const previewByGarmentId = new Map<string, string | null>();
+    for (const g of garments) previewByGarmentId.set(g.id as string, g.preview_url);
+
+    const enriched = outfits.map((o) => ({
+      ...o,
+      items: o.items.map((it) => ({
+        ...it,
+        garment: {
+          ...it.garment,
+          preview_url:
+            previewByGarmentId.get(it.garment.id) ?? it.garment.preview_url ?? null
+        }
+      }))
+    }));
+
     return (
       <main className="pw-shell">
         <div className="mx-auto max-w-2xl pt-6 text-center">
@@ -39,7 +59,7 @@ export default async function CalendarPage() {
           </h1>
         </div>
         <div className="mt-8">
-          <OutfitCalendar outfits={outfits} todayKey={localTodayKey()} />
+          <OutfitCalendar outfits={enriched} todayKey={localTodayKey()} />
         </div>
       </main>
     );
