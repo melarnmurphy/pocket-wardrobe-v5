@@ -29,6 +29,7 @@ import type { LookbookListItem } from "@/lib/domain/lookbook/service";
 import { categoryToRole } from "@/lib/domain/outfits/generator";
 import { generateOutfitAction, saveOutfitAction } from "@/app/outfits/actions";
 import { showAppToast } from "@/lib/ui/app-toast";
+import { bucketOutfitsByDate } from "@/lib/domain/outfits/calendar";
 
 const weatherProfileLabels: Record<WeatherProfile, string> = {
   warm_sun: "Warm sun",
@@ -398,6 +399,7 @@ export function OutfitPlanner({
       title: buildOutfitTitle(activeDay),
       occasion: activeDay.occasion.trim() || null,
       dress_code: activeDay.dressCode === "any" ? null : activeDay.dressCode,
+      planned_for: activeDay.dateIso,
       weather_context_json: buildWeatherPayload(activeDay),
       explanation: activeDay.generatedOutfit.explanation,
       explanation_json: {
@@ -1951,20 +1953,10 @@ function hydratePlannerWeekFromSavedOutfits(
   const wardrobeById = new Map(
     wardrobeItems.flatMap((item) => (item.id ? [[item.id, item] as const] : []))
   );
-  const latestSavedOutfitByPlannerDay = new Map<string, OutfitWithItems>();
-
-  for (const outfit of savedOutfits) {
-    const plannerDay = getPlannerDayKey(outfit);
-
-    if (!plannerDay || latestSavedOutfitByPlannerDay.has(plannerDay)) {
-      continue;
-    }
-
-    latestSavedOutfitByPlannerDay.set(plannerDay, outfit);
-  }
+  const latestSavedOutfitByDate = bucketOutfitsByDate(savedOutfits);
 
   return days.map((day) => {
-    const savedOutfit = latestSavedOutfitByPlannerDay.get(day.key);
+    const savedOutfit = latestSavedOutfitByDate.get(day.dateIso);
 
     if (!savedOutfit) {
       return day;
@@ -1982,11 +1974,6 @@ function hydratePlannerWeekFromSavedOutfits(
       savedOutfitId: savedOutfit.id
     };
   });
-}
-
-function getPlannerDayKey(outfit: OutfitWithItems) {
-  const plannerDay = outfit.explanation_json?.["planner_day"];
-  return typeof plannerDay === "string" ? plannerDay : null;
 }
 
 function parseSavedWeatherContext(outfit: OutfitWithItems): LocalWeatherContext | null {

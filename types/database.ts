@@ -693,6 +693,7 @@ export type Database = {
           explanation_json: Json
           id: string
           occasion: string | null
+          planned_for: string | null
           source_type: string
           title: string | null
           user_id: string
@@ -705,6 +706,7 @@ export type Database = {
           explanation_json?: Json
           id?: string
           occasion?: string | null
+          planned_for?: string | null
           source_type?: string
           title?: string | null
           user_id: string
@@ -717,6 +719,7 @@ export type Database = {
           explanation_json?: Json
           id?: string
           occasion?: string | null
+          planned_for?: string | null
           source_type?: string
           title?: string | null
           user_id?: string

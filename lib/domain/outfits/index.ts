@@ -93,6 +93,7 @@ export const saveOutfitInputSchema = z.object({
   title: z.string().trim().max(200).nullable().optional(),
   occasion: z.string().trim().max(120).nullable().optional(),
   dress_code: z.string().trim().max(120).nullable().optional(),
+  planned_for: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   weather_context_json: z.record(z.string(), z.unknown()).default({}),
   explanation: z.string().trim().max(4000).nullable().optional(),
   explanation_json: z.record(z.string(), z.unknown()).default({}),

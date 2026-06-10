@@ -244,6 +244,7 @@ create table if not exists public.outfits (
   title text,
   occasion text,
   dress_code text,
+  planned_for date,
   weather_context_json jsonb not null default '{}'::jsonb,
   explanation text,
   explanation_json jsonb not null default '{}'::jsonb,
@@ -683,6 +684,9 @@ create index if not exists idx_wear_events_worn_at on public.wear_events(worn_at
 
 create index if not exists idx_lookbook_entries_user_id on public.lookbook_entries(user_id);
 create index if not exists idx_outfits_user_id on public.outfits(user_id);
+create index if not exists outfits_planned_for_idx
+  on public.outfits (user_id, planned_for)
+  where planned_for is not null;
 
 create index if not exists idx_garment_colours_garment_id on public.garment_colours(garment_id);
 create index if not exists idx_garment_colours_colour_id on public.garment_colours(colour_id);

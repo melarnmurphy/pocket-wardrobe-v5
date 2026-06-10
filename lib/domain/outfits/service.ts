@@ -80,6 +80,7 @@ export async function saveOutfit(input: SaveOutfitInput): Promise<string> {
     title: input.title ?? null,
     occasion: input.occasion ?? null,
     dress_code: input.dress_code ?? null,
+    planned_for: input.planned_for ?? null,
     weather_context_json: input.weather_context_json as unknown as OutfitInsert["weather_context_json"],
     explanation: input.explanation ?? null,
     explanation_json: input.explanation_json as unknown as OutfitInsert["explanation_json"],

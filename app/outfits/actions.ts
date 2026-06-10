@@ -56,6 +56,7 @@ export async function saveOutfitAction(
   try {
     const id = await saveOutfit(parsed.data);
     revalidatePath("/outfits");
+    revalidatePath("/calendar");
     return { id };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Save failed" };
