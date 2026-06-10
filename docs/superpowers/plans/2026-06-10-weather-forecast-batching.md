@@ -206,7 +206,8 @@ describe("getLocalWeather single-date (characterization)", () => {
     expect(context.temp_min_c).toBe(12);
     expect(context.precipitation_chance).toBe(5);
     expect(context.current_temperature_c).toBe(14);
-    expect(context.profile).toBe("mild_clear");
+    // apparent_temperature 13 (<=16) → cool_breeze per normalizeWeatherProfile
+    expect(context.profile).toBe("cool_breeze");
     expect(context.provider).toBe("open-meteo");
   });
 });
