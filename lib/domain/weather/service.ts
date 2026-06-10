@@ -108,6 +108,66 @@ type ResolvedLocation = {
   timezone: string;
 };
 
+type DailyForecast = {
+  weatherDate: string;
+  tempMinC: number | null;
+  tempMaxC: number | null;
+  precipitationChance: number | null;
+  weatherCode: number | null;
+  conditionSummary: string | null;
+};
+
+type ProviderForecast = {
+  location: ResolvedLocation;
+  currentTemperatureC: number | null;
+  apparentTemperatureC: number | null;
+  windSpeedKph: number | null;
+  daysByDate: Map<string, DailyForecast>;
+};
+
+function buildLiveWeatherContext(args: {
+  location: ResolvedLocation;
+  weatherDate: string;
+  currentTemperatureC: number | null;
+  apparentTemperatureC: number | null;
+  windSpeedKph: number | null;
+  day: DailyForecast;
+  provider: WeatherProvider;
+  profileOverride?: WeatherProfile;
+}): LocalWeatherContext {
+  const liveProfile = normalizeWeatherProfile({
+    currentTemperatureC: args.currentTemperatureC,
+    apparentTemperatureC: args.apparentTemperatureC,
+    tempMinC: args.day.tempMinC,
+    tempMaxC: args.day.tempMaxC,
+    precipitationChance: args.day.precipitationChance,
+    windSpeedKph: args.windSpeedKph,
+    weatherCode: args.day.weatherCode
+  });
+  const profile = args.profileOverride ?? liveProfile;
+
+  return localWeatherContextSchema.parse({
+    profile,
+    profile_label: weatherProfileLabel(profile),
+    profile_source: args.profileOverride ? "manual_override" : "live",
+    location_label: args.location.locationLabel,
+    location_key: args.location.locationKey,
+    latitude: args.location.latitude,
+    longitude: args.location.longitude,
+    timezone: args.location.timezone,
+    weather_date: args.weatherDate,
+    current_temperature_c: args.currentTemperatureC,
+    apparent_temperature_c: args.apparentTemperatureC,
+    temp_min_c: args.day.tempMinC,
+    temp_max_c: args.day.tempMaxC,
+    precipitation_chance: args.day.precipitationChance,
+    wind_speed_kph: args.windSpeedKph,
+    weather_code: args.day.weatherCode,
+    condition_summary: args.day.conditionSummary,
+    provider: args.provider
+  });
+}
+
 export async function getLocalWeather(
   input: LocalWeatherLookupInput,
   options?: {
@@ -149,36 +209,22 @@ export async function getLocalWeather(
   }
 
   const resolved = await fetchWeatherFromProvider(provider, values, fetchImpl);
-  const liveProfile = normalizeWeatherProfile({
+  const context = buildLiveWeatherContext({
+    location: resolved.location,
+    weatherDate: resolved.weatherDate,
     currentTemperatureC: resolved.currentTemperatureC,
     apparentTemperatureC: resolved.apparentTemperatureC,
-    tempMinC: resolved.tempMinC,
-    tempMaxC: resolved.tempMaxC,
-    precipitationChance: resolved.precipitationChance,
     windSpeedKph: resolved.windSpeedKph,
-    weatherCode: resolved.weatherCode
-  });
-  const profile = values.profileOverride ?? liveProfile;
-
-  const context = localWeatherContextSchema.parse({
-    profile,
-    profile_label: weatherProfileLabel(profile),
-    profile_source: values.profileOverride ? "manual_override" : "live",
-    location_label: resolved.location.locationLabel,
-    location_key: resolved.location.locationKey,
-    latitude: resolved.location.latitude,
-    longitude: resolved.location.longitude,
-    timezone: resolved.location.timezone,
-    weather_date: resolved.weatherDate,
-    current_temperature_c: resolved.currentTemperatureC,
-    apparent_temperature_c: resolved.apparentTemperatureC,
-    temp_min_c: resolved.tempMinC,
-    temp_max_c: resolved.tempMaxC,
-    precipitation_chance: resolved.precipitationChance,
-    wind_speed_kph: resolved.windSpeedKph,
-    weather_code: resolved.weatherCode,
-    condition_summary: resolved.conditionSummary,
-    provider
+    day: {
+      weatherDate: resolved.weatherDate,
+      tempMinC: resolved.tempMinC,
+      tempMaxC: resolved.tempMaxC,
+      precipitationChance: resolved.precipitationChance,
+      weatherCode: resolved.weatherCode,
+      conditionSummary: resolved.conditionSummary
+    },
+    provider,
+    profileOverride: values.profileOverride
   });
 
   if (options?.supabase && options.userId) {
@@ -356,19 +402,102 @@ async function fetchWeatherFromProvider(
   input: LocalWeatherLookupInput,
   fetchImpl: FetchLike
 ) {
+  const forecast = await fetchAllForecast(provider, input, fetchImpl);
+  const targetDate = selectForecastDate(forecast, input.weatherDate);
+  const day =
+    (targetDate ? forecast.daysByDate.get(targetDate) : undefined) ?? {
+      weatherDate: input.weatherDate ?? new Date().toISOString().slice(0, 10),
+      tempMinC: null,
+      tempMaxC: null,
+      precipitationChance: null,
+      weatherCode: null,
+      conditionSummary: null
+    };
+
+  return {
+    location: forecast.location,
+    weatherDate: day.weatherDate,
+    currentTemperatureC: forecast.currentTemperatureC,
+    apparentTemperatureC: forecast.apparentTemperatureC,
+    tempMinC: day.tempMinC,
+    tempMaxC: day.tempMaxC,
+    precipitationChance: day.precipitationChance,
+    windSpeedKph: forecast.windSpeedKph,
+    weatherCode: day.weatherCode,
+    conditionSummary: day.conditionSummary
+  };
+}
+
+async function fetchAllForecast(
+  provider: WeatherProvider,
+  input: LocalWeatherLookupInput,
+  fetchImpl: FetchLike
+): Promise<ProviderForecast> {
   if (provider === "weatherapi") {
-    return fetchWeatherApiWeather(input, fetchImpl);
+    return fetchWeatherApiForecastAll(input, fetchImpl);
   }
 
   const location = await resolveLocation(input, fetchImpl);
-  const forecast = await fetchForecast(location, input, fetchImpl);
-  return { ...forecast, location };
+  return fetchOpenMeteoForecastAll(location, input, fetchImpl);
 }
 
-async function fetchWeatherApiWeather(
+async function fetchOpenMeteoForecastAll(
+  location: ResolvedLocation,
   input: LocalWeatherLookupInput,
   fetchImpl: FetchLike
-) {
+): Promise<ProviderForecast> {
+  const url = new URL(FORECAST_API_URL);
+  url.searchParams.set("latitude", String(location.latitude));
+  url.searchParams.set("longitude", String(location.longitude));
+  url.searchParams.set("timezone", location.timezone);
+  url.searchParams.set("current", "temperature_2m,apparent_temperature,weather_code,wind_speed_10m");
+  url.searchParams.set(
+    "daily",
+    "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max"
+  );
+  url.searchParams.set("forecast_days", String(resolveForecastDays(input.weatherDate)));
+
+  const response = await fetchImpl(url, {
+    next: { revalidate: WEATHER_FORECAST_REVALIDATE_SECONDS }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Weather forecast failed: ${response.status} ${response.statusText}`);
+  }
+
+  const payload = openMeteoForecastSchema.parse(await response.json());
+  const currentCode = firstInteger(payload.current.weather_code);
+  const times = Array.isArray(payload.daily.time) ? payload.daily.time : [];
+  const daysByDate = new Map<string, DailyForecast>();
+
+  times.forEach((date, index) => {
+    if (typeof date !== "string") {
+      return;
+    }
+    const weatherCode = selectIntegerAtIndex(payload.daily.weather_code, index) ?? currentCode;
+    daysByDate.set(date, {
+      weatherDate: date,
+      tempMinC: selectNumberAtIndex(payload.daily.temperature_2m_min, index),
+      tempMaxC: selectNumberAtIndex(payload.daily.temperature_2m_max, index),
+      precipitationChance: selectNumberAtIndex(payload.daily.precipitation_probability_max, index),
+      weatherCode,
+      conditionSummary: describeWeatherCode(weatherCode)
+    });
+  });
+
+  return {
+    location,
+    currentTemperatureC: coerceNumber(payload.current.temperature_2m),
+    apparentTemperatureC: coerceNumber(payload.current.apparent_temperature),
+    windSpeedKph: coerceNumber(payload.current.wind_speed_10m),
+    daysByDate
+  };
+}
+
+async function fetchWeatherApiForecastAll(
+  input: LocalWeatherLookupInput,
+  fetchImpl: FetchLike
+): Promise<ProviderForecast> {
   const env = getServerEnv();
 
   if (!env.WEATHERAPI_KEY) {
@@ -407,7 +536,6 @@ async function fetchWeatherApiWeather(
       lat?: number;
       lon?: number;
       tz_id?: string;
-      localtime?: string;
     };
     current?: {
       temp_c?: number;
@@ -428,101 +556,80 @@ async function fetchWeatherApiWeather(
     };
   };
 
-  const location = payload.location;
-  const forecastDays = Array.isArray(payload.forecast?.forecastday) ? payload.forecast.forecastday : [];
-  const forecastDay = selectWeatherApiForecastDay(forecastDays, input.weatherDate);
+  const apiLocation = payload.location;
+  const forecastDays = Array.isArray(payload.forecast?.forecastday)
+    ? payload.forecast.forecastday
+    : [];
 
-  if (!location || !forecastDay) {
+  if (!apiLocation || !forecastDays.length) {
     throw new Error("WeatherAPI returned an incomplete forecast payload.");
   }
 
-  const latitude = coerceNumber(location.lat);
-  const longitude = coerceNumber(location.lon);
+  const latitude = coerceNumber(apiLocation.lat);
+  const longitude = coerceNumber(apiLocation.lon);
 
   if (latitude === null || longitude === null) {
     throw new Error("WeatherAPI returned invalid coordinates.");
   }
 
-  const locationLabel = [location.name, location.region, location.country]
+  const locationLabel = [apiLocation.name, apiLocation.region, apiLocation.country]
     .filter((part): part is string => typeof part === "string" && part.trim().length > 0)
     .join(", ");
 
-  const mappedWeatherCode = mapWeatherApiConditionToWmo(
-    coerceNumber(payload.current?.condition?.code) ?? coerceNumber(forecastDay.day?.condition?.code)
-  );
+  const location: ResolvedLocation = {
+    locationLabel,
+    locationKey: buildLocationKey(latitude, longitude),
+    latitude,
+    longitude,
+    timezone:
+      typeof apiLocation.tz_id === "string" && apiLocation.tz_id.trim().length > 0
+        ? apiLocation.tz_id
+        : "auto"
+  };
+
+  const currentConditionCode = coerceNumber(payload.current?.condition?.code);
+  const currentConditionText =
+    typeof payload.current?.condition?.text === "string"
+      ? payload.current.condition.text
+      : null;
+
+  const daysByDate = new Map<string, DailyForecast>();
+  for (const forecastDay of forecastDays) {
+    if (typeof forecastDay.date !== "string") {
+      continue;
+    }
+    const weatherCode = mapWeatherApiConditionToWmo(
+      currentConditionCode ?? coerceNumber(forecastDay.day?.condition?.code)
+    );
+    const dayConditionText =
+      typeof forecastDay.day?.condition?.text === "string"
+        ? forecastDay.day.condition.text
+        : null;
+    daysByDate.set(forecastDay.date, {
+      weatherDate: forecastDay.date,
+      tempMinC: coerceNumber(forecastDay.day?.mintemp_c),
+      tempMaxC: coerceNumber(forecastDay.day?.maxtemp_c),
+      precipitationChance: coerceNumber(forecastDay.day?.daily_chance_of_rain),
+      weatherCode,
+      conditionSummary: currentConditionText ?? dayConditionText ?? describeWeatherCode(weatherCode)
+    });
+  }
 
   return {
-    location: {
-      locationLabel,
-      locationKey: buildLocationKey(latitude, longitude),
-      latitude,
-      longitude,
-      timezone:
-        typeof location.tz_id === "string" && location.tz_id.trim().length > 0
-          ? location.tz_id
-          : "auto"
-    },
-    weatherDate:
-      typeof forecastDay.date === "string" ? forecastDay.date : new Date().toISOString().slice(0, 10),
+    location,
     currentTemperatureC: coerceNumber(payload.current?.temp_c),
     apparentTemperatureC: coerceNumber(payload.current?.feelslike_c),
-    tempMinC: coerceNumber(forecastDay.day?.mintemp_c),
-    tempMaxC: coerceNumber(forecastDay.day?.maxtemp_c),
-    precipitationChance: coerceNumber(forecastDay.day?.daily_chance_of_rain),
     windSpeedKph: coerceNumber(payload.current?.wind_kph),
-    weatherCode: mappedWeatherCode,
-    conditionSummary:
-      typeof payload.current?.condition?.text === "string"
-        ? payload.current.condition.text
-        : typeof forecastDay.day?.condition?.text === "string"
-          ? forecastDay.day.condition.text
-          : describeWeatherCode(mappedWeatherCode)
+    daysByDate
   };
 }
 
-async function fetchForecast(location: ResolvedLocation, input: LocalWeatherLookupInput, fetchImpl: FetchLike) {
-  const url = new URL(FORECAST_API_URL);
-  url.searchParams.set("latitude", String(location.latitude));
-  url.searchParams.set("longitude", String(location.longitude));
-  url.searchParams.set("timezone", location.timezone);
-  url.searchParams.set(
-    "current",
-    "temperature_2m,apparent_temperature,weather_code,wind_speed_10m"
-  );
-  url.searchParams.set(
-    "daily",
-    "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max"
-  );
-  url.searchParams.set("forecast_days", String(resolveForecastDays(input.weatherDate)));
-
-  const response = await fetchImpl(url, {
-    next: { revalidate: WEATHER_FORECAST_REVALIDATE_SECONDS }
-  });
-
-  if (!response.ok) {
-    throw new Error(`Weather forecast failed: ${response.status} ${response.statusText}`);
+function selectForecastDate(forecast: ProviderForecast, requestedDate?: string): string | null {
+  if (requestedDate && forecast.daysByDate.has(requestedDate)) {
+    return requestedDate;
   }
-
-  const payload = openMeteoForecastSchema.parse(await response.json());
-  const forecastIndex = selectForecastIndex(payload.daily.time, input.weatherDate);
-
-  return {
-    weatherDate: selectStringAtIndex(payload.daily.time, forecastIndex) ?? new Date().toISOString().slice(0, 10),
-    currentTemperatureC: coerceNumber(payload.current.temperature_2m),
-    apparentTemperatureC: coerceNumber(payload.current.apparent_temperature),
-    tempMinC: selectNumberAtIndex(payload.daily.temperature_2m_min, forecastIndex),
-    tempMaxC: selectNumberAtIndex(payload.daily.temperature_2m_max, forecastIndex),
-    precipitationChance: selectNumberAtIndex(payload.daily.precipitation_probability_max, forecastIndex),
-    windSpeedKph: coerceNumber(payload.current.wind_speed_10m),
-    weatherCode:
-      selectIntegerAtIndex(payload.daily.weather_code, forecastIndex) ??
-      firstInteger(payload.current.weather_code),
-    conditionSummary:
-      describeWeatherCode(
-        selectIntegerAtIndex(payload.daily.weather_code, forecastIndex) ??
-          firstInteger(payload.current.weather_code)
-      )
-  };
+  const first = forecast.daysByDate.keys().next();
+  return first.done ? null : first.value;
 }
 
 async function upsertWeatherSnapshot(
@@ -732,51 +839,6 @@ function resolveForecastDays(requestedDate?: string) {
   return Math.max(1, diffDays + 1);
 }
 
-function selectForecastIndex(dates: unknown, requestedDate?: string) {
-  if (!Array.isArray(dates) || dates.length === 0) {
-    return 0;
-  }
-
-  if (!requestedDate) {
-    return 0;
-  }
-
-  const matchedIndex = dates.findIndex((value) => value === requestedDate);
-  return matchedIndex >= 0 ? matchedIndex : 0;
-}
-
-function selectWeatherApiForecastDay(
-  forecastDays: Array<{
-    date?: string;
-    day?: {
-      maxtemp_c?: number;
-      mintemp_c?: number;
-      daily_chance_of_rain?: number;
-      condition?: { text?: string; code?: number };
-    };
-  }>,
-  requestedDate?: string
-) {
-  if (!forecastDays.length) {
-    return null;
-  }
-
-  if (!requestedDate) {
-    return forecastDays[0];
-  }
-
-  return forecastDays.find((day) => day.date === requestedDate) ?? forecastDays[0];
-}
-
-function selectStringAtIndex(values: unknown, index: number) {
-  if (!Array.isArray(values) || values.length === 0) {
-    return null;
-  }
-
-  const value = values[index];
-  return typeof value === "string" ? value : null;
-}
-
 function selectNumberAtIndex(values: unknown, index: number) {
   if (!Array.isArray(values) || values.length === 0) {
     return null;
@@ -792,14 +854,6 @@ function selectIntegerAtIndex(values: unknown, index: number) {
 
   const value = values[index];
   return typeof value === "number" && Number.isInteger(value) ? value : null;
-}
-
-function firstNumber(values: unknown) {
-  if (!Array.isArray(values) || values.length === 0) {
-    return null;
-  }
-
-  return coerceNumber(values[0]);
 }
 
 function firstInteger(values: unknown) {
