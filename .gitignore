@@ -8,6 +8,7 @@ node_modules
 coverage
 .vercel
 *.jpg
+!public/bb-yellow-dress.jpg
 .superpowers/
 .claude/
 .venv/

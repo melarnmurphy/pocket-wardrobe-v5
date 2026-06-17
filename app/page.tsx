@@ -12,7 +12,6 @@ import {
   Sparkles,
   TrendingUp
 } from "lucide-react";
-import dressShot from "../bb-yellow-dress.jpg";
 
 export const metadata: Metadata = {
   title: "Pocket Wardrobe",
@@ -109,7 +108,7 @@ export default function HomePage() {
           <div className="grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
             <div className="pw-editorial-cover min-h-[28rem] bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,244,236,0.72))]">
               <Image
-                src={dressShot}
+                src="/bb-yellow-dress.jpg"
                 alt="Model wearing a pale yellow dress"
                 className="h-full w-full object-cover object-[center_18%]"
                 priority
