@@ -42,9 +42,10 @@ const serverEnvSchema = publicEnvSchema.extend({
   WEATHER_PROVIDER_DEFAULT: z.enum(["weatherapi", "open-meteo"]).optional(),
   BILLING_PROVIDER: z.enum(["stripe"]).optional(),
   BILLING_SYNC_SECRET: optionalString,
-  // Tavily web-search adapter (lib/domain/trends/adapters/tavily-search.ts).
-  // Optional so local dev without search still boots; the adapter throws
-  // at call time if unset.
+  // Open-source trend discovery adapter. Point this at a private SearXNG
+  // instance, for example http://localhost:8080 in local development.
+  SEARXNG_BASE_URL: optionalUrl,
+  // Legacy Tavily web-search adapter. Kept optional for older/manual callers.
   TAVILY_API_KEY: optionalString,
   // Shared secret for cron routes (Vercel passes as Authorization: Bearer <value>).
   CRON_SECRET: optionalString
@@ -81,6 +82,7 @@ export function getServerEnv(): ServerEnv {
     NEXT_PUBLIC_PREMIUM_UPGRADE_URL: process.env.NEXT_PUBLIC_PREMIUM_UPGRADE_URL,
     BILLING_PROVIDER: process.env.BILLING_PROVIDER,
     BILLING_SYNC_SECRET: process.env.BILLING_SYNC_SECRET,
+    SEARXNG_BASE_URL: process.env.SEARXNG_BASE_URL,
     TAVILY_API_KEY: process.env.TAVILY_API_KEY,
     CRON_SECRET: process.env.CRON_SECRET
   });

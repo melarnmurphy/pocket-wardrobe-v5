@@ -367,7 +367,14 @@ create table if not exists public.trend_sources (
       'trend_report',
       'runway_coverage',
       'fashion_publication',
-      'gemini_grounded'
+      'gemini_grounded',
+      'tavily_search',
+      'searxng_search',
+      'firecrawl_search',
+      'firecrawl_scrape',
+      'crawl4ai',
+      'trafilatura',
+      'browser_use'
     )
   ),
   source_url text not null,
