@@ -1,29 +1,18 @@
-// lib/domain/trends/content.ts
-import { Readability } from "@mozilla/readability";
-import { parseHTML } from "linkedom";
 import type { WardrobeColourFamily } from "@/lib/domain/wardrobe/colours";
+import {
+  extractArticleContent,
+  MAX_EXTRACTED_ARTICLE_CHARS,
+  TREND_USER_AGENT
+} from "./extractors/article-content";
 
-export const USER_AGENT = "PocketWardrobe/1.0 (+https://pocketwardrobe.app)";
-export const MAX_ARTICLE_CHARS = 5000;
+export const USER_AGENT = TREND_USER_AGENT;
+export const MAX_ARTICLE_CHARS = MAX_EXTRACTED_ARTICLE_CHARS;
 
 // ─── Article fetching ────────────────────────────────────────────────────────
 
 export async function fetchArticleContent(url: string): Promise<string> {
-  try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": USER_AGENT },
-      signal: AbortSignal.timeout(10_000)
-    });
-    if (!res.ok) return "";
-    const html = await res.text();
-    const { document } = parseHTML(html);
-    const reader = new Readability(document as unknown as Document);
-    const article = reader.parse();
-    const text = article?.textContent ?? "";
-    return text.replace(/\s+/g, " ").trim().slice(0, MAX_ARTICLE_CHARS);
-  } catch {
-    return "";
-  }
+  const result = await extractArticleContent(url);
+  return result?.text ?? "";
 }
 
 // ─── Category filter ─────────────────────────────────────────────────────────

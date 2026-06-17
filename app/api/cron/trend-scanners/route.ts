@@ -1,10 +1,9 @@
 /**
- * Cron entry point for the Gemini-grounded trend scanners.
+ * Cron entry point for open-source trend discovery scanners.
  *
- * Mirrors maci's /api/cron/watch-signals route (`app/api/cron/watch-signals/
- * route.ts:7-49` in the maci repo). A single endpoint, invoked on multiple
- * Vercel-cron schedules from `vercel.json`, each passing `?archetype=<name>`
- * to target one scanner at the right cadence.
+ * A single endpoint, invoked on multiple Vercel-cron schedules from
+ * `vercel.json`, each passing `?archetype=<name>` to target one scanner at
+ * the right cadence.
  *
  * Auth: Vercel cron sends `Authorization: Bearer <CRON_SECRET>`. Manual
  * curls may use the same header or `x-cron-secret`.
@@ -27,10 +26,11 @@ import {
   type ScannerArchetype,
   type ScannerRunInput
 } from "@/lib/domain/trends/prompts/grounding-prompts";
-import { runGroundingScan } from "@/lib/domain/trends/adapters/tavily-search";
+import { createSearXNGSearchAdapter } from "@/lib/domain/trends/adapters/searxng-search";
+import { runTrendDiscoveryScan } from "@/lib/domain/trends/discovery";
 
 export const dynamic = "force-dynamic";
-// Grounding calls + extraction queue writes can exceed the default 10s.
+// Search calls + extraction queue writes can exceed the default 10s.
 export const maxDuration = 60;
 
 function isAuthorized(request: NextRequest, cronSecret: string | undefined): boolean {
@@ -65,7 +65,7 @@ async function lastSuccessfulRun(
 
   for (const row of rows) {
     if (
-      row.metadata_json?.adapter === "tavily_search" &&
+      row.metadata_json?.adapter === "searxng_search" &&
       row.metadata_json.scanner_archetype === archetype
     ) {
       return row.completed_at;
@@ -88,7 +88,7 @@ function cadenceElapsed(
 /**
  * Load recent trend_signals labels scoped to the scanner's target trend
  * types, for the last N days. Passed into the scanner as `previousLabels`
- * so the grounding prompt can flag new-vs-intensifying-vs-fading.
+ * so discovery/extraction can flag new-vs-intensifying-vs-fading.
  */
 async function loadPreviousLabels(
   supabase: ReturnType<typeof createClient>,
@@ -147,7 +147,17 @@ async function runOneScanner(
   };
 
   try {
-    const result = await runGroundingScan(scanner, input);
+    const env = getServerEnv();
+    if (!env.SEARXNG_BASE_URL) {
+      throw new Error("SEARXNG_BASE_URL is not set — trend discovery disabled");
+    }
+
+    const result = await runTrendDiscoveryScan(scanner, input, {
+      adapter: createSearXNGSearchAdapter({
+        baseUrl: env.SEARXNG_BASE_URL,
+        maxResults: 10
+      })
+    });
     return {
       archetype: scanner.archetype,
       skipped: false,
