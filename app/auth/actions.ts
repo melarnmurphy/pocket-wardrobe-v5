@@ -161,7 +161,9 @@ export async function signUpWithPasswordAction(formData: FormData) {
   const next = sanitizeNextPath(values.next);
 
   try {
-    await checkRateLimit("sign-up", 3, 3600);
+    // Sign-up is a low-frequency path. Keep the guard, but allow normal retry behavior
+    // so a tester does not get blocked by a couple of failed attempts.
+    await checkRateLimit("sign-up", 10, 3600);
   } catch (error) {
     if (error instanceof RateLimitError) {
       redirect(buildAuthPageRedirect({ mode: "signup", next, email: values.email, error: error.message }) as never);
