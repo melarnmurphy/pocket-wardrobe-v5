@@ -27,10 +27,8 @@ import {
   createProductUrlSource,
   createReceiptSource
 } from "@/lib/domain/ingestion/service";
-import {
-  callPipelineService,
-  callReceiptOcrService
-} from "@/lib/domain/ingestion/client";
+import { callPipelineService } from "@/lib/domain/ingestion/client";
+import { extractReceiptTextWithVision } from "@/lib/domain/ingestion/receipt-vision";
 import { canUseFeatureLabels } from "@/lib/domain/entitlements/service";
 import {
   extractProductMetadataFromUrl,
@@ -459,10 +457,7 @@ export async function createReceiptDraftAction(
     const ocrText =
       fileText || !shouldAttemptReceiptOcr(file)
         ? null
-        : await callReceiptOcrService({
-            serviceUrl: getServerEnv().PIPELINE_SERVICE_URL,
-            file
-          }).catch(() => null);
+        : await extractReceiptTextWithVision(file).catch(() => null);
     const receiptText = [values.receipt_text, fileText, ocrText].filter(Boolean).join("\n");
     const hasStrongReceiptText = receiptText.trim().length > 0;
     const extractionSource = values.receipt_text

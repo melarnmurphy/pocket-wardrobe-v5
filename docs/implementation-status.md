@@ -1,6 +1,6 @@
 # Pocket Wardrobe Implementation Status
 
-Last reconciled: 2026-05-07
+Last reconciled: 2026-06-09
 
 This document reconciles the historical implementation plans in `docs/superpowers/plans/` with the current repository. Those plan files are useful design and implementation references, but most still contain unchecked checklist syntax and should not be treated as live task state without checking this file and the code.
 
@@ -21,10 +21,10 @@ This document reconciles the historical implementation plans in `docs/superpower
 | Wear events | Implemented | Domain service and tests exist, including list/log/update/delete behavior. |
 | Style rules | Implemented | Rule CRUD, seed knowledge modules, template UI, semantic normalization, and tests exist. |
 | Outfit generator | Partially implemented | Rule-based generation, gallery, planner UI, saved outfits, weather context, and tests exist. Pro/LLM prose enhancement is explicitly not wired yet. |
-| Trend signals | Implemented | RSS/Gemini grounding adapters, extraction, taxonomy, matching, stories, cron routes, and tests exist. |
+| Trend signals | Implemented | RSS/Tavily web-search adapters, extraction, taxonomy, matching, stories, cron routes, and tests exist. Gemini grounding adapter replaced by Tavily (2026-05-07). |
 | Draft review | Implemented | `/wardrobe/review` supports pending draft review and acceptance into garments. |
 | Product URL ingestion | Partially implemented | URL metadata extraction and draft/garment wiring exist, but retailer coverage and extraction quality remain MVP-level. |
-| Receipt ingestion | Partially implemented | Receipt upload/text paths exist, but OCR is dependent on a service endpoint and remains a production-hardening item. |
+| Receipt ingestion | Implemented (MVP) | Receipt upload/text paths exist. Image OCR is now backed by a vision LLM (`lib/domain/ingestion/receipt-vision.ts`, gpt-4o-mini) in the Next.js layer — no pipeline service needed. The receipt parser handles multi-line item/price wrapping, address-line filtering, and known-brand prefixes (2026-06-09). PDF OCR still falls back to pasted text. |
 | iOS prototype | In progress | Files now live under `ios/PocketWardrobev5/PocketWardrobev5/`; old duplicate paths are deleted. Simulator build and unit smoke test pass. Live Supabase wiring remains open. |
 
 ## Open Product/Engineering Gaps

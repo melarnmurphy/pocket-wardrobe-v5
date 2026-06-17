@@ -130,6 +130,45 @@ describe("parseReceiptDraftCandidates", () => {
     expect(result.length).toBeGreaterThanOrEqual(3);
   });
 
+  it("parses a realistic multi-line receipt: skips address lines and merges wrapped item/price rows", () => {
+    const result = parseReceiptDraftCandidates({
+      receiptText: `
+        MYER
+        Bourke Street Mall
+        Melbourne VIC 3000
+        Country Road Wool Coat
+        Navy  Size M              AUD 299.95
+        Levi's 501 Slim Jeans
+        Indigo Size 32           AUD 139.95
+        Bonds Cotton Tee x2
+        White                    AUD 39.90
+        SUBTOTAL                 AUD 479.80
+        TOTAL                    AUD 479.80
+      `
+    });
+
+    // Exactly the three purchased items — no header, address, subtotal, or total lines
+    expect(result).toHaveLength(3);
+
+    const titles = result.map((r) => r.title.toLowerCase());
+    expect(titles.some((t) => t.includes("street mall"))).toBe(false);
+    expect(titles.some((t) => t.includes("vic 3000"))).toBe(false);
+    expect(titles.some((t) => t.includes("melbourne"))).toBe(false);
+
+    expect(result[0]?.title.toLowerCase()).toContain("wool coat");
+    expect(result[0]?.brand).toBe("Country Road");
+    expect(result[0]?.price).toBe(299.95);
+    expect(result[0]?.retailer).toBe("Myer");
+
+    expect(result[1]?.title.toLowerCase()).toContain("slim jeans");
+    expect(result[1]?.brand?.toLowerCase()).toContain("levi");
+    expect(result[1]?.price).toBe(139.95);
+
+    expect(result[2]?.title.toLowerCase()).toContain("cotton tee");
+    expect(result[2]?.brand).toBe("Bonds");
+    expect(result[2]?.price).toBe(39.9);
+  });
+
   it("does not include the retailer header line as an item", () => {
     const result = parseReceiptDraftCandidates({
       receiptText: `
