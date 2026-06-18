@@ -1,0 +1,12 @@
+image      #det  categories
+IMG_3700      3  ['shoe', 'shoe', 'shoe']
+IMG_4005     10  ['collar', 'buckle', 'neckline', 'buckle', 'shoe', 'dress', 'collar', 'sleeve', 'belt', 'sleeve']
+IMG_4364      1  ['shoe']
+IMG_4541      7  ['shoe', 'shoe', 'shoe', 'shoe', 'shoe', 'shoe', 'shoe']
+IMG_4551      3  ['pants', 'pants', 'pants']
+IMG_4618      1  ['shoe']
+IMG_4790      0  []
+IMG_4881      4  ['shoe', 'shoe', 'shoe', 'shoe']
+IMG_4885      2  ['shoe', 'shorts']
+
+empty results: 1/9   duplicate detections: 16
