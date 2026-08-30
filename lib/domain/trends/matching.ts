@@ -278,6 +278,12 @@ function buildMatch(
   };
 }
 
+export function trendSectionOrder(): Array<
+  "exact_match" | "adjacent_match" | "styling_match" | "missing_piece"
+> {
+  return ["exact_match", "adjacent_match", "styling_match", "missing_piece"];
+}
+
 export function computeUserTrendMatches(input: MatchInput): UserTrendMatch[] {
   const { signals, garments, compatibleColourFamilies } = input;
   const activeGarments = garments.filter((g) => g.wardrobe_status === "active");

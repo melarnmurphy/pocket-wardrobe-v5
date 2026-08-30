@@ -1,6 +1,13 @@
 "use server";
 
 import { getRequiredUser } from "@/lib/auth";
+import { listLookbookEntries } from "@/lib/domain/lookbook/service";
+import {
+  lookbookUnlockCandidates,
+  trendUnlockCandidates
+} from "@/lib/domain/outfits/appeal";
+import { scoreUnlockCandidates, type UnlockScore } from "@/lib/domain/outfits/unlock";
+import { listStyleRules } from "@/lib/domain/style-rules/service";
 import {
   getUserTrendMatches,
   getTrendSignals,
@@ -8,7 +15,8 @@ import {
   assembleStoryMatches,
   type TrendStoryWithMatches
 } from "@/lib/domain/trends/service";
-import type { UserTrendMatch, TrendSignalWithColour } from "@/lib/domain/trends/index";
+import type { UserTrendMatch, UserTrendMatchWithSignal, TrendSignalWithColour } from "@/lib/domain/trends/index";
+import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import { createClient } from "@/lib/supabase/server";
 
 export interface TrendMatchWithSignal {
@@ -26,15 +34,19 @@ export interface TrendsPageData {
   trendMatches: TrendMatchWithSignal[];
   storyMatches: TrendStoryWithMatches[];
   garmentPreviews: Record<string, GarmentPreview>;
+  unlockScores: UnlockScore[];
 }
 
 export async function loadTrendsPageData(): Promise<TrendsPageData> {
   const user = await getRequiredUser();
 
-  const [matches, signals, stories] = await Promise.all([
+  const [matches, signals, stories, garments, styleRules, lookbookEntries] = await Promise.all([
     getUserTrendMatches(user.id),
     getTrendSignals(),
-    getTrendStories()
+    getTrendStories(),
+    listWardrobeGarments(),
+    listStyleRules(),
+    listLookbookEntries()
   ]);
 
   // Per-signal view
@@ -93,5 +105,16 @@ export async function loadTrendsPageData(): Promise<TrendsPageData> {
     }
   }
 
-  return { trendMatches, storyMatches, garmentPreviews };
+  const matchesWithSignals: UserTrendMatchWithSignal[] = trendMatches.map(
+    ({ match, signal }) => ({
+      ...match,
+      trend_signal: signal
+    })
+  );
+  const unlockScores = scoreUnlockCandidates(garments, styleRules, [
+    ...trendUnlockCandidates(matchesWithSignals),
+    ...lookbookUnlockCandidates(lookbookEntries)
+  ]);
+
+  return { trendMatches, storyMatches, garmentPreviews, unlockScores };
 }

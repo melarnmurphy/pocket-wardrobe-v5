@@ -1,9 +1,12 @@
 import { loadTrendsPageData } from "./actions";
 import { TrendSparkline } from "@/components/trend-sparkline";
+import { AuthenticationError } from "@/lib/auth";
+import { AuthRequiredCard } from "@/components/auth-required-card";
+import { trendSectionOrder } from "@/lib/domain/trends/matching";
 
 const MATCH_LABELS: Record<string, string> = {
-  exact_match: "On trend",
-  adjacent_match: "Close match",
+  exact_match: "On you",
+  adjacent_match: "Close to you",
   styling_match: "Can style it",
   missing_piece: "Missing piece"
 };
@@ -16,7 +19,9 @@ const MATCH_DOT: Record<string, string> = {
 };
 
 export default async function TrendsPage() {
-  const { trendMatches, storyMatches, garmentPreviews } = await loadTrendsPageData();
+  try {
+    const { trendMatches, storyMatches, garmentPreviews, unlockScores } =
+      await loadTrendsPageData();
 
   const hasStories = storyMatches.length > 0;
 
@@ -62,6 +67,7 @@ export default async function TrendsPage() {
     styling_match: trendMatches.filter((t) => t.match.match_type === "styling_match"),
     missing_piece: trendMatches.filter((t) => t.match.match_type === "missing_piece")
   };
+  const unlockById = new Map(unlockScores.map((score) => [score.id, score]));
 
   return (
     <main className="pw-shell max-w-6xl">
@@ -334,8 +340,8 @@ export default async function TrendsPage() {
         )}
 
         {/* ── Per-signal groups ── */}
-        {(Object.entries(grouped) as [string, typeof trendMatches][]).map(
-          ([matchType, items]) => {
+        {trendSectionOrder().map((matchType) => {
+            const items = grouped[matchType];
             if (items.length === 0) return null;
             return (
               <section key={matchType} className="space-y-5">
@@ -380,6 +386,10 @@ export default async function TrendsPage() {
                       matched_garment_ids?: string[];
                       attributes_matched?: string[];
                     };
+                    const unlockScore =
+                      matchType === "missing_piece"
+                        ? unlockById.get(match.id ?? match.trend_signal_id)
+                        : undefined;
                     return (
                       <div
                         key={`${match.trend_signal_id}-${match.match_type}`}
@@ -444,6 +454,12 @@ export default async function TrendsPage() {
                                 </span>
                               ) : null}
                             </div>
+                            {unlockScore ? (
+                              <p className="mt-2 text-sm" style={{ color: "var(--muted)" }}>
+                                Unlocks {unlockScore.unlock_count} outfit
+                                {unlockScore.unlock_count === 1 ? "" : "s"}
+                              </p>
+                            ) : null}
                             {reasoning.match_reason ? (
                               <p
                                 className="mt-3 text-sm leading-relaxed"
@@ -624,7 +640,21 @@ export default async function TrendsPage() {
         )}
       </div>
     </main>
-  );
+    );
+  } catch (error) {
+    if (error instanceof AuthenticationError) {
+      return (
+        <main className="pw-shell">
+          <AuthRequiredCard
+            next="/trends"
+            title="Sign in with Supabase to see trend matches."
+            description="Trend matching is per-user and reads wardrobe-backed match tables protected by RLS."
+          />
+        </main>
+      );
+    }
+    throw error;
+  }
 }
 
 function sectionHeading(matchType: string) {

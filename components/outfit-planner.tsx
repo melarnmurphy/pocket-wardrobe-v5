@@ -30,6 +30,8 @@ import { categoryToRole } from "@/lib/domain/outfits/generator";
 import { generateOutfitAction, saveOutfitAction } from "@/app/outfits/actions";
 import { showAppToast } from "@/lib/ui/app-toast";
 import { bucketOutfitsByDate } from "@/lib/domain/outfits/calendar";
+import { chipsFromOutfit, ReasonStrip } from "@/components/reason-strip";
+import { TodayOutfitCard } from "@/components/today-outfit-card";
 
 const weatherProfileLabels: Record<WeatherProfile, string> = {
   warm_sun: "Warm sun",
@@ -113,7 +115,10 @@ export function OutfitPlanner({
   wardrobeItems,
   lookbookEntries,
   savedOutfits,
-  preferredLocation
+  preferredLocation,
+  focusGarmentId,
+  trendSignalId,
+  todayOutfit
 }: {
   garmentCount: number;
   planTier: PlanTier;
@@ -122,6 +127,9 @@ export function OutfitPlanner({
   lookbookEntries: LookbookListItem[];
   savedOutfits: OutfitWithItems[];
   preferredLocation: string | null;
+  focusGarmentId?: string | null;
+  trendSignalId?: string | null;
+  todayOutfit?: GeneratedOutfit | null;
 }) {
   const [days, setDays] = useState<WeeklyPlanDay[]>(() =>
     createInitialWeek(preferredLocation, wardrobeItems, savedOutfits)
@@ -135,7 +143,9 @@ export function OutfitPlanner({
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
+  const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(
+    Boolean(focusGarmentId || trendSignalId)
+  );
   const [error, setError] = useState<string | null>(null);
   const hydratedPreferredLocationsRef = useRef<Set<string>>(new Set());
 
@@ -378,15 +388,19 @@ export function OutfitPlanner({
     setIsGenerating(true);
     setError(null);
 
-    const result = await generateOutfitAction({
-      mode: "plan",
-      occasion: activeDay.occasion.trim() || null,
-      dress_code: activeDay.dressCode === "any" ? null : activeDay.dressCode,
-      weather:
-        activeDay.weatherMode === "auto" && activeDay.weatherContext
-          ? activeDay.weatherContext.profile
-          : activeDay.manualWeatherProfile
-    });
+    const result = await generateOutfitAction(
+      trendSignalId
+        ? { mode: "trend", trend_signal_id: trendSignalId }
+        : {
+            mode: "plan",
+            occasion: activeDay.occasion.trim() || null,
+            dress_code: activeDay.dressCode === "any" ? null : activeDay.dressCode,
+            weather:
+              activeDay.weatherMode === "auto" && activeDay.weatherContext
+                ? activeDay.weatherContext.profile
+                : activeDay.manualWeatherProfile
+          }
+    );
 
     if ("error" in result) {
       setError(result.error);
@@ -456,6 +470,15 @@ export function OutfitPlanner({
       : weatherProfileLabels[activeDay.manualWeatherProfile];
   const activeWeatherPresentation = getWeatherPresentation(activeDay);
   const hasGeneratedOutfit = Boolean(activeDay.generatedOutfit);
+  const todayIso = toDateIso(new Date());
+  const todayHasGeneratedOutfit = days.some(
+    (day) => day.dateIso === todayIso && Boolean(day.generatedOutfit)
+  );
+  const plannerHeadline = todayHasGeneratedOutfit
+    ? new Date().getHours() < 20
+      ? "Today is already dressed."
+      : "Tomorrow is already dressed."
+    : "Monday to Sunday, planned like an issue.";
 
   return (
     <section className="space-y-6">
@@ -473,7 +496,7 @@ export function OutfitPlanner({
                   hasGeneratedOutfit ? "text-4xl md:text-5xl" : "text-4xl md:text-6xl"
                 }`}
               >
-                Monday to Sunday, planned like an issue.
+                {plannerHeadline}
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--muted)] md:text-base">
                 Build a weekly outfit schedule with weather-aware context per day, then generate
@@ -541,6 +564,8 @@ export function OutfitPlanner({
           </div>
         </div>
       </div>
+
+      {todayOutfit ? <TodayOutfitCard outfit={todayOutfit} compact /> : null}
 
       <div className="space-y-4">
         <div className="pw-panel-soft p-4 md:p-5">
@@ -764,9 +789,10 @@ function PlannedOutfitCard({
 }
 
 function OutfitExplanationSummary({ outfit }: { outfit: GeneratedOutfit }) {
+  const chips = chipsFromOutfit(outfit);
   const primaryInsights = outfit.insights.slice(0, 2);
 
-  if (!outfit.explanation && !primaryInsights.length) {
+  if (!chips.length && !outfit.explanation && !primaryInsights.length) {
     return null;
   }
 
@@ -784,13 +810,11 @@ function OutfitExplanationSummary({ outfit }: { outfit: GeneratedOutfit }) {
         </span>
       </div>
 
-      {outfit.explanation ? (
-        <p className="mt-4 text-sm leading-7 text-[var(--foreground)]">
-          {outfit.explanation}
-        </p>
-      ) : null}
-
-      {primaryInsights.length ? (
+      {chips.length ? (
+        <div className="mt-4">
+          <ReasonStrip chips={chips} />
+        </div>
+      ) : primaryInsights.length ? (
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
           {primaryInsights.map((insight) => (
             <div
@@ -806,6 +830,17 @@ function OutfitExplanationSummary({ outfit }: { outfit: GeneratedOutfit }) {
             </div>
           ))}
         </div>
+      ) : null}
+
+      {outfit.explanation ? (
+        <details className="mt-4">
+          <summary className="cursor-pointer text-sm font-medium text-[var(--muted)]">
+            Notes
+          </summary>
+          <p className="mt-2 text-sm leading-7 text-[var(--foreground)]">
+            {outfit.explanation}
+          </p>
+        </details>
       ) : null}
     </div>
   );
