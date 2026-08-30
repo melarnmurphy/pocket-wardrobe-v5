@@ -30,6 +30,7 @@ import { categoryToRole } from "@/lib/domain/outfits/generator";
 import { generateOutfitAction, saveOutfitAction } from "@/app/outfits/actions";
 import { showAppToast } from "@/lib/ui/app-toast";
 import { bucketOutfitsByDate } from "@/lib/domain/outfits/calendar";
+import { buildPlannerGenerateInput } from "@/lib/domain/outfits/planner-generate";
 import { chipsFromOutfit, ReasonStrip } from "@/components/reason-strip";
 import { TodayOutfitCard } from "@/components/today-outfit-card";
 
@@ -146,8 +147,16 @@ export function OutfitPlanner({
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(
     Boolean(focusGarmentId || trendSignalId)
   );
+  const [pendingTrendSignalId, setPendingTrendSignalId] = useState<string | null>(
+    trendSignalId?.trim() || null
+  );
   const [error, setError] = useState<string | null>(null);
   const hydratedPreferredLocationsRef = useRef<Set<string>>(new Set());
+
+  function closeGenerateDialog() {
+    setIsGenerateDialogOpen(false);
+    setPendingTrendSignalId(null);
+  }
 
   const activeDay = useMemo(
     () => days.find((day) => day.key === activeDayKey) ?? days[0],
@@ -388,18 +397,19 @@ export function OutfitPlanner({
     setIsGenerating(true);
     setError(null);
 
+    const landingTrendId = pendingTrendSignalId;
+    setPendingTrendSignalId(null);
+
     const result = await generateOutfitAction(
-      trendSignalId
-        ? { mode: "trend", trend_signal_id: trendSignalId }
-        : {
-            mode: "plan",
-            occasion: activeDay.occasion.trim() || null,
-            dress_code: activeDay.dressCode === "any" ? null : activeDay.dressCode,
-            weather:
-              activeDay.weatherMode === "auto" && activeDay.weatherContext
-                ? activeDay.weatherContext.profile
-                : activeDay.manualWeatherProfile
-          }
+      buildPlannerGenerateInput({
+        pendingTrendSignalId: landingTrendId,
+        occasion: activeDay.occasion,
+        dressCode: activeDay.dressCode,
+        weather:
+          activeDay.weatherMode === "auto" && activeDay.weatherContext
+            ? activeDay.weatherContext.profile
+            : activeDay.manualWeatherProfile
+      })
     );
 
     if ("error" in result) {
@@ -646,7 +656,7 @@ export function OutfitPlanner({
       </div>
 
       {isGenerateDialogOpen ? (
-        <DialogShell onClose={() => setIsGenerateDialogOpen(false)} size="max-w-3xl">
+        <DialogShell onClose={closeGenerateDialog} size="max-w-3xl">
           <div className="space-y-6">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -660,7 +670,7 @@ export function OutfitPlanner({
               </div>
               <button
                 type="button"
-                onClick={() => setIsGenerateDialogOpen(false)}
+                onClick={closeGenerateDialog}
                 className="pw-button-quiet px-4 py-2 text-sm"
               >
                 Close
@@ -682,7 +692,7 @@ export function OutfitPlanner({
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                onClick={() => setIsGenerateDialogOpen(false)}
+                onClick={closeGenerateDialog}
                 className="pw-button-quiet px-4 py-3 text-sm"
               >
                 Cancel
