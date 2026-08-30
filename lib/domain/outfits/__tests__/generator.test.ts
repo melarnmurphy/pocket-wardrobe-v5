@@ -195,6 +195,79 @@ describe("generateOutfit", () => {
     const topGarment = result.garments.find(g => g.role === "top");
     expect(topGarment?.id).toBe("stale");
   });
+
+  it("prefers an expensive unworn blazer over a cheap frequently worn one in the same role", () => {
+    const garments = [
+      makeGarment({
+        id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1",
+        category: "blazer",
+        purchase_price: 20,
+        wear_count: 12,
+        last_worn_at: "2026-08-30T00:00:00Z"
+      }),
+      makeGarment({
+        id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2",
+        category: "blazer",
+        purchase_price: 400,
+        wear_count: 0
+      })
+    ];
+    const result = generateOutfit({
+      mode: "plan",
+      garments,
+      styleRules: [],
+      trendSignal: null,
+      nowMs: Date.parse("2026-08-31T00:00:00Z")
+    });
+    expect(result.garments.find((g) => g.role === "outerwear")?.id).toBe(
+      "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2"
+    );
+  });
+
+  it("keeps must-include garments that pass hard filters", () => {
+    const garments = [
+      makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1", category: "shirt", title: "White shirt" }),
+      makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2", category: "shirt", title: "Blue shirt" })
+    ];
+    const result = generateOutfit({
+      mode: "trend",
+      garments,
+      styleRules: [],
+      trendSignal: null,
+      mustIncludeGarmentIds: ["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2"]
+    });
+    expect(result.garments.map((g) => g.id)).toContain(
+      "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2"
+    );
+  });
+
+  it("adds a neglected-value insight for selected garments costing 100 or more per wear", () => {
+    const garments = [
+      makeGarment({
+        id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2",
+        category: "blazer",
+        title: "Navy blazer",
+        purchase_price: 400,
+        wear_count: 0
+      })
+    ];
+    const result = generateOutfit({
+      mode: "plan",
+      garments,
+      styleRules: [],
+      trendSignal: null
+    });
+    expect(result.insights).toEqual(
+      expect.arrayContaining([
+        {
+          key: "occasion",
+          title: "Neglected value",
+          body: "Navy blazer is costing $400 per wear.",
+          tags: ["cost-per-wear"]
+        }
+      ])
+    );
+  });
 });
 
 describe("expandRulesWithAttributeInference integration", () => {

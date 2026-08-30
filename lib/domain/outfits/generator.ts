@@ -10,6 +10,7 @@ import type {
 } from "@/lib/domain/outfits";
 import { expandRulesWithAttributeInference } from "@/lib/domain/style-rules/inference";
 import { inferColourFamilyFromText } from "@/lib/domain/style-rules/knowledge/colours";
+import { costPerWearBoost, recencyPenalty, valueNeglect } from "@/lib/domain/outfits/ranking";
 
 const ROLE_KEYWORDS: Array<[OutfitItemRole, string[]]> = [
   ["dress",     ["dress", "jumpsuit", "playsuit"]],
@@ -359,6 +360,18 @@ function buildOutfitInsights(params: {
     });
   }
 
+  for (const garment of garments) {
+    const neglect = valueNeglect(garment);
+    if (neglect == null || neglect < 100) continue;
+    const title = garment.title ?? garment.category;
+    insights.push({
+      key: "occasion",
+      title: "Neglected value",
+      body: `${title} is costing $${neglect} per wear.`,
+      tags: ["cost-per-wear"]
+    });
+  }
+
   return insights;
 }
 
@@ -376,8 +389,6 @@ type RuleWithConstraint = StyleRuleListItem & { constraint_type?: string };
 
 const OPTIONAL_ROLES: OutfitItemRole[] = ["outerwear", "shoes", "accessory", "bag", "jewellery"];
 const OPTIONAL_ROLE_THRESHOLD = 0.2;
-const RECENCY_PENALTY = 0.3;
-const RECENCY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const CATEGORY_SIGNAL_PATTERNS: Array<[string, string[]]> = [
   ["t-shirt", ["t-shirt", "tee", "longsleeve tee", "long sleeve tee"]],
   ["shirt", ["shirt", "button-down", "button down", "oxford"]],
@@ -404,6 +415,8 @@ export type GeneratorInput = {
   dress_code?: string;
   weather?: string;
   occasion?: string;
+  mustIncludeGarmentIds?: string[];
+  nowMs?: number;
 };
 
 type ScoringContext = {
@@ -477,6 +490,47 @@ export function applyTrendBoost(score: number, garment: GarmentListItem, signal:
   return score;
 }
 
+function toGarmentPreview(garment: GarmentListItem, role: OutfitItemRole): OutfitGarmentPreview {
+  return {
+    id: garment.id as string,
+    title: garment.title ?? null,
+    category: garment.category,
+    role,
+    preview_url: garment.preview_url ?? null
+  };
+}
+
+function applyMustIncludeGarments(params: {
+  mustIncludeGarmentIds?: string[];
+  eligible: GarmentListItem[];
+  selectedGarments: OutfitGarmentPreview[];
+  selectedFullGarments: GarmentListItem[];
+}) {
+  const { mustIncludeGarmentIds, eligible, selectedGarments, selectedFullGarments } = params;
+  if (!mustIncludeGarmentIds?.length) return;
+
+  const eligibleById = new Map(eligible.map((garment) => [garment.id as string, garment]));
+
+  for (const id of mustIncludeGarmentIds) {
+    const garment = eligibleById.get(id);
+    if (!garment) continue;
+
+    const role = categoryToRole(garment.category, garment.subcategory, garment.title);
+    const existingIndex = selectedGarments.findIndex((item) => item.role === role);
+    const preview = toGarmentPreview(garment, role);
+
+    if (existingIndex >= 0) {
+      if (selectedGarments[existingIndex].id === id) continue;
+      selectedGarments[existingIndex] = preview;
+      selectedFullGarments[existingIndex] = garment;
+      continue;
+    }
+
+    selectedGarments.push(preview);
+    selectedFullGarments.push(garment);
+  }
+}
+
 /** Main entry point: generate an outfit from wardrobe + rules + input. */
 export function generateOutfit(input: GeneratorInput): GeneratedOutfit {
   const { mode, garments, styleRules, trendSignal, dress_code, weather, occasion } = input;
@@ -495,7 +549,7 @@ export function generateOutfit(input: GeneratorInput): GeneratedOutfit {
     byRole.get(role)!.push(g);
   }
 
-  const now = Date.now();
+  const now = input.nowMs ?? Date.now();
   const selectedGarments: OutfitGarmentPreview[] = [];
   const selectedFullGarments: GarmentListItem[] = [];
   const firedRules: FiredRule[] = [];
@@ -506,10 +560,8 @@ export function generateOutfit(input: GeneratorInput): GeneratedOutfit {
     // Score each candidate
     const scored = candidates.map(g => {
       let score = scoreGarment(g, expandedRules, ctx);
-      if (mode === "surprise" && g.last_worn_at) {
-        const wornAt = new Date(g.last_worn_at).getTime();
-        if (now - wornAt < RECENCY_WINDOW_MS) score -= RECENCY_PENALTY;
-      }
+      score += costPerWearBoost(g);
+      score -= recencyPenalty(g.last_worn_at, now);
       if (mode === "trend" && trendSignal) {
         score = applyTrendBoost(score, g, trendSignal);
       }
@@ -527,15 +579,16 @@ export function generateOutfit(input: GeneratorInput): GeneratedOutfit {
     ) continue;
 
     const g = best.garment;
-    selectedGarments.push({
-      id: g.id as string,
-      title: g.title ?? null,
-      category: g.category,
-      role,
-      preview_url: g.preview_url ?? null
-    });
+    selectedGarments.push(toGarmentPreview(g, role));
     selectedFullGarments.push(g);
   }
+
+  applyMustIncludeGarments({
+    mustIncludeGarmentIds: input.mustIncludeGarmentIds,
+    eligible,
+    selectedGarments,
+    selectedFullGarments
+  });
 
   const firedRuleKeys = new Set<string>();
 
