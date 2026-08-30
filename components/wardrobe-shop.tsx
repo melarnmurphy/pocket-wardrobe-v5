@@ -25,6 +25,7 @@ import {
 } from "@/lib/domain/wardrobe/action-state";
 import { canonicalWardrobeColours } from "@/lib/domain/wardrobe/colours";
 import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
+import { compareNeglected } from "@/lib/domain/outfits/ranking";
 
 const seasonOptions = ["spring", "summer", "autumn", "winter"] as const;
 
@@ -255,6 +256,8 @@ export function WardrobeShop({
             return (right.favourite_score ?? 0) - (left.favourite_score ?? 0);
           case "most_worn":
             return right.wear_count - left.wear_count;
+          case "neglected":
+            return compareNeglected(left, right);
           case "price_desc":
             return (right.purchase_price ?? -1) - (left.purchase_price ?? -1);
           default:
@@ -599,6 +602,7 @@ export function WardrobeShop({
                 onChange={setSortBy}
                 options={[
                   { value: "newest", label: "Newest first" },
+                  { value: "neglected", label: "Neglected value" },
                   { value: "cost_desc", label: "Cost per wear: high to low" },
                   { value: "cost_asc", label: "Cost per wear: low to high" },
                   { value: "favourites", label: "Favourites first" },
@@ -1123,6 +1127,11 @@ function GarmentCard({
             {optimisticFavourite ? (
               <span className="rounded-full border border-[rgba(255,107,157,0.22)] bg-[rgba(255,107,157,0.12)] px-2 py-1 text-[var(--accent-strong)] sm:px-2.5">
                 Favourite
+              </span>
+            ) : null}
+            {garment.wear_count === 0 && garment.purchase_price != null ? (
+              <span className="pw-chip bg-white px-2 py-1 text-[10px] uppercase tracking-[0.16em] sm:px-2.5">
+                Unworn · {garment.purchase_currency || ""} {formatCurrencyValue(garment.purchase_price)}
               </span>
             ) : null}
           </div>

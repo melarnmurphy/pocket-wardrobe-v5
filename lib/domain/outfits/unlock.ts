@@ -28,7 +28,7 @@ function toSyntheticGarment(
 ): GarmentListItem {
   return {
     ...synthetic,
-    user_id: null,
+    user_id: "synthetic",
     description: null,
     brand: null,
     pattern: null,
@@ -47,8 +47,8 @@ function toSyntheticGarment(
     last_worn_at: null,
     cost_per_wear: null,
     extraction_metadata_json: {},
-    created_at: null,
-    updated_at: null,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
     primary_colour_hex: null,
     preview_url: null,
     images: [],
