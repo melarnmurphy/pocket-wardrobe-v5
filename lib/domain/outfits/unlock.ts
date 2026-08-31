@@ -1,7 +1,7 @@
 import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
 import type { StyleRuleListItem } from "@/lib/domain/style-rules/service";
 import { applyHardFilters, categoryToRole } from "@/lib/domain/outfits/generator";
-import { costPerWearBoost } from "@/lib/domain/outfits/ranking";
+import { rankingDelta } from "@/lib/domain/outfits/ranking";
 
 const ROLE_CAP = 8;
 const COMBO_CAP = 400;
@@ -58,7 +58,7 @@ function toSyntheticGarment(
 }
 
 function compareForRoleSample(a: GarmentListItem, b: GarmentListItem) {
-  const boostDelta = costPerWearBoost(b) - costPerWearBoost(a);
+  const boostDelta = rankingDelta(b) - rankingDelta(a);
   if (boostDelta !== 0) return boostDelta;
   return (a.title ?? "").localeCompare(b.title ?? "");
 }

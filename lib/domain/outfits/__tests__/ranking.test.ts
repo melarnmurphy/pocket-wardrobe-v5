@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareNeglected, costPerWearBoost, recencyPenalty, valueNeglect } from "../ranking";
+import { compareNeglected, rankingDelta, recencyPenalty, valueNeglect } from "../ranking";
 
 describe("valueNeglect", () => {
   it("is null when price is missing", () => {
@@ -15,16 +15,22 @@ describe("valueNeglect", () => {
   });
 });
 
-describe("costPerWearBoost", () => {
-  it("is 0 without a price", () => {
-    expect(costPerWearBoost({ purchase_price: null, wear_count: 0 })).toBe(0);
+describe("rankingDelta", () => {
+  it("rotates never-worn unpriced items", () => {
+    expect(rankingDelta({ purchase_price: null, wear_count: 0 })).toBeGreaterThan(0);
   });
 
-  it("boosts an expensive unworn piece more than a cheap weekly tee", () => {
-    const blazer = costPerWearBoost({ purchase_price: 400, wear_count: 0 });
-    const tee = costPerWearBoost({ purchase_price: 20, wear_count: 12 });
-    expect(blazer).toBeGreaterThan(tee);
-    expect(blazer).toBeLessThanOrEqual(1.5);
+  it("ranks never-worn 400 above never-worn 40", () => {
+    const expensive = rankingDelta({ purchase_price: 400, wear_count: 0 });
+    const cheap = rankingDelta({ purchase_price: 40, wear_count: 0 });
+    expect(expensive).toBeGreaterThan(cheap);
+    expect(expensive).toBeLessThanOrEqual(1.2);
+  });
+
+  it("lets never-worn 40 beat 400 worn 20 times", () => {
+    const unusedCheap = rankingDelta({ purchase_price: 40, wear_count: 0 });
+    const overwornLuxury = rankingDelta({ purchase_price: 400, wear_count: 20 });
+    expect(unusedCheap).toBeGreaterThan(overwornLuxury);
   });
 });
 

@@ -675,6 +675,8 @@ Examples:
 - high versatility items,
 - repeat suppression.
 
+Outfit ranking uses an internal two-score model: inclusion from style rules, then a rotation and idle-capital delta. Those formulas are proprietary. The product must not surface algorithm names or index values in the UI.
+
 ## 12.4 Output modes
 Return at least:
 - one safe outfit,
@@ -710,6 +712,8 @@ This is a core retention feature, not an optional flourish.
 If purchase price exists:
 
 `cost_per_wear = purchase_price / max(wear_count, 1)`
+
+Displayed cost per wear remains purchase_price / max(wear_count, 1). Outfit ranking may use a different internal transform; that transform is not shown to users.
 
 Recalculate whenever wear events change.
 
