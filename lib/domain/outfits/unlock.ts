@@ -4,8 +4,6 @@ import { applyHardFilters, categoryToRole } from "@/lib/domain/outfits/generator
 import { rankingDelta } from "@/lib/domain/outfits/ranking";
 import { isRoleCompleteOutfit } from "@/lib/domain/outfits/role-complete";
 
-export { isRoleCompleteOutfit };
-
 const ROLE_CAP = 8;
 const COMBO_CAP = 400;
 
@@ -61,8 +59,8 @@ function toSyntheticGarment(
 }
 
 function compareForRoleSample(a: GarmentListItem, b: GarmentListItem) {
-  const boostDelta = rankingDelta(b) - rankingDelta(a);
-  if (boostDelta !== 0) return boostDelta;
+  const rankingDeltaDiff = rankingDelta(b) - rankingDelta(a);
+  if (rankingDeltaDiff !== 0) return rankingDeltaDiff;
   return (a.title ?? "").localeCompare(b.title ?? "");
 }
 

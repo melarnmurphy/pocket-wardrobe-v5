@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import * as unlock from "../unlock";
 import { countRoleCompleteCombos, scoreUnlockCandidates } from "../unlock";
 import { isRoleCompleteOutfit } from "../role-complete";
 import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
@@ -37,6 +38,12 @@ function makeGarment(overrides: Partial<GarmentListItem> & { id: string; categor
     ...overrides
   };
 }
+
+describe("unlock module boundary", () => {
+  it("does not re-export isRoleCompleteOutfit", () => {
+    expect("isRoleCompleteOutfit" in unlock).toBe(false);
+  });
+});
 
 describe("isRoleCompleteOutfit", () => {
   it("accepts dress+shoes or top+bottom+shoes, not two arbitrary pieces", () => {

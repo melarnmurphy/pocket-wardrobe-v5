@@ -10,7 +10,8 @@ import type {
 } from "@/lib/domain/outfits";
 import { expandRulesWithAttributeInference } from "@/lib/domain/style-rules/inference";
 import { inferColourFamilyFromText } from "@/lib/domain/style-rules/knowledge/colours";
-import { rankingDelta, recencyPenalty, valueNeglect } from "@/lib/domain/outfits/ranking";
+import { valueNeglect } from "@/lib/domain/outfits/neglect";
+import { rankingDelta, recencyPenalty } from "@/lib/domain/outfits/ranking";
 
 const ROLE_KEYWORDS: Array<[OutfitItemRole, string[]]> = [
   ["dress",     ["dress", "jumpsuit", "playsuit"]],

@@ -25,7 +25,7 @@ import {
 } from "@/lib/domain/wardrobe/action-state";
 import { canonicalWardrobeColours } from "@/lib/domain/wardrobe/colours";
 import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
-import { compareNeglected } from "@/lib/domain/outfits/ranking";
+import { compareNeglected } from "@/lib/domain/outfits/neglect";
 
 const seasonOptions = ["spring", "summer", "autumn", "winter"] as const;
 
