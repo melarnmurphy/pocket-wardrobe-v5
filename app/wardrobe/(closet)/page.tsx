@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { AuthenticationError } from "@/lib/auth";
@@ -6,24 +7,17 @@ import {
   getPremiumFeatureSummary
 } from "@/lib/domain/billing/service";
 import { getUserEntitlements } from "@/lib/domain/entitlements/service";
-import { listLookbookEntries } from "@/lib/domain/lookbook/service";
-import {
-  lookbookUnlockCandidates,
-  pickOwnedTrend,
-  trendUnlockCandidates
-} from "@/lib/domain/outfits/appeal";
+import { pickOwnedTrend } from "@/lib/domain/outfits/appeal";
 import {
   listSavedOutfits,
   listUserTrendMatchesWithSignals
 } from "@/lib/domain/outfits/service";
 import { suggestTodayOutfit } from "@/lib/domain/outfits/today";
-import { scoreUnlockCandidates } from "@/lib/domain/outfits/unlock";
 import { listStyleRules } from "@/lib/domain/style-rules/service";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import { AuthRequiredCard } from "@/components/auth-required-card";
 import { OwnedTrendCard } from "@/components/owned-trend-card";
 import { TodayOutfitCard } from "@/components/today-outfit-card";
-import { UnlockCard } from "@/components/unlock-card";
 import { WardrobeShop } from "@/components/wardrobe-shop";
 import {
   addGarment3dAssetAction,
@@ -38,6 +32,7 @@ import {
   updateGarmentAction,
   toggleGarmentFavouriteAction
 } from "@/app/wardrobe/actions";
+import { ClosetUnlockSection } from "./closet-unlock-section";
 
 export default async function WardrobeItemsPage({
   searchParams
@@ -55,15 +50,13 @@ export default async function WardrobeItemsPage({
       entitlements,
       styleRules,
       trendMatches,
-      savedOutfits,
-      lookbookEntries
+      savedOutfits
     ] = await Promise.all([
       listWardrobeGarments(),
       getUserEntitlements(),
       listStyleRules(),
       listUserTrendMatchesWithSignals(),
-      listSavedOutfits(),
-      listLookbookEntries()
+      listSavedOutfits()
     ]);
     const nowMs = Date.now();
     const weekAgo = nowMs - 7 * 24 * 60 * 60 * 1000;
@@ -79,11 +72,6 @@ export default async function WardrobeItemsPage({
       nowMs
     });
     const ownedTrend = pickOwnedTrend(trendMatches);
-    const unlockScores = scoreUnlockCandidates(garments, styleRules, [
-      ...trendUnlockCandidates(trendMatches),
-      ...lookbookUnlockCandidates(lookbookEntries)
-    ]);
-    const topUnlock = unlockScores[0];
     const billingStatus = getBillingStatus();
     const premiumFeatures = getPremiumFeatureSummary();
     const initialBrowseState = {
@@ -114,9 +102,9 @@ export default async function WardrobeItemsPage({
         <div className="flex flex-col gap-4">
           <TodayOutfitCard outfit={todayOutfit} />
           {ownedTrend ? <OwnedTrendCard match={ownedTrend} /> : null}
-          {topUnlock && topUnlock.unlock_count >= 3 ? (
-            <UnlockCard score={topUnlock} />
-          ) : null}
+          <Suspense fallback={null}>
+            <ClosetUnlockSection />
+          </Suspense>
         </div>
         <WardrobeShop
           garments={garments}

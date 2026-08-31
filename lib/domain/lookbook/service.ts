@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
@@ -47,7 +48,7 @@ export type LookbookListItem = z.infer<typeof lookbookListItemSchema> & {
 };
 export type WardrobeLookupItem = z.infer<typeof wardrobeLookupSchema>;
 
-export async function listLookbookEntries(): Promise<LookbookListItem[]> {
+export const listLookbookEntries = cache(async (): Promise<LookbookListItem[]> => {
   const user = await getRequiredUser();
   const supabase = await createClient();
 
@@ -117,7 +118,7 @@ export async function listLookbookEntries(): Promise<LookbookListItem[]> {
     items: itemsByEntry.get(entry.id) ?? [],
     preview_url: entry.image_path ? previewUrlsByPath.get(entry.image_path) ?? null : null
   }));
-}
+});
 
 export async function createLookbookEntry(
   input: z.input<typeof createLookbookEntrySchema>,

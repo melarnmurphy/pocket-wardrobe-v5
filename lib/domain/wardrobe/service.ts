@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
@@ -375,7 +376,7 @@ const GARMENT_LIST_SELECT =
   "garment_3d_assets(id,garment_id,asset_type,storage_path,file_format,material_profile_json,physics_profile_json,renderer_metadata_json,source_type,confidence,status,created_at,updated_at)," +
   "wear_events(id,garment_id,worn_at,occasion,notes)";
 
-export async function listWardrobeGarments(): Promise<GarmentListItem[]> {
+export const listWardrobeGarments = cache(async (): Promise<GarmentListItem[]> => {
   const user = await getRequiredUser();
   const supabase = await createClient();
 
@@ -485,7 +486,7 @@ export async function listWardrobeGarments(): Promise<GarmentListItem[]> {
       })()
     };
   });
-}
+});
 
 export async function createGarment(
   input: z.input<typeof createGarmentSchema>,

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
@@ -93,7 +94,7 @@ async function normalizeStyleRuleInput(
   return { payload, normalizedFields };
 }
 
-export async function listStyleRules(): Promise<StyleRuleListItem[]> {
+export const listStyleRules = cache(async (): Promise<StyleRuleListItem[]> => {
   const user = await getRequiredUser();
   const supabase = await createClient();
 
@@ -111,7 +112,7 @@ export async function listStyleRules(): Promise<StyleRuleListItem[]> {
   }
 
   return z.array(styleRuleListSchema).parse((data ?? []) satisfies StyleRuleRow[]);
-}
+});
 
 export async function createUserStyleRule(
   input: z.input<typeof createUserStyleRuleSchema>

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
@@ -20,7 +21,7 @@ import { z } from "zod";
 type OutfitInsert = TablesInsert<"outfits">;
 type OutfitItemInsert = TablesInsert<"outfit_items">;
 
-export async function listUserTrendMatchesWithSignals(): Promise<UserTrendMatchWithSignal[]> {
+export const listUserTrendMatchesWithSignals = cache(async (): Promise<UserTrendMatchWithSignal[]> => {
   const user = await getRequiredUser();
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -30,7 +31,7 @@ export async function listUserTrendMatchesWithSignals(): Promise<UserTrendMatchW
     .order("score", { ascending: false });
   if (error) throw new Error(error.message);
   return z.array(userTrendMatchWithSignalSchema).parse(data ?? []);
-}
+});
 
 export async function generateOutfitForUser(
   input: GenerateOutfitInput,
@@ -111,7 +112,7 @@ export async function saveOutfit(input: SaveOutfitInput): Promise<string> {
   return outfit.id;
 }
 
-export async function listSavedOutfits(): Promise<OutfitWithItems[]> {
+export const listSavedOutfits = cache(async (): Promise<OutfitWithItems[]> => {
   const user = await getRequiredUser();
   const supabase = await createClient();
 
@@ -130,7 +131,7 @@ export async function listSavedOutfits(): Promise<OutfitWithItems[]> {
 
   if (error) throw new Error(error.message);
   return z.array(outfitWithItemsSchema).parse(data ?? []);
-}
+});
 
 export async function deleteOutfit(outfitId: string) {
   const user = await getRequiredUser();
