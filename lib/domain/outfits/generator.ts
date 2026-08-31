@@ -10,7 +10,7 @@ import type {
 } from "@/lib/domain/outfits";
 import { expandRulesWithAttributeInference } from "@/lib/domain/style-rules/inference";
 import { inferColourFamilyFromText } from "@/lib/domain/style-rules/knowledge/colours";
-import { costPerWearBoost, recencyPenalty, valueNeglect } from "@/lib/domain/outfits/ranking";
+import { rankingDelta, recencyPenalty, valueNeglect } from "@/lib/domain/outfits/ranking";
 
 const ROLE_KEYWORDS: Array<[OutfitItemRole, string[]]> = [
   ["dress",     ["dress", "jumpsuit", "playsuit"]],
@@ -390,7 +390,7 @@ function buildOutfitInsights(params: {
 // reflected in the generated types yet.
 type RuleWithConstraint = StyleRuleListItem & { constraint_type?: string };
 
-const OPTIONAL_ROLES: OutfitItemRole[] = ["outerwear", "shoes", "accessory", "bag", "jewellery"];
+const OPTIONAL_ROLES: OutfitItemRole[] = ["outerwear", "accessory", "bag", "jewellery"];
 const OPTIONAL_ROLE_THRESHOLD = 0.2;
 const CATEGORY_SIGNAL_PATTERNS: Array<[string, string[]]> = [
   ["t-shirt", ["t-shirt", "tee", "longsleeve tee", "long sleeve tee"]],
@@ -560,28 +560,27 @@ export function generateOutfit(input: GeneratorInput): GeneratedOutfit {
   for (const [role, candidates] of byRole) {
     if (candidates.length === 0) continue;
 
-    // Score each candidate. Threshold uses rules-only score so CPW/recency/trend
-    // boosts rank within a role without pulling optional accessories into every look.
-    const scored = candidates.map(g => {
+    // Inclusion uses rulesScore only. RankingScore sorts after optional-role omit.
+    const scored = candidates.map((g) => {
       const rulesScore = scoreGarment(g, expandedRules, ctx);
-      let score = rulesScore;
-      score += costPerWearBoost(g);
-      score -= recencyPenalty(g.last_worn_at, now);
+      let rankingScore = rulesScore + rankingDelta(g) - recencyPenalty(g.last_worn_at, now);
       if (mode === "trend" && trendSignal) {
-        score = applyTrendBoost(score, g, trendSignal);
+        rankingScore = applyTrendBoost(rankingScore, g, trendSignal);
       }
-      return { garment: g, score, rulesScore };
+      return { garment: g, rankingScore, rulesScore };
     });
 
-    scored.sort((a, b) => b.score - a.score);
-    const best = scored[0];
-
-    // Omit optional roles below threshold
-    if (
-      OPTIONAL_ROLES.includes(role) &&
-      best.rulesScore < OPTIONAL_ROLE_THRESHOLD &&
-      !(role === "outerwear" && isLayeringGarment(best.garment))
-    ) continue;
+    const pool =
+      OPTIONAL_ROLES.includes(role)
+        ? scored.filter(
+            (row) =>
+              row.rulesScore >= OPTIONAL_ROLE_THRESHOLD ||
+              (role === "outerwear" && isLayeringGarment(row.garment))
+          )
+        : scored;
+    if (pool.length === 0) continue;
+    pool.sort((a, b) => b.rankingScore - a.rankingScore);
+    const best = pool[0];
 
     const g = best.garment;
     selectedGarments.push(toGarmentPreview(g, role));

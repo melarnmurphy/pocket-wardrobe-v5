@@ -284,6 +284,23 @@ describe("generateOutfit", () => {
     expect(result.garments.map((g) => g.role)).not.toContain("accessory");
   });
 
+  it("includes shoes that pass hard filters even with zero rule score", () => {
+    const garments = [
+      makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1", category: "shirt" }),
+      makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2", category: "trouser" }),
+      makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3", category: "loafer" })
+    ];
+    const result = generateOutfit({
+      mode: "plan",
+      garments,
+      styleRules: [],
+      trendSignal: null
+    });
+    expect(result.garments.map((g) => g.role)).toEqual(
+      expect.arrayContaining(["top", "bottom", "shoes"])
+    );
+  });
+
   it("adds a neglected-value insight for selected garments costing 100 or more per wear", () => {
     const garments = [
       makeGarment({
