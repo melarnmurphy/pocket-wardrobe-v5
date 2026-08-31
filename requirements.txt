@@ -1,8 +1,6 @@
-# Fashion Pipeline — local development dependencies
-# Modal handles container deps automatically on deploy;
-# these are needed to run `modal run` locally (including MPS on Apple Silicon).
-
-modal>=0.64.0
+# Fashion Pipeline — self-hosted local development dependencies.
+# Run with:
+#   uvicorn pipeline.server:app --host 0.0.0.0 --port 8000
 
 # ML — PyTorch with MPS support is included in standard torch>=1.12 on Apple Silicon
 torch>=2.0
@@ -10,13 +8,12 @@ torchvision
 transformers>=4.40,<5.0
 Pillow>=10.0
 
-# Web layer (used by the Modal ASGI endpoint; also useful for local FastAPI testing)
+# Web layer
 fastapi>=0.111.0
 python-multipart>=0.0.9
 uvicorn[standard]>=0.30.0
-trafilatura>=2.0,<3.0
 
-# Vector search (optional — swap for pgvector or Pinecone in production)
+# Vector/search utilities used by the model stack
 faiss-cpu
 ftfy
 open_clip_torch

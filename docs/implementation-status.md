@@ -30,10 +30,10 @@ This document reconciles the historical implementation plans in `docs/superpower
 ## Open Product/Engineering Gaps
 
 1. **Fashion vision pipeline attachment**
-   - Current web code calls `PIPELINE_SERVICE_URL` and expects a Modal-compatible `/analyse` endpoint.
-   - `modal_fashion_app.py` exists and implements the YOLOS + FashionSigLIP Modal service.
+   - Current web code calls `PIPELINE_SERVICE_URL` and expects a pipeline-compatible `/analyse` endpoint.
+   - `pipeline/` implements the YOLOS + FashionSigLIP FastAPI service for local or self-hosted use.
+   - `modal_fashion_app.py` remains as a legacy reference only and should not be the default deployment path.
    - The service advertises `/capabilities`; receipt OCR is currently reported as unavailable and the web app falls back to pasted text/text-readable files.
-   - The older plan/spec described a local `pipeline/` FastAPI package; that package is not present and is superseded by the Modal service path unless a local containerized service is explicitly needed.
 
 2. **Ingestion intelligence**
    - Direct image analysis is wired to the external pipeline service.
@@ -60,7 +60,7 @@ This document reconciles the historical implementation plans in `docs/superpower
 | Plan | Status | Reconciliation |
 | --- | --- | --- |
 | `2026-03-23-homepage-dashboard-review.md` | Mostly implemented | Dashboard/upload/review concepts exist, but the checklist remains unchecked. |
-| `2026-03-23-fashion-pipeline.md` | Superseded/partial | Next.js integration exists. The local `pipeline/` package does not; `modal_fashion_app.py` is the active service implementation. |
+| `2026-03-23-fashion-pipeline.md` | Superseded/partial | Next.js integration exists. The local `pipeline/` FastAPI package is now the active service implementation. |
 | `2026-03-24-pipeline-draft-review.md` | Mostly implemented | Draft review UI and crop/image paths exist; keep for design history. |
 | `2026-03-24-knowledge-graph-style-rules.md` | Mostly implemented | Knowledge modules, services, templates, and tests exist. |
 | `2026-03-24-trend-signals.md` | Mostly implemented | Trend ingestion/extraction/matching services and API routes exist. |
@@ -75,7 +75,7 @@ This document reconciles the historical implementation plans in `docs/superpower
 ## Next Build Order
 
 1. Commit or split the current dirty worktree into coherent changesets.
-2. Verify the Modal fashion pipeline locally/deployed and make the web route fail gracefully when it is missing.
+2. Verify the self-hosted fashion pipeline locally/deployed and make the web route fail gracefully when it is missing.
 3. Harden ingestion paths: product URL, receipt OCR, and outfit decomposition.
 4. Complete outfit Pro explanation behavior.
 5. Run iOS build verification and clean duplicate/deleted project paths.

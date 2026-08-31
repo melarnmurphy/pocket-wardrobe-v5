@@ -18,7 +18,7 @@ export async function callPipelineService(
   }
   const imageBlob = await imageResponse.blob();
 
-  // Re-upload as multipart to Modal's /analyse endpoint
+  // Re-upload as multipart to the fashion pipeline /analyse endpoint.
   const formData = new FormData();
   formData.append("file", imageBlob, "image.jpg");
 
@@ -32,7 +32,7 @@ export async function callPipelineService(
     throw new Error(`Pipeline service error: ${response.status}${text ? ` — ${text}` : ""}`);
   }
 
-  // Modal returns { filename, garment_count, garments: [...] }
+  // The pipeline returns { filename, garment_count, garments: [...] }.
   // Extract garments and validate against our schema
   const raw = await response.json() as Record<string, unknown>;
   return pipelineAnalyzeResponseSchema.parse({ garments: raw["garments"] ?? [] });

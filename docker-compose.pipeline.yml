@@ -1,0 +1,14 @@
+services:
+  fashion-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile.pipeline
+    ports:
+      - "8000:8000"
+    environment:
+      FASHION_PIPELINE_CACHE_DIR: /model-cache
+    volumes:
+      - fashion-pipeline-cache:/model-cache
+
+volumes:
+  fashion-pipeline-cache:

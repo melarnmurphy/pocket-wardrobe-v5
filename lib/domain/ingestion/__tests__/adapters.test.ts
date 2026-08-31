@@ -136,7 +136,7 @@ describe("directUploadAdapter", () => {
     expect(draft.fieldProvenance?.colour).toBe("ai_vision");
     expect(draft.fieldConfidence?.brand).toBeUndefined();
     expect(draft.fieldConfidence?.retailer).toBeUndefined();
-    expect(draft.metadata.detector_model).toBe("modal-v1");
+    expect(draft.metadata.detector_model).toBe("self-hosted-fashion-v1");
   });
 });
 
@@ -238,6 +238,6 @@ describe("outfitDecompositionAdapter", () => {
     expect(draft.fieldProvenance?.category).toBe("ai_vision");
     expect(draft.fieldProvenance?.colour).toBe("ai_vision");
     expect(draft.fieldConfidence?.brand).toBeUndefined();
-    expect(draft.metadata.detector_model).toBe("modal-v1");
+    expect(draft.metadata.detector_model).toBe("self-hosted-fashion-v1");
   });
 });

@@ -18,4 +18,4 @@ export const pipelineAnalyzeResponseSchema = z.object({
 export type PipelineGarmentResult = z.infer<typeof pipelineGarmentResultSchema>;
 export type PipelineAnalyzeResponse = z.infer<typeof pipelineAnalyzeResponseSchema>;
 
-export const PIPELINE_MODEL_ID = "modal-v1";
+export const PIPELINE_MODEL_ID = "self-hosted-fashion-v1";

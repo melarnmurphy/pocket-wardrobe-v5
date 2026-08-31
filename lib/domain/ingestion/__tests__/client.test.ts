@@ -31,7 +31,7 @@ describe("callPipelineService", () => {
       blob: async () => new Blob(["image-data"], { type: "image/jpeg" }),
     });
 
-    // Second fetch: call Modal /analyse
+    // Second fetch: call pipeline /analyse
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -42,7 +42,7 @@ describe("callPipelineService", () => {
     });
 
     const result = await callPipelineService({
-      serviceUrl: "https://example--fashion-pipeline-api.modal.run",
+      serviceUrl: "http://pipeline.example.test",
       imageUrl: "https://supabase.example.com/signed/image.jpg",
       threshold: 0.5,
     });
@@ -53,7 +53,7 @@ describe("callPipelineService", () => {
     // Second call should hit the /analyse endpoint
     const [analyseUrl, analyseOpts] = mockFetch.mock.calls[1];
     expect(String(analyseUrl)).toBe(
-      "https://example--fashion-pipeline-api.modal.run/analyse?threshold=0.5"
+      "http://pipeline.example.test/analyse?threshold=0.5"
     );
     expect((analyseOpts as RequestInit).method).toBe("POST");
     expect((analyseOpts as RequestInit).body).toBeInstanceOf(FormData);
@@ -66,7 +66,7 @@ describe("callPipelineService", () => {
 
     await expect(
       callPipelineService({
-        serviceUrl: "https://example--fashion-pipeline-api.modal.run",
+        serviceUrl: "http://pipeline.example.test",
         imageUrl: "https://supabase.example.com/expired.jpg",
       })
     ).rejects.toThrow("Failed to fetch image: 403");
@@ -87,7 +87,7 @@ describe("callPipelineService", () => {
 
     await expect(
       callPipelineService({
-        serviceUrl: "https://example--fashion-pipeline-api.modal.run",
+        serviceUrl: "http://pipeline.example.test",
         imageUrl: "https://supabase.example.com/image.jpg",
       })
     ).rejects.toThrow("Pipeline service error: 503");
@@ -108,14 +108,14 @@ describe("callReceiptOcrService", () => {
     });
 
     const result = await callReceiptOcrService({
-      serviceUrl: "https://example--fashion-pipeline-api.modal.run",
+      serviceUrl: "http://pipeline.example.test",
       file: new File(["receipt-image"], "receipt.jpg", { type: "image/jpeg" }),
     });
 
     expect(result).toContain("Basque Wool Blend Blazer");
 
     const [ocrUrl, ocrOpts] = mockFetch.mock.calls[0];
-    expect(String(ocrUrl)).toBe("https://example--fashion-pipeline-api.modal.run/receipt-ocr");
+    expect(String(ocrUrl)).toBe("http://pipeline.example.test/receipt-ocr");
     expect((ocrOpts as RequestInit).method).toBe("POST");
     expect((ocrOpts as RequestInit).body).toBeInstanceOf(FormData);
   });
@@ -131,7 +131,7 @@ describe("callReceiptOcrService", () => {
 
     await expect(
       callReceiptOcrService({
-        serviceUrl: "https://example--fashion-pipeline-api.modal.run",
+        serviceUrl: "http://pipeline.example.test",
         file: new File(["receipt-image"], "receipt.jpg", { type: "image/jpeg" }),
       })
     ).rejects.toThrow("Receipt OCR service error: 503");

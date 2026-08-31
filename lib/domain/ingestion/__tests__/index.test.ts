@@ -22,7 +22,7 @@ describe("pipelineGarmentResultSchema", () => {
     expect(result.embedding).toHaveLength(768);
   });
 
-  it("strips unknown fields (e.g. colour_conf from Modal response)", () => {
+  it("strips unknown fields (e.g. colour_conf from pipeline response)", () => {
     const result = pipelineGarmentResultSchema.parse({
       ...validGarment,
       colour_conf: 0.9,
