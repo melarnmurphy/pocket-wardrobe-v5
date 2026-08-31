@@ -1,4 +1,5 @@
-import OpenAI from "openai";
+import type OpenAI from "openai";
+import { createChatModelClient } from "@/lib/ai/chat-client";
 import { createServiceClient as createClient } from "@/lib/supabase/service";
 import { getServerEnv } from "@/lib/env";
 import { STORY_DOMINANT_TYPES, type StoryDominantType, type TrendStory } from "./index";
@@ -96,12 +97,13 @@ interface NamedCluster {
 
 async function nameClustersBatch(
   clusters: StoryCluster[],
-  client: OpenAI
+  client: OpenAI,
+  model: string
 ): Promise<NamedCluster[]> {
   if (clusters.length === 0) return [];
 
   const response = await client.chat.completions.create({
-    model: "gpt-4o-mini",
+    model,
     max_tokens: 2048,
     messages: [{ role: "user", content: buildStoryNamingPrompt(clusters) }]
   });
@@ -186,7 +188,7 @@ export async function generateTrendStories(opts?: {
 }): Promise<{ upserted: number; skipped: number }> {
   const supabase = createClient();
   const env = getServerEnv();
-  const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
+  const { client, model } = createChatModelClient(env);
 
   const lookbackHours = opts?.lookbackHours ?? 24;
   const since = new Date();
@@ -206,7 +208,7 @@ export async function generateTrendStories(opts?: {
   if (signals.length === 0) return { upserted: 0, skipped: 0 };
 
   const clusters = clusterSignals(signals);
-  const named = await nameClustersBatch(clusters, client);
+  const named = await nameClustersBatch(clusters, client, model);
   const namedByIndex = new Map(named.map((n) => [n.cluster_index, n]));
 
   let upserted = 0;

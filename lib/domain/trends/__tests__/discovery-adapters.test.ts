@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { resolveTrendDiscoveryAdapter } from "../adapters/resolve-discovery";
+import { createDiscoveryFailoverAdapter, resolveTrendDiscoveryAdapter } from "../adapters/resolve-discovery";
 import { parseOpenRouterCitations } from "../adapters/openrouter-search";
 import { parseXaiCitations } from "../adapters/xai-search";
 
@@ -11,7 +11,7 @@ afterEach(() => {
 });
 
 describe("resolveTrendDiscoveryAdapter", () => {
-  it("prefers SearXNG, then OpenRouter, then Grok, then Tavily", () => {
+  it("prefers OpenRouter, then SearXNG, then Grok, then Tavily", () => {
     expect(
       resolveTrendDiscoveryAdapter({
         SEARXNG_BASE_URL: "http://localhost:8080",
@@ -19,7 +19,7 @@ describe("resolveTrendDiscoveryAdapter", () => {
         XAI_API_KEY: "xai-key",
         TAVILY_API_KEY: "tvly-key"
       }).sourceName
-    ).toBe("searxng_search");
+    ).toBe("openrouter_search");
 
     expect(
       resolveTrendDiscoveryAdapter({
@@ -41,6 +41,42 @@ describe("resolveTrendDiscoveryAdapter", () => {
         TAVILY_API_KEY: "tvly-key"
       }).sourceName
     ).toBe("tavily_search");
+  });
+
+  it("fails over to the next adapter when the first search returns no citations", async () => {
+    const result = await createDiscoveryFailoverAdapter([
+      {
+        sourceName: "openrouter_search",
+        sourceType: "openrouter_search",
+        search: async () => ({
+          query: "q",
+          summary: "",
+          citations: [],
+          groundingAvailable: false
+        })
+      },
+      {
+        sourceName: "searxng_search",
+        sourceType: "searxng_search",
+        search: async () => ({
+          query: "q",
+          summary: "from searxng",
+          citations: [
+            {
+              title: "Press",
+              url: "https://example.com/press",
+              snippet: "Tailoring is repeating.",
+              publishedDate: null,
+              engine: "searxng",
+              score: null
+            }
+          ],
+          groundingAvailable: true
+        })
+      }
+    ]).search("q");
+
+    expect(result.citations[0]?.url).toBe("https://example.com/press");
   });
 
   it("throws when no discovery provider is configured", () => {

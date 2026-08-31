@@ -15,7 +15,7 @@
  *
  * NOTE: Prompts + scanner config live here. Discovery adapters are resolved at
  * cron time via `lib/domain/trends/adapters/resolve-discovery.ts`
- * (SearXNG → OpenRouter → xAI Grok → Tavily).
+ * (OpenRouter → SearXNG → xAI Grok → Tavily, with citation failover).
  */
 
 import { TREND_TYPES, type TrendType } from "../index";

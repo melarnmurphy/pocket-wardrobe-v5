@@ -36,35 +36,82 @@ export function createTavilySearchAdapter(opts: {
   };
 }
 
-export function resolveTrendDiscoveryAdapter(
-  env: TrendDiscoveryEnv
-): TrendDiscoveryAdapter {
-  if (env.SEARXNG_BASE_URL) {
-    return createSearXNGSearchAdapter({
-      baseUrl: env.SEARXNG_BASE_URL,
-      maxResults: 10
-    });
-  }
+export function listTrendDiscoveryAdapters(env: TrendDiscoveryEnv): TrendDiscoveryAdapter[] {
+  const adapters: TrendDiscoveryAdapter[] = [];
 
   if (env.OPENROUTER_API_KEY) {
-    return createOpenRouterSearchAdapter({
-      apiKey: env.OPENROUTER_API_KEY,
-      model: env.OPENROUTER_TREND_MODEL
-    });
+    adapters.push(
+      createOpenRouterSearchAdapter({
+        apiKey: env.OPENROUTER_API_KEY,
+        model: env.OPENROUTER_TREND_MODEL
+      })
+    );
+  }
+
+  if (env.SEARXNG_BASE_URL) {
+    adapters.push(
+      createSearXNGSearchAdapter({
+        baseUrl: env.SEARXNG_BASE_URL,
+        maxResults: 10
+      })
+    );
   }
 
   if (env.XAI_API_KEY) {
-    return createXaiSearchAdapter({
-      apiKey: env.XAI_API_KEY,
-      model: env.XAI_TREND_MODEL
-    });
+    adapters.push(
+      createXaiSearchAdapter({
+        apiKey: env.XAI_API_KEY,
+        model: env.XAI_TREND_MODEL
+      })
+    );
   }
 
   if (env.TAVILY_API_KEY) {
-    return createTavilySearchAdapter({ apiKey: env.TAVILY_API_KEY });
+    adapters.push(createTavilySearchAdapter({ apiKey: env.TAVILY_API_KEY }));
   }
 
-  throw new Error(
-    "No trend discovery provider configured. Set SEARXNG_BASE_URL, OPENROUTER_API_KEY, XAI_API_KEY, or TAVILY_API_KEY."
-  );
+  return adapters;
+}
+
+export function createDiscoveryFailoverAdapter(
+  adapters: TrendDiscoveryAdapter[]
+): TrendDiscoveryAdapter {
+  if (adapters.length === 0) {
+    throw new Error(
+      "No trend discovery provider configured. Set OPENROUTER_API_KEY, SEARXNG_BASE_URL, XAI_API_KEY, or TAVILY_API_KEY."
+    );
+  }
+
+  let active = adapters[0];
+
+  return {
+    get sourceName() {
+      return active.sourceName;
+    },
+    get sourceType() {
+      return active.sourceType;
+    },
+    async search(query: string) {
+      const errors: string[] = [];
+      for (const adapter of adapters) {
+        try {
+          const result = await adapter.search(query);
+          if (result.citations.length > 0) {
+            active = adapter;
+            return result;
+          }
+          errors.push(`${adapter.sourceName}: no citations`);
+        } catch (error) {
+          errors.push(`${adapter.sourceName}: ${String(error)}`);
+        }
+      }
+      throw new Error(`All trend discovery adapters failed. ${errors.join("; ")}`);
+    }
+  };
+}
+
+export function resolveTrendDiscoveryAdapter(
+  env: TrendDiscoveryEnv
+): TrendDiscoveryAdapter {
+  return createDiscoveryFailoverAdapter(listTrendDiscoveryAdapters(env));
 }

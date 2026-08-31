@@ -370,6 +370,8 @@ create table if not exists public.trend_sources (
       'gemini_grounded',
       'tavily_search',
       'searxng_search',
+      'openrouter_search',
+      'xai_search',
       'firecrawl_search',
       'firecrawl_scrape',
       'crawl4ai',

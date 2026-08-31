@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { createChatModelClient } from "@/lib/ai/chat-client";
 import { createServiceClient as createClient } from "@/lib/supabase/service";
 import { getServerEnv } from "@/lib/env";
 import { canonicalizeLabel } from "./matching";
@@ -384,7 +385,8 @@ export async function processExtractionJob(jobId: string): Promise<void> {
     // ─── Local colour extraction (zero LLM cost) ───────────────────────────
     const localColours = extractColoursFromText(fullText);
 
-    const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
+    const { client, model } = createChatModelClient(env);
+    const embeddingClient = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
     // ─── Chunk + filter for LLM extraction ───────────────────────────────
     const chunks = chunkText(fullText, 800, 150);
@@ -398,7 +400,7 @@ export async function processExtractionJob(jobId: string): Promise<void> {
 
     for (const chunk of chunksToProcess) {
       const response = await client.chat.completions.create({
-        model: "gpt-4o-mini",
+        model,
         max_tokens: 1024,
         messages: [{ role: "user", content: buildExtractionPrompt(
           {
@@ -479,7 +481,7 @@ export async function processExtractionJob(jobId: string): Promise<void> {
     }
 
     // ─── Batch embed all new signals ──────────────────────────────────────
-    await storeEmbeddingsForSignals(supabase, upsertedSignals, client);
+    await storeEmbeddingsForSignals(supabase, upsertedSignals, embeddingClient);
 
     await supabase
       .from("trend_ingestion_jobs")
