@@ -4,6 +4,29 @@ import { parseHTML } from "linkedom";
 export const TREND_USER_AGENT = "PocketWardrobe/1.0 (+https://pocketwardrobe.app)";
 export const MAX_EXTRACTED_ARTICLE_CHARS = 5000;
 
+/** Hosts whose creative/editorial terms disallow storing or scraping article bodies. */
+export const CREATIVE_LICENSE_RESTRICTED_HOSTS = [
+  "vogue.com",
+  "vogue.co.uk",
+  "vogue.fr",
+  "vogue.it",
+  "harpersbazaar.com",
+  "elle.com",
+  "wwd.com",
+  "condenast.com"
+] as const;
+
+export function isCreativeLicenseRestrictedUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+    return CREATIVE_LICENSE_RESTRICTED_HOSTS.some(
+      (blocked) => host === blocked || host.endsWith(`.${blocked}`)
+    );
+  } catch {
+    return false;
+  }
+}
+
 export interface ExtractedArticleContent {
   text: string;
   extractor: "trafilatura" | "crawl4ai" | "readability";
@@ -122,6 +145,10 @@ export async function extractArticleContent(
     crawl4AIServiceUrl?: string;
   }
 ): Promise<ExtractedArticleContent | null> {
+  if (isCreativeLicenseRestrictedUrl(url)) {
+    return null;
+  }
+
   const trafilaturaServiceUrl =
     opts?.trafilaturaServiceUrl ?? process.env.TRAFILATURA_SERVICE_URL;
   const crawl4AIServiceUrl =

@@ -13,10 +13,9 @@
  *   - Gemini returns Google-served snippets + the canonical URL, so we get
  *     the signal without ever hitting the publisher's server.
  *
- * NOTE: This module defines prompts + scanner config only. The adapter that
- * actually invokes Gemini and bridges the output into
- * `processExtractionJob()` is not yet wired up — see the design notes in
- * the README/conversation thread.
+ * NOTE: Prompts + scanner config live here. Discovery adapters are resolved at
+ * cron time via `lib/domain/trends/adapters/resolve-discovery.ts`
+ * (SearXNG → OpenRouter → xAI Grok → Tavily).
  */
 
 import { TREND_TYPES, type TrendType } from "../index";

@@ -83,4 +83,16 @@ describe("extractArticleContent", () => {
     expect(result?.extractor).toBe("readability");
     expect(result?.text).toContain("Relaxed tailoring");
   });
+
+  it("does not fetch publisher HTML for restricted creative-license hosts", async () => {
+    global.fetch = vi.fn();
+
+    const result = await extractArticleContent("https://www.vogue.com/article/butter-yellow", {
+      trafilaturaServiceUrl: undefined,
+      crawl4AIServiceUrl: undefined
+    });
+
+    expect(result).toBeNull();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
 });

@@ -47,6 +47,12 @@ const serverEnvSchema = publicEnvSchema.extend({
   SEARXNG_BASE_URL: optionalUrl,
   // Legacy Tavily web-search adapter. Kept optional for older/manual callers.
   TAVILY_API_KEY: optionalString,
+  // OpenRouter (Perplexity Sonar, Grok via OpenRouter, other :online models).
+  OPENROUTER_API_KEY: optionalString,
+  OPENROUTER_TREND_MODEL: optionalString,
+  // Direct xAI / Grok grounding.
+  XAI_API_KEY: optionalString,
+  XAI_TREND_MODEL: optionalString,
   // Shared secret for cron routes (Vercel passes as Authorization: Bearer <value>).
   CRON_SECRET: optionalString
 });
@@ -84,6 +90,10 @@ export function getServerEnv(): ServerEnv {
     BILLING_SYNC_SECRET: process.env.BILLING_SYNC_SECRET,
     SEARXNG_BASE_URL: process.env.SEARXNG_BASE_URL,
     TAVILY_API_KEY: process.env.TAVILY_API_KEY,
+    OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+    OPENROUTER_TREND_MODEL: process.env.OPENROUTER_TREND_MODEL,
+    XAI_API_KEY: process.env.XAI_API_KEY,
+    XAI_TREND_MODEL: process.env.XAI_TREND_MODEL,
     CRON_SECRET: process.env.CRON_SECRET
   });
 }

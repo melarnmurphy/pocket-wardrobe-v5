@@ -26,7 +26,7 @@ import {
   type ScannerArchetype,
   type ScannerRunInput
 } from "@/lib/domain/trends/prompts/grounding-prompts";
-import { createSearXNGSearchAdapter } from "@/lib/domain/trends/adapters/searxng-search";
+import { resolveTrendDiscoveryAdapter } from "@/lib/domain/trends/adapters/resolve-discovery";
 import { runTrendDiscoveryScan } from "@/lib/domain/trends/discovery";
 
 export const dynamic = "force-dynamic";
@@ -64,10 +64,7 @@ async function lastSuccessfulRun(
   }>;
 
   for (const row of rows) {
-    if (
-      row.metadata_json?.adapter === "searxng_search" &&
-      row.metadata_json.scanner_archetype === archetype
-    ) {
+    if (row.metadata_json?.scanner_archetype === archetype) {
       return row.completed_at;
     }
   }
@@ -148,15 +145,8 @@ async function runOneScanner(
 
   try {
     const env = getServerEnv();
-    if (!env.SEARXNG_BASE_URL) {
-      throw new Error("SEARXNG_BASE_URL is not set — trend discovery disabled");
-    }
-
     const result = await runTrendDiscoveryScan(scanner, input, {
-      adapter: createSearXNGSearchAdapter({
-        baseUrl: env.SEARXNG_BASE_URL,
-        maxResults: 10
-      })
+      adapter: resolveTrendDiscoveryAdapter(env)
     });
     return {
       archetype: scanner.archetype,
@@ -204,8 +194,7 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString();
     const results = [];
     for (const scanner of scannersToRun) {
-      // Sequential, not parallel — Gemini grounding + supabase writes are
-      // cheap per-call but a single cron invocation only has ~60s.
+      // Sequential: each scanner writes jobs and may call a live search API.
       results.push(await runOneScanner(scanner, { force, now }));
     }
 

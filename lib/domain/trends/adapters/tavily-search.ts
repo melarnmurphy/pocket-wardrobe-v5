@@ -45,7 +45,7 @@ interface TavilyResponse {
   results: TavilyResult[];
 }
 
-async function callTavilySearch(
+export async function callTavilySearch(
   query: string,
   opts: { apiKey: string }
 ): Promise<GroundingSearchResult> {
