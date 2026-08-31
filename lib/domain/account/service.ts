@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { z } from "zod";
 import { getRequiredUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -26,14 +27,14 @@ export function getDisplayNameFromMetadata(metadata: unknown) {
   return trimmed.length ? trimmed : null;
 }
 
-export async function getAccountProfile(): Promise<AccountProfile> {
+export const getAccountProfile = cache(async (): Promise<AccountProfile> => {
   const user = await getRequiredUser();
   return accountProfileSchema.parse({
     email: user.email ?? null,
     display_name: getDisplayNameFromMetadata(user.user_metadata),
     preferred_location: getPreferredLocationFromMetadata(user.user_metadata)
   });
-}
+});
 
 export async function updateAccountProfile(input: {
   display_name: string | null;

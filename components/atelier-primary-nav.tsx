@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 const PRIMARY_NAV_ITEMS = [
   { id: "closet", label: "Closet", href: "/wardrobe" },
   { id: "planner", label: "Planner", href: "/outfits" },
+  { id: "lookbook", label: "Lookbook", href: "/lookbook" },
   { id: "calendar", label: "Calendar", href: "/calendar" },
   { id: "trends", label: "Trends", href: "/trends" }
 ] as const;
@@ -52,6 +53,7 @@ export function AtelierPrimaryNav() {
 function activeId(pathname: string): string | null {
   if (pathname.startsWith("/wardrobe")) return "closet";
   if (pathname.startsWith("/outfits")) return "planner";
+  if (pathname.startsWith("/lookbook")) return "lookbook";
   if (pathname.startsWith("/calendar")) return "calendar";
   if (pathname.startsWith("/trends")) return "trends";
   return null;

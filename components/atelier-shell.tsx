@@ -6,7 +6,7 @@ import { getUserEntitlements } from "@/lib/domain/entitlements/service";
 import { AtelierMenu } from "@/components/atelier-menu";
 import { AtelierPrimaryNav } from "@/components/atelier-primary-nav";
 
-export async function AtelierShell({ pathname }: { pathname: string }) {
+export async function AtelierShell() {
   const user = await getOptionalUser();
   const [isAdmin, profile, entitlements] = user
     ? await Promise.all([
@@ -32,7 +32,6 @@ export async function AtelierShell({ pathname }: { pathname: string }) {
             displayName={profile?.display_name ?? null}
             planTier={entitlements?.plan_tier ?? "free"}
             isAdmin={isAdmin}
-            pathname={pathname}
           />
         ) : (
           <Link href="/auth/sign-in?next=%2Fwardrobe" className="text-sm font-medium">

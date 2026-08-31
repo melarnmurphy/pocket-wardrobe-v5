@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { deriveInitials } from "@/lib/ui/initials";
 import { signOutAction } from "@/app/auth/actions";
 
@@ -10,16 +11,16 @@ type AtelierMenuProps = {
   displayName: string | null;
   planTier: "free" | "pro" | "premium";
   isAdmin: boolean;
-  pathname: string;
 };
 
 const NAV_ITEMS = [
-  { label: "Lookbook", href: "/lookbook" },
   { label: "Style rules", href: "/style-rules" },
   { label: "Account settings", href: "/account" }
 ] as const;
 
-export function AtelierMenu({ email, displayName, planTier, isAdmin, pathname }: AtelierMenuProps) {
+export function AtelierMenu({ email, displayName, planTier, isAdmin }: AtelierMenuProps) {
+  const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const initials = deriveInitials(displayName, email);
 
@@ -95,6 +96,7 @@ export function AtelierMenu({ email, displayName, planTier, isAdmin, pathname }:
                   key={item.href}
                   href={item.href}
                   onClick={() => setOpen(false)}
+                  onMouseEnter={() => router.prefetch(item.href)}
                   className="block border-b border-[var(--line)]/50 px-5 py-3.5 text-sm last:border-b-0"
                   style={{
                     fontWeight: pathname.startsWith(item.href) ? 700 : 400

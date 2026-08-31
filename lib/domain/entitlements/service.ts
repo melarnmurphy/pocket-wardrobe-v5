@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
 import type { Database } from "@/types/database";
@@ -38,7 +39,7 @@ function buildDefaultEntitlements(userId: string): UserEntitlements {
   };
 }
 
-export async function getUserEntitlements(): Promise<UserEntitlements> {
+export const getUserEntitlements = cache(async (): Promise<UserEntitlements> => {
   const user = await getRequiredUser();
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -58,7 +59,7 @@ export async function getUserEntitlements(): Promise<UserEntitlements> {
   }
 
   return userEntitlementsSchema.parse(data satisfies UserEntitlementsRow);
-}
+});
 
 export function isFeatureEnabled(
   entitlements: UserEntitlements,

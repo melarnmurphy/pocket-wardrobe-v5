@@ -922,11 +922,11 @@ h6 {
   border-radius: var(--radius-pill);
   color: var(--muted);
   display: inline-flex;
-  font-size: 0.76rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.1em;
   min-height: 2.15rem;
-  padding: 0.62rem 0.9rem;
+  padding: 0.55rem 0.72rem;
   text-transform: uppercase;
   transition:
     background-color 160ms ease-out,

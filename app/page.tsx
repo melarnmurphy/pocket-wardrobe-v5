@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -107,13 +106,10 @@ export default function HomePage() {
         <div className="pw-editorial-frame overflow-hidden p-4 sm:p-6">
           <div className="grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
             <div className="pw-editorial-cover min-h-[28rem] bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,244,236,0.72))]">
-              <Image
-                src="/bb-yellow-dress.jpg"
-                alt="Model wearing a pale yellow dress"
-                className="h-full w-full object-cover object-[center_18%]"
-                priority
-                sizes="(max-width: 1024px) 100vw, 52vw"
-              />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,236,180,0.55),transparent_42%),radial-gradient(circle_at_80%_80%,rgba(214,196,168,0.4),transparent_46%)]" />
+              <p className="absolute left-6 top-24 max-w-[12rem] font-[family-name:var(--font-display)] text-5xl italic leading-none tracking-[-0.04em] text-[var(--foreground)]">
+                Wear what you already own.
+              </p>
 
               <div className="absolute left-4 top-4 flex flex-wrap gap-2">
                 <span className="pw-chip bg-white/90 text-[0.68rem] text-[var(--foreground)]">

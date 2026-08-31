@@ -29,9 +29,9 @@ export default async function ReviewPage({
           </h1>
           <p className="mt-1 text-[13px] text-[var(--muted)]">{summary}</p>
         </div>
-        <Link href="/" className="pw-button-quiet px-3.5 py-1.5 text-xs">
-          ← Back to dashboard
-        </Link>
+          <Link href="/wardrobe" className="pw-button-quiet px-3.5 py-1.5 text-xs">
+            ← Back to wardrobe
+          </Link>
       </div>
 
       <DraftReviewList

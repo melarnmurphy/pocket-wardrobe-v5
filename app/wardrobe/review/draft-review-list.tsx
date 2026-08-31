@@ -136,7 +136,7 @@ export default function DraftReviewList({
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <p className="text-[var(--muted)]">No pending drafts.</p>
-        <a href="/" className="mt-4 text-sm text-[var(--accent)] underline">
+        <a href="/wardrobe" className="mt-4 text-sm text-[var(--accent)] underline">
           Upload a photo to get started
         </a>
       </div>
