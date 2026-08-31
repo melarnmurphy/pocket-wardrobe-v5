@@ -284,6 +284,35 @@ describe("generateOutfit", () => {
     expect(result.garments.map((g) => g.role)).not.toContain("accessory");
   });
 
+  it("omits a high-delta accessory below threshold in favor of a matching one", () => {
+    const matchingId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4";
+    const garments = [
+      makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1", category: "shirt" }),
+      makeGarment({
+        id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3",
+        category: "belt",
+        purchase_price: 400,
+        wear_count: 0
+      }),
+      makeGarment({ id: matchingId, category: "scarf" })
+    ];
+    const result = generateOutfit({
+      mode: "plan",
+      garments,
+      styleRules: [
+        makeRule({
+          predicate: "pairs_with",
+          subject_value: "scarf",
+          object_value: "shirt",
+          constraint_type: "soft",
+          weight: 0.8
+        })
+      ],
+      trendSignal: null
+    });
+    expect(result.garments.find((g) => g.role === "accessory")?.id).toBe(matchingId);
+  });
+
   it("includes shoes that pass hard filters even with zero rule score", () => {
     const garments = [
       makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1", category: "shirt" }),

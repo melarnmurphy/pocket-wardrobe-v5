@@ -5,7 +5,7 @@ import type { Route } from "next";
 import { useMemo } from "react";
 import { chipsFromOutfit, ReasonStrip } from "@/components/reason-strip";
 import type { GeneratedOutfit } from "@/lib/domain/outfits";
-import { isRoleCompleteOutfit } from "@/lib/domain/outfits/unlock";
+import { isRoleCompleteOutfit } from "@/lib/domain/outfits/role-complete";
 import { saveTodayOutfitAction } from "@/app/wardrobe/today-actions";
 
 const EMPTY_COPY = "Add a few more pieces";

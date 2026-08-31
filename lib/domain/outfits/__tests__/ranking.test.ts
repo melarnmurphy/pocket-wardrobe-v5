@@ -17,7 +17,9 @@ describe("valueNeglect", () => {
 
 describe("rankingDelta", () => {
   it("rotates never-worn unpriced items", () => {
-    expect(rankingDelta({ purchase_price: null, wear_count: 0 })).toBeGreaterThan(0);
+    const unused = rankingDelta({ purchase_price: null, wear_count: 0 });
+    expect(unused).toBeGreaterThan(0);
+    expect(unused).toBeCloseTo(0.3544, 4);
   });
 
   it("ranks never-worn 400 above never-worn 40", () => {
@@ -25,12 +27,15 @@ describe("rankingDelta", () => {
     const cheap = rankingDelta({ purchase_price: 40, wear_count: 0 });
     expect(expensive).toBeGreaterThan(cheap);
     expect(expensive).toBeLessThanOrEqual(1.2);
+    expect(cheap).toBeCloseTo(0.8417, 4);
+    expect(expensive).toBeCloseTo(0.9711, 4);
   });
 
   it("lets never-worn 40 beat 400 worn 20 times", () => {
     const unusedCheap = rankingDelta({ purchase_price: 40, wear_count: 0 });
     const overwornLuxury = rankingDelta({ purchase_price: 400, wear_count: 20 });
     expect(unusedCheap).toBeGreaterThan(overwornLuxury);
+    expect(overwornLuxury).toBeCloseTo(0.5461, 4);
   });
 });
 

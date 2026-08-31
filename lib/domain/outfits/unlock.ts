@@ -2,6 +2,9 @@ import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
 import type { StyleRuleListItem } from "@/lib/domain/style-rules/service";
 import { applyHardFilters, categoryToRole } from "@/lib/domain/outfits/generator";
 import { rankingDelta } from "@/lib/domain/outfits/ranking";
+import { isRoleCompleteOutfit } from "@/lib/domain/outfits/role-complete";
+
+export { isRoleCompleteOutfit };
 
 const ROLE_CAP = 8;
 const COMBO_CAP = 400;
@@ -61,12 +64,6 @@ function compareForRoleSample(a: GarmentListItem, b: GarmentListItem) {
   const boostDelta = rankingDelta(b) - rankingDelta(a);
   if (boostDelta !== 0) return boostDelta;
   return (a.title ?? "").localeCompare(b.title ?? "");
-}
-
-export function isRoleCompleteOutfit(garments: { role: string }[]): boolean {
-  const roles = new Set(garments.map((garment) => garment.role));
-  if (roles.has("dress") && roles.has("shoes")) return true;
-  return roles.has("top") && roles.has("bottom") && roles.has("shoes");
 }
 
 export function countRoleCompleteCombos(

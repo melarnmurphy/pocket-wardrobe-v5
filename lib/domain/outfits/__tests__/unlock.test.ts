@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { countRoleCompleteCombos, isRoleCompleteOutfit, scoreUnlockCandidates } from "../unlock";
+import { countRoleCompleteCombos, scoreUnlockCandidates } from "../unlock";
+import { isRoleCompleteOutfit } from "../role-complete";
 import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
 
 function makeGarment(overrides: Partial<GarmentListItem> & { id: string; category: string }): GarmentListItem {
