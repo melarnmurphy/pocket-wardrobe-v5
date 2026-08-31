@@ -63,6 +63,12 @@ function compareForRoleSample(a: GarmentListItem, b: GarmentListItem) {
   return (a.title ?? "").localeCompare(b.title ?? "");
 }
 
+export function isRoleCompleteOutfit(garments: { role: string }[]): boolean {
+  const roles = new Set(garments.map((garment) => garment.role));
+  if (roles.has("dress") && roles.has("shoes")) return true;
+  return roles.has("top") && roles.has("bottom") && roles.has("shoes");
+}
+
 export function countRoleCompleteCombos(
   garments: GarmentListItem[],
   styleRules: StyleRuleListItem[],

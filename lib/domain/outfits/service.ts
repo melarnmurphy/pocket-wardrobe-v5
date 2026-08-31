@@ -60,7 +60,9 @@ export async function generateOutfitForUser(
     trendSignal,
     dress_code,
     weather,
-    occasion
+    occasion,
+    mustIncludeGarmentIds:
+      input.mode === "trend" ? input.must_include_garment_ids : undefined
   });
 
   // Pro: replace rule tags with Claude prose (stub — not yet wired)

@@ -84,7 +84,11 @@ export const generateOutfitInputSchema = z.discriminatedUnion("mode", [
     weather: z.string().trim().max(80).nullable().optional()
   }),
   z.object({ mode: z.literal("surprise") }),
-  z.object({ mode: z.literal("trend"), trend_signal_id: z.string().uuid() })
+  z.object({
+    mode: z.literal("trend"),
+    trend_signal_id: z.string().uuid(),
+    must_include_garment_ids: z.array(z.string().uuid()).max(20).optional()
+  })
 ]);
 export type GenerateOutfitInput = z.infer<typeof generateOutfitInputSchema>;
 

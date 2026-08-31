@@ -364,10 +364,13 @@ function buildOutfitInsights(params: {
     const neglect = valueNeglect(garment);
     if (neglect == null || neglect < 100) continue;
     const title = garment.title ?? garment.category;
+    const amount = Math.round(neglect);
+    const currency = garment.purchase_currency?.trim();
+    const amountLabel = currency ? `${currency} ${amount}` : `$${amount}`;
     insights.push({
       key: "occasion",
       title: "Neglected value",
-      body: `${title} is costing $${neglect} per wear.`,
+      body: `${title} is costing ${amountLabel} per wear.`,
       tags: ["cost-per-wear"]
     });
   }
@@ -557,15 +560,17 @@ export function generateOutfit(input: GeneratorInput): GeneratedOutfit {
   for (const [role, candidates] of byRole) {
     if (candidates.length === 0) continue;
 
-    // Score each candidate
+    // Score each candidate. Threshold uses rules-only score so CPW/recency/trend
+    // boosts rank within a role without pulling optional accessories into every look.
     const scored = candidates.map(g => {
-      let score = scoreGarment(g, expandedRules, ctx);
+      const rulesScore = scoreGarment(g, expandedRules, ctx);
+      let score = rulesScore;
       score += costPerWearBoost(g);
       score -= recencyPenalty(g.last_worn_at, now);
       if (mode === "trend" && trendSignal) {
         score = applyTrendBoost(score, g, trendSignal);
       }
-      return { garment: g, score };
+      return { garment: g, score, rulesScore };
     });
 
     scored.sort((a, b) => b.score - a.score);
@@ -574,7 +579,7 @@ export function generateOutfit(input: GeneratorInput): GeneratedOutfit {
     // Omit optional roles below threshold
     if (
       OPTIONAL_ROLES.includes(role) &&
-      best.score < OPTIONAL_ROLE_THRESHOLD &&
+      best.rulesScore < OPTIONAL_ROLE_THRESHOLD &&
       !(role === "outerwear" && isLayeringGarment(best.garment))
     ) continue;
 

@@ -134,9 +134,9 @@ function SavedOutfitCard({ outfit }: { outfit: OutfitWithItems }) {
 
         {insights.length ? (
           <div className="mt-4 space-y-3">
-            {insights.slice(0, 2).map((insight) => (
+            {insights.slice(0, 2).map((insight, index) => (
               <div
-                key={insight.key}
+                key={`${insight.key}-${index}`}
                 className="rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,243,238,0.92))] p-3"
               >
                 <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">

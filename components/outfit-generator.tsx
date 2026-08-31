@@ -483,9 +483,9 @@ export function OutfitGenerator({
             <p className="text-sm text-[var(--muted)]">{pendingResult.explanation}</p>
           ) : pendingResult.insights.length > 0 ? (
             <div className="grid gap-3 md:grid-cols-2">
-              {pendingResult.insights.map((insight) => (
+              {pendingResult.insights.map((insight, index) => (
                 <div
-                  key={insight.key}
+                  key={`${insight.key}-${index}`}
                   className="rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3"
                 >
                   <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">

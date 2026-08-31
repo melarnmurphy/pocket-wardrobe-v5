@@ -4,10 +4,10 @@ import type { UserTrendMatchWithSignal } from "@/lib/domain/trends";
 import { matchedGarmentIds } from "@/lib/domain/outfits/appeal";
 
 export function OwnedTrendCard({ match }: { match: UserTrendMatchWithSignal }) {
-  const garmentId = matchedGarmentIds(match)[0];
+  const garmentIds = matchedGarmentIds(match);
   const trendId = match.trend_signal_id;
   const params = new URLSearchParams({ mode: "trend", trend: trendId });
-  if (garmentId) params.set("item", garmentId);
+  if (garmentIds.length) params.set("item", garmentIds.join(","));
   const href = `/outfits?${params.toString()}` as Route;
   const kind = match.match_type === "exact_match" ? "On you" : "Close to you";
 

@@ -5,6 +5,7 @@ import type { Route } from "next";
 import { useMemo } from "react";
 import { chipsFromOutfit, ReasonStrip } from "@/components/reason-strip";
 import type { GeneratedOutfit } from "@/lib/domain/outfits";
+import { isRoleCompleteOutfit } from "@/lib/domain/outfits/unlock";
 import { saveTodayOutfitAction } from "@/app/wardrobe/today-actions";
 
 const EMPTY_COPY = "Add a few more pieces";
@@ -26,7 +27,7 @@ export function TodayOutfitCard({
     return { localDate: `${y}-${m}-${d}`, localHour: now.getHours() };
   }, []);
 
-  const complete = outfit.garments.length >= 2;
+  const complete = isRoleCompleteOutfit(outfit.garments);
   const firstGarmentId = outfit.garments[0]?.id;
   const chips = chipsFromOutfit(outfit, extraChips);
   const titles = outfit.garments

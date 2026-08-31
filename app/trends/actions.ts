@@ -1,11 +1,7 @@
 "use server";
 
 import { getRequiredUser } from "@/lib/auth";
-import { listLookbookEntries } from "@/lib/domain/lookbook/service";
-import {
-  lookbookUnlockCandidates,
-  trendUnlockCandidates
-} from "@/lib/domain/outfits/appeal";
+import { trendUnlockCandidates } from "@/lib/domain/outfits/appeal";
 import { scoreUnlockCandidates, type UnlockScore } from "@/lib/domain/outfits/unlock";
 import { listStyleRules } from "@/lib/domain/style-rules/service";
 import {
@@ -40,13 +36,12 @@ export interface TrendsPageData {
 export async function loadTrendsPageData(): Promise<TrendsPageData> {
   const user = await getRequiredUser();
 
-  const [matches, signals, stories, garments, styleRules, lookbookEntries] = await Promise.all([
+  const [matches, signals, stories, garments, styleRules] = await Promise.all([
     getUserTrendMatches(user.id),
     getTrendSignals(),
     getTrendStories(),
     listWardrobeGarments(),
-    listStyleRules(),
-    listLookbookEntries()
+    listStyleRules()
   ]);
 
   // Per-signal view
@@ -111,10 +106,11 @@ export async function loadTrendsPageData(): Promise<TrendsPageData> {
       trend_signal: signal
     })
   );
-  const unlockScores = scoreUnlockCandidates(garments, styleRules, [
-    ...trendUnlockCandidates(matchesWithSignals),
-    ...lookbookUnlockCandidates(lookbookEntries)
-  ]);
+  const unlockScores = scoreUnlockCandidates(
+    garments,
+    styleRules,
+    trendUnlockCandidates(matchesWithSignals)
+  );
 
   return { trendMatches, storyMatches, garmentPreviews, unlockScores };
 }

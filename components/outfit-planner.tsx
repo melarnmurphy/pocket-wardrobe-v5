@@ -30,7 +30,10 @@ import { categoryToRole } from "@/lib/domain/outfits/generator";
 import { generateOutfitAction, saveOutfitAction } from "@/app/outfits/actions";
 import { showAppToast } from "@/lib/ui/app-toast";
 import { bucketOutfitsByDate } from "@/lib/domain/outfits/calendar";
-import { buildPlannerGenerateInput } from "@/lib/domain/outfits/planner-generate";
+import {
+  buildPlannerGenerateInput,
+  parseMustIncludeGarmentIds
+} from "@/lib/domain/outfits/planner-generate";
 import { chipsFromOutfit, ReasonStrip } from "@/components/reason-strip";
 import { TodayOutfitCard } from "@/components/today-outfit-card";
 
@@ -150,12 +153,16 @@ export function OutfitPlanner({
   const [pendingTrendSignalId, setPendingTrendSignalId] = useState<string | null>(
     trendSignalId?.trim() || null
   );
+  const [pendingMustIncludeGarmentIds, setPendingMustIncludeGarmentIds] = useState<string[]>(
+    () => parseMustIncludeGarmentIds(focusGarmentId)
+  );
   const [error, setError] = useState<string | null>(null);
   const hydratedPreferredLocationsRef = useRef<Set<string>>(new Set());
 
   function closeGenerateDialog() {
     setIsGenerateDialogOpen(false);
     setPendingTrendSignalId(null);
+    setPendingMustIncludeGarmentIds([]);
   }
 
   const activeDay = useMemo(
@@ -398,11 +405,14 @@ export function OutfitPlanner({
     setError(null);
 
     const landingTrendId = pendingTrendSignalId;
+    const landingMustInclude = pendingMustIncludeGarmentIds;
     setPendingTrendSignalId(null);
+    setPendingMustIncludeGarmentIds([]);
 
     const result = await generateOutfitAction(
       buildPlannerGenerateInput({
         pendingTrendSignalId: landingTrendId,
+        mustIncludeGarmentIds: landingMustInclude,
         occasion: activeDay.occasion,
         dressCode: activeDay.dressCode,
         weather:
@@ -413,6 +423,8 @@ export function OutfitPlanner({
     );
 
     if ("error" in result) {
+      setPendingTrendSignalId(landingTrendId);
+      setPendingMustIncludeGarmentIds(landingMustInclude);
       setError(result.error);
       showAppToast({ tone: "error", message: result.error });
     } else {
@@ -826,9 +838,9 @@ function OutfitExplanationSummary({ outfit }: { outfit: GeneratedOutfit }) {
         </div>
       ) : primaryInsights.length ? (
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-          {primaryInsights.map((insight) => (
+          {primaryInsights.map((insight, index) => (
             <div
-              key={insight.key}
+              key={`${insight.key}-${index}`}
               className="rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(247,244,238,0.86))] p-3"
             >
               <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">
@@ -859,9 +871,9 @@ function OutfitExplanationSummary({ outfit }: { outfit: GeneratedOutfit }) {
 function OutfitInsightGrid({ outfit }: { outfit: GeneratedOutfit }) {
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      {outfit.insights.map((insight) => (
+      {outfit.insights.map((insight, index) => (
         <div
-          key={insight.key}
+          key={`${insight.key}-${index}`}
           className="rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,243,238,0.92))] p-4"
         >
           <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">

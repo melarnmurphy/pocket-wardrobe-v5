@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { countRoleCompleteCombos, scoreUnlockCandidates } from "../unlock";
+import { countRoleCompleteCombos, isRoleCompleteOutfit, scoreUnlockCandidates } from "../unlock";
 import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
 
 function makeGarment(overrides: Partial<GarmentListItem> & { id: string; category: string }): GarmentListItem {
@@ -36,6 +36,30 @@ function makeGarment(overrides: Partial<GarmentListItem> & { id: string; categor
     ...overrides
   };
 }
+
+describe("isRoleCompleteOutfit", () => {
+  it("accepts dress+shoes or top+bottom+shoes, not two arbitrary pieces", () => {
+    expect(
+      isRoleCompleteOutfit([
+        { role: "top" },
+        { role: "bottom" }
+      ])
+    ).toBe(false);
+    expect(
+      isRoleCompleteOutfit([
+        { role: "dress" },
+        { role: "shoes" }
+      ])
+    ).toBe(true);
+    expect(
+      isRoleCompleteOutfit([
+        { role: "top" },
+        { role: "bottom" },
+        { role: "shoes" }
+      ])
+    ).toBe(true);
+  });
+});
 
 describe("countRoleCompleteCombos", () => {
   it("counts zero combos without a complete set", () => {

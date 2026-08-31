@@ -241,6 +241,49 @@ describe("generateOutfit", () => {
     );
   });
 
+  it("omits must-include garments that fail hard filters", () => {
+    const jeansId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2";
+    const garments = [
+      makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1", category: "shirt" }),
+      makeGarment({ id: jeansId, category: "jeans" })
+    ];
+    const result = generateOutfit({
+      mode: "trend",
+      garments,
+      styleRules: [
+        makeRule({
+          predicate: "avoid_with",
+          subject_value: "jeans",
+          object_value: "formal",
+          constraint_type: "hard"
+        })
+      ],
+      trendSignal: null,
+      dress_code: "formal",
+      mustIncludeGarmentIds: [jeansId]
+    });
+    expect(result.garments.map((g) => g.id)).not.toContain(jeansId);
+  });
+
+  it("does not promote optional accessories past the role threshold via cost-per-wear boost", () => {
+    const garments = [
+      makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1", category: "shirt" }),
+      makeGarment({
+        id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2",
+        category: "belt",
+        purchase_price: 400,
+        wear_count: 0
+      })
+    ];
+    const result = generateOutfit({
+      mode: "plan",
+      garments,
+      styleRules: [],
+      trendSignal: null
+    });
+    expect(result.garments.map((g) => g.role)).not.toContain("accessory");
+  });
+
   it("adds a neglected-value insight for selected garments costing 100 or more per wear", () => {
     const garments = [
       makeGarment({
@@ -263,6 +306,35 @@ describe("generateOutfit", () => {
           key: "occasion",
           title: "Neglected value",
           body: "Navy blazer is costing $400 per wear.",
+          tags: ["cost-per-wear"]
+        }
+      ])
+    );
+  });
+
+  it("rounds neglected-value amounts and uses purchase_currency when present", () => {
+    const garments = [
+      makeGarment({
+        id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2",
+        category: "blazer",
+        title: "Navy blazer",
+        purchase_price: 400,
+        purchase_currency: "AUD",
+        wear_count: 3
+      })
+    ];
+    const result = generateOutfit({
+      mode: "plan",
+      garments,
+      styleRules: [],
+      trendSignal: null
+    });
+    expect(result.insights).toEqual(
+      expect.arrayContaining([
+        {
+          key: "occasion",
+          title: "Neglected value",
+          body: "Navy blazer is costing AUD 133 per wear.",
           tags: ["cost-per-wear"]
         }
       ])
