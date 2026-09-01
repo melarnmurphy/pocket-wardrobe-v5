@@ -49,6 +49,9 @@ export default async function AccountPage() {
           email={profile.email}
           displayName={profile.display_name}
           preferredLocation={profile.preferred_location}
+          region={profile.region}
+          temperatureUnit={profile.temperature_unit}
+          currencyUnit={profile.currency_unit}
         />
 
         <YouSection profile={garderobeProfile} preview={publicPreview} />

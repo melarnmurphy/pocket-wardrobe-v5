@@ -6,7 +6,10 @@ import { createClient } from "@/lib/supabase/server";
 const accountProfileSchema = z.object({
   email: z.string().email().nullable(),
   display_name: z.string().trim().max(80).nullable(),
-  preferred_location: z.string().trim().max(160).nullable()
+  preferred_location: z.string().trim().max(160).nullable(),
+  region: z.enum(["AU", "NZ"]).default("AU"),
+  temperature_unit: z.enum(["C", "F"]).default("C"),
+  currency_unit: z.enum(["AUD", "NZD"]).default("AUD")
 });
 
 export type AccountProfile = z.infer<typeof accountProfileSchema>;
@@ -27,18 +30,30 @@ export function getDisplayNameFromMetadata(metadata: unknown) {
   return trimmed.length ? trimmed : null;
 }
 
+function getEnumFromMetadata<T extends string>(metadata: unknown, key: string, values: readonly T[]): T | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const value = (metadata as Record<string, unknown>)[key];
+  return typeof value === "string" && (values as readonly string[]).includes(value) ? (value as T) : null;
+}
+
 export const getAccountProfile = cache(async (): Promise<AccountProfile> => {
   const user = await getRequiredUser();
   return accountProfileSchema.parse({
     email: user.email ?? null,
     display_name: getDisplayNameFromMetadata(user.user_metadata),
-    preferred_location: getPreferredLocationFromMetadata(user.user_metadata)
+    preferred_location: getPreferredLocationFromMetadata(user.user_metadata),
+    region: getEnumFromMetadata(user.user_metadata, "region", ["AU", "NZ"] as const) ?? "AU",
+    temperature_unit: getEnumFromMetadata(user.user_metadata, "temperature_unit", ["C", "F"] as const) ?? "C",
+    currency_unit: getEnumFromMetadata(user.user_metadata, "currency_unit", ["AUD", "NZD"] as const) ?? "AUD"
   });
 });
 
 export async function updateAccountProfile(input: {
   display_name: string | null;
   preferred_location: string | null;
+  region?: "AU" | "NZ";
+  temperature_unit?: "C" | "F";
+  currency_unit?: "AUD" | "NZD";
 }) {
   const user = await getRequiredUser();
   const supabase = await createClient();
@@ -58,6 +73,10 @@ export async function updateAccountProfile(input: {
   } else {
     delete existingMetadata.preferred_location;
   }
+
+  if (input.region) existingMetadata.region = input.region;
+  if (input.temperature_unit) existingMetadata.temperature_unit = input.temperature_unit;
+  if (input.currency_unit) existingMetadata.currency_unit = input.currency_unit;
 
   const { error } = await supabase.auth.updateUser({ data: existingMetadata });
   if (error) throw new Error(error.message);

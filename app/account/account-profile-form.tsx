@@ -16,11 +16,17 @@ const accountProfileActionState: AccountProfileActionState = {
 export function AccountProfileForm({
   email,
   displayName,
-  preferredLocation
+  preferredLocation,
+  region,
+  temperatureUnit,
+  currencyUnit
 }: {
   email: string | null;
   displayName: string | null;
   preferredLocation: string | null;
+  region: "AU" | "NZ";
+  temperatureUnit: "C" | "F";
+  currencyUnit: "AUD" | "NZD";
 }) {
   const [state, formAction] = useActionState<AccountProfileActionState, FormData>(
     updateAccountProfileAction,
@@ -71,6 +77,42 @@ export function AccountProfileForm({
           className="rounded-[10px] border border-[var(--line)] bg-white px-4 py-3 outline-none focus:border-[var(--foreground)]"
         />
       </label>
+
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+        <label className="flex flex-col gap-2 text-sm">
+          <span className="font-medium">Region</span>
+          <select
+            name="region"
+            defaultValue={region}
+            className="rounded-[10px] border border-[var(--line)] bg-white px-4 py-3 outline-none focus:border-[var(--foreground)]"
+          >
+            <option value="AU">Australia</option>
+            <option value="NZ">New Zealand</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-2 text-sm">
+          <span className="font-medium">Temperature</span>
+          <select
+            name="temperature_unit"
+            defaultValue={temperatureUnit}
+            className="rounded-[10px] border border-[var(--line)] bg-white px-4 py-3 outline-none focus:border-[var(--foreground)]"
+          >
+            <option value="C">Celsius</option>
+            <option value="F">Fahrenheit</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-2 text-sm">
+          <span className="font-medium">Currency</span>
+          <select
+            name="currency_unit"
+            defaultValue={currencyUnit}
+            className="rounded-[10px] border border-[var(--line)] bg-white px-4 py-3 outline-none focus:border-[var(--foreground)]"
+          >
+            <option value="AUD">A$ AUD</option>
+            <option value="NZD">$ NZD</option>
+          </select>
+        </label>
+      </div>
 
       <button type="submit" className="pw-button-primary w-full md:w-auto">
         Save account info

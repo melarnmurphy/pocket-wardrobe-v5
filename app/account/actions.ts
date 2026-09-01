@@ -6,7 +6,10 @@ import { updateAccountProfile } from "@/lib/domain/account/service";
 
 const updateAccountProfileSchema = z.object({
   display_name: z.string().trim().max(80).optional(),
-  preferred_location: z.string().trim().max(160).optional()
+  preferred_location: z.string().trim().max(160).optional(),
+  region: z.enum(["AU", "NZ"]).optional(),
+  temperature_unit: z.enum(["C", "F"]).optional(),
+  currency_unit: z.enum(["AUD", "NZD"]).optional()
 });
 
 export type AccountProfileActionState = {
@@ -21,12 +24,18 @@ export async function updateAccountProfileAction(
   try {
     const values = updateAccountProfileSchema.parse({
       display_name: formData.get("display_name") ?? undefined,
-      preferred_location: formData.get("preferred_location") ?? undefined
+      preferred_location: formData.get("preferred_location") ?? undefined,
+      region: formData.get("region") || undefined,
+      temperature_unit: formData.get("temperature_unit") || undefined,
+      currency_unit: formData.get("currency_unit") || undefined
     });
 
     await updateAccountProfile({
       display_name: values.display_name?.trim() || null,
-      preferred_location: values.preferred_location?.trim() || null
+      preferred_location: values.preferred_location?.trim() || null,
+      region: values.region,
+      temperature_unit: values.temperature_unit,
+      currency_unit: values.currency_unit
     });
 
     revalidatePath("/account");
