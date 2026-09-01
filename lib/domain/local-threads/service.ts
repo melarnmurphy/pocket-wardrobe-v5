@@ -2,6 +2,9 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
 import { getOrCreateProfile } from "@/lib/domain/profile/service";
+import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
+import { listStyleRules } from "@/lib/domain/style-rules/service";
+import { unlockCountForCandidate } from "@/lib/domain/outfits/unlock";
 import {
   localListingCardSchema,
   nearbyQuerySchema,
@@ -31,9 +34,9 @@ export async function searchNearby(
     viewer_lng: profile.suburb_lng,
     radius_km: parsedQuery.radiusKm,
     max_price_cents: parsedQuery.maxPriceCents ?? null,
-    // "finishes a look" needs the shared unlock computation DATA_MODEL.md
-    // says it reuses from the wishlist (phase 9, not yet built) — falls
-    // back to closest until that exists, rather than a fabricated score.
+    // "finishes a look" is scored in TS below — it's the same
+    // unlockCountForCandidate() computation the wishlist uses (15a), not
+    // something the SQL side can rank.
     sort_key: parsedQuery.sort === "finishes a look" ? "closest" : parsedQuery.sort
   } as never)) as { data: unknown; error: { message: string } | null };
 
@@ -41,7 +44,25 @@ export async function searchNearby(
     throw new Error(error.message);
   }
 
-  const listings = z.array(localListingCardSchema).parse(data ?? []);
+  let listings = z.array(localListingCardSchema).parse(data ?? []);
+
+  if (parsedQuery.sort === "finishes a look" && listings.length > 0) {
+    const [garments, styleRules] = await Promise.all([listWardrobeGarments(), listStyleRules()]);
+    listings = listings
+      .map((listing) => ({
+        listing,
+        unlockCount: unlockCountForCandidate(garments, styleRules, {
+          id: listing.piece_id,
+          title: listing.description,
+          category: listing.category,
+          subcategory: listing.subcategory,
+          primary_colour_family: null
+        })
+      }))
+      .sort((a, b) => b.unlockCount - a.unlockCount)
+      .map((entry) => entry.listing);
+  }
+
   const signedListings = await signListingPhotos(supabase, listings);
 
   return {

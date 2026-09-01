@@ -566,6 +566,7 @@ export type Database = {
         Row: {
           ask_cents: number
           blocked_reason: string | null
+          category: string
           created_at: string
           currency: string
           description: string
@@ -585,6 +586,7 @@ export type Database = {
           sold_at: string | null
           sold_for_cents: number | null
           status: string
+          subcategory: string | null
           suburb: string
           updated_at: string
           views: number
@@ -593,6 +595,7 @@ export type Database = {
         Insert: {
           ask_cents: number
           blocked_reason?: string | null
+          category: string
           created_at?: string
           currency?: string
           description?: string
@@ -612,6 +615,7 @@ export type Database = {
           sold_at?: string | null
           sold_for_cents?: number | null
           status?: string
+          subcategory?: string | null
           suburb: string
           updated_at?: string
           views?: number
@@ -620,6 +624,7 @@ export type Database = {
         Update: {
           ask_cents?: number
           blocked_reason?: string | null
+          category?: string
           created_at?: string
           currency?: string
           description?: string
@@ -639,6 +644,7 @@ export type Database = {
           sold_at?: string | null
           sold_for_cents?: number | null
           status?: string
+          subcategory?: string | null
           suburb?: string
           updated_at?: string
           views?: number
@@ -848,39 +854,66 @@ export type Database = {
       lookbook_entries: {
         Row: {
           aesthetic_tags: string[]
+          bought_garment_id: string | null
+          category: string | null
+          colour_family: string | null
           created_at: string
+          currency: string
           description: string | null
           id: string
           image_path: string | null
           occasion_tags: string[]
+          original_price_cents: number | null
+          price_cents: number | null
+          resolved_state: string
+          size: string | null
           source_type: string
           source_url: string | null
           title: string | null
           user_id: string
+          watch_price: boolean
         }
         Insert: {
           aesthetic_tags?: string[]
+          bought_garment_id?: string | null
+          category?: string | null
+          colour_family?: string | null
           created_at?: string
+          currency?: string
           description?: string | null
           id?: string
           image_path?: string | null
           occasion_tags?: string[]
+          original_price_cents?: number | null
+          price_cents?: number | null
+          resolved_state?: string
+          size?: string | null
           source_type: string
           source_url?: string | null
           title?: string | null
           user_id: string
+          watch_price?: boolean
         }
         Update: {
           aesthetic_tags?: string[]
+          bought_garment_id?: string | null
+          category?: string | null
+          colour_family?: string | null
           created_at?: string
+          currency?: string
           description?: string | null
           id?: string
           image_path?: string | null
           occasion_tags?: string[]
+          original_price_cents?: number | null
+          price_cents?: number | null
+          resolved_state?: string
+          size?: string | null
           source_type?: string
           source_url?: string | null
           title?: string | null
           user_id?: string
+          watch_price?: boolean
         }
         Relationships: []
       }

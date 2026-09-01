@@ -10,14 +10,14 @@ const COMBO_CAP = 400;
 export type UnlockCandidate = {
   id: string;
   label: string;
-  source: "trend" | "lookbook";
+  source: "trend" | "lookbook" | "listing" | "scanned";
   synthetic: Pick<GarmentListItem, "id" | "title" | "category" | "subcategory" | "primary_colour_family">;
 };
 
 export type UnlockScore = {
   id: string;
   label: string;
-  source: "trend" | "lookbook";
+  source: "trend" | "lookbook" | "listing" | "scanned";
   unlock_count: number;
   reasoning: string;
 };
@@ -102,6 +102,28 @@ export function countRoleCompleteCombos(
   const dressCombos = buckets.dress.length * buckets.shoes.length;
   const separatedCombos = buckets.top.length * buckets.bottom.length * buckets.shoes.length;
   return dressCombos + separatedCombos;
+}
+
+/**
+ * The single-candidate form of scoreUnlockCandidates, unfiltered and
+ * uncapped — used wherever every candidate needs its own number rather
+ * than just the top 3, e.g. WishlistItem.unlockCount (15a) and the nearby
+ * feed's "finishes a look" sort (16a/w2a), which DATA_MODEL.md calls "the
+ * same computation" as the wishlist's.
+ */
+export function unlockCountForCandidate(
+  garments: GarmentListItem[],
+  styleRules: StyleRuleListItem[],
+  candidate: UnlockCandidate["synthetic"],
+  dressCode?: string
+): number {
+  const baseline = countRoleCompleteCombos(garments, styleRules, dressCode);
+  const withCandidate = countRoleCompleteCombos(
+    [...garments, toSyntheticGarment(candidate)],
+    styleRules,
+    dressCode
+  );
+  return Math.max(0, withCandidate - baseline);
 }
 
 export function scoreUnlockCandidates(

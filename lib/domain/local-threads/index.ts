@@ -32,6 +32,8 @@ export const localListingCardSchema = z.object({
   currency: z.string(),
   negotiable: z.boolean(),
   description: z.string(),
+  category: z.string(),
+  subcategory: z.string().nullable(),
   photo_uris: z.array(z.string()),
   show_wear_count: z.boolean(),
   wear_count_at_listing: z.number().int().nullable(),

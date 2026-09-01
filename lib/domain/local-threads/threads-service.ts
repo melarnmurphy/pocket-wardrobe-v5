@@ -48,6 +48,8 @@ export async function createLocalListing(input: CreateLocalListingInput): Promis
     ask_cents: parsed.ask_cents,
     negotiable: parsed.negotiable,
     description: parsed.description,
+    category: garment.category,
+    subcategory: garment.subcategory ?? null,
     photo_uris: photoUris,
     show_wear_count: parsed.show_wear_count,
     wear_count_at_listing: garment.wear_count,

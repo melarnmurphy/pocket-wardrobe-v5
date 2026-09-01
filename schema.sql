@@ -248,6 +248,17 @@ create table if not exists public.lookbook_entries (
   image_path text,
   aesthetic_tags text[] not null default '{}',
   occasion_tags text[] not null default '{}',
+  -- 15a/w3a wishlist (source_type = 'wishlist') — see migration 033.
+  price_cents integer check (price_cents is null or price_cents >= 0),
+  original_price_cents integer check (original_price_cents is null or original_price_cents >= 0),
+  currency text not null default 'AUD',
+  category text,
+  colour_family text,
+  size text,
+  watch_price boolean not null default true,
+  resolved_state text not null default 'manual'
+    check (resolved_state in ('resolving', 'resolved', 'manual', 'failed')),
+  bought_garment_id uuid references public.garments(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -756,6 +767,10 @@ create table if not exists public.local_listings (
   currency text not null default 'AUD',
   negotiable boolean not null default true,
   description text not null default '',
+  -- denormalised from the piece so a buyer's unlock scoring (phase 9) never
+  -- needs a cross-user read of garments, which RLS blocks.
+  category text not null,
+  subcategory text,
   photo_uris text[] not null default '{}',
   show_wear_count boolean not null default true,
   wear_count_at_listing integer,
@@ -862,6 +877,9 @@ create index if not exists idx_wear_events_garment_id on public.wear_events(garm
 create index if not exists idx_wear_events_worn_at on public.wear_events(worn_at desc);
 
 create index if not exists idx_lookbook_entries_user_id on public.lookbook_entries(user_id);
+create index if not exists lookbook_entries_wishlist_idx
+  on public.lookbook_entries (user_id)
+  where source_type = 'wishlist';
 create index if not exists idx_outfits_user_id on public.outfits(user_id);
 create index if not exists outfits_planned_for_idx
   on public.outfits (user_id, planned_for)
