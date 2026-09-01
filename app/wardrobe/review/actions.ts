@@ -9,6 +9,7 @@ import {
   setGarmentPrimaryColourFamily
 } from "@/lib/domain/wardrobe/service";
 import { getCanonicalWardrobeColour } from "@/lib/domain/wardrobe/colours";
+import { computeLabelEvent, recordLabelEvent } from "@/lib/domain/training/label-events";
 import { z } from "zod";
 
 export type DraftActionResult =
@@ -200,6 +201,56 @@ export async function acceptDraftAction(
       }
     }
 
+    // Capture the model-vs-human label delta as training data (best-effort).
+    // MUST run before the draft_payload_json overwrite below, which replaces the
+    // model's original guess with the human's final values.
+    const finalLabels = {
+      category: values.category,
+      colour: colour ?? "",
+      material: values.material?.trim() ?? "",
+      style: values.style?.trim() ?? "",
+      brand: brand ?? "",
+      title: values.title,
+    };
+    const modelLabels = {
+      category: String(p.category ?? ""),
+      colour: String(p.colour ?? ""),
+      material: String(p.material ?? ""),
+      style: String(p.style ?? ""),
+      brand: String(p.brand ?? ""),
+      title: String(p.title ?? p.tag ?? ""),
+    };
+    const { eventType, correctedFields } = computeLabelEvent(modelLabels, finalLabels);
+    await recordLabelEvent(supabase, {
+      user_id: user.id,
+      draft_id: draftId,
+      garment_id: garment.id as string,
+      source_id: sourceId ?? null,
+      event_type: eventType,
+      corrected_fields: correctedFields,
+      source_storage_path: source?.storage_path ?? null,
+      crop_path: typeof p.crop_path === "string" ? p.crop_path : null,
+      bbox: Array.isArray(p.bbox) ? (p.bbox as number[]) : null,
+      crop_width: typeof p.crop_width === "number" ? p.crop_width : null,
+      crop_height: typeof p.crop_height === "number" ? p.crop_height : null,
+      model_category: modelLabels.category || null,
+      model_colour: modelLabels.colour || null,
+      model_material: modelLabels.material || null,
+      model_style: modelLabels.style || null,
+      model_brand: modelLabels.brand || null,
+      model_confidence: typeof p.confidence === "number" ? p.confidence : null,
+      model_field_confidence:
+        p.field_confidence && typeof p.field_confidence === "object"
+          ? (p.field_confidence as Record<string, unknown>)
+          : null,
+      final_category: finalLabels.category || null,
+      final_colour: finalLabels.colour || null,
+      final_material: finalLabels.material || null,
+      final_style: finalLabels.style || null,
+      final_brand: finalLabels.brand || null,
+      final_title: finalLabels.title || null,
+    });
+
     const { error: updateError } = await supabase
       .from("garment_drafts")
       .update({
@@ -249,7 +300,7 @@ export async function rejectDraftAction(draftId: string): Promise<DraftActionRes
 
     const { data: draft, error: fetchError } = await supabase
       .from("garment_drafts")
-      .select("status")
+      .select("status, source_id, draft_payload_json, garment_sources(storage_path)")
       .eq("id", draftId)
       .eq("user_id", user.id)
       .single();
@@ -271,6 +322,41 @@ export async function rejectDraftAction(draftId: string): Promise<DraftActionRes
     if (updateError) {
       return { status: "error", message: updateError.message };
     }
+
+    // Capture the rejection as a hard-negative training example (best-effort).
+    const rp = (draft as { draft_payload_json?: Record<string, unknown> }).draft_payload_json ?? {};
+    const rejectSource = (draft as {
+      garment_sources?: { storage_path: string | null } | null;
+    }).garment_sources;
+    await recordLabelEvent(supabase, {
+      user_id: user.id,
+      draft_id: draftId,
+      garment_id: null,
+      source_id: (draft as { source_id?: string | null }).source_id ?? null,
+      event_type: "rejected",
+      corrected_fields: [],
+      source_storage_path: rejectSource?.storage_path ?? null,
+      crop_path: typeof rp.crop_path === "string" ? rp.crop_path : null,
+      bbox: Array.isArray(rp.bbox) ? (rp.bbox as number[]) : null,
+      crop_width: typeof rp.crop_width === "number" ? rp.crop_width : null,
+      crop_height: typeof rp.crop_height === "number" ? rp.crop_height : null,
+      model_category: rp.category ? String(rp.category) : null,
+      model_colour: rp.colour ? String(rp.colour) : null,
+      model_material: rp.material ? String(rp.material) : null,
+      model_style: rp.style ? String(rp.style) : null,
+      model_brand: rp.brand ? String(rp.brand) : null,
+      model_confidence: typeof rp.confidence === "number" ? rp.confidence : null,
+      model_field_confidence:
+        rp.field_confidence && typeof rp.field_confidence === "object"
+          ? (rp.field_confidence as Record<string, unknown>)
+          : null,
+      final_category: null,
+      final_colour: null,
+      final_material: null,
+      final_style: null,
+      final_brand: null,
+      final_title: null,
+    });
 
     revalidatePath("/");
     revalidatePath("/wardrobe/review");
