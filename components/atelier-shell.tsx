@@ -113,17 +113,7 @@ export async function AtelierShell({ children }: { children: React.ReactNode }) 
           displayName={profile?.display_name ?? null}
           planTier={entitlements?.plan_tier ?? "free"}
           isAdmin={isAdmin}
-          renderTrigger={({ onClick }) => (
-            <button
-              type="button"
-              onClick={onClick}
-              aria-label="account menu"
-              className="text-[13px]"
-              style={{ color: "var(--stone)" }}
-            >
-              ···
-            </button>
-          )}
+          triggerVariant="ellipsis"
         />
       </div>
     </div>

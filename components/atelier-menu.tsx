@@ -11,7 +11,14 @@ type AtelierMenuProps = {
   displayName: string | null;
   planTier: "free" | "pro" | "premium";
   isAdmin: boolean;
-  renderTrigger?: (props: { onClick: () => void; initials: string }) => React.ReactNode;
+  /**
+   * "avatar" (default): the circular-initials trigger used in the top bar.
+   * "ellipsis": the "···" trigger used in the sidebar's profile chip.
+   * A render-prop function can't be used here — AtelierShell (a server
+   * component) can't pass a function across the server/client boundary
+   * into this client component; only serialisable props survive that hop.
+   */
+  triggerVariant?: "avatar" | "ellipsis";
 };
 
 const NAV_ITEMS = [
@@ -19,7 +26,7 @@ const NAV_ITEMS = [
   { label: "Account settings", href: "/account" }
 ] as const;
 
-export function AtelierMenu({ email, displayName, planTier, isAdmin, renderTrigger }: AtelierMenuProps) {
+export function AtelierMenu({ email, displayName, planTier, isAdmin, triggerVariant = "avatar" }: AtelierMenuProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -39,8 +46,17 @@ export function AtelierMenu({ email, displayName, planTier, isAdmin, renderTrigg
 
   return (
     <>
-      {renderTrigger ? (
-        renderTrigger({ onClick: () => setOpen(true), initials })
+      {triggerVariant === "ellipsis" ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="account menu"
+          aria-expanded={open}
+          className="text-[13px]"
+          style={{ color: "var(--stone)" }}
+        >
+          ···
+        </button>
       ) : (
         <button
           type="button"
