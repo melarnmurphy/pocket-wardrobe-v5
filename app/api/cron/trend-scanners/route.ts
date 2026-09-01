@@ -9,9 +9,9 @@
  * curls may use the same header or `x-cron-secret`.
  *
  * Query params:
- *   archetype (optional): one of "editorial" | "runway" | "street_social" |
- *                         "colour_authority". If omitted, all scanners run,
- *                         each gated by its defaultCadenceDays.
+ *   archetype (optional): one of editorial | runway | street_social |
+ *                         colour_authority | design_house | fashion_week |
+ *                         it_girl_discovery | emerging_maker.
  *   force (optional): if "true", bypass the cadence gate (useful for
  *                     manual re-runs).
  */

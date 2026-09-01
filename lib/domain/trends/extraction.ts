@@ -2,13 +2,18 @@ import OpenAI from "openai";
 import { createChatModelClient } from "@/lib/ai/chat-client";
 import { createServiceClient as createClient } from "@/lib/supabase/service";
 import { getServerEnv } from "@/lib/env";
-import { canonicalizeLabel } from "./matching";
+import { canonicalizeLabel } from "./labels";
 import { getCanonicalWardrobeColour, canonicalWardrobeColours } from "@/lib/domain/wardrobe/colours";
 import { TREND_TYPES, type TrendType } from "./index";
 import type { TablesInsert } from "@/types/database";
 import { chunkText, scoreChunkRelevance, extractColoursFromText } from "./content";
 import { resolveSeasonYear } from "./seasons";
 import { resolveTrendTaxonomy } from "./taxonomy";
+import {
+  PAIRING_SCOUT_INSTRUCTION,
+  normalizeExtractedSignals
+} from "./styling-recipe";
+import { parseCitedMakers, upsertCitedEntities } from "./entities";
 
 type TrendSignalInsert = TablesInsert<"trend_signals">;
 type TrendColourInsert = TablesInsert<"trend_colours">;
@@ -83,9 +88,31 @@ Excerpt:
 ${source.excerpt ?? source.title}
 
 Rules:
+- ${PAIRING_SCOUT_INSTRUCTION}
 - Extract ONLY concrete, specific trend claims. Skip vague statements like "it was a great season".
+- When coverage shows two pieces working together, emit ONE styling signal for the recipe. Do not split "mini hem + cowboy boots" into a garment "cowboy boots" and a garment "mini dress".
+- Standalone garment or colour signals are allowed only when the source treats them as the thing itself, not as half of a look.
+- For trend_type "styling", label the recipe with " + " (max 8 words). Keep vibe and last separate. "skate-inspired" is a vibe (Onitsuka Tigers, Puma ballet flats, and slip-ons can all sit under it). "Slip-on" is a closure. Only name a last when the source names one.
+- For trend_type "styling", normalized_attributes MUST include:
+  "recipe": true,
+  "anchor": the piece that creates tension (often the hem or silhouette),
+  "counterweight": the grounding or dressing piece (often shoes, outerwear, or a bag),
+  "pair": array of {
+    "piece": string as the source named it (do not rewrite skate-inspired into a Vans last),
+    "category": one of tops, bottoms, dresses, outerwear, shoes, bags, accessories,
+    "vibe": "skate" or null,
+    "last": for a named last one of vulcanized, western, ballet, runner, plimsoll, loafer, heel, boot, sandal, or null,
+    "silhouette": e.g. low, slim, kick_flare, or null,
+    "closure": e.g. slip_on, lace, or null,
+    "hem": e.g. mini, midi, or null,
+    "archetype": slug e.g. slim_runner, white_plimsoll, ballet_flat
+  },
+  "required_categories": those category strings,
+  "cited_makers": array of {"name": string, "city": string or null, "region": string or null} named in the source — never invent,
+  "why": one short clause explaining why they belong together
+- A loafer is a slip-on closure but not automatically a skate vibe. A slim runner is not a white plimsoll.
 - For trend_type "colour", family MUST be one of: ${colourList}
-- Keep labels concise (max 8 words). Examples: "wide-leg trousers", "butter yellow", "quiet luxury aesthetic"
+- Keep other labels concise (max 8 words).
 - Set confidence between 0.5 (mentioned once, implicitly) and 1.0 (headline trend, explicitly stated)
 - Return an empty array if no concrete trend signals are present
 
@@ -108,7 +135,7 @@ async function parseExtractionResponse(content: string): Promise<ExtractedSignal
   if (!match) return [];
   try {
     const parsed = JSON.parse(match[0]) as unknown[];
-    return parsed
+    const signals = parsed
       .filter(
         (s): s is ExtractedSignal =>
           typeof s === "object" &&
@@ -136,6 +163,7 @@ async function parseExtractionResponse(content: string): Promise<ExtractedSignal
           : undefined;
         return result;
       });
+    return normalizeExtractedSignals(signals);
   } catch {
     return [];
   }
@@ -470,6 +498,11 @@ export async function processExtractionJob(jobId: string): Promise<void> {
       const { error: linkError } = await supabase.from("trend_signal_sources").insert(sourceLink as never);
       if (linkError && linkError.code !== "23505") {
         console.warn("[extraction] Failed to link signal to source:", linkError.message);
+      }
+
+      const makers = parseCitedMakers(signal.normalized_attributes, signal.house_attribution);
+      if (makers.length > 0) {
+        await upsertCitedEntities(supabase, signalId, makers);
       }
 
       upsertedSignals.push({

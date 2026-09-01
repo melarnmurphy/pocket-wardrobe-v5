@@ -1,9 +1,17 @@
 import type { TrendSignalWithColour, TrendMatchReasoning, UserTrendMatch } from "./index";
 import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
+import { rankExamplesForUser, type RankedExample } from "./entities";
+import {
+  enrichRecipePiece,
+  extractRecipePieces,
+  extractRequiredCategories,
+  garmentCoversRecipeCategory,
+  garmentCoversRecipePiece,
+  RECIPE_WARDROBE_CATEGORIES,
+  type RecipeWardrobeCategory
+} from "./styling-recipe";
 
-export function canonicalizeLabel(label: string): string {
-  return label.trim().toLowerCase().replace(/\s+/g, " ").replace(/-/g, " ");
-}
+export { canonicalizeLabel } from "./labels";
 
 export function computeRecencyWeight(lastSeenAt: string | null | undefined): number {
   if (!lastSeenAt) return 1.0;
@@ -29,6 +37,7 @@ interface MatchInput {
   signals: TrendSignalWithColour[];
   garments: GarmentListItem[];
   compatibleColourFamilies: Map<string, Set<string>>;
+  userLocation?: string | null;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -86,7 +95,38 @@ function matchGarmentSignal(
   signal: TrendSignalWithColour,
   garments: GarmentListItem[]
 ): UserTrendMatch {
-  const attrs = signal.normalized_attributes_json as {
+  const attrs = signal.normalized_attributes_json as Record<string, unknown>;
+  const category =
+    typeof attrs.category === "string" &&
+    RECIPE_WARDROBE_CATEGORIES.includes(attrs.category as RecipeWardrobeCategory)
+      ? (attrs.category as RecipeWardrobeCategory)
+      : null;
+  const piece = enrichRecipePiece({
+    piece: signal.label,
+    category,
+    last: typeof attrs.last === "string" ? attrs.last : null,
+    vibe: typeof attrs.vibe === "string" ? attrs.vibe : null,
+    silhouette: typeof attrs.silhouette === "string" ? attrs.silhouette : null,
+    closure: typeof attrs.closure === "string" ? attrs.closure : null,
+    hem: typeof attrs.hem === "string" ? attrs.hem : null,
+    archetype: typeof attrs.archetype === "string" ? attrs.archetype : null
+  });
+
+  if (piece.last || piece.archetype || piece.vibe || piece.closure) {
+    const covering = garments.filter((g) => garmentCoversRecipePiece(g, piece));
+    if (covering.length === 0) {
+      return buildMissingPiece(signal, [], `No ${piece.piece} in the wardrobe`);
+    }
+    return buildMatch(signal, "exact_match", clamp(computeBaseScore(signal, 1), 0.85, 1.0), {
+      signal_label: signal.label,
+      match_reason: `You own a ${piece.piece}`,
+      matched_garment_ids: covering.map((g) => g.id as string),
+      attributes_matched: [piece.last ?? piece.archetype ?? "piece"],
+      attributes_adjacent: []
+    });
+  }
+
+  const attrRecord = attrs as {
     category?: string;
     subcategory?: string;
     fit?: string;
@@ -94,17 +134,17 @@ function matchGarmentSignal(
   };
 
   const signalAttrs: Record<string, unknown> = {
-    ...(attrs.category ? { category: attrs.category } : {}),
-    ...(attrs.subcategory ? { subcategory: attrs.subcategory } : {}),
-    ...(attrs.fit ? { fit: attrs.fit } : {}),
-    ...(attrs.material ? { material: attrs.material } : {})
+    ...(attrRecord.category ? { category: attrRecord.category } : {}),
+    ...(attrRecord.subcategory ? { subcategory: attrRecord.subcategory } : {}),
+    ...(attrRecord.fit ? { fit: attrRecord.fit } : {}),
+    ...(attrRecord.material ? { material: attrRecord.material } : {})
   };
 
   const toGarmentAttrs = (g: GarmentListItem): Record<string, unknown> => ({
-    ...(attrs.category !== undefined ? { category: g.category } : {}),
-    ...(attrs.subcategory !== undefined ? { subcategory: g.subcategory ?? undefined } : {}),
-    ...(attrs.fit !== undefined ? { fit: g.fit ?? undefined } : {}),
-    ...(attrs.material !== undefined ? { material: g.material ?? undefined } : {})
+    ...(attrRecord.category !== undefined ? { category: g.category } : {}),
+    ...(attrRecord.subcategory !== undefined ? { subcategory: g.subcategory ?? undefined } : {}),
+    ...(attrRecord.fit !== undefined ? { fit: g.fit ?? undefined } : {}),
+    ...(attrRecord.material !== undefined ? { material: g.material ?? undefined } : {})
   });
 
   let bestGarment: GarmentListItem | null = null;
@@ -149,16 +189,42 @@ function matchStylingSignal(
   signal: TrendSignalWithColour,
   garments: GarmentListItem[]
 ): UserTrendMatch {
-  const attrs = signal.normalized_attributes_json as { required_categories?: string[] };
-  const required = attrs.required_categories ?? [];
+  const attrs = signal.normalized_attributes_json as Record<string, unknown>;
+  const pieces = extractRecipePieces(attrs).filter((piece) => piece.category);
 
-  if (required.length === 0) {
-    return buildMissingPiece(signal, [], "No required_categories defined in signal");
+  if (pieces.length >= 2) {
+    const missingPieces = pieces.filter(
+      (piece) => !garments.some((g) => garmentCoversRecipePiece(g, piece))
+    );
+    if (missingPieces.length > 0) {
+      return buildMissingPiece(
+        signal,
+        [],
+        `Missing ${missingPieces.map((piece) => piece.piece).join(", ")}`
+      );
+    }
+    const matchedIds = pieces.flatMap((piece) =>
+      garments.filter((g) => garmentCoversRecipePiece(g, piece)).map((g) => g.id as string)
+    );
+    return buildMatch(signal, "styling_match", clamp(computeBaseScore(signal, 1), 0.6, 0.8), {
+      signal_label: signal.label,
+      match_reason: `Your wardrobe covers ${pieces.map((piece) => piece.piece).join(" + ")}`,
+      matched_garment_ids: [...new Set(matchedIds)],
+      attributes_matched: pieces.map((piece) => piece.last ?? piece.category ?? piece.piece),
+      attributes_adjacent: []
+    });
   }
 
-  const ownedCategories = new Set(garments.map((g) => g.category));
-  const covered = required.filter((cat) => ownedCategories.has(cat));
-  const missing = required.filter((cat) => !ownedCategories.has(cat));
+  const required = extractRequiredCategories(attrs);
+
+  if (required.length === 0) {
+    return buildMissingPiece(signal, [], "No pairing categories defined in signal");
+  }
+
+  const covered = required.filter((cat) =>
+    garments.some((g) => garmentCoversRecipeCategory(g, cat))
+  );
+  const missing = required.filter((cat) => !covered.includes(cat));
 
   if (missing.length > 0) {
     return buildMissingPiece(signal, [], `Missing categories: ${missing.join(", ")}`);
@@ -167,7 +233,9 @@ function matchStylingSignal(
   const overlapRatio = covered.length / required.length;
   const score = clamp(computeBaseScore(signal, overlapRatio), 0.6, 0.8);
   const matchedIds = required.flatMap((cat) =>
-    garments.filter((g) => g.category === cat).map((g) => g.id as string)
+    garments
+      .filter((g) => garmentCoversRecipeCategory(g, cat))
+      .map((g) => g.id as string)
   );
 
   return buildMatch(signal, "styling_match", score, {
@@ -284,20 +352,63 @@ export function trendSectionOrder(): Array<
   return ["exact_match", "adjacent_match", "styling_match", "missing_piece"];
 }
 
+function examplesFromSignal(signal: TrendSignalWithColour): RankedExample[] {
+  return (signal.entities ?? [])
+    .filter((entity) => entity.entity_type === "brand")
+    .map((entity) => {
+      const meta = (entity.metadata_json ?? {}) as Record<string, unknown>;
+      return {
+        label: entity.label,
+        tier: meta.tier === "heritage" ? "heritage" : "emerging",
+        city: typeof meta.city === "string" ? meta.city : null,
+        region: typeof meta.region === "string" ? meta.region : null,
+        local: false
+      };
+    });
+}
+
+function withCitedExample(
+  signal: TrendSignalWithColour,
+  match: UserTrendMatch,
+  userLocation?: string | null
+): UserTrendMatch {
+  if (match.match_type !== "missing_piece") return match;
+  const ranked = rankExamplesForUser(examplesFromSignal(signal), userLocation ?? null);
+  if (!ranked) return match;
+  const previous = match.reasoning_json as unknown as TrendMatchReasoning;
+  const reasoning: TrendMatchReasoning = {
+    ...previous,
+    cited_example: ranked,
+    match_reason: ranked.local
+      ? `${previous.match_reason}. Cited nearby: ${ranked.label}`
+      : `${previous.match_reason}. Cited: ${ranked.label}`
+  };
+  return {
+    ...match,
+    score: ranked.local ? Math.min(match.score + 0.05, 0.45) : match.score,
+    reasoning_json: reasoning as unknown as Record<string, unknown>
+  };
+}
+
 export function computeUserTrendMatches(input: MatchInput): UserTrendMatch[] {
-  const { signals, garments, compatibleColourFamilies } = input;
+  const { signals, garments, compatibleColourFamilies, userLocation } = input;
   const activeGarments = garments.filter((g) => g.wardrobe_status === "active");
 
   return signals.map((signal) => {
+    let match: UserTrendMatch;
     switch (signal.trend_type) {
       case "colour":
-        return matchColourSignal(signal, activeGarments, compatibleColourFamilies);
+        match = matchColourSignal(signal, activeGarments, compatibleColourFamilies);
+        break;
       case "garment":
-        return matchGarmentSignal(signal, activeGarments);
+        match = matchGarmentSignal(signal, activeGarments);
+        break;
       case "styling":
-        return matchStylingSignal(signal, activeGarments);
+        match = matchStylingSignal(signal, activeGarments);
+        break;
       default:
-        return matchGenericSignal(signal, activeGarments);
+        match = matchGenericSignal(signal, activeGarments);
     }
+    return withCitedExample(signal, match, userLocation);
   });
 }

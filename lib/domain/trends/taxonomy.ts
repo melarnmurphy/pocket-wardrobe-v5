@@ -1,4 +1,4 @@
-import { canonicalizeLabel } from "./matching";
+import { canonicalizeLabel } from "./labels";
 
 export interface TrendTaxonomyFields {
   canonical_label: string;
@@ -30,7 +30,10 @@ export function resolveTrendTaxonomy({
   const category = typeof attributes.category === "string" ? canonicalizeLabel(attributes.category) : "";
   const subcategory =
     typeof attributes.subcategory === "string" ? canonicalizeLabel(attributes.subcategory) : "";
-  const haystack = [canonicalSource, category, subcategory].filter(Boolean).join(" ");
+  const last = typeof attributes.last === "string" ? canonicalizeLabel(attributes.last) : "";
+  const archetype =
+    typeof attributes.archetype === "string" ? canonicalizeLabel(attributes.archetype) : "";
+  const haystack = [canonicalSource, category, subcategory, last, archetype].filter(Boolean).join(" ");
 
   if (trendType === "colour") {
     return {

@@ -18,8 +18,8 @@
       "schedule": "0 8 * * 1"
     },
     {
-      "path": "/api/cron/trend-scanners?archetype=design_house",
-      "schedule": "0 9 * * 1"
+      "path": "/api/cron/trend-scanners?archetype=emerging_maker",
+      "schedule": "0 9 * * 3"
     },
     {
       "path": "/api/cron/trend-scanners?archetype=it_girl_discovery",

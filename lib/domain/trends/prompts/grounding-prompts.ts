@@ -19,6 +19,7 @@
  */
 
 import { TREND_TYPES, type TrendType } from "../index";
+import { PAIRING_SCOUT_INSTRUCTION } from "../styling-recipe";
 
 export type ScannerArchetype =
   | "editorial"
@@ -27,7 +28,8 @@ export type ScannerArchetype =
   | "colour_authority"
   | "design_house"
   | "fashion_week"
-  | "it_girl_discovery";
+  | "it_girl_discovery"
+  | "emerging_maker";
 
 export interface GroundingScanner {
   archetype: ScannerArchetype;
@@ -112,6 +114,7 @@ const editorialScanner: GroundingScanner = {
       input.season ? `${input.season} season` : null,
       input.region ? `${input.region}` : null,
       "Summarise the concrete trends being called out this week.",
+      PAIRING_SCOUT_INSTRUCTION,
       "Cite the originating article URL for each claim."
     ]
       .filter(Boolean)
@@ -125,7 +128,7 @@ const editorialScanner: GroundingScanner = {
  */
 const runwayScanner: GroundingScanner = {
   archetype: "runway",
-  targetTrendTypes: ["silhouette", "garment", "material", "pattern", "colour"],
+  targetTrendTypes: ["silhouette", "garment", "styling", "material", "pattern", "colour"],
   preferredSites: [
     "vogue.com/fashion-shows",
     "tagwalk.com",
@@ -155,6 +158,7 @@ const runwayScanner: GroundingScanner = {
       input.season ? `${input.season}` : "current season",
       input.region ?? "",
       "List the recurring silhouettes, fabrics, prints, and colours seen across multiple shows.",
+      PAIRING_SCOUT_INSTRUCTION,
       "Cite the originating review URL for each."
     ]
       .filter(Boolean)
@@ -199,6 +203,7 @@ const streetSocialScanner: GroundingScanner = {
       `street style OR viral OR tiktok fashion trend (${sites}) after:${sinceDate}`,
       input.region ?? "",
       "Surface micro-trends and emerging garment categories that are spreading right now.",
+      PAIRING_SCOUT_INSTRUCTION,
       "Cite the originating article URL for each."
     ]
       .filter(Boolean)
@@ -254,7 +259,7 @@ const colourAuthorityScanner: GroundingScanner = {
  */
 const designHouseScanner: GroundingScanner = {
   archetype: "design_house",
-  targetTrendTypes: ["garment", "material", "silhouette", "aesthetic", "pattern"],
+  targetTrendTypes: ["garment", "styling", "material", "silhouette", "aesthetic", "pattern"],
   preferredSites: [
     "vogue.com",
     "wwd.com",
@@ -283,6 +288,7 @@ const designHouseScanner: GroundingScanner = {
       `fashion house collection OR new release OR design house drop (${sites}) after:${sinceDate}`,
       input.season ?? "current season",
       "For each trend or look mentioned, name the specific design house (e.g. Prada, Bottega Veneta, Celine, Acne Studios).",
+      PAIRING_SCOUT_INSTRUCTION,
       "Extract the key garments, materials, and silhouettes per house. Cite the source URL."
     ]
       .filter(Boolean)
@@ -297,7 +303,7 @@ const designHouseScanner: GroundingScanner = {
  */
 const fashionWeekScanner: GroundingScanner = {
   archetype: "fashion_week",
-  targetTrendTypes: ["silhouette", "garment", "material", "pattern", "colour"],
+  targetTrendTypes: ["silhouette", "garment", "styling", "material", "pattern", "colour"],
   preferredSites: [
     "vogue.com/fashion-shows",
     "tagwalk.com",
@@ -327,6 +333,7 @@ const fashionWeekScanner: GroundingScanner = {
       input.season ?? "current season",
       input.region ?? "",
       "Name the design house for each look. Surface repeated silhouettes, fabrics, prints across shows.",
+      PAIRING_SCOUT_INSTRUCTION,
       "Include specific looks like 'transparent denim at Coperni'. Cite source URLs."
     ]
       .filter(Boolean)
@@ -369,7 +376,45 @@ const itGirlDiscoveryScanner: GroundingScanner = {
       `best dressed OR it girl OR style icon OR street style (${sites}) after:${sinceDate}`,
       "Name the specific people being called out as style references (models, actresses, socialites, musicians).",
       "For each person, note what they wore — specific garments, styling choices, brands.",
+      PAIRING_SCOUT_INSTRUCTION,
       "Cite the source URL for each."
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+};
+
+/**
+ * Emerging / independent makers — cited examples of a last, not invented brands.
+ * Cadence: weekly. Global scan; local ranking happens per user.
+ */
+const emergingMakerScanner: GroundingScanner = {
+  archetype: "emerging_maker",
+  targetTrendTypes: ["garment", "styling"],
+  preferredSites: [
+    "vogue.com",
+    "businessoffashion.com",
+    "wwd.com",
+    "hypebeast.com",
+    "highsnobiety.com"
+  ],
+  authorityByDomain: {
+    "vogue.com": 0.8,
+    "businessoffashion.com": 0.85,
+    "wwd.com": 0.85,
+    "hypebeast.com": 0.7,
+    "highsnobiety.com": 0.7
+  },
+  defaultCadenceDays: 7,
+  recencyWindowDays: 21,
+  buildGroundingQuery: (input) => {
+    const sinceDate = isoDaysAgo(input.now, 21);
+    const region = input.region ? `${input.region} ` : "";
+    return [
+      `${region}independent designer OR emerging label OR new fashion brand skate-inspired OR slim runner OR white plimsoll OR Onitsuka OR Puma ballet OR cowboy boot after:${sinceDate}`,
+      "Name only designers or labels the sources actually cite. Include city or region if stated.",
+      "Keep vibe and last separate: skate-inspired is a vibe; Onitsuka is a slim runner last; Puma ballet is a ballet last; slip-on is a closure.",
+      "Do not invent brands. Cite the source URL."
     ]
       .filter(Boolean)
       .join(" ");
@@ -383,7 +428,8 @@ export const SCANNERS: readonly GroundingScanner[] = [
   colourAuthorityScanner,
   designHouseScanner,
   fashionWeekScanner,
-  itGirlDiscoveryScanner
+  itGirlDiscoveryScanner,
+  emergingMakerScanner
 ] as const;
 
 export const SCANNER_BY_ARCHETYPE: Readonly<Record<ScannerArchetype, GroundingScanner>> =
@@ -394,7 +440,8 @@ export const SCANNER_BY_ARCHETYPE: Readonly<Record<ScannerArchetype, GroundingSc
     colour_authority: colourAuthorityScanner,
     design_house: designHouseScanner,
     fashion_week: fashionWeekScanner,
-    it_girl_discovery: itGirlDiscoveryScanner
+    it_girl_discovery: itGirlDiscoveryScanner,
+    emerging_maker: emergingMakerScanner
   };
 
 /**
@@ -431,6 +478,9 @@ ${args.groundingSummary}
 
 Citations:
 ${cites}
+
+${PAIRING_SCOUT_INSTRUCTION}
+When coverage shows two pieces working together, emit ONE styling signal, e.g. "mini hem + cowboy boots".
 
 Extract concrete trend signals from the summary above. For each, return:
   trend_type, label, normalized_attributes, season, region, confidence,

@@ -219,6 +219,13 @@ export interface TrendMatchReasoning {
   matched_garment_ids: string[];
   attributes_matched: string[];
   attributes_adjacent: string[];
+  cited_example?: {
+    label: string;
+    tier: string;
+    city: string | null;
+    region: string | null;
+    local: boolean;
+  };
 }
 
 export type ColourAttributes = {

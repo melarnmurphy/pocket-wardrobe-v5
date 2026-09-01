@@ -63,12 +63,14 @@ describe("new scanner archetypes", () => {
     expect(archetypes).toContain("design_house");
     expect(archetypes).toContain("fashion_week");
     expect(archetypes).toContain("it_girl_discovery");
+    expect(archetypes).toContain("emerging_maker");
   });
 
   it("SCANNER_BY_ARCHETYPE has entries for new archetypes", () => {
     expect(SCANNER_BY_ARCHETYPE["design_house"]).toBeDefined();
     expect(SCANNER_BY_ARCHETYPE["fashion_week"]).toBeDefined();
     expect(SCANNER_BY_ARCHETYPE["it_girl_discovery"]).toBeDefined();
+    expect(SCANNER_BY_ARCHETYPE["emerging_maker"]).toBeDefined();
   });
 
   it("design_house scanner builds a query mentioning design house", () => {
@@ -81,6 +83,14 @@ describe("new scanner archetypes", () => {
     const scanner = SCANNER_BY_ARCHETYPE["it_girl_discovery"];
     const query = scanner.buildGroundingQuery({ now: "2026-04-26T00:00:00Z" });
     expect(query.toLowerCase()).toMatch(/best dressed|it girl|style icon|street style/);
+    expect(query).toContain("styling recipes");
+  });
+
+  it("emerging_maker scanner asks for cited independent lasts", () => {
+    const scanner = SCANNER_BY_ARCHETYPE["emerging_maker"];
+    const query = scanner.buildGroundingQuery({ now: "2026-04-26T00:00:00Z" });
+    expect(query).toContain("independent designer");
+    expect(query).toContain("slim runner");
   });
 });
 

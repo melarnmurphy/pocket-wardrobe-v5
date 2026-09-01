@@ -385,7 +385,14 @@ export default async function TrendsPage() {
                       match_reason?: string;
                       matched_garment_ids?: string[];
                       attributes_matched?: string[];
+                      cited_example?: {
+                        label: string;
+                        local?: boolean;
+                        city?: string | null;
+                        region?: string | null;
+                      };
                     };
+                    const cited = reasoning.cited_example;
                     const unlockScore =
                       matchType === "missing_piece"
                         ? unlockById.get(match.id ?? match.trend_signal_id)
@@ -466,6 +473,15 @@ export default async function TrendsPage() {
                                 style={{ color: "var(--muted)" }}
                               >
                                 {reasoning.match_reason}
+                              </p>
+                            ) : null}
+                            {cited && matchType === "missing_piece" ? (
+                              <p className="mt-2 text-sm" style={{ color: "var(--muted)" }}>
+                                {cited.local ? "Near you · " : ""}
+                                {cited.label}
+                                {cited.city || cited.region
+                                  ? ` · ${[cited.city, cited.region].filter(Boolean).join(", ")}`
+                                  : ""}
                               </p>
                             ) : null}
                             {reasoning.attributes_matched && reasoning.attributes_matched.length > 0 ? (

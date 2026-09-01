@@ -195,6 +195,30 @@ describe("computeUserTrendMatches", () => {
     expect(result[0].match_type).toBe("adjacent_match");
   });
 
+  it("styling_match: pair categories work without required_categories", () => {
+    const signal = makeSignal({
+      trend_type: "styling",
+      label: "mini hem + cowboy boots",
+      normalized_attributes_json: {
+        recipe: true,
+        pair: [
+          { piece: "mini hem", category: "dresses" },
+          { piece: "cowboy boots", category: "shoes" }
+        ]
+      }
+    });
+    const garments = [
+      makeGarment({ id: "g-1", category: "dresses", title: "Mini dress" }),
+      makeGarment({ id: "g-2", category: "shoes", title: "Cowboy boots" })
+    ];
+    const result = computeUserTrendMatches({
+      signals: [signal],
+      garments,
+      compatibleColourFamilies: new Map()
+    });
+    expect(result[0].match_type).toBe("styling_match");
+  });
+
   it("styling_match: wardrobe covers all required_categories", () => {
     const signal = makeSignal({
       trend_type: "styling",
@@ -215,6 +239,82 @@ describe("computeUserTrendMatches", () => {
       compatibleColourFamilies: new Map()
     });
     expect(result[0].match_type).toBe("styling_match");
+  });
+
+  it("styling_match: trousers and boots cover a bottoms + shoes recipe", () => {
+    const signal = makeSignal({
+      trend_type: "styling",
+      label: "kick-flare + cowboy boots",
+      normalized_attributes_json: {
+        recipe: true,
+        required_categories: ["bottoms", "shoes"]
+      }
+    });
+    const garments = [
+      makeGarment({ id: "g-1", category: "jeans", title: "Kick-flare jeans" }),
+      makeGarment({ id: "g-2", category: "boots", title: "Cowboy boots" })
+    ];
+    const result = computeUserTrendMatches({
+      signals: [signal],
+      garments,
+      compatibleColourFamilies: new Map()
+    });
+    expect(result[0].match_type).toBe("styling_match");
+  });
+
+  it("does not treat a loafer as skate-inspired", () => {
+    const signal = makeSignal({
+      trend_type: "garment",
+      label: "skater-inspired slip-on",
+      normalized_attributes_json: {}
+    });
+    const result = computeUserTrendMatches({
+      signals: [signal],
+      garments: [makeGarment({ id: "g-1", category: "loafers", title: "Black loafers" })],
+      compatibleColourFamilies: new Map()
+    });
+    expect(result[0].match_type).toBe("missing_piece");
+  });
+
+  it("matches a Vans slip-on to skate-inspired slip-on", () => {
+    const signal = makeSignal({
+      trend_type: "garment",
+      label: "skater-inspired slip-on",
+      normalized_attributes_json: {}
+    });
+    const result = computeUserTrendMatches({
+      signals: [signal],
+      garments: [makeGarment({ id: "g-1", category: "shoes", title: "Vans Classic Slip-On", brand: "Vans" })],
+      compatibleColourFamilies: new Map()
+    });
+    expect(result[0].match_type).toBe("exact_match");
+  });
+
+  it("attaches a local cited maker on missing_piece", () => {
+    const signal = makeSignal({
+      trend_type: "garment",
+      label: "slim runner",
+      entities: [
+        {
+          trend_signal_id: "sig-1",
+          entity_type: "brand",
+          label: "Local Last Co",
+          normalized_label: "local last co",
+          source_count: 1,
+          metadata_json: { tier: "emerging", city: "Melbourne", region: "Australia" }
+        }
+      ]
+    });
+    const result = computeUserTrendMatches({
+      signals: [signal],
+      garments: [],
+      compatibleColourFamilies: new Map(),
+      userLocation: "Melbourne"
+    });
+    expect(result[0].match_type).toBe("missing_piece");
+    expect((result[0].reasoning_json as { cited_example?: { label: string; local: boolean } }).cited_example).toEqual(
+      expect.objectContaining({ label: "Local Last Co", local: true })
+    );
   });
 
   it("includes reasoning_json with matched_garment_ids", () => {

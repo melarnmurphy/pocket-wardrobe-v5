@@ -35,7 +35,10 @@ describe("buildExtractionPrompt", () => {
     const prompt = buildExtractionPrompt({ title: "T", excerpt: null, author: null, publishDate: null, sourceName: "S" });
     expect(prompt).toContain("colour");
     expect(prompt).toContain("silhouette");
-    expect(prompt).toContain("era_influence");
+    expect(prompt).toContain("mini hem + cowboy boots");
+    expect(prompt).toContain("skate-inspired");
+    expect(prompt).toContain("cited_makers");
+    expect(prompt).toContain("required_categories");
   });
 });
 

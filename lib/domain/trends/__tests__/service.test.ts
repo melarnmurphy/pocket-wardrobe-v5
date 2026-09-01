@@ -32,6 +32,14 @@ vi.mock("@/lib/domain/wardrobe/service", () => ({
   listWardrobeGarments: vi.fn().mockResolvedValue([])
 }));
 
+vi.mock("@/lib/domain/account/service", () => ({
+  getAccountProfile: vi.fn().mockResolvedValue({
+    email: "user@example.com",
+    display_name: null,
+    preferred_location: "Melbourne"
+  })
+}));
+
 vi.mock("../matching", () => ({
   computeUserTrendMatches: vi.fn().mockReturnValue([])
 }));

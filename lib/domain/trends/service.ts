@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { createClient } from "@/lib/supabase/server";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
+import { getAccountProfile } from "@/lib/domain/account/service";
 import { computeUserTrendMatches } from "./matching";
 import {
   trendSignalSchema,
@@ -319,13 +320,19 @@ export async function getUserTrendMatches(userId: string): Promise<UserTrendMatc
     return z.array(userTrendMatchSchema).parse(cached ?? []);
   }
 
-  const [signals, garments, compatibleColourFamilies] = await Promise.all([
+  const [signals, garments, compatibleColourFamilies, profile] = await Promise.all([
     getTrendSignals(),
     listWardrobeGarments(),
-    getCompatibleColourFamilies(supabase)
+    getCompatibleColourFamilies(supabase),
+    getAccountProfile()
   ]);
 
-  const matches = computeUserTrendMatches({ signals, garments, compatibleColourFamilies });
+  const matches = computeUserTrendMatches({
+    signals,
+    garments,
+    compatibleColourFamilies,
+    userLocation: profile.preferred_location
+  });
   const matchesWithUser = matches.map((m) => ({ ...m, user_id: userId }));
 
   const semanticUpgrades = await getSemanticUpgrades(supabase, garments, matchesWithUser);
