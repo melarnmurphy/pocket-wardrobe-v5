@@ -508,6 +508,10 @@ export function WardrobeShop({
               <Link href="/wishlist" className="underline">
                 wishlist
               </Link>
+              <span className="divider">/</span>
+              <Link href="/wardrobe/scan" className="underline">
+                scan it
+              </Link>
             </div>
           </div>
           <button

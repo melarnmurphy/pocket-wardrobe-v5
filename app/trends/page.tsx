@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { loadTrendsPageData } from "./actions";
 import { TrendSparkline } from "@/components/trend-sparkline";
 import { AuthenticationError } from "@/lib/auth";
@@ -97,6 +98,9 @@ export default async function TrendsPage() {
           <br />
           already owns.
         </h1>
+        <Link href="/trends/search" className="mt-3 inline-block text-sm underline">
+          search trends
+        </Link>
         <div
           className="mt-6 flex flex-wrap gap-6"
           style={{ color: "var(--muted)", fontSize: "0.78rem" }}
@@ -411,8 +415,9 @@ export default async function TrendsPage() {
                               {signal.family || signal.trend_type.replace("_", " ")}
                               {signal.season ? ` · ${signal.season}` : ""}
                             </p>
-                            <p
-                              className="mt-2 italic capitalize"
+                            <Link
+                              href={`/trends/${signal.id}`}
+                              className="mt-2 block italic capitalize"
                               style={{
                                 fontFamily: "var(--font-display), serif",
                                 fontSize: "1.35rem",
@@ -422,7 +427,7 @@ export default async function TrendsPage() {
                               }}
                             >
                               {signal.canonical_label || signal.label}
-                            </p>
+                            </Link>
                             <div className="mt-2.5 flex flex-wrap gap-2">
                               {signal.subfamily ? (
                                 <span
