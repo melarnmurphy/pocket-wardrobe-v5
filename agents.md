@@ -99,13 +99,18 @@ Build an MVP that supports:
 
 ## Non-goals for MVP
 Do not build these first unless required by existing architecture:
-- resale marketplace integration
-- social feed
 - influencer / creator features
 - advanced 3D closet UI
 - live runway scraping from dozens of sources
 - fully autonomous trend shopping recommendations
 - native mobile app unless requested
+
+**Local threads (`docs/design/design_handoff_garderobe`, phases 7–8) is a local, radius-bounded
+resale marketplace with in-app messaging, and is in scope.** It is not a social feed: no
+following, no public comments, no algorithmic timeline. It is a listing feed scoped to a
+user-set radius, plus one-to-one threads between a buyer and a seller about a specific
+listing. Garderobe never buys, lists, or processes payment on the user's behalf — see the
+standing rules in `docs/design/design_handoff_garderobe/BUILD_ORDER.md`.
 
 ---
 

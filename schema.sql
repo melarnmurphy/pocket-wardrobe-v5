@@ -156,12 +156,20 @@ create table if not exists public.garment_sources (
   user_id uuid not null references auth.users(id) on delete cascade,
   source_type text not null check (
     source_type in (
+      -- how a garment itself entered the wardrobe
       'direct_upload',
       'product_url',
       'website_image',
-      'receipt',
       'outfit_decomposition',
-      'manual_entry'
+      'manual_entry',
+      -- how a price attached to a garment — no retailer logins, see migration 023
+      'forwarded_email',
+      'read_email',
+      'docket_photo',
+      'pdf',
+      'screenshot',
+      'resale_account',
+      'receipt'
     )
   ),
   original_url text,

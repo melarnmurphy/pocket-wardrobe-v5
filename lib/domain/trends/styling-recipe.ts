@@ -138,7 +138,7 @@ export function enrichRecipePiece(input: {
   let archetype = input.archetype ?? null;
   const piece = raw;
 
-  if (last === "skate") {
+  if ((input.last as string | null | undefined) === "skate") {
     vibe = vibe ?? "skate";
     last = /vans|waffle|vulcanized|gum/.test(hay) ? "vulcanized" : null;
   }
