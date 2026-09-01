@@ -712,8 +712,29 @@ create table if not exists public.profiles (
   suburb_lat numeric(9,6),
   suburb_lng numeric(9,6),
   radius_km integer not null default 30 check (radius_km >= 5 and radius_km <= 100),
+  -- 6a/w4a-c onboarding — lets web and phone resume each other (migration 034)
+  onboarding_completed_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
+);
+
+-- 9f notifications — DATA_MODEL.md's AppNotification, scoped to kinds this
+-- repo has a real trigger for (see migration 034).
+create table if not exists public.app_notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  kind text not null check (
+    kind in (
+      'price drop', 'trend expiry', 'offer', 'sold', 'orders waiting',
+      'receipt read', 'wear reminder', 'batch finished', 'message'
+    )
+  ),
+  title text not null,
+  body text not null,
+  subject_kind text check (subject_kind in ('piece', 'wishlist', 'listing', 'trend', 'batch', 'thread')),
+  subject_id uuid,
+  created_at timestamptz not null default now(),
+  read_at timestamptz
 );
 
 -- =============================================================================
@@ -896,6 +917,7 @@ create index if not exists threads_seller_idx on public.threads (seller_id);
 create index if not exists messages_thread_idx on public.messages (thread_id, sent_at);
 create index if not exists handovers_thread_idx on public.handovers (thread_id);
 create index if not exists user_blocks_blocker_idx on public.user_blocks (blocker_id);
+create index if not exists app_notifications_user_idx on public.app_notifications (user_id, created_at desc);
 create index if not exists idx_garment_colours_colour_id on public.garment_colours(colour_id);
 create index if not exists idx_colour_relationships_a on public.colour_relationships(colour_id_a);
 create index if not exists idx_colour_relationships_b on public.colour_relationships(colour_id_b);
@@ -1040,6 +1062,7 @@ alter table public.messages enable row level security;
 alter table public.handovers enable row level security;
 alter table public.user_blocks enable row level security;
 alter table public.listing_reports enable row level security;
+alter table public.app_notifications enable row level security;
 
 alter table public.colours enable row level security;
 alter table public.colour_relationships enable row level security;
@@ -1613,6 +1636,12 @@ for insert with check (auth.uid() = reporter_id);
 
 create policy listing_reports_select_own on public.listing_reports
 for select using (auth.uid() = reporter_id);
+
+create policy app_notifications_select_own on public.app_notifications
+for select using (auth.uid() = user_id);
+
+create policy app_notifications_update_own on public.app_notifications
+for update using (auth.uid() = user_id);
 
 -- =============================================================================
 -- Seed global style rules

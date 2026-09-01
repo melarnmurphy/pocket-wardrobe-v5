@@ -350,9 +350,9 @@ h6 {
 }
 
 .pw-button-primary {
-  background: #111111;
-  box-shadow: 0 14px 30px rgba(17, 17, 17, 0.18);
-  color: #fffdfc;
+  background: var(--oxblood);
+  box-shadow: 0 14px 30px rgba(109, 42, 36, 0.18);
+  color: var(--cream);
 }
 
 .pw-button-secondary {

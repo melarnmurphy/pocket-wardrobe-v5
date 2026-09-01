@@ -202,6 +202,26 @@ async function insertMessage(
     .from("threads")
     .update({ last_message_at: new Date().toISOString() } as never)
     .eq("id", params.threadId);
+
+  const { data: thread } = await supabase
+    .from("threads")
+    .select("buyer_id,seller_id")
+    .eq("id", params.threadId)
+    .maybeSingle();
+
+  if (thread) {
+    const parsedThread = thread as { buyer_id: string; seller_id: string };
+    const recipientId = parsedThread.buyer_id === params.senderId ? parsedThread.seller_id : parsedThread.buyer_id;
+    const { createNotification } = await import("@/lib/domain/notifications/service");
+    await createNotification({
+      userId: recipientId,
+      kind: "message",
+      title: "New message",
+      body: params.kind === "offer" ? `Offered A$${((params.offerCents ?? 0) / 100).toFixed(0)}` : params.body,
+      subjectKind: "thread",
+      subjectId: params.threadId
+    });
+  }
 }
 
 /** Public places only — the place list is a free-text field the two people agree on. */

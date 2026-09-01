@@ -39,6 +39,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          kind: string
+          read_at: string | null
+          subject_id: string | null
+          subject_kind: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          kind: string
+          read_at?: string | null
+          subject_id?: string | null
+          subject_kind?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          read_at?: string | null
+          subject_id?: string | null
+          subject_kind?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       avatar_measurement_sets: {
         Row: {
           avatar_profile_id: string | null
@@ -1086,6 +1122,7 @@ export type Database = {
           created_at: string
           height_cm: number | null
           local_name: string | null
+          onboarding_completed_at: string | null
           one_size_either_way: boolean
           show_suburb: boolean
           show_wear_count: boolean
@@ -1106,6 +1143,7 @@ export type Database = {
           created_at?: string
           height_cm?: number | null
           local_name?: string | null
+          onboarding_completed_at?: string | null
           one_size_either_way?: boolean
           show_suburb?: boolean
           show_wear_count?: boolean
@@ -1126,6 +1164,7 @@ export type Database = {
           created_at?: string
           height_cm?: number | null
           local_name?: string | null
+          onboarding_completed_at?: string | null
           one_size_either_way?: boolean
           show_suburb?: boolean
           show_wear_count?: boolean

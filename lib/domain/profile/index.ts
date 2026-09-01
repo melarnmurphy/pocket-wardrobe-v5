@@ -42,6 +42,7 @@ export const profileSchema = updateProfileSchema
     suburb_lat: z.coerce.number().nullable(),
     suburb_lng: z.coerce.number().nullable(),
     radius_km: z.number().int().min(5).max(100).default(30),
+    onboarding_completed_at: z.string().nullable(),
     created_at: z.string(),
     updated_at: z.string()
   });

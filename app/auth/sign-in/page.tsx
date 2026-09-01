@@ -18,7 +18,7 @@ export default async function SignInPage({
   }>;
 }) {
   const params = await searchParams;
-  const next = params.next && params.next.startsWith("/") ? params.next : "/wardrobe";
+  const next = params.next && params.next.startsWith("/") ? params.next : "/onboarding";
   const email = params.email ?? "";
   const mode =
     params.mode === "reset"

@@ -4,7 +4,7 @@ import { getPublicEnv } from "@/lib/env";
 import type { Database } from "@/types/database";
 
 function sanitizeNextPath(next: string | null) {
-  return next && next.startsWith("/") ? next : "/wardrobe";
+  return next && next.startsWith("/") ? next : "/onboarding";
 }
 
 function buildSignInRedirectUrl(origin: string, params: Record<string, string>) {

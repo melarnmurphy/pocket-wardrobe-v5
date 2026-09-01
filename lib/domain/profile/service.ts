@@ -20,7 +20,7 @@ type ProfileInsert = TablesInsert<"profiles">;
 type ProfileUpdate = TablesUpdate<"profiles">;
 
 const PROFILE_SELECT =
-  "user_id,local_name,suburb,tops_size,bottoms_size,shoes_size,tops_size_system,bottoms_size_system,shoes_size_system,height_cm,one_size_either_way,show_suburb,show_wear_count,suburb_lat,suburb_lng,radius_km,created_at,updated_at";
+  "user_id,local_name,suburb,tops_size,bottoms_size,shoes_size,tops_size_system,bottoms_size_system,shoes_size_system,height_cm,one_size_either_way,show_suburb,show_wear_count,suburb_lat,suburb_lng,radius_km,onboarding_completed_at,created_at,updated_at";
 
 /** No signup trigger creates this row — it's created lazily on first read. */
 export const getOrCreateProfile = cache(async (): Promise<Profile> => {
@@ -121,6 +121,20 @@ export async function updateLocalPrivacy(input: LocalPrivacyInput): Promise<Prof
   }
 
   return profileSchema.parse(data);
+}
+
+/** 6a/w4a-c — marks onboarding done so /onboarding stops intercepting sign-in. */
+export async function completeOnboarding(): Promise<void> {
+  await getOrCreateProfile();
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  const update: ProfileUpdate = { onboarding_completed_at: new Date().toISOString() };
+  const { error } = await supabase.from("profiles").update(update as never).eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }
 
 /** Radius defaults to 30km, user-settable 5-100, persisted on the profile. */

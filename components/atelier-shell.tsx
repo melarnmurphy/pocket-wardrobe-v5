@@ -5,6 +5,8 @@ import { getAccountProfile } from "@/lib/domain/account/service";
 import { getUserEntitlements } from "@/lib/domain/entitlements/service";
 import { AtelierMenu } from "@/components/atelier-menu";
 import { AtelierPrimaryNav } from "@/components/atelier-primary-nav";
+import { NotificationsBell } from "@/components/notifications-bell";
+import { CommandPalette } from "@/components/command-palette";
 
 export async function AtelierShell() {
   const user = await getOptionalUser();
@@ -27,12 +29,16 @@ export async function AtelierShell() {
         <AtelierPrimaryNav />
 
         {user ? (
-          <AtelierMenu
-            email={user.email ?? ""}
-            displayName={profile?.display_name ?? null}
-            planTier={entitlements?.plan_tier ?? "free"}
-            isAdmin={isAdmin}
-          />
+          <div className="flex items-center gap-2">
+            <CommandPalette />
+            <NotificationsBell />
+            <AtelierMenu
+              email={user.email ?? ""}
+              displayName={profile?.display_name ?? null}
+              planTier={entitlements?.plan_tier ?? "free"}
+              isAdmin={isAdmin}
+            />
+          </div>
         ) : (
           <Link href="/auth/sign-in?next=%2Fwardrobe" className="text-sm font-medium">
             Sign in

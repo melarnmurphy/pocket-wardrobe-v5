@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import {
+  completeOnboarding,
   updateLocalPrivacy,
   updateProfile,
   updateSizes
@@ -73,6 +74,18 @@ export async function updateLocalPrivacyAction(
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Unable to save privacy settings."
+    };
+  }
+}
+
+export async function completeOnboardingAction(): Promise<ProfileActionState> {
+  try {
+    await completeOnboarding();
+    return { status: "success", message: null };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to finish onboarding."
     };
   }
 }
