@@ -1,19 +1,26 @@
 import type { Metadata } from "next";
-import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
+import { IBM_Plex_Mono, Karla } from "next/font/google";
 import "./globals.css";
 import { AppToastHost } from "@/components/app-toast-host";
 import { AtelierChrome } from "@/components/atelier-chrome";
 import { AtelierShell } from "@/components/atelier-shell";
 
-const bodyFont = Plus_Jakarta_Sans({
+const bodyFont = Karla({
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
   variable: "--font-body"
 });
 
-const displayFont = Fraunces({
+const displayFont = Karla({
   subsets: ["latin"],
-  variable: "--font-display",
-  axes: ["SOFT", "WONK", "opsz"]
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-display"
+});
+
+const monoFont = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-mono"
 });
 
 export const metadata: Metadata = {
@@ -28,7 +35,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${bodyFont.variable} ${displayFont.variable}`}>
+      <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable}`}>
         <AtelierChrome>
           <AtelierShell />
         </AtelierChrome>
