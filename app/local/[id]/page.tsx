@@ -5,7 +5,8 @@ import { getLocalListingDetail, incrementListingViews } from "@/lib/domain/local
 import { getPublicProfile } from "@/lib/domain/profile/service";
 import { AuthenticationError, getRequiredUser } from "@/lib/auth";
 import { AuthRequiredCard } from "@/components/auth-required-card";
-import { CutoutTile } from "@/components/garderobe";
+import { CutoutTile, PillButton } from "@/components/garderobe";
+import { startThreadAction } from "@/app/local/actions";
 
 function formatMoney(cents: number) {
   return `A$${(cents / 100).toFixed(0)}`;
@@ -92,9 +93,36 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
           )}
         </section>
 
-        <p className="pt-6 text-[11px] text-[var(--stone)]">
-          messaging and handover arrangement aren&apos;t built yet — that&apos;s next.
-        </p>
+        {listing.seller_id !== viewer.id && listing.status === "live" ? (
+          <section className="mt-8 border-t border-[rgba(30,26,23,.14)] pt-6">
+            <form
+              action={async (formData: FormData) => {
+                "use server";
+                const body = String(formData.get("message") ?? "").trim();
+                if (!body) return;
+                await startThreadAction(listing.id, body);
+              }}
+              className="flex flex-col gap-3"
+            >
+              <textarea
+                name="message"
+                rows={2}
+                placeholder="is this still available?"
+                className="w-full rounded-[5px] border border-[rgba(30,26,23,.22)] bg-transparent px-3 py-2 text-[14px] text-[var(--ink)] outline-none placeholder:text-[var(--stone)]"
+              />
+              <PillButton type="submit" fullWidth={false}>
+                message the seller
+              </PillButton>
+            </form>
+          </section>
+        ) : listing.seller_id === viewer.id ? (
+          <p className="pt-6 text-[11px] text-[var(--stone)]">
+            this is your listing —{" "}
+            <Link href="/local/threads" className="underline">
+              see your threads
+            </Link>
+          </p>
+        ) : null}
       </div>
     );
   } catch (error) {

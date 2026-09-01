@@ -209,6 +209,17 @@ export default async function PieceDetailPage({ params }: { params: Promise<{ id
 
         {!isArchived ? (
           <section className="mt-8 border-t border-[rgba(30,26,23,.14)] pt-6">
+            <Link
+              href={`/local/list/${garment.id}`}
+              className="text-[12.5px] text-[var(--oxblood)] underline"
+            >
+              list it locally
+            </Link>
+          </section>
+        ) : null}
+
+        {!isArchived ? (
+          <section className="mt-8 border-t border-[rgba(30,26,23,.14)] pt-6">
             <ArchiveControl
               garmentId={garment.id as string}
               pieceName={pieceName}

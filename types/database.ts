@@ -654,6 +654,197 @@ export type Database = {
           },
         ]
       }
+      threads: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          id: string
+          last_message_at: string
+          listing_id: string
+          seller_id: string
+          state: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          listing_id: string
+          seller_id: string
+          state?: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          listing_id?: string
+          seller_id?: string
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "threads_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "local_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          body: string
+          id: string
+          kind: string
+          offer_cents: number | null
+          read_at: string | null
+          sender_id: string
+          sent_at: string
+          thread_id: string
+        }
+        Insert: {
+          body?: string
+          id?: string
+          kind?: string
+          offer_cents?: number | null
+          read_at?: string | null
+          sender_id: string
+          sent_at?: string
+          thread_id: string
+        }
+        Update: {
+          body?: string
+          id?: string
+          kind?: string
+          offer_cents?: number | null
+          read_at?: string | null
+          sender_id?: string
+          sent_at?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      handovers: {
+        Row: {
+          at: string
+          buyer_confirmed: boolean
+          completed_at: string | null
+          created_at: string
+          id: string
+          payment_method: string | null
+          place_name: string
+          place_note: string | null
+          place_suburb: string
+          proposed_by: string
+          seller_confirmed: boolean
+          state: string
+          thread_id: string
+          updated_at: string
+        }
+        Insert: {
+          at: string
+          buyer_confirmed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          payment_method?: string | null
+          place_name: string
+          place_note?: string | null
+          place_suburb: string
+          proposed_by: string
+          seller_confirmed?: boolean
+          state?: string
+          thread_id: string
+          updated_at?: string
+        }
+        Update: {
+          at?: string
+          buyer_confirmed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          payment_method?: string | null
+          place_name?: string
+          place_note?: string | null
+          place_suburb?: string
+          proposed_by?: string
+          seller_confirmed?: boolean
+          state?: string
+          thread_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handovers_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      listing_reports: {
+        Row: {
+          created_at: string
+          id: string
+          listing_id: string
+          reason: string
+          reporter_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          listing_id: string
+          reason: string
+          reporter_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          listing_id?: string
+          reason?: string
+          reporter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_reports_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "local_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lookbook_entries: {
         Row: {
           aesthetic_tags: string[]

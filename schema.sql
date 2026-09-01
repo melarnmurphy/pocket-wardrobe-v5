@@ -777,6 +777,72 @@ create table if not exists public.local_listings (
 );
 
 -- =============================================================================
+-- Local threads, transactional (phase 8). See migration 031 for
+-- complete_handover(), the RPC that archives the piece, closes the thread
+-- and writes sold_for on the second confirmation — omitted here as with
+-- other RPCs. No payment code anywhere: payment_method on handovers is a
+-- label, never validated or processed.
+-- =============================================================================
+
+create table if not exists public.threads (
+  id uuid primary key default gen_random_uuid(),
+  listing_id uuid not null references public.local_listings(id) on delete cascade,
+  buyer_id uuid not null references auth.users(id) on delete cascade,
+  seller_id uuid not null references auth.users(id) on delete cascade,
+  state text not null default 'open'
+    check (state in ('open', 'handover arranged', 'completed', 'declined', 'expired', 'blocked')),
+  last_message_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  unique (listing_id, buyer_id)
+);
+
+create table if not exists public.messages (
+  id uuid primary key default gen_random_uuid(),
+  thread_id uuid not null references public.threads(id) on delete cascade,
+  sender_id uuid not null references auth.users(id) on delete cascade,
+  kind text not null default 'text' check (kind in ('text', 'offer', 'handover proposal', 'system')),
+  body text not null default '',
+  offer_cents integer check (offer_cents is null or offer_cents >= 0),
+  sent_at timestamptz not null default now(),
+  read_at timestamptz
+);
+
+create table if not exists public.handovers (
+  id uuid primary key default gen_random_uuid(),
+  thread_id uuid not null references public.threads(id) on delete cascade,
+  place_name text not null,
+  place_suburb text not null,
+  place_note text,
+  at timestamptz not null,
+  proposed_by uuid not null references auth.users(id) on delete cascade,
+  state text not null default 'proposed'
+    check (state in ('proposed', 'agreed', 'completed', 'missed', 'cancelled')),
+  payment_method text check (payment_method is null or payment_method in ('cash', 'payid', 'bank transfer')),
+  completed_at timestamptz,
+  seller_confirmed boolean not null default false,
+  buyer_confirmed boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.user_blocks (
+  id uuid primary key default gen_random_uuid(),
+  blocker_id uuid not null references auth.users(id) on delete cascade,
+  blocked_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  check (blocker_id <> blocked_id),
+  unique (blocker_id, blocked_id)
+);
+
+create table if not exists public.listing_reports (
+  id uuid primary key default gen_random_uuid(),
+  listing_id uuid not null references public.local_listings(id) on delete cascade,
+  reporter_id uuid not null references auth.users(id) on delete cascade,
+  reason text not null,
+  created_at timestamptz not null default now()
+);
+
+-- =============================================================================
 -- Indexes
 -- =============================================================================
 
@@ -806,6 +872,12 @@ create index if not exists idx_garment_colours_garment_id on public.garment_colo
 create index if not exists local_listings_status_idx on public.local_listings (status);
 create index if not exists local_listings_seller_idx on public.local_listings (seller_id);
 create index if not exists local_listings_lat_lng_idx on public.local_listings (lat, lng);
+
+create index if not exists threads_buyer_idx on public.threads (buyer_id);
+create index if not exists threads_seller_idx on public.threads (seller_id);
+create index if not exists messages_thread_idx on public.messages (thread_id, sent_at);
+create index if not exists handovers_thread_idx on public.handovers (thread_id);
+create index if not exists user_blocks_blocker_idx on public.user_blocks (blocker_id);
 create index if not exists idx_garment_colours_colour_id on public.garment_colours(colour_id);
 create index if not exists idx_colour_relationships_a on public.colour_relationships(colour_id_a);
 create index if not exists idx_colour_relationships_b on public.colour_relationships(colour_id_b);
@@ -891,6 +963,12 @@ before update on public.local_listings
 for each row
 execute function public.set_updated_at();
 
+drop trigger if exists trg_handovers_set_updated_at on public.handovers;
+create trigger trg_handovers_set_updated_at
+before update on public.handovers
+for each row
+execute function public.set_updated_at();
+
 drop trigger if exists trg_garments_price_change on public.garments;
 create trigger trg_garments_price_change
 after update of purchase_price, wear_count on public.garments
@@ -939,6 +1017,11 @@ alter table public.garment_3d_assets enable row level security;
 alter table public.processing_jobs enable row level security;
 alter table public.profiles enable row level security;
 alter table public.local_listings enable row level security;
+alter table public.threads enable row level security;
+alter table public.messages enable row level security;
+alter table public.handovers enable row level security;
+alter table public.user_blocks enable row level security;
+alter table public.listing_reports enable row level security;
 
 alter table public.colours enable row level security;
 alter table public.colour_relationships enable row level security;
@@ -1416,7 +1499,14 @@ for select using (
 );
 
 create policy local_listings_select_live_or_own on public.local_listings
-for select using (status = 'live' or seller_id = auth.uid());
+for select using (
+  (status = 'live' or seller_id = auth.uid())
+  and not exists (
+    select 1 from public.user_blocks b
+    where (b.blocker_id = auth.uid() and b.blocked_id = local_listings.seller_id)
+       or (b.blocker_id = local_listings.seller_id and b.blocked_id = auth.uid())
+  )
+);
 
 create policy local_listings_insert_own on public.local_listings
 for insert with check (seller_id = auth.uid());
@@ -1426,6 +1516,85 @@ for update using (seller_id = auth.uid());
 
 create policy local_listings_delete_own on public.local_listings
 for delete using (seller_id = auth.uid());
+
+create policy threads_select_participant on public.threads
+for select using (auth.uid() = buyer_id or auth.uid() = seller_id);
+
+create policy threads_insert_buyer on public.threads
+for insert with check (
+  auth.uid() = buyer_id
+  and not exists (
+    select 1 from public.user_blocks b
+    where (b.blocker_id = seller_id and b.blocked_id = buyer_id)
+       or (b.blocker_id = buyer_id and b.blocked_id = seller_id)
+  )
+);
+
+create policy threads_update_participant on public.threads
+for update using (auth.uid() = buyer_id or auth.uid() = seller_id);
+
+create policy messages_select_participant on public.messages
+for select using (
+  exists (
+    select 1 from public.threads t
+    where t.id = messages.thread_id
+      and (t.buyer_id = auth.uid() or t.seller_id = auth.uid())
+  )
+);
+
+create policy messages_insert_participant on public.messages
+for insert with check (
+  sender_id = auth.uid()
+  and exists (
+    select 1 from public.threads t
+    where t.id = messages.thread_id
+      and (t.buyer_id = auth.uid() or t.seller_id = auth.uid())
+      and t.state not in ('declined', 'expired', 'blocked')
+  )
+);
+
+create policy handovers_select_participant on public.handovers
+for select using (
+  exists (
+    select 1 from public.threads t
+    where t.id = handovers.thread_id
+      and (t.buyer_id = auth.uid() or t.seller_id = auth.uid())
+  )
+);
+
+create policy handovers_insert_participant on public.handovers
+for insert with check (
+  proposed_by = auth.uid()
+  and exists (
+    select 1 from public.threads t
+    where t.id = handovers.thread_id
+      and (t.buyer_id = auth.uid() or t.seller_id = auth.uid())
+  )
+);
+
+create policy handovers_update_participant on public.handovers
+for update using (
+  exists (
+    select 1 from public.threads t
+    where t.id = handovers.thread_id
+      and (t.buyer_id = auth.uid() or t.seller_id = auth.uid())
+  )
+);
+
+create policy user_blocks_select_own on public.user_blocks
+for select using (auth.uid() = blocker_id);
+
+create policy user_blocks_insert_own on public.user_blocks
+for insert with check (auth.uid() = blocker_id);
+
+create policy user_blocks_delete_own on public.user_blocks
+for delete using (auth.uid() = blocker_id);
+
+create policy listing_reports_insert_own on public.listing_reports
+for insert with check (auth.uid() = reporter_id);
+
+create policy listing_reports_select_own on public.listing_reports
+for select using (auth.uid() = reporter_id);
 
 -- =============================================================================
 -- Seed global style rules
