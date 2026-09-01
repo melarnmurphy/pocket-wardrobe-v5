@@ -159,7 +159,7 @@ create table if not exists public.garments (
   cost_per_wear numeric(12,2),
   favourite_score numeric(5,2),
   versatility_score numeric(5,2),
-  embedding vector(1536),
+  embedding vector(768),
   extraction_metadata_json jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -680,7 +680,8 @@ create table if not exists public.processing_jobs (
       'outfit_decomposition',
       'colour_extraction',
       'embedding_generation',
-      'garment_classification'
+      'garment_classification',
+      'photo_batch'
     )
   ),
   status text not null check (
@@ -691,6 +692,10 @@ create table if not exists public.processing_jobs (
   input_payload_json jsonb not null default '{}'::jsonb,
   result_payload_json jsonb not null default '{}'::jsonb,
   error_message text,
+  -- 'photo_batch' progress (14a/14b) — see migration 025.
+  done_count integer not null default 0,
+  total_count integer not null default 0,
+  draft_ids uuid[] not null default '{}',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

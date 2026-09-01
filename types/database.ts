@@ -748,6 +748,8 @@ export type Database = {
       processing_jobs: {
         Row: {
           created_at: string
+          done_count: number
+          draft_ids: string[]
           error_message: string | null
           id: string
           input_payload_json: Json
@@ -756,11 +758,14 @@ export type Database = {
           status: string
           target_id: string | null
           target_table: string | null
+          total_count: number
           updated_at: string
           user_id: string | null
         }
         Insert: {
           created_at?: string
+          done_count?: number
+          draft_ids?: string[]
           error_message?: string | null
           id?: string
           input_payload_json?: Json
@@ -769,11 +774,14 @@ export type Database = {
           status: string
           target_id?: string | null
           target_table?: string | null
+          total_count?: number
           updated_at?: string
           user_id?: string | null
         }
         Update: {
           created_at?: string
+          done_count?: number
+          draft_ids?: string[]
           error_message?: string | null
           id?: string
           input_payload_json?: Json
@@ -782,6 +790,7 @@ export type Database = {
           status?: string
           target_id?: string | null
           target_table?: string | null
+          total_count?: number
           updated_at?: string
           user_id?: string | null
         }

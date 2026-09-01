@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { AuthenticationError } from "@/lib/auth";
@@ -15,6 +16,7 @@ import {
 import { suggestTodayOutfit } from "@/lib/domain/outfits/today";
 import { listStyleRules } from "@/lib/domain/style-rules/service";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
+import { listUnfinishedPhotoBatches } from "@/lib/domain/ingestion/batch";
 import { AuthRequiredCard } from "@/components/auth-required-card";
 import { OwnedTrendCard } from "@/components/owned-trend-card";
 import { TodayOutfitCard } from "@/components/today-outfit-card";
@@ -50,14 +52,17 @@ export default async function WardrobeItemsPage({
       entitlements,
       styleRules,
       trendMatches,
-      savedOutfits
+      savedOutfits,
+      unfinishedBatches
     ] = await Promise.all([
       listWardrobeGarments(),
       getUserEntitlements(),
       listStyleRules(),
       listUserTrendMatchesWithSignals(),
-      listSavedOutfits()
+      listSavedOutfits(),
+      listUnfinishedPhotoBatches()
     ]);
+    const runningBatches = unfinishedBatches.filter((batch) => batch.status === "running");
     const nowMs = Date.now();
     const weekAgo = nowMs - 7 * 24 * 60 * 60 * 1000;
     const recentOutfitGarmentIds = savedOutfits.flatMap((outfit) => {
@@ -100,6 +105,16 @@ export default async function WardrobeItemsPage({
     return (
       <div className="flex flex-col gap-6 px-4 py-6 md:px-0">
         <div className="flex flex-col gap-4">
+          {runningBatches.map((batch) => (
+            <Link
+              key={batch.id}
+              href={`/wardrobe/batch/${batch.id}`}
+              className="flex items-center gap-3 rounded-[4px] border border-[rgba(30,26,23,.11)] bg-[var(--paper)] px-4 py-3 text-[12.5px] text-[var(--slate)]"
+            >
+              <span className="gw-spin h-4 w-4 shrink-0 rounded-full border-2 border-dashed border-[var(--oxblood)]" />
+              finish your batch — {batch.done_count} of {batch.total_count} photos read
+            </Link>
+          ))}
           <TodayOutfitCard outfit={todayOutfit} />
           {ownedTrend ? <OwnedTrendCard match={ownedTrend} /> : null}
           <Suspense fallback={null}>

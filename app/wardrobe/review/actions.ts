@@ -137,6 +137,17 @@ export async function acceptDraftAction(
       { primaryColourFamily: canonicalColour ? canonicalColour.family : null }
     );
 
+    // Write the crop embedding back onto the accepted garment so future
+    // batches can compare against it — "duplicate compare above 0.92
+    // similarity, never a silent merge" (see lib/domain/ingestion/duplicates.ts).
+    if (Array.isArray(p.embedding) && p.embedding.length > 0) {
+      await supabase
+        .from("garments")
+        .update({ embedding: p.embedding } as never)
+        .eq("id", garment.id as string)
+        .eq("user_id", user.id);
+    }
+
     const sourceId = (draft as { source_id?: string | null }).source_id;
     if (sourceId) {
       await supabase

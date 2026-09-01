@@ -316,6 +316,25 @@ export default function DraftReviewList({
                   </button>
                 </div>
               ) : null}
+              {draft.payload.duplicate_hint ? (
+                <div className="mt-3 flex flex-wrap items-center gap-3 rounded-[4px] border border-dashed border-[rgba(30,26,23,.3)] bg-[var(--paper)] px-3 py-2.5">
+                  <p className="flex-1 text-[12.5px] text-[var(--slate)]">
+                    you might already own this — {Math.round(draft.payload.duplicate_hint.similarity * 100)}%
+                    match with{" "}
+                    <span className="text-[var(--ink)]">
+                      {draft.payload.duplicate_hint.title || draft.payload.duplicate_hint.category}
+                    </span>
+                  </p>
+                  <a
+                    href={`/wardrobe/${draft.payload.duplicate_hint.garment_id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-[100px] border border-[rgba(30,26,23,.22)] px-3 py-[7px] text-[10px] font-semibold uppercase tracking-[.16em] text-[var(--ink)]"
+                  >
+                    see mine
+                  </a>
+                </div>
+              ) : null}
               <div className="mt-4 grid gap-3 md:grid-cols-2">
                 <Field
                   id={fieldId(draft.id, "title")}
@@ -376,6 +395,7 @@ export default function DraftReviewList({
                   value={draftEdit.material}
                   confidence={draft.payload.field_confidence?.material}
                   provenance={draft.payload.field_provenance?.material}
+                  renderAsQuestionBelow={0.6}
                   onChange={(value) =>
                     setEdits((prev) => ({
                       ...prev,
@@ -489,7 +509,8 @@ function Field({
   step,
   confidence,
   provenance,
-  onChange
+  onChange,
+  renderAsQuestionBelow
 }: {
   id?: string;
   label: string;
@@ -500,7 +521,21 @@ function Field({
   confidence?: number;
   provenance?: string;
   onChange: (value: string) => void;
+  /**
+   * "Low confidence renders as a question, never a fact." Below this
+   * threshold, the guessed value hides behind a dashed "material?" chip
+   * instead of pre-filling the input — tapping it reveals the field to edit.
+   */
+  renderAsQuestionBelow?: number;
 }) {
+  const [revealed, setRevealed] = useState(false);
+  const isQuestion =
+    renderAsQuestionBelow !== undefined &&
+    confidence !== undefined &&
+    confidence < renderAsQuestionBelow &&
+    value.trim().length > 0 &&
+    !revealed;
+
   const borderColor =
     confidence === undefined || confidence >= 0.8
       ? undefined
@@ -519,6 +554,21 @@ function Field({
     borderColor && confidence !== undefined
       ? `${provenanceLabel(provenance)} · ${Math.round(confidence * 100)}%`
       : undefined;
+
+  if (isQuestion) {
+    return (
+      <div className="flex flex-col gap-2 text-[12px] text-[var(--muted)]">
+        <span className="font-medium">{label}</span>
+        <button
+          type="button"
+          onClick={() => setRevealed(true)}
+          className="rounded-2xl border border-dashed border-[rgba(208,80,60,0.5)] bg-[rgba(208,80,60,0.05)] px-4 py-3 text-left text-[var(--foreground)]"
+        >
+          {value.trim().toLowerCase()}?
+        </button>
+      </div>
+    );
+  }
 
   return (
     <label

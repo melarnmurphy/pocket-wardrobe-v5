@@ -492,6 +492,14 @@ export function WardrobeShop({
               <Link href="/wardrobe/let-go" className="underline">
                 let-go list
               </Link>
+              <span className="divider">/</span>
+              <Link href="/wardrobe/batch/new" className="underline">
+                choose photos
+              </Link>
+              <span className="divider">/</span>
+              <Link href="/wardrobe/review" className="underline">
+                review drafts
+              </Link>
             </div>
           </div>
           <button

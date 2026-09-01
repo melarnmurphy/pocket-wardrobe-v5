@@ -103,7 +103,60 @@ export async function createDraftsFromPipelineResult(
     });
   }
 
+  await attachDuplicateHints(supabase, drafts);
+
   return drafts.map((draft) => draft.draftId);
+}
+
+/**
+ * "Duplicate compare above 0.92 similarity, never a silent merge" — flags a
+ * candidate draft against the user's existing wardrobe so the reviewer sees
+ * a side-by-side, never so the pipeline can drop or merge it on its own.
+ */
+async function attachDuplicateHints(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  drafts: Array<{
+    draftId: string;
+    garment: PipelineAnalyzeResponse["garments"][number];
+    draftPayload: ReviewDraftAdapterPayload;
+  }>
+) {
+  const { findSimilarGarments } = await import("./duplicates");
+
+  for (const draft of drafts) {
+    const embedding = draft.draftPayload.embedding;
+    if (!embedding || embedding.length === 0) continue;
+
+    const match = await findSimilarGarments(embedding).catch(() => null);
+    if (!match) continue;
+
+    const { data: existing } = await supabase
+      .from("garment_drafts")
+      .select("draft_payload_json")
+      .eq("id", draft.draftId)
+      .single();
+
+    const currentPayload = (existing as { draft_payload_json?: Json } | null)?.draft_payload_json;
+    const basePayload =
+      currentPayload && typeof currentPayload === "object" && !Array.isArray(currentPayload)
+        ? (currentPayload as Record<string, unknown>)
+        : {};
+
+    await supabase
+      .from("garment_drafts")
+      .update({
+        draft_payload_json: {
+          ...basePayload,
+          duplicate_hint: {
+            garment_id: match.id,
+            title: match.title,
+            category: match.category,
+            similarity: match.similarity
+          }
+        } as Json
+      } as never)
+      .eq("id", draft.draftId);
+  }
 }
 
 async function createDraftCrops(params: {
@@ -260,6 +313,12 @@ export interface PendingDraft {
     metadata: Record<string, unknown>;
     field_confidence?: Record<string, number>;
     field_provenance?: Record<string, string>;
+    duplicate_hint?: {
+      garment_id: string;
+      title: string | null;
+      category: string;
+      similarity: number;
+    } | null;
   };
 }
 
@@ -657,7 +716,14 @@ export async function listPendingDrafts(): Promise<PendingDraft[]> {
           typeof p.field_provenance === "object" &&
           !Array.isArray(p.field_provenance)
             ? (p.field_provenance as Record<string, string>)
-            : undefined
+            : undefined,
+        duplicate_hint:
+          p.duplicate_hint &&
+          typeof p.duplicate_hint === "object" &&
+          !Array.isArray(p.duplicate_hint) &&
+          typeof (p.duplicate_hint as Record<string, unknown>).garment_id === "string"
+            ? (p.duplicate_hint as PendingDraft["payload"]["duplicate_hint"])
+            : null
       },
     };
   });
