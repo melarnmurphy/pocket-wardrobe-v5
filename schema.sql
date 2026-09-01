@@ -675,6 +675,31 @@ create table if not exists public.garment_3d_assets (
 );
 
 -- =============================================================================
+-- Profile (phase 6 "you" — 17a/w3e). See migration 028. Deliberately not
+-- avatar_profiles/avatar_measurement_sets, which are a different feature
+-- (2D outfit-styling boards and provenance-tracked body-scan data).
+-- =============================================================================
+
+create table if not exists public.profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  local_name text,
+  suburb text,
+  tops_size text,
+  bottoms_size text,
+  shoes_size text,
+  tops_size_system text not null default 'AU' check (tops_size_system in ('AU', 'UK', 'US', 'EU')),
+  bottoms_size_system text not null default 'AU' check (bottoms_size_system in ('AU', 'UK', 'US', 'EU')),
+  shoes_size_system text not null default 'AU' check (shoes_size_system in ('AU', 'UK', 'US', 'EU')),
+  height_cm integer check (height_cm is null or (height_cm > 0 and height_cm < 300)),
+  one_size_either_way boolean not null default false,
+  -- LocalPrivacy — defaults match DATA_MODEL.md exactly.
+  show_suburb boolean not null default true,
+  show_wear_count boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- =============================================================================
 -- Optional async processing support
 -- =============================================================================
 
@@ -807,6 +832,12 @@ before update on public.garment_3d_assets
 for each row
 execute function public.set_updated_at();
 
+drop trigger if exists trg_profiles_set_updated_at on public.profiles;
+create trigger trg_profiles_set_updated_at
+before update on public.profiles
+for each row
+execute function public.set_updated_at();
+
 drop trigger if exists trg_garments_price_change on public.garments;
 create trigger trg_garments_price_change
 after update of purchase_price, wear_count on public.garments
@@ -853,6 +884,7 @@ alter table public.avatar_profiles enable row level security;
 alter table public.avatar_measurement_sets enable row level security;
 alter table public.garment_3d_assets enable row level security;
 alter table public.processing_jobs enable row level security;
+alter table public.profiles enable row level security;
 
 alter table public.colours enable row level security;
 alter table public.colour_relationships enable row level security;
@@ -1310,6 +1342,20 @@ for select using (true);
 
 create policy trend_ingestion_jobs_no_public_access on public.trend_ingestion_jobs
 for select using (false);
+
+create policy profiles_select_own on public.profiles
+for select using (auth.uid() = user_id);
+
+create policy profiles_insert_own on public.profiles
+for insert with check (auth.uid() = user_id);
+
+create policy profiles_update_own on public.profiles
+for update using (auth.uid() = user_id);
+
+-- Cross-user visibility (a stranger reading a seller's public profile in
+-- local threads) is deliberately not granted here — phase 6 only builds
+-- the self-preview of "what other people see". A scoped policy limited to
+-- users near a live listing is added in phase 7 alongside local_listings.
 
 -- =============================================================================
 -- Seed global style rules

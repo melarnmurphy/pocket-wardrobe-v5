@@ -763,6 +763,60 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          bottoms_size: string | null
+          bottoms_size_system: string
+          created_at: string
+          height_cm: number | null
+          local_name: string | null
+          one_size_either_way: boolean
+          show_suburb: boolean
+          show_wear_count: boolean
+          shoes_size: string | null
+          shoes_size_system: string
+          suburb: string | null
+          tops_size: string | null
+          tops_size_system: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bottoms_size?: string | null
+          bottoms_size_system?: string
+          created_at?: string
+          height_cm?: number | null
+          local_name?: string | null
+          one_size_either_way?: boolean
+          show_suburb?: boolean
+          show_wear_count?: boolean
+          shoes_size?: string | null
+          shoes_size_system?: string
+          suburb?: string | null
+          tops_size?: string | null
+          tops_size_system?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bottoms_size?: string | null
+          bottoms_size_system?: string
+          created_at?: string
+          height_cm?: number | null
+          local_name?: string | null
+          one_size_either_way?: boolean
+          show_suburb?: boolean
+          show_wear_count?: boolean
+          shoes_size?: string | null
+          shoes_size_system?: string
+          suburb?: string | null
+          tops_size?: string | null
+          tops_size_system?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       processing_jobs: {
         Row: {
           created_at: string

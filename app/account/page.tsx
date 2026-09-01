@@ -2,16 +2,20 @@ import { AuthenticationError } from "@/lib/auth";
 import { getUserEntitlements } from "@/lib/domain/entitlements/service";
 import { getAccountProfile } from "@/lib/domain/account/service";
 import { getBillingStatus } from "@/lib/domain/billing/service";
+import { getMyPublicProfilePreview, getOrCreateProfile } from "@/lib/domain/profile/service";
 import { AuthRequiredCard } from "@/components/auth-required-card";
 import { AccountProfileForm } from "@/app/account/account-profile-form";
 import { PlanSection } from "@/app/account/plan-section";
+import { YouSection } from "@/app/account/you-section";
 import { signOutAction } from "@/app/auth/actions";
 
 export default async function AccountPage() {
   try {
-    const [profile, entitlements] = await Promise.all([
+    const [profile, entitlements, garderobeProfile, publicPreview] = await Promise.all([
       getAccountProfile(),
-      getUserEntitlements()
+      getUserEntitlements(),
+      getOrCreateProfile(),
+      getMyPublicProfilePreview()
     ]);
     const { upgradeUrl } = getBillingStatus();
 
@@ -46,6 +50,8 @@ export default async function AccountPage() {
           displayName={profile.display_name}
           preferredLocation={profile.preferred_location}
         />
+
+        <YouSection profile={garderobeProfile} preview={publicPreview} />
 
         <PlanSection entitlements={entitlements} upgradeUrl={upgradeUrl} />
 
