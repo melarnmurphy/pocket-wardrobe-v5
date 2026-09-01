@@ -13,6 +13,7 @@ import {
   deleteGarment,
   removeGarmentFromLetGo,
   setGarmentAvailability,
+  setGarmentPriceManually,
   unarchiveGarment,
   setGarmentFeatureImage,
   setGarmentPrimaryColourFamily,
@@ -175,6 +176,15 @@ const removeFromLetGoFormSchema = z.object({
 const archiveGarmentFormSchema = z.object({
   garment_id: z.string().uuid(),
   reason: nullableText(200)
+});
+
+const setPriceManuallyFormSchema = z.object({
+  garment_id: z.string().uuid(),
+  price: z.coerce.number().nonnegative(),
+  currency: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() ? value.trim().toUpperCase() : "AUD"),
+    z.string().length(3)
+  )
 });
 
 const setFeatureImageFormSchema = z.object({
@@ -938,6 +948,38 @@ export async function undoArchiveGarmentAction(garmentId: string): Promise<void>
   await unarchiveGarment(garmentId);
   revalidatePath("/wardrobe");
   revalidatePath(`/wardrobe/${garmentId}`);
+}
+
+export async function setPriceManuallyAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = setPriceManuallyFormSchema.parse({
+      garment_id: formData.get("garment_id"),
+      price: formData.get("price"),
+      currency: formData.get("currency")
+    });
+
+    await setGarmentPriceManually({
+      garmentId: values.garment_id,
+      priceCents: Math.round(values.price * 100),
+      currency: values.currency
+    });
+    revalidatePath("/wardrobe");
+    revalidatePath(`/wardrobe/${values.garment_id}`);
+
+    return {
+      status: "success",
+      garmentId: values.garment_id,
+      message: "Price saved."
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to save the price."
+    };
+  }
 }
 
 export async function setGarmentFeatureImageAction(

@@ -150,6 +150,8 @@ create table if not exists public.garments (
     )),
   let_go_added_at timestamptz,
   let_go_estimate_cents integer check (let_go_estimate_cents is null or let_go_estimate_cents >= 0),
+  -- how a price arrived — forwarded email, docket, pasted link, or typed by hand (migration 026)
+  price_source text check (price_source is null or price_source in ('store', 'receipt', 'manual')),
   purchase_price numeric(12,2),
   purchase_currency text,
   purchase_date date,

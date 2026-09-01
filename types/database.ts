@@ -471,6 +471,7 @@ export type Database = {
           let_go_added_at: string | null
           let_go_estimate_cents: number | null
           let_go_reason: string | null
+          price_source: string | null
           material: string | null
           pattern: string | null
           purchase_currency: string | null
@@ -506,6 +507,7 @@ export type Database = {
           let_go_added_at?: string | null
           let_go_estimate_cents?: number | null
           let_go_reason?: string | null
+          price_source?: string | null
           material?: string | null
           pattern?: string | null
           purchase_currency?: string | null
@@ -541,6 +543,7 @@ export type Database = {
           let_go_added_at?: string | null
           let_go_estimate_cents?: number | null
           let_go_reason?: string | null
+          price_source?: string | null
           material?: string | null
           pattern?: string | null
           purchase_currency?: string | null

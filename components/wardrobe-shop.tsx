@@ -500,6 +500,10 @@ export function WardrobeShop({
               <Link href="/wardrobe/review" className="underline">
                 review drafts
               </Link>
+              <span className="divider">/</span>
+              <Link href="/wardrobe/sources" className="underline">
+                sources
+              </Link>
             </div>
           </div>
           <button

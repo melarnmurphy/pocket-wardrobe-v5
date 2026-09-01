@@ -45,6 +45,7 @@ type GarmentListRow = Pick<
   | "let_go_reason"
   | "let_go_added_at"
   | "let_go_estimate_cents"
+  | "price_source"
   | "purchase_price"
   | "purchase_currency"
   | "purchase_date"
@@ -86,6 +87,7 @@ const garmentListItemSchema = garmentSchema.extend({
   let_go_reason: letGoReasonSchema.nullable().optional(),
   let_go_added_at: timestampSchema.nullable().optional(),
   let_go_estimate_cents: z.coerce.number().int().nonnegative().nullable().optional(),
+  price_source: z.enum(["store", "receipt", "manual"]).nullable().optional(),
   created_at: timestampSchema,
   updated_at: timestampSchema
 });
@@ -389,7 +391,7 @@ const garmentColourWithColourSchema = garmentColourSchema.extend({
 });
 
 const GARMENT_LIST_SELECT =
-  "id,user_id,title,description,brand,category,subcategory,pattern,material,size,fit,formality_level,seasonality,wardrobe_status,availability,archived_at,archive_reason,let_go_reason,let_go_added_at,let_go_estimate_cents,purchase_price,purchase_currency,purchase_date,retailer,favourite_score,wear_count,last_worn_at,cost_per_wear,extraction_metadata_json,created_at,updated_at," +
+  "id,user_id,title,description,brand,category,subcategory,pattern,material,size,fit,formality_level,seasonality,wardrobe_status,availability,archived_at,archive_reason,let_go_reason,let_go_added_at,let_go_estimate_cents,price_source,purchase_price,purchase_currency,purchase_date,retailer,favourite_score,wear_count,last_worn_at,cost_per_wear,extraction_metadata_json,created_at,updated_at," +
   "garment_images(id,garment_id,image_type,storage_path,width,height,created_at)," +
   "garment_colours(id,garment_id,colour_id,dominance,is_primary,created_at,colours(id,family,hex))," +
   "garment_3d_assets(id,garment_id,asset_type,storage_path,file_format,material_profile_json,physics_profile_json,renderer_metadata_json,source_type,confidence,status,created_at,updated_at)," +
@@ -529,7 +531,7 @@ export async function createGarment(
     .from("garments")
     .insert(payload as never)
     .select(
-      "id,user_id,title,description,brand,category,subcategory,pattern,material,size,fit,formality_level,seasonality,wardrobe_status,availability,archived_at,archive_reason,let_go_reason,let_go_added_at,let_go_estimate_cents,purchase_price,purchase_currency,purchase_date,retailer,wear_count,last_worn_at,cost_per_wear,extraction_metadata_json,created_at,updated_at"
+      "id,user_id,title,description,brand,category,subcategory,pattern,material,size,fit,formality_level,seasonality,wardrobe_status,availability,archived_at,archive_reason,let_go_reason,let_go_added_at,let_go_estimate_cents,price_source,purchase_price,purchase_currency,purchase_date,retailer,wear_count,last_worn_at,cost_per_wear,extraction_metadata_json,created_at,updated_at"
       .replace("retailer,", "retailer,favourite_score,")
     )
     .single();
@@ -587,7 +589,7 @@ export async function updateGarment(
     .eq("id", parsedGarmentId)
     .eq("user_id", user.id)
     .select(
-      "id,user_id,title,description,brand,category,subcategory,pattern,material,size,fit,formality_level,seasonality,wardrobe_status,availability,archived_at,archive_reason,let_go_reason,let_go_added_at,let_go_estimate_cents,purchase_price,purchase_currency,purchase_date,retailer,wear_count,last_worn_at,cost_per_wear,extraction_metadata_json,created_at,updated_at"
+      "id,user_id,title,description,brand,category,subcategory,pattern,material,size,fit,formality_level,seasonality,wardrobe_status,availability,archived_at,archive_reason,let_go_reason,let_go_added_at,let_go_estimate_cents,price_source,purchase_price,purchase_currency,purchase_date,retailer,wear_count,last_worn_at,cost_per_wear,extraction_metadata_json,created_at,updated_at"
       .replace("retailer,", "retailer,favourite_score,")
     )
     .single();
@@ -692,6 +694,37 @@ export async function getGarmentById(garmentId: string): Promise<GarmentListItem
 }
 
 /** 9a — availability never removes a piece from the wardrobe or its counts. */
+/**
+ * 13b / 15b's "type it" — a price with nowhere better to come from.
+ * DATA_MODEL.md Piece.priceSource: 'manual' distinguishes this from a price
+ * that arrived via a receipt or a store link.
+ */
+export async function setGarmentPriceManually(params: {
+  garmentId: string;
+  priceCents: number;
+  currency?: string;
+}) {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(params.garmentId);
+  const parsedPrice = z.number().nonnegative().parse(params.priceCents / 100);
+  const parsedCurrency = params.currency ? z.string().length(3).parse(params.currency) : "AUD";
+
+  const { error } = await supabase
+    .from("garments")
+    .update(({
+      purchase_price: parsedPrice,
+      purchase_currency: parsedCurrency,
+      price_source: "manual"
+    } satisfies Partial<GarmentInsert>) as never)
+    .eq("id", parsedId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export async function setGarmentAvailability(garmentId: string, availability: Availability) {
   const user = await getRequiredUser();
   const supabase = await createClient();

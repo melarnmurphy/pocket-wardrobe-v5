@@ -12,9 +12,15 @@ import {
   archiveGarmentAction,
   removeFromLetGoAction,
   setAvailabilityAction,
-  undoArchiveGarmentAction,
-  updateGarmentAction
+  setPriceManuallyAction,
+  undoArchiveGarmentAction
 } from "@/app/wardrobe/actions";
+
+const PRICE_SOURCE_LABEL: Record<string, string> = {
+  store: "from the store",
+  receipt: "from a receipt",
+  manual: "typed by hand"
+};
 
 function formatMoney(amount: number | null | undefined, currency: string | null | undefined) {
   if (amount === null || amount === undefined) return null;
@@ -42,9 +48,9 @@ async function removeFromLetGoFormAction(formData: FormData): Promise<void> {
   await removeFromLetGoAction(idleState, formData);
 }
 
-async function updateGarmentFormAction(formData: FormData): Promise<void> {
+async function setPriceFormAction(formData: FormData): Promise<void> {
   "use server";
-  await updateGarmentAction(idleState, formData);
+  await setPriceManuallyAction(idleState, formData);
 }
 
 export default async function PieceDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -139,13 +145,13 @@ export default async function PieceDetailPage({ params }: { params: Promise<{ id
           <p className="pb-3 text-[9px] font-semibold uppercase tracking-[.18em] text-[var(--stone)]">
             price
           </p>
-          <form action={updateGarmentFormAction} className="flex items-end gap-2">
-            <input type="hidden" name="category" value={garment.category} />
+          <form action={setPriceFormAction} className="flex items-end gap-2">
             <input type="hidden" name="garment_id" value={garment.id} />
+            <input type="hidden" name="currency" value={garment.purchase_currency ?? "AUD"} />
             <label className="flex-1">
               <span className="block pb-1 text-[11px] text-[var(--stone)]">amount, AUD</span>
               <input
-                name="purchase_price"
+                name="price"
                 type="number"
                 step="0.01"
                 min="0"
@@ -161,6 +167,11 @@ export default async function PieceDetailPage({ params }: { params: Promise<{ id
               save
             </button>
           </form>
+          {garment.price_source ? (
+            <p className="pt-2 text-[11px] text-[var(--stone)]">
+              {PRICE_SOURCE_LABEL[garment.price_source] ?? garment.price_source}
+            </p>
+          ) : null}
         </section>
 
         {!isArchived ? (

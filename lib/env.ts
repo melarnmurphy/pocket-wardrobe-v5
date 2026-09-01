@@ -56,7 +56,10 @@ const serverEnvSchema = publicEnvSchema.extend({
   XAI_API_KEY: optionalString,
   XAI_TREND_MODEL: optionalString,
   // Shared secret for cron routes (Vercel passes as Authorization: Bearer <value>).
-  CRON_SECRET: optionalString
+  CRON_SECRET: optionalString,
+  // Shared secret for the inbound-receipts webhook (app/api/receipts/inbound).
+  // Unset until a real inbound-email provider is chosen and connected.
+  RECEIPTS_INBOUND_SECRET: optionalString
 });
 
 const billingEnvSchema = z.object({
@@ -97,7 +100,8 @@ export function getServerEnv(): ServerEnv {
     OPENROUTER_CHAT_MODEL: process.env.OPENROUTER_CHAT_MODEL,
     XAI_API_KEY: process.env.XAI_API_KEY,
     XAI_TREND_MODEL: process.env.XAI_TREND_MODEL,
-    CRON_SECRET: process.env.CRON_SECRET
+    CRON_SECRET: process.env.CRON_SECRET,
+    RECEIPTS_INBOUND_SECRET: process.env.RECEIPTS_INBOUND_SECRET
   });
 }
 

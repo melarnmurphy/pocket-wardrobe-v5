@@ -11,6 +11,15 @@ import {
 import { getCanonicalWardrobeColour } from "@/lib/domain/wardrobe/colours";
 import { z } from "zod";
 
+const RECEIPT_LIKE_SOURCE_TYPES = new Set([
+  "receipt",
+  "forwarded_email",
+  "read_email",
+  "docket_photo",
+  "pdf",
+  "screenshot"
+]);
+
 export type DraftActionResult =
   | { status: "success"; garmentId?: string }
   | { status: "error"; message: string };
@@ -136,6 +145,27 @@ export async function acceptDraftAction(
       },
       { primaryColourFamily: canonicalColour ? canonicalColour.family : null }
     );
+
+    // "How the price got in" (DATA_MODEL.md Piece.priceSource) — never guessed,
+    // derived from the draft's own source type.
+    if (Number.isFinite(purchasePrice)) {
+      const sourceType = typeof p.source_type === "string" ? p.source_type : null;
+      const priceSource = sourceType
+        ? RECEIPT_LIKE_SOURCE_TYPES.has(sourceType)
+          ? "receipt"
+          : sourceType === "product_url" || sourceType === "website_image"
+            ? "store"
+            : "manual"
+        : null;
+
+      if (priceSource) {
+        await supabase
+          .from("garments")
+          .update({ price_source: priceSource } as never)
+          .eq("id", garment.id as string)
+          .eq("user_id", user.id);
+      }
+    }
 
     // Write the crop embedding back onto the accepted garment so future
     // batches can compare against it — "duplicate compare above 0.92
