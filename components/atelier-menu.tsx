@@ -11,6 +11,7 @@ type AtelierMenuProps = {
   displayName: string | null;
   planTier: "free" | "pro" | "premium";
   isAdmin: boolean;
+  renderTrigger?: (props: { onClick: () => void; initials: string }) => React.ReactNode;
 };
 
 const NAV_ITEMS = [
@@ -18,7 +19,7 @@ const NAV_ITEMS = [
   { label: "Account settings", href: "/account" }
 ] as const;
 
-export function AtelierMenu({ email, displayName, planTier, isAdmin }: AtelierMenuProps) {
+export function AtelierMenu({ email, displayName, planTier, isAdmin, renderTrigger }: AtelierMenuProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -38,16 +39,19 @@ export function AtelierMenu({ email, displayName, planTier, isAdmin }: AtelierMe
 
   return (
     <>
-      {/* MM circle — replaces hamburger */}
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Open menu"
-        aria-expanded={open}
-        className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-[var(--foreground)] text-[0.5rem] font-bold tracking-wide text-[var(--accent-foreground)]"
-      >
-        {initials}
-      </button>
+      {renderTrigger ? (
+        renderTrigger({ onClick: () => setOpen(true), initials })
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="Open menu"
+          aria-expanded={open}
+          className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-[var(--foreground)] text-[0.5rem] font-bold tracking-wide text-[var(--accent-foreground)]"
+        >
+          {initials}
+        </button>
+      )}
 
       {/* Overlay + slide-down panel */}
       {open && (

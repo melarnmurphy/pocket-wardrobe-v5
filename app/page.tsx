@@ -1,262 +1,177 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  ArrowRight,
-  CalendarRange,
-  CloudSun,
-  LogIn,
-  NotebookText,
-  ScanSearch,
-  Shirt,
-  Sparkles,
-  TrendingUp
-} from "lucide-react";
+import { CutoutTile, PillButton } from "@/components/garderobe";
 
 export const metadata: Metadata = {
-  title: "Pocket Wardrobe",
+  title: "Garderobe",
   description:
-    "A wardrobe operating system for garment tracking, outfit planning, and trend intelligence."
+    "Garderobe turns a closet into a working system: structured garments, wear tracking, weather-aware outfit planning, and trend matching that explains itself."
 };
 
-const features = [
+const CLOSET_PREVIEW = [
+  { name: "cowl-neck tee", wears: 41, cost: "1.10" },
+  { name: "wide-leg trouser", wears: 28, cost: "4.60" },
+  { name: "sheer blouse", wears: 3, cost: "62.00" },
+  { name: "bias slip skirt", wears: 19, cost: "5.20" },
+  { name: "black slip dress", wears: 12, cost: "9.80" },
+  { name: "black heels", wears: 31, cost: "3.10" }
+] as const;
+
+const STATS = [
+  { value: "4", unit: null, label: "ways in — photo, receipt, product link, or an email of orders" },
+  { value: "$3.90", unit: null, label: "median cost per wear across a tracked wardrobe" },
+  { value: "30", unit: "km", label: "default radius for resale handovers near you" }
+] as const;
+
+const FEATURES = [
   {
-    icon: Shirt,
-    title: "Wardrobe",
-    copy:
-      "Store owned items as structured garments, then edit color, fit, seasonality, and wear history."
+    label: "ingestion",
+    title: "from messy inputs to clean garment records.",
+    copy: "add a photo, product url, receipt, or inspiration image. the system turns it into a garment record, then keeps provenance and confidence visible for review."
   },
   {
-    icon: NotebookText,
-    title: "Lookbook",
-    copy:
-      "Save references, target outfits, and missing pieces without collapsing inspiration into ownership."
+    label: "planner",
+    title: "weather, occasion, and repeat history in one view.",
+    copy: "the outfit engine ranks valid combinations instead of guessing from freeform text, so the result is explainable and editable."
   },
   {
-    icon: CloudSun,
-    title: "Planner",
-    copy:
-      "Generate weather-aware outfits with occasion and repeat-history constraints."
-  },
-  {
-    icon: TrendingUp,
-    title: "Trends",
-    copy:
-      "Match global fashion signals to your wardrobe so trends become something you already own."
+    label: "nearby",
+    title: "what you stop wearing, sold to someone two suburbs away.",
+    copy: "pieces you have not reached for in months get listed to a local thread. you agree a handover in norwood or the market; money stays between the two of you."
   }
-] as const;
-
-const steps = [
-  "Capture garments from photos, product pages, or receipts.",
-  "Normalize each item into a structured wardrobe record.",
-  "Use weather, occasion, and trend signals to choose what to wear."
-] as const;
-
-const stats = [
-  { label: "Structured wardrobe", value: "Owned items" },
-  { label: "Explainable styling", value: "Rules + ranking" },
-  { label: "Trend coverage", value: "Global signals" }
 ] as const;
 
 export default function HomePage() {
   return (
-    <main className="pw-shell pb-16 pt-8">
-      <section className="grid gap-8 xl:grid-cols-[1.08fr_0.92fr]">
+    <main>
+      <section className="grid gap-8 px-6 py-10 md:px-[60px] md:py-14 xl:grid-cols-[1.05fr_0.95fr]">
         <div className="flex flex-col justify-between gap-8">
-          <div className="space-y-6">
-            <p className="pw-kicker">Pocket wardrobe operating system</p>
-            <h1 className="pw-page-title max-w-none">
-              Know what you own.
+          <div>
+            <p className="text-[9px] font-semibold uppercase tracking-[.22em]" style={{ color: "var(--stone)" }}>
+              wardrobe operating system
+            </p>
+            <h1 className="pt-4 text-[clamp(2.4rem,6vw,3.6rem)] font-light leading-[1.05]" style={{ color: "var(--ink)" }}>
+              know what you own.
               <br />
-              Wear it better.
+              <span style={{ color: "var(--oxblood)" }}>wear it better.</span>
             </h1>
-            <p className="pw-page-copy max-w-2xl">
-              Pocket Wardrobe turns a closet into a working system: structured
-              garments, wear tracking, weather-aware outfit planning, and
-              trend matching that explains itself.
+            <p className="max-w-[38rem] pt-5 text-[14px] leading-[1.7]" style={{ color: "var(--slate)" }}>
+              garderobe turns a closet into a working system: structured garments, wear tracking,
+              weather-aware outfit planning, and trend matching that explains itself.
             </p>
 
-            <div className="flex flex-wrap gap-3">
-              <Link href="/auth/sign-in?next=%2Fwardrobe" className="pw-button-primary">
-                <LogIn size={16} />
-                Sign in
+            <div className="flex flex-wrap gap-3 pt-7">
+              <Link href="/auth/sign-in?mode=signup&next=%2Fonboarding">
+                <PillButton fullWidth={false}>start your wardrobe</PillButton>
               </Link>
-              <Link href="/wardrobe" className="pw-button-secondary">
-                <ArrowRight size={16} />
-                Open wardrobe
-              </Link>
-              <Link href="/trends" className="pw-button-quiet">
-                <Sparkles size={16} />
-                View trends
+              <Link href="/wardrobe">
+                <PillButton fullWidth={false} variant="secondary">
+                  see a real wardrobe
+                </PillButton>
               </Link>
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            {stats.map((stat) => (
-              <div key={stat.label} className="pw-panel-soft p-4">
-                <p className="pw-kicker">{stat.label}</p>
-                <p className="mt-2 text-lg font-semibold tracking-[-0.04em]">
+          <div
+            className="grid grid-cols-3 gap-6 border-t pt-6"
+            style={{ borderColor: "rgba(30,26,23,.14)" }}
+          >
+            {STATS.map((stat) => (
+              <div key={stat.label}>
+                <p className="text-[28px] font-light leading-[1]" style={{ color: "var(--ink)" }}>
                   {stat.value}
+                  {stat.unit ? (
+                    <span className="pl-1 text-[15px]" style={{ color: "var(--stone)" }}>
+                      {stat.unit}
+                    </span>
+                  ) : null}
+                </p>
+                <p className="pt-2 text-[11px] leading-[1.5]" style={{ color: "var(--stone)" }}>
+                  {stat.label}
                 </p>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="pw-editorial-frame overflow-hidden p-4 sm:p-6">
-          <div className="grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
-            <div className="pw-editorial-cover min-h-[28rem] bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,244,236,0.72))]">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,236,180,0.55),transparent_42%),radial-gradient(circle_at_80%_80%,rgba(214,196,168,0.4),transparent_46%)]" />
-              <p className="absolute left-6 top-24 max-w-[12rem] font-[family-name:var(--font-display)] text-5xl italic leading-none tracking-[-0.04em] text-[var(--foreground)]">
-                Wear what you already own.
-              </p>
-
-              <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-                <span className="pw-chip bg-white/90 text-[0.68rem] text-[var(--foreground)]">
-                  wardrobe capture
-                </span>
-                <span className="pw-chip bg-white/90 text-[0.68rem] text-[var(--foreground)]">
-                  cost per wear
-                </span>
-              </div>
-
-              <div className="absolute bottom-4 left-4 right-4 grid gap-2 sm:grid-cols-3">
-                <div className="rounded-2xl border border-black/10 bg-white/90 p-3 shadow-[0_14px_35px_rgba(17,17,17,0.08)] backdrop-blur">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.26em] text-[var(--muted)]">
-                    Weather
-                  </p>
-                  <p className="mt-1 text-sm font-semibold tracking-[-0.03em]">
-                    Warm, light, event-ready
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-black/10 bg-white/90 p-3 shadow-[0_14px_35px_rgba(17,17,17,0.08)] backdrop-blur">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.26em] text-[var(--muted)]">
-                    Outfit roles
-                  </p>
-                  <p className="mt-1 text-sm font-semibold tracking-[-0.03em]">
-                    Dress, shoes, accessories
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-black/10 bg-white/90 p-3 shadow-[0_14px_35px_rgba(17,17,17,0.08)] backdrop-blur">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.26em] text-[var(--muted)]">
-                    Trend match
-                  </p>
-                  <p className="mt-1 text-sm font-semibold tracking-[-0.03em]">
-                    Soft neutrals, ruffles, column shapes
-                  </p>
+        <div className="rounded-[4px] border" style={{ borderColor: "rgba(30,26,23,.11)", background: "var(--cream)" }}>
+          <div className="flex items-center justify-between px-5 pt-5">
+            <p className="text-[9px] font-semibold uppercase tracking-[.18em]" style={{ color: "var(--stone)" }}>
+              your closet
+            </p>
+            <p className="text-[11px]" style={{ color: "var(--stone)" }}>
+              214 pieces · 6 shown
+            </p>
+          </div>
+          <div className="flex gap-2 px-5 pt-3">
+            <span
+              className="rounded-[100px] px-3 py-[6px] text-[11px]"
+              style={{ background: "var(--ink)", color: "var(--cream)" }}
+            >
+              all
+            </span>
+            <span
+              className="rounded-[100px] border px-3 py-[6px] text-[11px]"
+              style={{ borderColor: "rgba(30,26,23,.2)", color: "var(--slate)" }}
+            >
+              worn this month
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-3 p-5">
+            {CLOSET_PREVIEW.map((piece) => (
+              <div key={piece.name}>
+                <CutoutTile src={null} alt={piece.name} />
+                <p className="pt-2 text-[12.5px]" style={{ color: "var(--ink)" }}>
+                  {piece.name}
+                </p>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[11px]" style={{ color: "var(--stone)" }}>
+                    {piece.wears} wears
+                  </span>
+                  <span className="text-[11px]" style={{ color: "var(--slate)" }}>
+                    ${piece.cost}
+                  </span>
                 </div>
               </div>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <div className="pw-panel-soft p-5">
-                <div className="flex items-center gap-2 text-sm font-semibold tracking-[0.2em] text-[var(--muted)] uppercase">
-                  <ScanSearch size={16} />
-                  Ingestion
-                </div>
-                <p className="mt-3 text-2xl font-semibold tracking-[-0.05em]">
-                  From messy inputs to clean garment records.
-                </p>
-                <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-                  Add a photo, product URL, receipt, or inspiration image. The
-                  system turns it into a garment record, then keeps provenance
-                  and confidence visible for review.
-                </p>
-              </div>
-
-              <div className="pw-panel-soft p-5">
-                <div className="flex items-center gap-2 text-sm font-semibold tracking-[0.2em] text-[var(--muted)] uppercase">
-                  <CalendarRange size={16} />
-                  Planner
-                </div>
-                <p className="mt-3 text-2xl font-semibold tracking-[-0.05em]">
-                  Weather, occasion, and repeat history in one view.
-                </p>
-                <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-                  The outfit engine ranks valid combinations instead of guessing
-                  from freeform text, so the result is explainable and editable.
-                </p>
-              </div>
-
-              <div className="pw-panel-soft p-5">
-                <div className="flex items-center gap-2 text-sm font-semibold tracking-[0.2em] text-[var(--muted)] uppercase">
-                  <Sparkles size={16} />
-                  Trends
-                </div>
-                <p className="mt-3 text-2xl font-semibold tracking-[-0.05em]">
-                  Global signals, matched back to your wardrobe.
-                </p>
-                <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-                  SearXNG finds sources, extraction normalizes facts, and trend
-                  matching tells you what you already own, what is adjacent, and
-                  what is missing.
-                </p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      <section className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {features.map((feature) => (
-          <article key={feature.title} className="pw-panel-soft p-5">
-            <feature.icon size={18} className="text-[var(--muted)]" />
-            <h2 className="mt-4 text-xl font-semibold tracking-[-0.04em]">
+      <section
+        id="how-it-works"
+        className="grid gap-10 border-t px-6 py-12 md:grid-cols-3 md:px-[60px]"
+        style={{ borderColor: "rgba(30,26,23,.14)", background: "var(--paper)" }}
+      >
+        {FEATURES.map((feature) => (
+          <div key={feature.label}>
+            <p className="text-[9px] font-semibold uppercase tracking-[.18em]" style={{ color: "var(--oxblood)" }}>
+              {feature.label}
+            </p>
+            <p className="max-w-[22rem] pt-3 text-[17px] leading-[1.35]" style={{ color: "var(--ink)" }}>
               {feature.title}
-            </h2>
-            <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
+            </p>
+            <p className="max-w-[22rem] pt-3 text-[12.5px] leading-[1.6]" style={{ color: "var(--slate)" }}>
               {feature.copy}
             </p>
-          </article>
+          </div>
         ))}
       </section>
 
-      <section className="mt-10 grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
-        <div className="pw-panel p-6">
-          <p className="pw-kicker">How it works</p>
-          <h2 className="mt-4 text-3xl font-semibold tracking-[-0.05em]">
-            A wardrobe system, not just storage.
-          </h2>
-          <ol className="mt-6 space-y-4">
-            {steps.map((step, index) => (
-              <li key={step} className="flex gap-4">
-                <span className="mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[var(--accent)] text-sm font-semibold text-[var(--accent-foreground)]">
-                  {index + 1}
-                </span>
-                <p className="text-sm leading-7 text-[var(--muted)]">{step}</p>
-              </li>
-            ))}
-          </ol>
+      <footer
+        id="pricing"
+        className="flex flex-wrap items-center justify-between gap-3 border-t px-6 py-6 md:px-[60px]"
+        style={{ borderColor: "rgba(30,26,23,.14)" }}
+      >
+        <p className="text-[12px]" style={{ color: "var(--stone)" }}>
+          garderobe · adelaide
+        </p>
+        <div className="flex gap-5 text-[12px]" style={{ color: "var(--stone)" }}>
+          <span>privacy</span>
+          <span>terms</span>
+          <span>contact</span>
         </div>
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="pw-panel-soft p-5 sm:col-span-2">
-            <p className="pw-kicker">Why it feels different</p>
-            <p className="mt-4 text-2xl font-semibold tracking-[-0.05em]">
-              The landing page leads with the product, not a marketing wall.
-            </p>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--muted)]">
-              Testers land on a usable first screen, then can jump straight to
-              the wardrobe, trends, or sign-in flow. The public page keeps the
-              app legible before authentication.
-            </p>
-          </div>
-          <div className="pw-panel-dark flex flex-col justify-between p-5">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
-                Next step
-              </p>
-              <p className="mt-4 text-2xl font-semibold tracking-[-0.05em]">
-                Open the wardrobe workspace.
-              </p>
-            </div>
-            <Link href="/wardrobe" className="pw-button-secondary mt-6 w-fit">
-              <ArrowRight size={16} />
-              Open app
-            </Link>
-          </div>
-        </div>
-      </section>
+      </footer>
     </main>
   );
 }

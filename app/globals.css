@@ -45,39 +45,51 @@
   --radius-pill: 100px;
 }
 
-html {
-  color-scheme: light;
-}
+/*
+ * These are base-layer resets, not overrides — @layer base sits below
+ * Tailwind's utilities layer in cascade-layer order, so a utility class
+ * like text-[var(--slate)] on an <a> correctly beats this a{} rule.
+ * Left unlayered, these plain selectors would win over ANY Tailwind
+ * color utility on a link regardless of specificity, since unlayered CSS
+ * always beats layered CSS in the cascade — that bug shipped for a while
+ * (invisible cream-on-oxblood button text, oxblood "back" links that were
+ * meant to be stone) before being caught and fixed here.
+ */
+@layer base {
+  html {
+    color-scheme: light;
+  }
 
-body {
-  background: var(--cream);
-  color: var(--foreground);
-  font-family: var(--font-body), Karla, system-ui, sans-serif;
-  min-height: 100vh;
-}
+  body {
+    background: var(--cream);
+    color: var(--foreground);
+    font-family: var(--font-body), Karla, system-ui, sans-serif;
+    min-height: 100vh;
+  }
 
-a {
-  color: var(--oxblood);
-  text-decoration: none;
-}
+  a {
+    color: var(--oxblood);
+    text-decoration: none;
+  }
 
-a:hover {
-  color: var(--oxblood-dark);
-}
+  a:hover {
+    color: var(--oxblood-dark);
+  }
 
-* {
-  box-sizing: border-box;
-}
+  * {
+    box-sizing: border-box;
+  }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-family: var(--font-display), Karla, system-ui, sans-serif;
-  font-weight: 300;
-  letter-spacing: -0.005em;
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display), Karla, system-ui, sans-serif;
+    font-weight: 300;
+    letter-spacing: -0.005em;
+  }
 }
 
 .gw-mono {
@@ -184,9 +196,9 @@ h6 {
 
 .pw-page-title {
   font-size: clamp(2.5rem, 6vw, 5.6rem);
-  font-weight: 700;
-  letter-spacing: -0.085em;
-  line-height: 0.9;
+  font-weight: 300;
+  letter-spacing: -0.01em;
+  line-height: 0.98;
   max-width: 11ch;
 }
 
@@ -251,7 +263,7 @@ h6 {
   background:
     linear-gradient(160deg, rgba(20, 18, 16, 0.96), rgba(109, 42, 36, 0.92));
   box-shadow: var(--shadow-strong);
-  color: #f8f6ff;
+  color: var(--cream);
 }
 
 .pw-hero {
@@ -970,212 +982,6 @@ h6 {
   }
 }
 
-/* Atelier shell — web top navigation */
-
-.atelier-top {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
-  padding: 1rem 1.25rem;
-  background: rgba(245, 242, 236, 0.86);
-  backdrop-filter: blur(14px);
-  border-bottom: 0.5px solid var(--line);
-}
-
-.atelier-wordmark {
-  display: inline-flex;
-  align-items: baseline;
-  font-family: var(--font-display), serif;
-  font-style: italic;
-  font-size: 1.5rem;
-  font-weight: 500;
-  letter-spacing: -0.04em;
-  color: var(--foreground);
-  line-height: 1;
-}
-
-.atelier-wordmark__dot {
-  margin-left: -0.05em;
-  transform: translateY(0.1em);
-}
-
-.atelier-primary-nav {
-  display: none;
-  align-items: center;
-  gap: 0.35rem;
-  border: 0.5px solid var(--line);
-  border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.62);
-  padding: 0.25rem;
-}
-
-.atelier-primary-nav__link {
-  border-radius: var(--radius-pill);
-  color: var(--muted);
-  display: inline-flex;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  min-height: 2.15rem;
-  padding: 0.55rem 0.72rem;
-  text-transform: uppercase;
-  transition:
-    background-color 160ms ease-out,
-    color 160ms ease-out;
-}
-
-.atelier-primary-nav__link[data-active="true"] {
-  background: var(--foreground);
-  color: var(--accent-foreground);
-}
-
-.atelier-primary-nav__link[data-pending="true"] {
-  cursor: progress;
-}
-
-.atelier-primary-nav__link[data-active="false"]:hover {
-  background: rgba(26, 25, 22, 0.06);
-  color: var(--foreground);
-}
-
-@media (min-width: 760px) {
-  .atelier-primary-nav {
-    display: flex;
-  }
-}
-
-.atelier-menu {
-  position: absolute;
-  right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.atelier-menu summary {
-  list-style: none;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: var(--radius-pill);
-  transition: background-color 160ms ease-out;
-}
-
-.atelier-menu summary::-webkit-details-marker {
-  display: none;
-}
-
-.atelier-menu summary:hover {
-  background: rgba(26, 25, 22, 0.06);
-}
-
-.atelier-menu summary > span {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 20px;
-}
-
-.atelier-menu summary > span > span {
-  height: 1px;
-  background: var(--foreground);
-  display: block;
-}
-
-.atelier-menu summary > span > span:nth-child(1) {
-  width: 100%;
-}
-.atelier-menu summary > span > span:nth-child(2) {
-  width: 70%;
-  margin-left: auto;
-}
-.atelier-menu summary > span > span:nth-child(3) {
-  width: 100%;
-}
-
-.atelier-menu__panel {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  right: 0;
-  min-width: 16rem;
-  padding: 1.25rem 1.25rem 1rem;
-  background: var(--surface-strong);
-  border: 0.5px solid var(--line);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-soft);
-}
-
-.atelier-menu__kicker {
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.atelier-menu__email {
-  margin-top: 0.25rem;
-  font-family: var(--font-display), serif;
-  font-style: italic;
-  font-size: 0.95rem;
-  letter-spacing: -0.01em;
-  color: var(--foreground);
-  word-break: break-all;
-}
-
-.atelier-menu__list {
-  display: flex;
-  flex-direction: column;
-  margin-top: 1rem;
-  border-top: 0.5px solid var(--line);
-}
-
-.atelier-menu__list a {
-  display: block;
-  padding: 0.85rem 0;
-  font-family: var(--font-display), serif;
-  font-size: 1.05rem;
-  letter-spacing: -0.01em;
-  color: var(--foreground);
-  border-bottom: 0.5px solid var(--line);
-  transition: opacity 160ms ease-out;
-}
-
-.atelier-menu__list a:hover {
-  opacity: 0.6;
-}
-
-.atelier-menu__actions {
-  margin-top: 0.75rem;
-}
-
-.atelier-menu__sign {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  padding: 0.65rem 0.75rem;
-  background: var(--accent);
-  color: var(--accent-foreground);
-  border: none;
-  border-radius: var(--radius-pill);
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: opacity 160ms ease-out;
-}
-
-.atelier-menu__sign:hover {
-  opacity: 0.85;
-}
 
 main {
   padding-bottom: 3rem;

@@ -36,10 +36,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable}`}>
-        <AtelierChrome>
-          <AtelierShell />
+        <AtelierChrome raw={children}>
+          <AtelierShell>{children}</AtelierShell>
         </AtelierChrome>
-        {children}
         <AppToastHost />
       </body>
     </html>
