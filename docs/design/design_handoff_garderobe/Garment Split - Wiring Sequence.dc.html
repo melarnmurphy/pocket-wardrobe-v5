@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Karla:ital,wght@0,300..700;1,300..500&display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"><style>
+body{margin:0;background:#e6e0d6;font-family:Karla,system-ui,sans-serif}
+a{color:#6d2a24}a:hover{color:#43170f}
+@keyframes gwSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+</style></helmet>
+
+<div style="padding:40px 44px 46px">
+
+<div style="max-width:52em;padding-bottom:34px">
+<div style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#8b8177">garderobe · build sequence · one photo, several garments</div>
+<div style="font:300 40px/1.06 Karla,sans-serif;color:#1e1a17;letter-spacing:-.01em;padding-top:16px">The split, frame by frame</div>
+<div style="font:400 14.5px/1.6 Karla,sans-serif;color:#4a453f;padding-top:14px;text-wrap:pretty">Six frames. Each one shows what the user sees and, underneath, exactly what fires: the trigger, the state it writes, the call it makes, and what happens when that call fails. Hand this to Cursor or Claude Code alongside <a href="./Garment Split — Build Spec.dc.html">the build spec</a> — the spec is the pipeline, this is the wiring.</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;padding-top:20px">
+<div style="padding:7px 13px;border-radius:100px;background:#1e1a17;font:600 8.5px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#faf7f2">one modal stack, six states</div>
+<div style="padding:7px 13px;border-radius:100px;border:1px solid rgba(30,26,23,.22);font:600 8.5px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#1e1a17">state machine, not a wizard</div>
+<div style="padding:7px 13px;border-radius:100px;border:1px solid rgba(30,26,23,.22);font:600 8.5px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#1e1a17">every step reversible</div>
+</div>
+</div>
+
+<div style="display:flex;gap:1px;background:rgba(30,26,23,.16);border-top:1px solid rgba(30,26,23,.16);border-bottom:1px solid rgba(30,26,23,.16);margin-bottom:34px">
+<div style="flex:1;background:#faf7f2;padding:14px 16px"><div style="font:600 8px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8b8177">the machine</div><div style="font:400 12.5px/1.7 IBM Plex Mono,monospace;color:#1e1a17;padding-top:9px">detecting → reviewing(i) → adjusting(i) → reviewing(i+1) → committing → done</div></div>
+<div style="flex:1;background:#faf7f2;padding:14px 16px"><div style="font:600 8px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8b8177">held in state</div><div style="font:400 12.5px/1.7 IBM Plex Mono,monospace;color:#1e1a17;padding-top:9px">candidates[], index, edits{}, rejected[]</div></div>
+<div style="flex:1;background:#faf7f2;padding:14px 16px"><div style="font:600 8px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8b8177">written to db</div><div style="font:400 12.5px/1.7 IBM Plex Mono,monospace;color:#1e1a17;padding-top:9px">nothing, until frame 06</div></div>
+</div>
+
+<div style="display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap">
+
+<div style="width:402px;flex:none;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font:300 30px/1 Karla,sans-serif;color:#6d2a24">01</span><span style="font:500 15px/1.2 Karla,sans-serif;color:#1e1a17">what we found</span></div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+<div style="height:100%;position:relative;background:repeating-linear-gradient(135deg,#332e2a 0 11px,#2b2723 11px 22px)">
+<div style="position:absolute;top:62px;left:0;right:0;padding:0 20px;display:flex;align-items:center;justify-content:space-between;z-index:6">
+<span style="font:400 20px/1 Karla,sans-serif;color:rgba(255,255,255,.85)">×</span>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#fff">one photo</span>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45)">3 found</span>
+</div>
+<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-top:30px">
+<div style="position:relative;height:520px">
+<img src="./cutouts/tee-skirt-black.png" style="height:520px;width:auto;display:block">
+<div style="position:absolute;left:-12px;top:2%;right:-12px;height:32%;border:1.5px solid rgba(250,247,242,.92);border-radius:3px"></div>
+<div style="position:absolute;left:-8px;top:36%;right:-8px;height:54%;border:1.5px solid rgba(250,247,242,.92);border-radius:3px"></div>
+<div style="position:absolute;left:14px;top:92%;right:14px;height:9%;border:1.5px solid rgba(250,247,242,.92);border-radius:3px"></div>
+<div style="position:absolute;left:-12px;top:2%;transform:translateY(-50%);background:#6d2a24;border-radius:100px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font:600 10px/1 Karla,sans-serif;color:#fff">1</div>
+<div style="position:absolute;left:-8px;top:36%;transform:translateY(-50%);background:#6d2a24;border-radius:100px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font:600 10px/1 Karla,sans-serif;color:#fff">2</div>
+<div style="position:absolute;left:14px;top:92%;transform:translateY(-50%);background:#6d2a24;border-radius:100px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font:600 10px/1 Karla,sans-serif;color:#fff">3</div>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;background:#faf7f2;border-radius:20px 20px 0 0;padding:16px 22px 34px">
+<div style="width:38px;height:3px;border-radius:2px;background:rgba(30,26,23,.15);margin:0 auto 16px"></div>
+<div style="font:300 22px/1.1 Karla,sans-serif;color:#1e1a17">three garments here</div>
+<div style="font:400 12.5px/1.5 Karla,sans-serif;color:#8b8177;padding:8px 0 16px">A tee, a skirt and sandals. We'll take them one at a time — you can drop any of them.</div>
+<div style="display:flex;gap:9px">
+<div style="flex:1;height:48px;border-radius:100px;display:flex;align-items:center;justify-content:center;background:#6d2a24;font:600 9.5px/1 Karla,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#fff">take them one by one</div>
+<div style="width:110px;height:48px;border-radius:100px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(30,26,23,.22);font:600 9.5px/1 Karla,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#1e1a17">keep whole</div>
+</div>
+</div>
+</div>
+</x-import>
+<div style="background:#faf7f2;border-radius:6px;padding:18px 20px">
+<div style="font:600 8px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#8b8177">wire it</div>
+<div style="border-top:1px solid rgba(30,26,23,.11);margin-top:12px">
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">enter on</span><span style="flex:1;font:400 12.5px/1.6 IBM Plex Mono,monospace;color:#1e1a17">segment(photo) resolves with instances.length &gt; 1</span></div>
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">draw</span><span style="flex:1;font:400 12.5px/1.6 Karla,sans-serif;color:#4a453f">one outline per candidate from its alphaBbox, in photo coordinates scaled to the rendered image — never fixed percentages. Badge sits on the top-left corner of each box.</span></div>
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">primary</span><span style="flex:1;font:400 12.5px/1.6 IBM Plex Mono,monospace;color:#1e1a17">setPhase('reviewing'); setIndex(0)</span></div>
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">second</span><span style="flex:1;font:400 12.5px/1.6 IBM Plex Mono,monospace;color:#1e1a17">commitAsLook(photo) → skip to 06</span></div>
+<div style="display:flex;gap:14px;padding:11px 0"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">if none</span><span style="flex:1;font:400 12.5px/1.6 Karla,sans-serif;color:#4a453f">instances.length === 0 → the "no garments found" dialog, not this frame</span></div>
+</div>
+</div>
+</div>
+
+<div style="width:402px;flex:none;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font:300 30px/1 Karla,sans-serif;color:#6d2a24">02</span><span style="font:500 15px/1.2 Karla,sans-serif;color:#1e1a17">zoom to the first one</span></div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+<div style="height:100%;position:relative;background:repeating-linear-gradient(135deg,#332e2a 0 11px,#2b2723 11px 22px)">
+<div style="position:absolute;top:62px;left:0;right:0;padding:0 20px;display:flex;align-items:center;justify-content:space-between;z-index:6">
+<span style="font:400 12px/1 Karla,sans-serif;color:rgba(255,255,255,.75)">‹ all three</span>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#fff">garment 1 of 3</span>
+<span style="font:400 11.5px/1 Karla,sans-serif;color:rgba(255,255,255,.5)">skip</span>
+</div>
+<div style="position:absolute;left:0;right:0;top:106px;bottom:318px;display:flex;align-items:center;justify-content:center;overflow:hidden">
+<div style="position:relative">
+<img src="./cutouts/piece-cowl-tee.png" style="height:290px;width:auto;display:block;filter:drop-shadow(3px 0 0 #faf7f2) drop-shadow(-3px 0 0 #faf7f2) drop-shadow(0 3px 0 #faf7f2) drop-shadow(0 -3px 0 #faf7f2) drop-shadow(0 18px 28px rgba(0,0,0,.5))">
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;background:#faf7f2;border-radius:20px 20px 0 0;padding:16px 22px 34px">
+<div style="width:38px;height:3px;border-radius:2px;background:rgba(30,26,23,.15);margin:0 auto 16px"></div>
+<div style="display:flex;align-items:center;gap:12px;padding-bottom:14px">
+<div style="width:22px;height:22px;border-radius:50%;background:#6d2a24;display:flex;align-items:center;justify-content:center;flex:none;font:600 10px/1 Karla,sans-serif;color:#fff">1</div>
+<div style="flex:1;border-bottom:1.5px solid #6d2a24;padding-bottom:7px;display:flex;align-items:center"><span style="font:400 16px/1 Karla,sans-serif;color:#1e1a17">cowl tee</span><span style="width:1.5px;height:17px;background:#6d2a24;margin-left:2px"></span></div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px;padding-bottom:16px">
+<span style="padding:6px 11px;border-radius:100px;background:rgba(30,26,23,.07);font:400 11px/1 Karla,sans-serif;color:#6b6459">tops</span>
+<span style="padding:6px 11px;border-radius:100px;background:rgba(30,26,23,.07);font:400 11px/1 Karla,sans-serif;color:#6b6459">black</span>
+<span style="padding:6px 11px;border-radius:100px;border:1px dashed rgba(109,42,36,.45);font:400 11px/1 Karla,sans-serif;color:#6d2a24">fabric?</span>
+</div>
+<div style="display:flex;align-items:center;gap:9px;border-top:1px solid rgba(30,26,23,.11);padding:14px 0 16px">
+<div style="flex:1;display:flex;align-items:center;gap:9px">
+<div style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(30,26,23,.2);display:flex;align-items:center;justify-content:center"><div style="width:13px;height:13px;border:1.4px solid #6b6459;border-radius:2px;position:relative"><div style="position:absolute;left:-4px;top:-4px;width:6px;height:6px;border-left:1.4px solid #6b6459;border-top:1.4px solid #6b6459"></div></div></div>
+<div style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(30,26,23,.2);display:flex;align-items:center;justify-content:center"><div style="width:14px;height:14px;border-radius:50%;border:1.4px solid #6b6459;border-left-color:transparent"></div></div>
+<div style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(30,26,23,.2);display:flex;align-items:center;justify-content:center"><span style="font:400 13px/1 Karla,sans-serif;color:#6b6459">⌖</span></div>
+</div>
+<span style="font:400 11.5px/1.4 Karla,sans-serif;color:#8b8177;text-align:right;max-width:140px">recut · rotate · nudge the edge</span>
+</div>
+<div style="display:flex;gap:9px">
+<div style="flex:1;height:48px;border-radius:100px;display:flex;align-items:center;justify-content:center;background:#6d2a24;font:600 9.5px/1 Karla,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#fff">keep this one</div>
+<div style="width:104px;height:48px;border-radius:100px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(30,26,23,.22);font:600 9.5px/1 Karla,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#6d2a24">drop it</div>
+</div>
+</div>
+</div>
+</x-import>
+<div style="background:#faf7f2;border-radius:6px;padding:18px 20px">
+<div style="font:600 8px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#8b8177">wire it</div>
+<div style="border-top:1px solid rgba(30,26,23,.11);margin-top:12px">
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">enter on</span><span style="flex:1;font:400 12.5px/1.6 IBM Plex Mono,monospace;color:#1e1a17">phase === 'reviewing'</span></div>
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">the zoom</span><span style="flex:1;font:400 12.5px/1.6 Karla,sans-serif;color:#4a453f">animate a transform from the frame-01 box to the viewport, 320ms ease-out. Render the candidate's own cut-out PNG, not a crop of the photo — that is what makes the white sticker edge possible.</span></div>
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">prefill</span><span style="flex:1;font:400 12.5px/1.6 Karla,sans-serif;color:#4a453f">name, category and colour from Attributes. Fabric under 0.60 confidence renders as the dashed chip and must not be committed as a value.</span></div>
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">icons</span><span style="flex:1;font:400 12.5px/1.6 IBM Plex Mono,monospace;color:#1e1a17">recut → phase 'adjusting' · rotate → ±90° on the cut-out · nudge → edge feather ±1px</span></div>
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">primary</span><span style="flex:1;font:400 12.5px/1.6 IBM Plex Mono,monospace;color:#1e1a17">edits[id] = draft; index + 1 &lt; n ? setIndex(index+1) : setPhase('committing')</span></div>
+<div style="display:flex;gap:14px;padding:11px 0"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">second</span><span style="flex:1;font:400 12.5px/1.6 IBM Plex Mono,monospace;color:#1e1a17">rejected.push(id), then advance the same way</span></div>
+</div>
+</div>
+</div>
+
+<div style="width:402px;flex:none;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font:300 30px/1 Karla,sans-serif;color:#6d2a24">03</span><span style="font:500 15px/1.2 Karla,sans-serif;color:#1e1a17">move the cut, if it's wrong</span></div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+<div style="height:100%;position:relative;background:repeating-linear-gradient(135deg,#332e2a 0 11px,#2b2723 11px 22px)">
+<div style="position:absolute;top:62px;left:0;right:0;padding:0 20px;display:flex;align-items:center;justify-content:space-between;z-index:6">
+<span style="font:400 12px/1 Karla,sans-serif;color:rgba(255,255,255,.75)">cancel</span>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#fff">where does it end?</span>
+<span style="font:400 11.5px/1 Karla,sans-serif;color:#f2d6cb">reset</span>
+</div>
+<div style="position:absolute;left:0;right:0;top:106px;bottom:250px;display:flex;align-items:center;justify-content:center">
+<div style="position:relative">
+<img src="./cutouts/tee-skirt-black.png" style="height:420px;width:auto;display:block;opacity:.94">
+<div style="position:absolute;left:-30px;right:-30px;top:41%;height:1.5px;background:#f2d6cb"></div>
+<div style="position:absolute;left:-38px;top:41%;transform:translateY(-50%);width:15px;height:15px;border-radius:50%;background:#f2d6cb"></div>
+<div style="position:absolute;right:-38px;top:41%;transform:translateY(-50%);width:15px;height:15px;border-radius:50%;background:#f2d6cb"></div>
+<div style="position:absolute;left:-30px;right:-30px;top:0;height:41%;background:rgba(109,42,36,.22);border:1px solid rgba(242,214,203,.6)"></div>
+<div style="position:absolute;left:-30px;top:calc(41% + 10px);background:#1e1a17;border-radius:3px;padding:5px 9px;font:600 8px/1 Karla,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#f2d6cb">hip · suggested</div>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;background:#faf7f2;border-radius:20px 20px 0 0;padding:16px 22px 34px">
+<div style="width:38px;height:3px;border-radius:2px;background:rgba(30,26,23,.15);margin:0 auto 16px"></div>
+<div style="font:300 21px/1.15 Karla,sans-serif;color:#1e1a17">drag the line to the hem</div>
+<div style="font:400 12.5px/1.5 Karla,sans-serif;color:#8b8177;padding:8px 0 16px">We put it at your hip. Move it to where the tee actually stops.</div>
+<div style="border-top:1px solid rgba(30,26,23,.11)">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid rgba(30,26,23,.11)"><span style="font:600 8px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8b8177">cut at</span><span style="font:400 14px/1 Karla,sans-serif;color:#1e1a17">hip · moved 42px down</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0"><span style="font:600 8px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8b8177">affects</span><span style="font:400 14px/1 Karla,sans-serif;color:#1e1a17">garment 1 and 2</span></div>
+</div>
+<div style="height:48px;border-radius:100px;display:flex;align-items:center;justify-content:center;background:#6d2a24;font:600 9.5px/1 Karla,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#fff;margin-top:16px">cut here</div>
+</div>
+</div>
+</x-import>
+<div style="background:#faf7f2;border-radius:6px;padding:18px 20px">
+<div style="font:600 8px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#8b8177">wire it</div>
+<div style="border-top:1px solid rgba(30,26,23,.11);margin-top:12px">
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">enter on</span><span style="flex:1;font:400 12.5px/1.6 IBM Plex Mono,monospace;color:#1e1a17">phase === 'adjusting'</span></div>
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">handle</span><span style="flex:1;font:400 12.5px/1.6 Karla,sans-serif;color:#4a453f">one draggable y in photo space, seeded from the pose keypoint. Clamp between the two neighbouring candidates' bboxes so a drag can never produce an empty garment.</span></div>
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">on drag</span><span style="flex:1;font:400 12.5px/1.6 Karla,sans-serif;color:#4a453f">re-matte both neighbours from the stored mask — no re-segmentation, so it stays interactive at 60fps.</span></div>
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">primary</span><span style="flex:1;font:400 12.5px/1.6 IBM Plex Mono,monospace;color:#1e1a17">recut(i, y); recut(i+1, y); setPhase('reviewing')</span></div>
+<div style="display:flex;gap:14px;padding:11px 0"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">note</span><span style="flex:1;font:400 12.5px/1.6 Karla,sans-serif;color:#4a453f">shoes and bags get a box, not a line — they are not adjacent to anything.</span></div>
+</div>
+</div>
+</div>
+
+<div style="width:402px;flex:none;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font:300 30px/1 Karla,sans-serif;color:#6d2a24">04</span><span style="font:500 15px/1.2 Karla,sans-serif;color:#1e1a17">the next one, same shape</span></div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+<div style="height:100%;position:relative;background:repeating-linear-gradient(135deg,#332e2a 0 11px,#2b2723 11px 22px)">
+<div style="position:absolute;top:62px;left:0;right:0;padding:0 20px;display:flex;align-items:center;justify-content:space-between;z-index:6">
+<span style="font:400 12px/1 Karla,sans-serif;color:rgba(255,255,255,.75)">‹ back</span>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#fff">garment 2 of 3</span>
+<span style="font:400 11.5px/1 Karla,sans-serif;color:rgba(255,255,255,.5)">skip</span>
+</div>
+<div style="position:absolute;left:20px;top:104px;display:flex;gap:6px;z-index:6">
+<div style="width:34px;height:42px;border-radius:2px;background:rgba(250,247,242,.12);display:flex;align-items:flex-end;justify-content:center;overflow:hidden"><img src="./cutouts/piece-cowl-tee.png" style="height:38px;width:auto;display:block"></div>
+<div style="width:34px;height:42px;border-radius:2px;border:1px dashed rgba(255,255,255,.3)"></div>
+<div style="width:34px;height:42px;border-radius:2px;border:1px dashed rgba(255,255,255,.3)"></div>
+</div>
+<div style="position:absolute;left:0;right:0;top:160px;bottom:300px;display:flex;align-items:center;justify-content:center;overflow:hidden">
+<img src="./cutouts/piece-bias-skirt.png" style="height:300px;width:auto;display:block;filter:drop-shadow(3px 0 0 #faf7f2) drop-shadow(-3px 0 0 #faf7f2) drop-shadow(0 3px 0 #faf7f2) drop-shadow(0 -3px 0 #faf7f2) drop-shadow(0 18px 28px rgba(0,0,0,.5))">
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;background:#faf7f2;border-radius:20px 20px 0 0;padding:16px 22px 34px">
+<div style="width:38px;height:3px;border-radius:2px;background:rgba(30,26,23,.15);margin:0 auto 16px"></div>
+<div style="display:flex;align-items:center;gap:12px;padding-bottom:14px">
+<div style="width:22px;height:22px;border-radius:50%;background:#6d2a24;display:flex;align-items:center;justify-content:center;flex:none;font:600 10px/1 Karla,sans-serif;color:#fff">2</div>
+<div style="flex:1;border-bottom:1.5px solid #6d2a24;padding-bottom:7px;display:flex;align-items:center"><span style="font:400 16px/1 Karla,sans-serif;color:#1e1a17">bias skirt</span><span style="width:1.5px;height:17px;background:#6d2a24;margin-left:2px"></span></div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px;padding-bottom:16px">
+<span style="padding:6px 11px;border-radius:100px;background:rgba(30,26,23,.07);font:400 11px/1 Karla,sans-serif;color:#6b6459">skirts</span>
+<span style="padding:6px 11px;border-radius:100px;background:rgba(30,26,23,.07);font:400 11px/1 Karla,sans-serif;color:#6b6459">black</span>
+<span style="padding:6px 11px;border-radius:100px;background:rgba(30,26,23,.07);font:400 11px/1 Karla,sans-serif;color:#6b6459">satin</span>
+</div>
+<div style="background:#f2d6cb;border-radius:5px;padding:13px 15px;font:400 12.5px/1.5 Karla,sans-serif;color:#6d3a2c;margin-bottom:16px">You already own a bias skirt in black. Keep both, or drop this one.</div>
+<div style="display:flex;gap:9px">
+<div style="flex:1;height:48px;border-radius:100px;display:flex;align-items:center;justify-content:center;background:#6d2a24;font:600 9.5px/1 Karla,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#fff">keep this one</div>
+<div style="width:104px;height:48px;border-radius:100px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(30,26,23,.22);font:600 9.5px/1 Karla,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#6d2a24">drop it</div>
+</div>
+</div>
+</div>
+</x-import>
+<div style="background:#faf7f2;border-radius:6px;padding:18px 20px">
+<div style="font:600 8px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#8b8177">wire it</div>
+<div style="border-top:1px solid rgba(30,26,23,.11);margin-top:12px">
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">same as</span><span style="flex:1;font:400 12.5px/1.6 Karla,sans-serif;color:#4a453f">frame 02, index 1. One component, driven by index — do not build three screens.</span></div>
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">progress</span><span style="flex:1;font:400 12.5px/1.6 Karla,sans-serif;color:#4a453f">thumbnails top-left: kept ones filled, pending ones dashed. This is the only affordance telling the user how much is left.</span></div>
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">duplicate</span><span style="flex:1;font:400 12.5px/1.6 Karla,sans-serif;color:#4a453f">inside a split, the duplicate hint is an inline note — never a blocking dialog. The user is mid-flow with two more to go.</span></div>
+<div style="display:flex;gap:14px;padding:11px 0"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">back</span><span style="flex:1;font:400 12.5px/1.6 IBM Plex Mono,monospace;color:#1e1a17">setIndex(index-1) restores edits[id] verbatim</span></div>
+</div>
+</div>
+</div>
+
+<div style="width:402px;flex:none;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font:300 30px/1 Karla,sans-serif;color:#6d2a24">05</span><span style="font:500 15px/1.2 Karla,sans-serif;color:#1e1a17">the small one, boxed not lined</span></div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+<div style="height:100%;position:relative;background:repeating-linear-gradient(135deg,#332e2a 0 11px,#2b2723 11px 22px)">
+<div style="position:absolute;top:62px;left:0;right:0;padding:0 20px;display:flex;align-items:center;justify-content:space-between;z-index:6">
+<span style="font:400 12px/1 Karla,sans-serif;color:rgba(255,255,255,.75)">‹ back</span>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#fff">garment 3 of 3</span>
+<span style="font:400 11.5px/1 Karla,sans-serif;color:rgba(255,255,255,.5)">skip</span>
+</div>
+<div style="position:absolute;left:20px;top:104px;display:flex;gap:6px;z-index:6">
+<div style="width:34px;height:42px;border-radius:2px;background:rgba(250,247,242,.12);display:flex;align-items:flex-end;justify-content:center;overflow:hidden"><img src="./cutouts/piece-cowl-tee.png" style="height:38px;width:auto;display:block"></div>
+<div style="width:34px;height:42px;border-radius:2px;background:rgba(250,247,242,.12);display:flex;align-items:flex-end;justify-content:center;overflow:hidden"><img src="./cutouts/piece-bias-skirt.png" style="height:40px;width:auto;display:block"></div>
+<div style="width:34px;height:42px;border-radius:2px;border:1px solid rgba(242,214,203,.85)"></div>
+</div>
+<div style="position:absolute;left:0;right:0;top:170px;bottom:326px;display:flex;align-items:center;justify-content:center">
+<div style="position:relative;padding:22px 26px;border:1.5px solid #f2d6cb;border-radius:3px">
+<img src="./cutouts/piece-black-sandals.png" style="width:190px;height:auto;display:block;filter:drop-shadow(3px 0 0 #faf7f2) drop-shadow(-3px 0 0 #faf7f2) drop-shadow(0 3px 0 #faf7f2) drop-shadow(0 -3px 0 #faf7f2)">
+<div style="position:absolute;left:-5px;top:-5px;width:9px;height:9px;background:#faf7f2;border:1.5px solid #6d2a24"></div>
+<div style="position:absolute;right:-5px;top:-5px;width:9px;height:9px;background:#faf7f2;border:1.5px solid #6d2a24"></div>
+<div style="position:absolute;left:-5px;bottom:-5px;width:9px;height:9px;background:#faf7f2;border:1.5px solid #6d2a24"></div>
+<div style="position:absolute;right:-5px;bottom:-5px;width:9px;height:9px;background:#faf7f2;border:1.5px solid #6d2a24"></div>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;background:#faf7f2;border-radius:20px 20px 0 0;padding:16px 22px 34px">
+<div style="width:38px;height:3px;border-radius:2px;background:rgba(30,26,23,.15);margin:0 auto 16px"></div>
+<div style="display:flex;align-items:center;gap:12px;padding-bottom:14px">
+<div style="width:22px;height:22px;border-radius:50%;background:#6d2a24;display:flex;align-items:center;justify-content:center;flex:none;font:600 10px/1 Karla,sans-serif;color:#fff">3</div>
+<div style="flex:1;border-bottom:1.5px solid #6d2a24;padding-bottom:7px;display:flex;align-items:center"><span style="font:400 16px/1 Karla,sans-serif;color:#1e1a17">flat sandal</span><span style="width:1.5px;height:17px;background:#6d2a24;margin-left:2px"></span></div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px;padding-bottom:14px">
+<span style="padding:6px 11px;border-radius:100px;background:rgba(30,26,23,.07);font:400 11px/1 Karla,sans-serif;color:#6b6459">shoes</span>
+<span style="padding:6px 11px;border-radius:100px;background:rgba(30,26,23,.07);font:400 11px/1 Karla,sans-serif;color:#6b6459">black</span>
+<span style="padding:6px 11px;border-radius:100px;background:rgba(30,26,23,.07);font:400 11px/1 Karla,sans-serif;color:#6b6459">leather</span>
+<span style="padding:6px 11px;border-radius:100px;border:1px solid rgba(30,26,23,.16);font:400 11px/1 Karla,sans-serif;color:#8b8177">a pair · counts as one</span>
+</div>
+<div style="font:400 12px/1.5 Karla,sans-serif;color:#8b8177;padding-bottom:16px">Drag the corners if the box has clipped a strap.</div>
+<div style="display:flex;gap:9px">
+<div style="flex:1;height:48px;border-radius:100px;display:flex;align-items:center;justify-content:center;background:#6d2a24;font:600 9.5px/1 Karla,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#fff">keep · that's all three</div>
+<div style="width:104px;height:48px;border-radius:100px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(30,26,23,.22);font:600 9.5px/1 Karla,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#6d2a24">drop it</div>
+</div>
+</div>
+</div>
+</x-import>
+<div style="background:#faf7f2;border-radius:6px;padding:18px 20px">
+<div style="font:600 8px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#8b8177">wire it</div>
+<div style="border-top:1px solid rgba(30,26,23,.11);margin-top:12px">
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">geometry</span><span style="flex:1;font:400 12.5px/1.6 Karla,sans-serif;color:#4a453f">slot 'shoe' or 'bag' → four-corner box with corner handles, and no cut line. Everything else in the sheet is identical to frames 02 and 04.</span></div>
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">pairs</span><span style="flex:1;font:400 12.5px/1.6 Karla,sans-serif;color:#4a453f">two shoe instances with overlapping y and similar area merge into one Piece before this frame. Never make the user do it.</span></div>
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">label</span><span style="flex:1;font:400 12.5px/1.6 Karla,sans-serif;color:#4a453f">the primary button says "that's all three" only on the last index. Otherwise "keep this one".</span></div>
+<div style="display:flex;gap:14px;padding:11px 0"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">primary</span><span style="flex:1;font:400 12.5px/1.6 IBM Plex Mono,monospace;color:#1e1a17">setPhase('committing')</span></div>
+</div>
+</div>
+</div>
+
+<div style="width:402px;flex:none;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font:300 30px/1 Karla,sans-serif;color:#6d2a24">06</span><span style="font:500 15px/1.2 Karla,sans-serif;color:#1e1a17">three pieces, one photo</span></div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+<div style="height:100%;display:flex;flex-direction:column;background:#faf7f2">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:62px 30px 0;gap:26px">
+<div style="display:flex;align-items:flex-end;gap:10px">
+<div style="width:88px;height:112px;border-radius:4px;background:#f2ece3;display:flex;align-items:flex-end;justify-content:center;overflow:hidden"><img src="./cutouts/piece-cowl-tee.png" style="height:96px;width:auto;display:block"></div>
+<div style="width:88px;height:132px;border-radius:4px;background:#f2ece3;display:flex;align-items:flex-end;justify-content:center;overflow:hidden"><img src="./cutouts/piece-bias-skirt.png" style="height:126px;width:auto;display:block"></div>
+<div style="width:88px;height:96px;border-radius:4px;background:#f2ece3;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="./cutouts/piece-black-sandals.png" style="width:76px;height:auto;display:block"></div>
+</div>
+<div style="text-align:center">
+<div style="font:300 30px/1.1 Karla,sans-serif;color:#1e1a17">three pieces added</div>
+<div style="font:400 13px/1.5 Karla,sans-serif;color:#8b8177;padding-top:10px">From one photo. They'll each count their own wears from now on.</div>
+</div>
+<div style="display:flex;gap:1px;background:rgba(30,26,23,.14);border-top:1px solid rgba(30,26,23,.14);border-bottom:1px solid rgba(30,26,23,.14);width:100%">
+<div style="flex:1;background:#faf7f2;padding:13px 12px;text-align:center"><div style="font:300 22px/1 Karla,sans-serif;color:#1e1a17">145</div><div style="font:600 7.5px/1 Karla,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#8b8177;padding-top:7px">pieces</div></div>
+<div style="flex:1;background:#faf7f2;padding:13px 12px;text-align:center"><div style="font:300 22px/1 Karla,sans-serif;color:#6d2a24">3</div><div style="font:600 7.5px/1 Karla,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#8b8177;padding-top:7px">need a price</div></div>
+<div style="flex:1;background:#faf7f2;padding:13px 12px;text-align:center"><div style="font:300 22px/1 Karla,sans-serif;color:#1e1a17">+9</div><div style="font:600 7.5px/1 Karla,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#8b8177;padding-top:7px">new outfits</div></div>
+</div>
+</div>
+<div style="padding:0 22px 18px">
+<div style="background:#1e1a17;border-radius:100px;padding:13px 18px;display:flex;align-items:center;gap:12px">
+<div style="width:22px;height:22px;border-radius:50%;background:#f2d6cb;display:flex;align-items:center;justify-content:center;flex:none"><div style="width:7px;height:4px;border-left:1.5px solid #4a1f16;border-bottom:1.5px solid #4a1f16;transform:rotate(-45deg);margin-top:-2px"></div></div>
+<span style="flex:1;font:400 13px/1.3 Karla,sans-serif;color:#faf7f2">Tee, skirt and sandal saved separately.</span>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#f2d6cb">undo</span>
+</div>
+</div>
+<div style="padding:0 22px 34px;display:flex;flex-direction:column;gap:11px">
+<div style="height:50px;border-radius:100px;display:flex;align-items:center;justify-content:center;background:#6d2a24;font:600 10px/1 Karla,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#fff">add their prices</div>
+<div style="height:44px;display:flex;align-items:center;justify-content:center;font:500 12.5px/1 Karla,sans-serif;color:#6d2a24;text-decoration:underline">back to the wardrobe</div>
+</div>
+</div>
+</x-import>
+<div style="background:#faf7f2;border-radius:6px;padding:18px 20px">
+<div style="font:600 8px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#8b8177">wire it</div>
+<div style="border-top:1px solid rgba(30,26,23,.11);margin-top:12px">
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">the write</span><span style="flex:1;font:400 12.5px/1.6 IBM Plex Mono,monospace;color:#1e1a17">commitPieces(candidates.filter(kept).map(withEdits))</span></div>
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">atomic</span><span style="flex:1;font:400 12.5px/1.6 Karla,sans-serif;color:#4a453f">one transaction with a shared batchId, so undo is a single delete. Partial success is not a state the UI has.</span></div>
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">provenance</span><span style="flex:1;font:400 12.5px/1.6 IBM Plex Mono,monospace;color:#1e1a17">each Piece keeps sourcePhotoId + batchId</span></div>
+<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">the +9</span><span style="flex:1;font:400 12.5px/1.6 Karla,sans-serif;color:#4a453f">recompute outfit combinations after commit and show the delta. This is the line that makes splitting feel worth doing.</span></div>
+<div style="display:flex;gap:14px;padding:11px 0"><span style="width:56px;flex:none;font:600 8px/1.5 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8b8177">undo</span><span style="flex:1;font:400 12.5px/1.6 Karla,sans-serif;color:#4a453f">live for 10s in the toast, and permanently under the batch in the activity log.</span></div>
+</div>
+</div>
+</div>
+
+</div>
+
+<div style="max-width:52em;padding-top:40px">
+<div style="font:600 9px/1 Karla,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#1e1a17">Four rules that hold across all six frames</div>
+<div style="border-top:1px solid rgba(30,26,23,.16);margin-top:14px">
+<div style="display:flex;gap:16px;padding:13px 0;border-bottom:1px solid rgba(30,26,23,.09)"><span style="width:20px;flex:none;font:300 17px/1 Karla,sans-serif;color:#6d2a24">·</span><span style="flex:1;font:400 13.5px/1.6 Karla,sans-serif;color:#4a453f">Nothing is written until frame 06. Every earlier step edits local state, so cancel is free at any point.</span></div>
+<div style="display:flex;gap:16px;padding:13px 0;border-bottom:1px solid rgba(30,26,23,.09)"><span style="width:20px;flex:none;font:300 17px/1 Karla,sans-serif;color:#6d2a24">·</span><span style="flex:1;font:400 13.5px/1.6 Karla,sans-serif;color:#4a453f">Frames 02, 04 and 05 are one component. If you find yourself writing a third variant, the difference belongs in the candidate's slot, not in a new screen.</span></div>
+<div style="display:flex;gap:16px;padding:13px 0;border-bottom:1px solid rgba(30,26,23,.09)"><span style="width:20px;flex:none;font:300 17px/1 Karla,sans-serif;color:#6d2a24">·</span><span style="flex:1;font:400 13.5px/1.6 Karla,sans-serif;color:#4a453f">The zoom is a transform on a persistent element, not a screen transition. The user must see garment 1 leave the group it came from.</span></div>
+<div style="display:flex;gap:16px;padding:13px 0"><span style="width:20px;flex:none;font:300 17px/1 Karla,sans-serif;color:#6d2a24">·</span><span style="flex:1;font:400 13.5px/1.6 Karla,sans-serif;color:#4a453f">Dropping a garment is always one tap away, and dropping all of them lands on "keep whole" rather than an error.</span></div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400}}"></script>
+</body>
+</html>

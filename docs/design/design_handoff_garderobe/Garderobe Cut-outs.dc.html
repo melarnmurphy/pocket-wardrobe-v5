@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Karla:ital,wght@0,300..800;1,300..500&display=swap" rel="stylesheet"><style>
+body{margin:0;background:#e6e0d6;font-family:Karla,system-ui,sans-serif}
+a{color:#6d2a24}a:hover{color:#43170f}
+@keyframes gwPop{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:scale(1)}}
+@keyframes gwFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes gwUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes gwSweep{from{transform:translateX(-140%) skewX(-12deg)}to{transform:translateX(260%) skewX(-12deg)}}
+@keyframes gwFloat{0%{transform:translateY(0)}50%{transform:translateY(-7px)}100%{transform:translateY(0)}}
+@keyframes gwLift{0%{transform:translateY(0) scale(1)}60%{transform:translateY(-22px) scale(1.06)}100%{transform:translateY(-16px) scale(1.04)}}
+@keyframes gwFloatLift{0%{transform:translateY(-16px) scale(1.04)}50%{transform:translateY(-25px) scale(1.04)}100%{transform:translateY(-16px) scale(1.04)}}
+@keyframes gwPulse{0%{opacity:.25;transform:scale(1)}70%{opacity:0;transform:scale(2.1)}100%{opacity:0;transform:scale(2.1)}}
+</style></helmet>
+
+<div style="padding:40px 44px;display:flex;gap:40px;align-items:flex-start">
+
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+<div style="height:100%;position:relative;overflow:hidden">
+
+<sc-if value="{{ onPhoto }}" hint-placeholder-val="{{ true }}">
+<div style="height:100%;position:relative;background:#141210">
+<div style="position:absolute;top:62px;left:0;right:0;padding:0 20px;display:flex;align-items:center;justify-content:space-between;z-index:10">
+<span onClick="{{ reset }}" style="font:400 20px/1 Karla,sans-serif;color:rgba(255,255,255,.85);cursor:pointer">×</span>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#fff">cut out a piece</span>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45)">{{ stageLabel }}</span>
+</div>
+
+<div onMouseDown="{{ pressStart }}" onMouseUp="{{ pressEnd }}" onMouseLeave="{{ pressEnd }}" onTouchStart="{{ pressStart }}" onTouchEnd="{{ pressEnd }}" style="position:absolute;top:112px;left:50px;width:302px;height:403px;cursor:pointer;z-index:5">
+<img src="./uploads/GIA-HAVANA_WEB_FRONT__20035.jpg" style="position:absolute;inset:0;width:302px;height:403px;object-fit:cover;border-radius:4px">
+<div style="{{ scrimStyle }}"></div>
+<div style="{{ liftStyle }}">
+<img src="./cutouts/dress-red-floral.png" style="width:302px;height:403px;object-fit:cover;display:block">
+<sc-if value="{{ isLifting }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;overflow:hidden">
+<div style="position:absolute;top:-10%;left:0;width:40%;height:120%;background:linear-gradient(90deg,rgba(250,247,242,0) 0%,rgba(250,247,242,.75) 50%,rgba(250,247,242,0) 100%);animation:gwSweep 1s cubic-bezier(.4,0,.2,1) both"></div>
+</div>
+</sc-if>
+</div>
+</div>
+
+<sc-if value="{{ isIdle }}" hint-placeholder-val="{{ true }}">
+<div style="position:absolute;left:0;right:0;bottom:0;padding:0 22px 40px;z-index:9;animation:gwFade .4s ease both">
+<div style="display:flex;align-items:center;gap:14px;background:rgba(20,18,16,.78);border-radius:14px;padding:15px 17px">
+<div style="position:relative;width:26px;height:26px;flex:none;display:flex;align-items:center;justify-content:center">
+<div style="position:absolute;inset:0;border-radius:50%;background:#f2d6cb;animation:gwPulse 1.9s ease-out infinite"></div>
+<div style="width:15px;height:15px;border-radius:50%;background:#f2d6cb"></div>
+</div>
+<div style="flex:1"><div style="font:400 13px/1.4 Karla,sans-serif;color:#faf7f2">press and hold the dress</div><div style="font:400 11px/1.4 Karla,sans-serif;color:rgba(255,255,255,.5);padding-top:5px">your photos, a screenshot, a product page</div></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isLifted }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:0;right:0;bottom:0;z-index:9;background:#faf7f2;border-radius:20px 20px 0 0;padding:16px 22px 34px;animation:gwUp .34s cubic-bezier(.2,.8,.2,1) both">
+<div style="width:38px;height:3px;border-radius:2px;background:rgba(30,26,23,.15);margin:0 auto 16px"></div>
+<div style="display:flex;align-items:center;gap:14px;padding-bottom:16px">
+<div style="width:52px;height:66px;border-radius:4px;background:#f2ece3;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:none;box-shadow:0 0 0 2.5px #faf7f2,0 6px 14px rgba(30,26,23,.2)"><img src="./cutouts/dress-red-floral.png" style="height:62px;width:auto;display:block"></div>
+<div style="flex:1">
+<div style="font:300 21px/1.1 Karla,sans-serif;color:#1e1a17">lifted</div>
+<div style="font:400 12px/1.4 Karla,sans-serif;color:#8b8177;padding-top:6px">printed maxi dress · edges cleaned</div>
+</div>
+</div>
+<div style="border-top:1px solid rgba(30,26,23,.11)">
+<div onClick="{{ toSheet }}" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(30,26,23,.11);cursor:pointer"><span style="font:500 14.5px/1 Karla,sans-serif;color:#1e1a17">add to wardrobe</span><span style="font:400 15px/1 Karla,sans-serif;color:#8b8177">›</span></div>
+<div onClick="{{ toSheet }}" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(30,26,23,.11);cursor:pointer"><span style="font:400 14.5px/1 Karla,sans-serif;color:#1e1a17">keep as a sticker</span><span style="font:400 15px/1 Karla,sans-serif;color:#8b8177">›</span></div>
+<div onClick="{{ toSheet }}" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(30,26,23,.11);cursor:pointer"><span style="font:400 14.5px/1 Karla,sans-serif;color:#1e1a17">copy — paste it anywhere</span><span style="font:400 15px/1 Karla,sans-serif;color:#8b8177">›</span></div>
+<div onClick="{{ reset }}" style="display:flex;align-items:center;padding:14px 0;cursor:pointer"><span style="font:400 14.5px/1 Karla,sans-serif;color:#6d2a24">try a different spot</span></div>
+</div>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ onSheet }}" hint-placeholder-val="{{ false }}">
+<div style="height:100%;display:flex;flex-direction:column;background:#faf7f2">
+<div style="flex:1;overflow:auto;padding:62px 0 0">
+<div style="padding:18px 22px 0;display:flex;align-items:center;justify-content:space-between">
+<span onClick="{{ reset }}" style="font:400 12px/1 Karla,sans-serif;color:#8b8177;cursor:pointer">‹ back</span>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#1e1a17">cut-outs</span>
+<span style="font:400 11.5px/1 Karla,sans-serif;color:#8b8177">edit</span>
+</div>
+<div style="padding:24px 22px 0">
+<div style="font:300 30px/1.1 Karla,sans-serif;color:#1e1a17">31 cut-outs</div>
+<div style="font:400 12.5px/1.5 Karla,sans-serif;color:#6b6459;padding-top:10px">Lifted from your photos, pasted in from Messages, or pulled off a receipt. Unlimited, free, always.</div>
+</div>
+
+<div style="padding:24px 22px 0">
+<div style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#1e1a17;padding-bottom:14px">the sticker sheet</div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+<div style="display:flex;align-items:center;justify-content:center;height:126px"><div style="transform:rotate(-4deg)"><div style="animation:gwFloat 5.2s ease-in-out infinite .4s"><img src="./cutouts/dress-red-floral.png" style="{{ stickerImg }}"></div></div></div>
+<div style="display:flex;align-items:center;justify-content:center;height:126px"><div style="transform:rotate(3deg)"><div style="animation:gwFloat 4.6s ease-in-out infinite .9s"><img src="./cutouts/gown-black-front.png" style="{{ stickerImg }}"></div></div></div>
+<div style="display:flex;align-items:center;justify-content:center;height:126px"><div style="transform:rotate(-2deg)"><div style="animation:gwFloat 5.6s ease-in-out infinite .2s"><img src="./cutouts/blouse-sheer-black.png" style="{{ stickerImg }}"></div></div></div>
+<div style="display:flex;align-items:center;justify-content:center;height:126px"><div style="transform:rotate(5deg)"><div style="animation:gwFloat 4.9s ease-in-out infinite .6s"><img src="./cutouts/shirt-dress-black.png" style="{{ stickerImg }}"></div></div></div>
+<div style="display:flex;align-items:center;justify-content:center;height:126px"><div style="transform:rotate(-6deg)"><div style="animation:gwFloat 5.4s ease-in-out infinite 1.1s"><img src="./cutouts/slip-dress-black.png" style="{{ stickerImg }}"></div></div></div>
+<div onClick="{{ reset }}" style="display:flex;align-items:center;justify-content:center;height:126px;cursor:pointer"><div style="width:76px;height:104px;border-radius:10px;border:1.5px dashed rgba(30,26,23,.28);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px"><span style="font:300 22px/1 Karla,sans-serif;color:#8b8177">+</span><span style="font:600 7px/1 Karla,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#8b8177">lift one</span></div></div>
+</div>
+</div>
+
+<div style="padding:26px 22px 0">
+<div style="display:flex;align-items:baseline;justify-content:space-between;padding-bottom:14px"><span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#1e1a17">build a look</span><span style="font:400 11.5px/1 Karla,sans-serif;color:#6d2a24">save look</span></div>
+<div style="position:relative;height:320px;border-radius:6px;background:#f2ece3;overflow:hidden">
+<div style="position:absolute;left:14px;top:26px;transform:rotate(-5deg)"><div style="animation:gwFloat 5.6s ease-in-out infinite"><img src="./cutouts/gown-black-back.png" style="{{ boardImgA }}"></div></div>
+<div style="position:absolute;left:104px;top:60px;transform:rotate(2deg);z-index:3"><div style="animation:gwFloat 5s ease-in-out infinite .5s"><img src="./cutouts/tee-skirt-black.png" style="{{ boardImgB }}"></div></div>
+<div style="position:absolute;right:10px;top:34px;transform:rotate(7deg)"><div style="animation:gwFloat 6.2s ease-in-out infinite 1.1s"><img src="./cutouts/dress-red-floral.png" style="{{ boardImgA }}"></div></div>
+<div style="position:absolute;left:0;right:0;bottom:0;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,rgba(242,236,227,0),rgba(242,236,227,.92))">
+<span style="font:600 7.5px/1 Karla,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#8b8177">drag to arrange · pinch to scale</span>
+<span style="font:600 7.5px/1 Karla,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#8b8177">3 pieces</span>
+</div>
+</div>
+</div>
+
+<div style="padding:26px 22px 0">
+<div style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#8b8177;padding-bottom:6px">three ways in, all free</div>
+<div style="border-top:1px solid rgba(30,26,23,.11)">
+<div style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid rgba(30,26,23,.11)"><span style="width:44px;font:300 19px/1 Karla,sans-serif;color:#1e1a17;flex:none">01</span><span style="flex:1;font:400 13.5px/1.4 Karla,sans-serif;color:#1e1a17">shoot it — the camera cuts it out for you</span></div>
+<div style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid rgba(30,26,23,.11)"><span style="width:44px;font:300 19px/1 Karla,sans-serif;color:#1e1a17;flex:none">02</span><span style="flex:1;font:400 13.5px/1.4 Karla,sans-serif;color:#1e1a17">paste a sticker you made on your phone</span></div>
+<div style="display:flex;align-items:center;gap:14px;padding:14px 0"><span style="width:44px;font:300 19px/1 Karla,sans-serif;color:#1e1a17;flex:none">03</span><span style="flex:1;font:400 13.5px/1.4 Karla,sans-serif;color:#1e1a17">forward a receipt and we lift the product shot</span></div>
+</div>
+</div>
+<div style="height:28px"></div>
+</div>
+<div style="border-top:1px solid rgba(30,26,23,.11);background:#f3eee6;padding:14px 22px 32px">
+<div onClick="{{ reset }}" style="height:52px;border-radius:100px;display:flex;align-items:center;justify-content:center;background:#6d2a24;font:600 10px/1 Karla,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#fff;cursor:pointer">lift another</div>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-import>
+
+<div style="width:300px;padding-top:16px;display:flex;flex-direction:column;gap:22px">
+<div>
+<div style="font:700 19px/1.2 Karla,sans-serif;letter-spacing:-.01em;color:#1e1a17">Cut-outs — press and hold</div>
+<div style="font:400 12.5px/1.6 Karla,sans-serif;color:#6b6459;padding-top:9px">Hold your cursor on the dress in the phone. The garment lifts off its background, keeps a white sticker edge, and lands in the sheet. Real product shots, cut out here.</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:1px;background:rgba(30,26,23,.12);border-top:1px solid rgba(30,26,23,.12);border-bottom:1px solid rgba(30,26,23,.12)">
+<div style="{{ s1 }}"><span style="font:600 9px/1 Karla,sans-serif;letter-spacing:.14em;color:#8b8177;width:18px">01</span><span style="flex:1">press and hold the piece</span></div>
+<div style="{{ s2 }}"><span style="font:600 9px/1 Karla,sans-serif;letter-spacing:.14em;color:#8b8177;width:18px">02</span><span style="flex:1">it lifts, edges cleaned</span></div>
+<div style="{{ s3 }}"><span style="font:600 9px/1 Karla,sans-serif;letter-spacing:.14em;color:#8b8177;width:18px">03</span><span style="flex:1">wardrobe, sticker, or clipboard</span></div>
+<div style="{{ s4 }}"><span style="font:600 9px/1 Karla,sans-serif;letter-spacing:.14em;color:#8b8177;width:18px">04</span><span style="flex:1">arrange them into a look</span></div>
+</div>
+<div style="border-top:1px solid rgba(30,26,23,.12);padding-top:16px;font:400 12px/1.6 Karla,sans-serif;color:#8b8177">The gesture is the one people already know from Photos and Messages, so nothing needs teaching. A cut-out is a transparent image, which is why it can also arrive by paste — someone sends you a sticker of a dress and it becomes a wardrobe piece.</div>
+<div onClick="{{ reset }}" style="align-self:flex-start;padding:10px 18px;border-radius:100px;border:1px solid rgba(30,26,23,.22);font:600 9px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#1e1a17;cursor:pointer">restart</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:800}}">
+class Component extends DCLogic {
+  state = { stage: 'idle' };
+
+  componentWillUnmount() { if (this.t) clearTimeout(this.t); }
+
+  pressStart = () => {
+    if (this.state.stage !== 'idle') return;
+    this.setState({ stage: 'lifting' });
+    this.t = setTimeout(() => this.setState({ stage: 'lifted' }), 1000);
+  };
+
+  pressEnd = () => {
+    if (this.state.stage === 'lifting') {
+      if (this.t) clearTimeout(this.t);
+      this.setState({ stage: 'lifted' });
+    }
+  };
+
+  stepRow(active) {
+    return {
+      display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+      background: active ? '#faf7f2' : '#f2ece3',
+      font: (active ? '500' : '400') + ' 13px/1.3 Karla, sans-serif',
+      color: active ? '#1e1a17' : '#8b8177',
+    };
+  }
+
+  ring(px, shadow) {
+    const o = px + 'px';
+    return 'drop-shadow(' + o + ' 0 0 #faf7f2) drop-shadow(-' + o + ' 0 0 #faf7f2) drop-shadow(0 ' + o + ' 0 #faf7f2) drop-shadow(0 -' + o + ' 0 #faf7f2)' + (shadow ? ' ' + shadow : '');
+  }
+
+  renderVals() {
+    const st = this.state.stage;
+    const lifting = st === 'lifting';
+    const lifted = st === 'lifted';
+
+    const lift = { position: 'absolute', inset: 0, zIndex: 6, transition: 'filter .5s ease' };
+    if (lifting) {
+      lift.filter = this.ring(3, 'drop-shadow(0 12px 22px rgba(0,0,0,.4))');
+      lift.animation = 'gwLift 1s cubic-bezier(.3,.9,.2,1) both';
+    } else if (lifted) {
+      lift.filter = this.ring(3, 'drop-shadow(0 24px 36px rgba(0,0,0,.5))');
+      lift.animation = 'gwFloatLift 5s ease-in-out infinite';
+    }
+
+    return {
+      isDark: st !== 'sheet',
+      onPhoto: st !== 'sheet',
+      onSheet: st === 'sheet',
+      isIdle: st === 'idle',
+      isLifting: lifting,
+      isLifted: lifted,
+      stageLabel: st === 'idle' ? 'hold to lift' : (lifting ? 'lifting' : 'lifted'),
+      liftStyle: lift,
+      scrimStyle: {
+        position: 'absolute', inset: 0, zIndex: 5, pointerEvents: 'none', borderRadius: 4,
+        background: 'rgba(12,10,9,.66)',
+        opacity: st === 'idle' ? 0 : 1,
+        transition: 'opacity .7s ease',
+      },
+      stickerImg: { height: '112px', width: 'auto', display: 'block', filter: this.ring(2.5, 'drop-shadow(0 8px 14px rgba(30,26,23,.28))') },
+      boardImgA: { height: '196px', width: 'auto', display: 'block', filter: this.ring(3, 'drop-shadow(0 12px 20px rgba(30,26,23,.24))') },
+      boardImgB: { height: '224px', width: 'auto', display: 'block', filter: this.ring(3, 'drop-shadow(0 14px 22px rgba(30,26,23,.28))') },
+      s1: this.stepRow(st === 'idle'),
+      s2: this.stepRow(lifting),
+      s3: this.stepRow(lifted),
+      s4: this.stepRow(st === 'sheet'),
+      pressStart: this.pressStart,
+      pressEnd: this.pressEnd,
+      toSheet: () => this.setState({ stage: 'sheet' }),
+      reset: () => { if (this.t) clearTimeout(this.t); this.setState({ stage: 'idle' }); },
+    };
+  }
+}
+</script>
+</body>
+</html>

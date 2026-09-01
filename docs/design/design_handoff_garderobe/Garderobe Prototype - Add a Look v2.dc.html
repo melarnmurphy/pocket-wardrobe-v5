@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Karla:ital,wght@0,300..800;1,300..500&display=swap" rel="stylesheet"><style>
+body{margin:0;background:#e6e0d6;font-family:Karla,system-ui,sans-serif}
+a{color:#6d2a24}a:hover{color:#43170f}
+@keyframes gwPop{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:scale(1)}}
+@keyframes gwFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes gwUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes gwSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes gwGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+</style></helmet>
+
+<div style="padding:40px 44px;display:flex;gap:40px;align-items:flex-start">
+
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+<div style="height:100%;position:relative;overflow:hidden">
+
+<sc-if value="{{ isUpload }}" hint-placeholder-val="{{ true }}">
+<div style="height:100%;display:flex;flex-direction:column;background:#141210">
+<div style="padding:62px 20px 0;display:flex;align-items:center;justify-content:space-between">
+<span style="font:400 20px/1 Karla,sans-serif;color:rgba(255,255,255,.8)">×</span>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#fff">new look</span>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.4)">1 / 4</span>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;padding:0 34px">
+<div style="width:224px;height:300px;border-radius:6px;border:1.5px dashed rgba(255,255,255,.34);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px">
+<div style="width:44px;height:52px;position:relative;opacity:.5">
+<div style="position:absolute;top:0;left:0;width:44px;height:7px;background:#f7efe3;border-radius:100px"></div>
+<div style="position:absolute;top:9px;left:2px;width:40px;height:38px;border:2px solid #f7efe3;border-radius:20px 20px 12px 12px;box-sizing:border-box"></div>
+<div style="position:absolute;top:12px;left:21px;width:1.6px;height:32px;background:#f7efe3"></div>
+<div style="position:absolute;top:47px;left:8px;width:3px;height:5px;background:#f7efe3;border-radius:0 0 100px 100px"></div>
+<div style="position:absolute;top:47px;right:8px;width:3px;height:5px;background:#f7efe3;border-radius:0 0 100px 100px"></div>
+</div>
+<div style="font:600 8.5px/1.9 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.4);text-align:center">a full-body photo<br>of what you wore</div>
+</div>
+</div>
+<div style="padding:0 22px 34px;display:flex;flex-direction:column;gap:11px">
+<div onClick="{{ openSource }}" style="height:52px;border-radius:100px;display:flex;align-items:center;justify-content:center;background:#6d2a24;font:600 10px/1 Karla,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#fff;cursor:pointer">add a photo</div>
+<div onClick="{{ askCamera }}" style="height:52px;border-radius:100px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.3);font:600 10px/1 Karla,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#f7efe3;cursor:pointer">open camera</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isDetecting }}" hint-placeholder-val="{{ false }}">
+<div style="height:100%;position:relative;background:repeating-linear-gradient(135deg,#3a3531 0 11px,#312c29 11px 22px)">
+<div style="position:absolute;top:62px;left:0;right:0;padding:0 20px;display:flex;align-items:center;justify-content:space-between;z-index:5">
+<span style="font:400 20px/1 Karla,sans-serif;color:rgba(255,255,255,.8)">×</span>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#fff">new look</span>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.4)">2 / 4</span>
+</div>
+<div style="position:absolute;left:20%;top:28%;width:26px;height:26px;border-radius:50%;background:rgba(250,247,242,.9);animation:gwPop .5s ease both .15s"></div>
+<div style="position:absolute;left:47%;top:41%;width:26px;height:26px;border-radius:50%;background:rgba(250,247,242,.9);animation:gwPop .5s ease both .4s"></div>
+<div style="position:absolute;left:43%;top:62%;width:26px;height:26px;border-radius:50%;background:rgba(250,247,242,.9);animation:gwPop .5s ease both .65s"></div>
+<div style="position:absolute;left:72%;top:53%;width:26px;height:26px;border-radius:50%;background:rgba(250,247,242,.9);animation:gwPop .5s ease both .9s"></div>
+<div style="position:absolute;left:38%;top:85%;width:26px;height:26px;border-radius:50%;background:rgba(250,247,242,.9);animation:gwPop .5s ease both 1.1s"></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isPinned }}" hint-placeholder-val="{{ false }}">
+<div style="height:100%;display:flex;flex-direction:column;background:#141210">
+<div style="flex:1;position:relative;background:repeating-linear-gradient(135deg,#3a3531 0 11px,#312c29 11px 22px)">
+<div style="position:absolute;top:62px;left:0;right:0;padding:0 20px;display:flex;align-items:center;justify-content:space-between;z-index:6">
+<span onClick="{{ askDiscard }}" style="font:400 20px/1 Karla,sans-serif;color:rgba(255,255,255,.8);cursor:pointer">×</span>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#fff">new look</span>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.4)">3 / 4</span>
+</div>
+<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><span style="font:600 8.5px/2 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.22);text-align:center">outfit photo</span></div>
+
+<div style="position:absolute;left:20%;top:28%;display:flex;align-items:center;z-index:4">
+<div style="width:26px;height:26px;border-radius:50%;background:#6d2a24;box-shadow:0 0 0 3px rgba(250,247,242,.9);display:flex;align-items:center;justify-content:center;font:600 11px/1 Karla,sans-serif;color:#fff;flex:none;animation:gwPop .4s ease both">1</div>
+<div style="height:1.5px;width:16px;background:rgba(250,247,242,.9)"></div>
+<div style="background:#faf7f2;border-radius:5px;padding:7px 11px 7px 8px;display:flex;align-items:center;gap:9px;flex:none;animation:gwPop .45s ease both .1s">
+<div style="width:26px;height:32px;border-radius:2px;background:repeating-linear-gradient(135deg,#dcc6a8 0 5px,#d0b795 5px 10px);flex:none"></div>
+<div><div style="font:400 12.5px/1.1 Karla,sans-serif;color:#1e1a17">camel wool overcoat</div><div style="font:600 7.5px/1 Karla,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#4f6350;padding-top:5px">matched · 94%</div></div>
+</div>
+</div>
+
+<div style="position:absolute;left:47%;top:41%;width:26px;height:26px;border-radius:50%;background:rgba(250,247,242,.92);box-shadow:0 0 0 2px rgba(30,26,23,.25);display:flex;align-items:center;justify-content:center;font:600 11px/1 Karla,sans-serif;color:#1e1a17">2</div>
+<div style="position:absolute;left:43%;top:62%;width:26px;height:26px;border-radius:50%;background:rgba(250,247,242,.92);box-shadow:0 0 0 2px rgba(30,26,23,.25);display:flex;align-items:center;justify-content:center;font:600 11px/1 Karla,sans-serif;color:#1e1a17">3</div>
+<sc-if value="{{ pin4Visible }}" hint-placeholder-val="{{ true }}">
+<div onClick="{{ openPinSheet }}" style="{{ pin4Style }}">{{ pin4Label }}</div>
+</sc-if>
+<div style="position:absolute;left:38%;top:85%;width:26px;height:26px;border-radius:50%;background:rgba(250,247,242,.92);box-shadow:0 0 0 2px rgba(30,26,23,.25);display:flex;align-items:center;justify-content:center;font:600 11px/1 Karla,sans-serif;color:#1e1a17">5</div>
+</div>
+
+<div style="background:#faf7f2;border-radius:20px 20px 0 0;padding:16px 22px 30px;margin-top:-14px;position:relative;z-index:7">
+<div style="width:38px;height:3px;border-radius:2px;background:rgba(30,26,23,.15);margin:0 auto 16px"></div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;padding-bottom:14px">
+<div style="display:flex;align-items:baseline;gap:9px"><span style="font:300 24px/1 Karla,sans-serif;color:#1e1a17">{{ matchLabel }}</span><span style="font:600 8px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#8b8177">matched</span></div>
+<span style="font:400 11.5px/1 Karla,sans-serif;color:#8b8177">{{ hint }}</span>
+</div>
+<div style="display:flex;gap:8px">
+<div style="width:62px;flex:none"><div style="height:76px;border-radius:3px;background:repeating-linear-gradient(135deg,#dcc6a8 0 5px,#d0b795 5px 10px)"></div><div style="font:400 10.5px/1.2 Karla,sans-serif;color:#1e1a17;padding-top:6px">coat</div></div>
+<div style="width:62px;flex:none"><div style="height:76px;border-radius:3px;background:repeating-linear-gradient(135deg,#e0d9cb 0 5px,#d5ccbb 5px 10px)"></div><div style="font:400 10.5px/1.2 Karla,sans-serif;color:#1e1a17;padding-top:6px">knit</div></div>
+<div style="width:62px;flex:none"><div style="height:76px;border-radius:3px;background:repeating-linear-gradient(135deg,#dddad3 0 5px,#d1cdc4 5px 10px)"></div><div style="font:400 10.5px/1.2 Karla,sans-serif;color:#1e1a17;padding-top:6px">denim</div></div>
+<sc-if value="{{ pin4Visible }}" hint-placeholder-val="{{ true }}">
+<div onClick="{{ openPinSheet }}" style="width:62px;flex:none;cursor:pointer"><div style="{{ tile4Style }}">{{ tile4Inner }}</div><div style="font:400 10.5px/1.2 Karla,sans-serif;color:#1e1a17;padding-top:6px">{{ bagLabel }}</div></div>
+</sc-if>
+<div style="width:62px;flex:none"><div style="height:76px;border-radius:3px;background:repeating-linear-gradient(135deg,#cbb69c 0 5px,#bfa88b 5px 10px)"></div><div style="font:400 10.5px/1.2 Karla,sans-serif;color:#1e1a17;padding-top:6px">boot</div></div>
+</div>
+<div onClick="{{ openName }}" style="height:48px;border-radius:100px;display:flex;align-items:center;justify-content:center;background:#6d2a24;font:600 9.5px/1 Karla,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#fff;margin-top:20px;cursor:pointer">name and save</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isTagging }}" hint-placeholder-val="{{ false }}">
+<div style="height:100%;display:flex;flex-direction:column;background:#141210">
+<div style="height:300px;position:relative;background:repeating-linear-gradient(135deg,#3a3531 0 11px,#312c29 11px 22px)">
+<div style="position:absolute;top:62px;left:20px;z-index:4;font:600 8.5px/1 Karla,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.82)">pin 4 of 5</div>
+<div style="position:absolute;top:62px;right:20px;z-index:4;font:600 8.5px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45)">4 / 4</div>
+<div style="position:absolute;left:64%;top:40%;width:78px;height:78px;border-radius:50%;border:2px solid #faf7f2;box-shadow:0 0 0 2000px rgba(20,18,16,.6);background:repeating-linear-gradient(135deg,#4a443f 0 8px,#403a36 8px 16px)"></div>
+</div>
+
+<div style="flex:1;background:#faf7f2;border-radius:20px 20px 0 0;padding:16px 22px 0;margin-top:-16px;position:relative;z-index:6;display:flex;flex-direction:column;overflow:hidden">
+<div style="width:38px;height:3px;border-radius:2px;background:rgba(30,26,23,.15);margin:0 auto 18px"></div>
+<div style="display:flex;align-items:center;gap:14px;padding-bottom:16px">
+<div style="width:56px;height:56px;border-radius:4px;background:repeating-linear-gradient(135deg,#d5cdbe 0 6px,#c9c0af 6px 12px);flex:none"></div>
+<div style="flex:1">
+<div style="font:300 22px/1.1 Karla,sans-serif;color:#1e1a17">what's this?</div>
+<div style="font:400 12px/1.4 Karla,sans-serif;color:#8b8177;padding-top:6px">closest matches from your 142 pieces</div>
+</div>
+</div>
+
+<div style="flex:1;overflow:auto">
+<sc-for list="{{ candidates }}" as="c" hint-placeholder-count="3">
+<div onClick="{{ c.pick }}" style="{{ c.rowStyle }}">
+<div style="{{ c.radioStyle }}"><div style="{{ c.dotStyle }}"></div></div>
+<div style="{{ c.thumbStyle }}"></div>
+<div style="flex:1"><div style="{{ c.nameStyle }}">{{ c.name }}</div><div style="font:400 11.5px/1 Karla,sans-serif;color:#8b8177;padding-top:5px">{{ c.meta }}</div></div>
+<span style="{{ c.pctStyle }}">{{ c.pct }}</span>
+</div>
+</sc-for>
+<div onClick="{{ pickNew }}" style="display:flex;align-items:center;gap:13px;padding:16px 0;cursor:pointer">
+<div style="width:18px;height:18px;border-radius:50%;border:1.5px dashed rgba(30,26,23,.32);flex:none"></div>
+<div style="width:44px;height:54px;border-radius:3px;border:1.5px dashed rgba(30,26,23,.26);display:flex;align-items:center;justify-content:center;flex:none"><span style="font:400 18px/1 Karla,sans-serif;color:#8b8177">+</span></div>
+<div style="flex:1"><div style="font:400 14px/1.2 Karla,sans-serif;color:#1e1a17">not in my wardrobe</div><div style="font:400 11.5px/1 Karla,sans-serif;color:#8b8177;padding-top:5px">file it as a new piece</div></div>
+</div>
+</div>
+
+<div style="border-top:1px solid rgba(30,26,23,.11);margin:0 -22px;padding:14px 22px 32px;background:#f3eee6;display:flex;gap:9px">
+<div onClick="{{ confirmTag }}" style="flex:1;height:48px;border-radius:100px;display:flex;align-items:center;justify-content:center;background:#6d2a24;font:600 9.5px/1 Karla,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#fff;cursor:pointer">tag it</div>
+<div onClick="{{ skipTag }}" style="width:96px;height:48px;border-radius:100px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(30,26,23,.22);font:600 9.5px/1 Karla,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#1e1a17;cursor:pointer">skip</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isSaved }}" hint-placeholder-val="{{ false }}">
+<div style="height:100%;display:flex;flex-direction:column;background:#faf7f2">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:62px 34px 0;gap:26px">
+<div style="width:108px;height:108px;border-radius:50%;background:#f2d6cb;display:flex;align-items:center;justify-content:center;animation:gwPop .5s cubic-bezier(.2,.8,.2,1) both">
+<div style="width:30px;height:16px;border-left:2.5px solid #6d2a24;border-bottom:2.5px solid #6d2a24;transform:rotate(-45deg);margin-top:-6px"></div>
+</div>
+<div style="text-align:center;animation:gwFade .5s ease both .12s">
+<div style="font:300 30px/1.1 Karla,sans-serif;color:#1e1a17">{{ lookName }}</div>
+<div style="font:400 13px/1.5 Karla,sans-serif;color:#8b8177;padding-top:10px">{{ savedLine }}</div>
+</div>
+<div style="display:flex;gap:7px;animation:gwFade .5s ease both .2s">
+<div style="width:56px;height:70px;border-radius:3px;background:repeating-linear-gradient(135deg,#dcc6a8 0 6px,#d0b795 6px 12px)"></div>
+<div style="width:56px;height:70px;border-radius:3px;background:repeating-linear-gradient(135deg,#e0d9cb 0 6px,#d5ccbb 6px 12px)"></div>
+<div style="width:56px;height:70px;border-radius:3px;background:repeating-linear-gradient(135deg,#dddad3 0 6px,#d1cdc4 6px 12px)"></div>
+<div style="width:56px;height:70px;border-radius:3px;background:repeating-linear-gradient(135deg,#cbb69c 0 6px,#bfa88b 6px 12px)"></div>
+</div>
+</div>
+
+<div style="padding:0 22px 18px">
+<div style="background:#1e1a17;border-radius:100px;padding:13px 18px;display:flex;align-items:center;gap:12px;animation:gwFade .5s ease both .3s">
+<div style="width:22px;height:22px;border-radius:50%;background:#f2d6cb;display:flex;align-items:center;justify-content:center;flex:none"><div style="width:7px;height:4px;border-left:1.5px solid #4a1f16;border-bottom:1.5px solid #4a1f16;transform:rotate(-45deg);margin-top:-2px"></div></div>
+<span style="flex:1;font:400 13px/1.3 Karla,sans-serif;color:#faf7f2">{{ toastLine }}</span>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#f2d6cb">view</span>
+</div>
+</div>
+
+<div style="padding:0 22px 34px;display:flex;flex-direction:column;gap:11px">
+<div onClick="{{ reset }}" style="height:50px;border-radius:100px;display:flex;align-items:center;justify-content:center;background:#6d2a24;font:600 10px/1 Karla,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#fff;cursor:pointer">add another look</div>
+<div onClick="{{ reset }}" style="height:44px;display:flex;align-items:center;justify-content:center;font:500 12.5px/1 Karla,sans-serif;color:#6d2a24;text-decoration:underline;cursor:pointer">back to the start</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ hasScrim }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ dismissScrim }}" style="position:absolute;inset:0;background:rgba(12,10,9,.55);z-index:20"></div>
+</sc-if>
+
+<sc-if value="{{ mSource }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:0;right:0;bottom:0;z-index:21;background:#faf7f2;border-radius:20px 20px 0 0;padding:16px 22px 34px;animation:gwUp .3s cubic-bezier(.2,.8,.2,1) both">
+<div style="width:38px;height:3px;border-radius:2px;background:rgba(30,26,23,.15);margin:0 auto 16px"></div>
+<div style="font:300 22px/1.1 Karla,sans-serif;color:#1e1a17">add a look</div>
+<div style="font:400 12.5px/1.5 Karla,sans-serif;color:#8b8177;padding:7px 0 16px">A full-body photo works best.</div>
+<div style="border-top:1px solid rgba(30,26,23,.11)">
+<div onClick="{{ askCamera }}" style="display:flex;align-items:center;gap:14px;padding:15px 0;border-bottom:1px solid rgba(30,26,23,.11);cursor:pointer">
+<div style="width:34px;height:34px;border-radius:50%;background:#6d2a24;display:flex;align-items:center;justify-content:center;flex:none"><div style="width:14px;height:11px;border:1.5px solid #fff;border-radius:2px"></div></div>
+<span style="flex:1;font:400 14.5px/1 Karla,sans-serif;color:#1e1a17">take a photo</span>
+<span style="font:400 15px/1 Karla,sans-serif;color:#8b8177">›</span>
+</div>
+<div onClick="{{ detect }}" style="display:flex;align-items:center;gap:14px;padding:15px 0;border-bottom:1px solid rgba(30,26,23,.11);cursor:pointer">
+<div style="width:34px;height:34px;border-radius:50%;border:1px solid rgba(30,26,23,.2);display:flex;align-items:center;justify-content:center;flex:none"><div style="width:13px;height:13px;border-radius:2px;background:repeating-linear-gradient(135deg,#ded6c8 0 3px,#cfc6b4 3px 6px)"></div></div>
+<span style="flex:1;font:400 14.5px/1 Karla,sans-serif;color:#1e1a17">photo library</span>
+<span style="font:400 15px/1 Karla,sans-serif;color:#8b8177">›</span>
+</div>
+<div style="padding:15px 0 0">
+<div style="font:600 8px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#8b8177;padding-bottom:11px">or from this week</div>
+<div style="display:flex;gap:7px">
+<div onClick="{{ detect }}" style="width:54px;height:68px;border-radius:3px;background:repeating-linear-gradient(135deg,#e7e0d3 0 5px,#dcd4c4 5px 10px);cursor:pointer"></div>
+<div onClick="{{ detect }}" style="width:54px;height:68px;border-radius:3px;background:repeating-linear-gradient(135deg,#e0d9cb 0 5px,#d5ccbb 5px 10px);cursor:pointer"></div>
+<div onClick="{{ detect }}" style="width:54px;height:68px;border-radius:3px;background:repeating-linear-gradient(135deg,#dddad3 0 5px,#d1cdc4 5px 10px);cursor:pointer"></div>
+<div onClick="{{ detect }}" style="width:54px;height:68px;border-radius:3px;background:repeating-linear-gradient(135deg,#e4dcce 0 5px,#d9d0bf 5px 10px);cursor:pointer"></div>
+<div onClick="{{ detect }}" style="width:54px;height:68px;border-radius:3px;background:repeating-linear-gradient(135deg,#dfd7c9 0 5px,#d3cab9 5px 10px);cursor:pointer"></div>
+</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ mPermission }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:22px;right:22px;top:50%;transform:translateY(-50%);z-index:21;background:#faf7f2;border-radius:14px;padding:26px 24px;text-align:center;animation:gwPop .28s cubic-bezier(.2,.8,.2,1) both">
+<div style="width:44px;height:44px;border-radius:50%;background:#f2d6cb;display:flex;align-items:center;justify-content:center;margin:0 auto 16px"><div style="width:16px;height:13px;border:1.6px solid #4a1f16;border-radius:2px"></div></div>
+<div style="font:300 21px/1.25 Karla,sans-serif;color:#1e1a17">garderobe needs the camera</div>
+<div style="font:400 12.5px/1.5 Karla,sans-serif;color:#8b8177;padding:10px 0 20px">Photos stay on your device unless you share a look.</div>
+<div style="display:flex;gap:9px">
+<div onClick="{{ closeModal }}" style="flex:1;height:44px;border-radius:100px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(30,26,23,.22);font:600 9px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#1e1a17;cursor:pointer">not now</div>
+<div onClick="{{ detect }}" style="flex:1;height:44px;border-radius:100px;display:flex;align-items:center;justify-content:center;background:#6d2a24;font:600 9px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#fff;cursor:pointer">allow</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ mDetecting }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:22px;right:22px;top:50%;transform:translateY(-50%);z-index:21;background:#faf7f2;border-radius:14px;padding:28px 22px;display:flex;flex-direction:column;align-items:center;gap:18px;animation:gwPop .28s cubic-bezier(.2,.8,.2,1) both">
+<div style="width:52px;height:52px;border-radius:50%;border:1.5px dashed rgba(30,26,23,.3);border-top-color:#6d2a24;animation:gwSpin 1.1s linear infinite"></div>
+<div style="text-align:center">
+<div style="font:300 20px/1.2 Karla,sans-serif;color:#1e1a17">finding pieces</div>
+<div style="font:400 12.5px/1.5 Karla,sans-serif;color:#8b8177;padding-top:8px">Matching against your 142.</div>
+</div>
+<div style="width:100%;height:4px;border-radius:3px;background:rgba(30,26,23,.11)"><div style="width:100%;height:4px;border-radius:3px;background:#6d2a24;transform-origin:left;animation:gwGrow 2.1s ease both"></div></div>
+<span onClick="{{ cancelDetect }}" style="font:500 12px/1 Karla,sans-serif;color:#8b8177;text-decoration:underline;cursor:pointer">cancel</span>
+</div>
+</sc-if>
+
+<sc-if value="{{ mNoGarments }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:22px;right:22px;top:50%;transform:translateY(-50%);z-index:21;background:#faf7f2;border-radius:14px;padding:26px 24px;text-align:center;animation:gwPop .28s cubic-bezier(.2,.8,.2,1) both">
+<div style="width:44px;height:52px;position:relative;margin:0 auto 18px;opacity:.32">
+<div style="position:absolute;top:0;left:0;width:44px;height:7px;background:#1e1a17;border-radius:100px"></div>
+<div style="position:absolute;top:9px;left:2px;width:40px;height:38px;border:2px solid #1e1a17;border-radius:20px 20px 12px 12px;box-sizing:border-box"></div>
+<div style="position:absolute;top:12px;left:21px;width:1.6px;height:32px;background:#1e1a17"></div>
+<div style="position:absolute;top:47px;left:8px;width:3px;height:5px;background:#1e1a17;border-radius:0 0 100px 100px"></div>
+<div style="position:absolute;top:47px;right:8px;width:3px;height:5px;background:#1e1a17;border-radius:0 0 100px 100px"></div>
+</div>
+<div style="font:300 21px/1.25 Karla,sans-serif;color:#1e1a17">no garments found</div>
+<div style="font:400 12.5px/1.5 Karla,sans-serif;color:#8b8177;padding:10px 0 20px">Try a photo where the whole outfit is visible and in focus.</div>
+<div style="display:flex;gap:9px">
+<div onClick="{{ retryPhoto }}" style="flex:1;height:44px;border-radius:100px;display:flex;align-items:center;justify-content:center;background:#6d2a24;font:600 9px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#fff;cursor:pointer">another photo</div>
+<div onClick="{{ pinByHand }}" style="flex:1;height:44px;border-radius:100px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(30,26,23,.22);font:600 9px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#1e1a17;cursor:pointer">pin by hand</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ mTip }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;right:22px;top:210px;z-index:21;background:#1e1a17;border-radius:10px;padding:13px 16px;max-width:250px;animation:gwFade .3s ease both">
+<div style="position:absolute;right:26px;top:-6px;width:12px;height:12px;background:#1e1a17;transform:rotate(45deg)"></div>
+<div style="display:flex;align-items:flex-start;gap:11px">
+<div style="width:20px;height:20px;border-radius:50%;background:#f2d6cb;display:flex;align-items:center;justify-content:center;flex:none;font:600 10px/1 Karla,sans-serif;color:#4a1f16">+</div>
+<div style="font:400 12.5px/1.5 Karla,sans-serif;color:#faf7f2">Missed something? Tap the photo anywhere to drop your own pin.</div>
+</div>
+<div style="display:flex;justify-content:flex-end;padding-top:10px"><span onClick="{{ closeModal }}" style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#f2d6cb;cursor:pointer">got it</span></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ mPin }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:0;right:0;bottom:0;z-index:21;background:#faf7f2;border-radius:20px 20px 0 0;padding:16px 22px 34px;animation:gwUp .3s cubic-bezier(.2,.8,.2,1) both">
+<div style="width:38px;height:3px;border-radius:2px;background:rgba(30,26,23,.15);margin:0 auto 16px"></div>
+<div style="display:flex;align-items:center;gap:14px;padding-bottom:16px">
+<div style="width:52px;height:64px;border-radius:3px;background:repeating-linear-gradient(135deg,#d5cdbe 0 6px,#c9c0af 6px 12px);flex:none"></div>
+<div style="flex:1">
+<div style="font:600 8px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#6d2a24">pin 4</div>
+<div style="font:400 16px/1.2 Karla,sans-serif;color:#1e1a17;padding-top:7px">{{ pinState }}</div>
+</div>
+<div style="width:26px;height:26px;border-radius:50%;border:1.5px dashed rgba(30,26,23,.4);display:flex;align-items:center;justify-content:center;font:600 11px/1 Karla,sans-serif;color:#8b8177;flex:none">?</div>
+</div>
+<div style="border-top:1px solid rgba(30,26,23,.11)">
+<div onClick="{{ openTag }}" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(30,26,23,.11);cursor:pointer"><span style="font:500 14.5px/1 Karla,sans-serif;color:#1e1a17">match to a piece</span><span style="font:400 15px/1 Karla,sans-serif;color:#8b8177">›</span></div>
+<div onClick="{{ fileAsNew }}" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(30,26,23,.11);cursor:pointer"><span style="font:400 14.5px/1 Karla,sans-serif;color:#1e1a17">file as a new piece</span><span style="font:400 15px/1 Karla,sans-serif;color:#8b8177">›</span></div>
+<div onClick="{{ movePin }}" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(30,26,23,.11);cursor:pointer"><span style="font:400 14.5px/1 Karla,sans-serif;color:#1e1a17">move the pin</span><span style="font:400 15px/1 Karla,sans-serif;color:#8b8177">›</span></div>
+<div onClick="{{ removePin }}" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;cursor:pointer"><span style="font:400 14.5px/1 Karla,sans-serif;color:#6d2a24">remove this pin</span></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ mName }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:0;right:0;bottom:0;z-index:21;background:#faf7f2;border-radius:20px 20px 0 0;padding:16px 22px 34px;animation:gwUp .3s cubic-bezier(.2,.8,.2,1) both">
+<div style="width:38px;height:3px;border-radius:2px;background:rgba(30,26,23,.15);margin:0 auto 16px"></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:16px">
+<span onClick="{{ closeModal }}" style="font:400 12px/1 Karla,sans-serif;color:#8b8177;cursor:pointer">back</span>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#1e1a17">name the look</span>
+<span onClick="{{ save }}" style="font:600 9px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#6d2a24;cursor:pointer">save</span>
+</div>
+<div style="border-bottom:1.5px solid #6d2a24;padding-bottom:8px;display:flex;align-items:center;margin-bottom:18px">
+<span style="font:400 17px/1 Karla,sans-serif;color:#1e1a17">{{ lookName }}</span>
+<span style="width:1.5px;height:18px;background:#6d2a24;margin-left:2px"></span>
+</div>
+<div style="font:600 8px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#8b8177;padding-bottom:11px">occasion</div>
+<div style="display:flex;flex-wrap:wrap;gap:7px;padding-bottom:18px">
+<sc-for list="{{ occasions }}" as="o" hint-placeholder-count="4">
+<div onClick="{{ o.pick }}" style="{{ o.style }}">{{ o.name }}</div>
+</sc-for>
+</div>
+<div style="border-top:1px solid rgba(30,26,23,.11)">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(30,26,23,.11)"><span style="font:600 8px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8b8177">worn on</span><span style="font:400 14px/1 Karla,sans-serif;color:#1e1a17">today, 31 aug</span></div>
+<div onClick="{{ toggleWorn }}" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;cursor:pointer"><span style="font:600 8px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8b8177">log as worn</span><div style="{{ wornTrackStyle }}"><div style="width:19px;height:19px;border-radius:50%;background:#fff"></div></div></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ mDiscard }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:22px;right:22px;top:50%;transform:translateY(-50%);z-index:21;background:#faf7f2;border-radius:14px;padding:26px 24px;text-align:center;animation:gwPop .28s cubic-bezier(.2,.8,.2,1) both">
+<div style="font:300 21px/1.25 Karla,sans-serif;color:#1e1a17">discard this look?</div>
+<div style="font:400 12.5px/1.5 Karla,sans-serif;color:#8b8177;padding:10px 0 20px">{{ discardLine }}</div>
+<div style="display:flex;gap:9px">
+<div onClick="{{ closeModal }}" style="flex:1;height:44px;border-radius:100px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(30,26,23,.22);font:600 9px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#1e1a17;cursor:pointer">keep editing</div>
+<div onClick="{{ reset }}" style="flex:1;height:44px;border-radius:100px;display:flex;align-items:center;justify-content:center;background:#6d2a24;font:600 9px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#fff;cursor:pointer">discard</div>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-import>
+
+<div style="width:300px;padding-top:16px;display:flex;flex-direction:column;gap:22px">
+<div>
+<div style="font:700 19px/1.2 Karla,sans-serif;letter-spacing:-.01em;color:#1e1a17">Add a look — clickable, v2</div>
+<div style="font:400 12.5px/1.6 Karla,sans-serif;color:#6b6459;padding-top:9px">Every step now runs through its real modal: source sheet, camera permission, detecting, the pin sheet, the name sheet, discard and the toast.</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:1px;background:rgba(30,26,23,.12);border-top:1px solid rgba(30,26,23,.12);border-bottom:1px solid rgba(30,26,23,.12)">
+<div style="{{ s1 }}"><span style="font:600 9px/1 Karla,sans-serif;letter-spacing:.14em;color:#8b8177;width:18px">01</span><span style="flex:1">choose a photo</span></div>
+<div style="{{ s2 }}"><span style="font:600 9px/1 Karla,sans-serif;letter-spacing:.14em;color:#8b8177;width:18px">02</span><span style="flex:1">pieces detected</span></div>
+<div style="{{ s3 }}"><span style="font:600 9px/1 Karla,sans-serif;letter-spacing:.14em;color:#8b8177;width:18px">03</span><span style="flex:1">tap the unmatched pin</span></div>
+<div style="{{ s4 }}"><span style="font:600 9px/1 Karla,sans-serif;letter-spacing:.14em;color:#8b8177;width:18px">04</span><span style="flex:1">name it and save</span></div>
+</div>
+<div style="border-top:1px solid rgba(30,26,23,.12);padding-top:16px">
+<div style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#1e1a17;padding-bottom:12px">try the unhappy paths</div>
+<div onClick="{{ toggleFail }}" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding-bottom:14px">
+<span style="flex:1;font:400 12.5px/1.4 Karla,sans-serif;color:#6b6459">next detection finds nothing</span>
+<div style="{{ failTrackStyle }}"><div style="width:17px;height:17px;border-radius:50%;background:#fff"></div></div>
+</div>
+<div style="font:400 12px/1.6 Karla,sans-serif;color:#8b8177">Close the flow with × on step 03 for the discard confirm. In the pin sheet, remove the pin and the look saves at four pieces.</div>
+</div>
+<div onClick="{{ reset }}" style="align-self:flex-start;padding:10px 18px;border-radius:100px;border:1px solid rgba(30,26,23,.22);font:600 9px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#1e1a17;cursor:pointer">restart</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:800}}">
+class Component extends DCLogic {
+  state = {
+    step: 'upload', modal: null, bagTagged: false, taggedAsNew: false,
+    pinRemoved: false, pick: 0, tipSeen: false, failNext: false,
+    occasion: 'everyday', logWorn: true,
+  };
+
+  componentWillUnmount() { if (this.t) clearTimeout(this.t); }
+
+  detect = () => {
+    this.setState({ step: 'detecting', modal: 'detecting' });
+    this.t = setTimeout(() => {
+      if (this.state.failNext) this.setState({ modal: 'nogarments' });
+      else this.setState(s => ({ step: 'pinned', modal: s.tipSeen ? null : 'tip', tipSeen: true }));
+    }, 2000);
+  };
+
+  cancelDetect = () => {
+    if (this.t) clearTimeout(this.t);
+    this.setState({ step: 'upload', modal: null });
+  };
+
+  stepRow(active) {
+    return {
+      display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+      background: active ? '#faf7f2' : '#f2ece3',
+      font: (active ? '500' : '400') + ' 13px/1.3 Karla, sans-serif',
+      color: active ? '#1e1a17' : '#8b8177',
+    };
+  }
+
+  track(on) {
+    return {
+      width: 42, height: 25, borderRadius: 100, flex: 'none', display: 'flex', alignItems: 'center',
+      padding: '0 3px', cursor: 'pointer',
+      background: on ? '#6d2a24' : 'rgba(30,26,23,.16)',
+      justifyContent: on ? 'flex-end' : 'flex-start',
+    };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const A = '#6d2a24';
+    const tagged = s.bagTagged;
+    const pinDone = tagged || s.pinRemoved;
+    const count = s.pinRemoved ? 4 : (tagged ? 5 : 4);
+
+    const data = [
+      ['leather tote, tan', 'bags · worn 23×', '91%', '#d5cdbe', '#c9c0af', '#4f6350'],
+      ['canvas shopper', 'bags · worn 9×', '62%', '#cfc6b6', '#c3b9a7', '#8b8177'],
+      ['suede crossbody', 'bags · worn 4×', '48%', '#d3cdc2', '#c7c0b3', '#8b8177'],
+    ];
+    const candidates = data.map((d, i) => {
+      const on = s.pick === i;
+      return {
+        name: d[0], meta: d[1], pct: d[2],
+        pick: () => this.setState({ pick: i }),
+        rowStyle: { display: 'flex', alignItems: 'center', gap: 13, padding: '13px 0', cursor: 'pointer', borderTop: '1px solid rgba(30,26,23,.11)' },
+        radioStyle: { width: 18, height: 18, borderRadius: '50%', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid ' + (on ? A : 'rgba(30,26,23,.26)'), background: on ? A : 'transparent' },
+        dotStyle: { width: 6, height: 6, borderRadius: '50%', background: '#fff', opacity: on ? 1 : 0 },
+        thumbStyle: { width: 44, height: 54, borderRadius: 3, flex: 'none', background: 'repeating-linear-gradient(135deg,' + d[3] + ' 0 6px,' + d[4] + ' 6px 12px)' },
+        nameStyle: { font: (on ? '500' : '400') + ' 14px/1.2 Karla, sans-serif', color: '#1e1a17' },
+        pctStyle: { font: '300 18px/1 Karla, sans-serif', color: d[5], flex: 'none' },
+      };
+    });
+
+    const occasions = ['everyday', 'work', 'dinner', 'event'].map(n => {
+      const on = s.occasion === n;
+      return {
+        name: n, pick: () => this.setState({ occasion: n }),
+        style: {
+          padding: '7px 12px', borderRadius: 100, cursor: 'pointer',
+          font: (on ? '500' : '400') + ' 11px/1 Karla, sans-serif',
+          color: on ? '#fff' : '#6b6459',
+          background: on ? A : 'transparent',
+          border: on ? '1px solid ' + A : '1px solid rgba(30,26,23,.2)',
+        },
+      };
+    });
+
+    const m = s.modal;
+    return {
+      isDark: s.step !== 'saved',
+      isUpload: s.step === 'upload',
+      isDetecting: s.step === 'detecting',
+      isPinned: s.step === 'pinned',
+      isTagging: s.step === 'tagging',
+      isSaved: s.step === 'saved',
+      hasScrim: m === 'source' || m === 'permission' || m === 'detecting' || m === 'nogarments' || m === 'pin' || m === 'name' || m === 'discard',
+      mSource: m === 'source', mPermission: m === 'permission', mDetecting: m === 'detecting',
+      mNoGarments: m === 'nogarments', mTip: m === 'tip', mPin: m === 'pin',
+      mName: m === 'name', mDiscard: m === 'discard',
+      dismissScrim: () => { if (m !== 'detecting' && m !== 'nogarments' && m !== 'discard') this.setState({ modal: null }); },
+      candidates, occasions,
+      pin4Visible: !s.pinRemoved,
+      matchLabel: count + ' of ' + (s.pinRemoved ? 4 : 5),
+      hint: pinDone ? 'all tagged' : 'tap pin 4',
+      bagLabel: s.taggedAsNew ? 'new' : (tagged ? 'tote' : 'bag'),
+      pin4Label: tagged ? '4' : '?',
+      pinState: tagged ? 'leather tote, tan' : 'not matched yet',
+      discardLine: (s.pinRemoved ? 'Four pins' : 'Five pins') + ' and the photo will go with it.',
+      lookName: 'monday, off-duty',
+      savedLine: tagged
+        ? 'five pieces, all matched to your wardrobe'
+        : (s.pinRemoved ? 'four pieces, all matched' : 'four of five matched — one still flagged'),
+      toastLine: s.logWorn ? 'Logged as worn. Cost per wear updated.' : 'Saved to looks. Not logged as worn.',
+      wornTrackStyle: this.track(s.logWorn),
+      failTrackStyle: Object.assign(this.track(s.failNext), { width: 38, height: 23 }),
+      pin4Style: tagged
+        ? { position: 'absolute', left: '72%', top: '53%', width: 26, height: 26, borderRadius: '50%', background: 'rgba(250,247,242,.92)', boxShadow: '0 0 0 2px rgba(30,26,23,.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '600 11px/1 Karla, sans-serif', color: '#1e1a17', cursor: 'pointer', animation: 'gwPop .4s ease both' }
+        : { position: 'absolute', left: '72%', top: '53%', width: 26, height: 26, borderRadius: '50%', border: '1.5px dashed rgba(250,247,242,.85)', background: 'rgba(109,42,36,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '600 11px/1 Karla, sans-serif', color: '#faf7f2', cursor: 'pointer' },
+      tile4Style: tagged
+        ? { height: 76, borderRadius: 3, background: 'repeating-linear-gradient(135deg,#d5cdbe 0 5px,#c9c0af 5px 10px)' }
+        : { height: 76, borderRadius: 3, border: '1.5px dashed ' + A, display: 'flex', alignItems: 'center', justifyContent: 'center', font: '600 11px/1 Karla, sans-serif', color: A },
+      tile4Inner: tagged ? '' : '?',
+      s1: this.stepRow(s.step === 'upload'),
+      s2: this.stepRow(s.step === 'detecting'),
+      s3: this.stepRow(s.step === 'pinned' || s.step === 'tagging'),
+      s4: this.stepRow(m === 'name' || s.step === 'saved'),
+      openSource: () => this.setState({ modal: 'source' }),
+      askCamera: () => this.setState({ modal: 'permission' }),
+      detect: this.detect,
+      cancelDetect: this.cancelDetect,
+      retryPhoto: () => this.setState({ step: 'upload', modal: 'source', failNext: false }),
+      pinByHand: () => this.setState(st => ({ step: 'pinned', modal: st.tipSeen ? null : 'tip', tipSeen: true, failNext: false })),
+      openPinSheet: () => this.setState({ modal: 'pin' }),
+      openTag: () => this.setState({ step: 'tagging', modal: null }),
+      fileAsNew: () => this.setState({ modal: null, bagTagged: true, taggedAsNew: true }),
+      movePin: () => this.setState({ modal: 'tip' }),
+      removePin: () => this.setState({ modal: null, pinRemoved: true, bagTagged: false }),
+      confirmTag: () => this.setState({ step: 'pinned', modal: null, bagTagged: true, taggedAsNew: false }),
+      skipTag: () => this.setState({ step: 'pinned', modal: null }),
+      pickNew: () => this.setState({ pick: -1 }),
+      openName: () => this.setState({ modal: 'name' }),
+      askDiscard: () => this.setState({ modal: 'discard' }),
+      closeModal: () => this.setState({ modal: null }),
+      toggleWorn: () => this.setState(st => ({ logWorn: !st.logWorn })),
+      toggleFail: () => this.setState(st => ({ failNext: !st.failNext })),
+      save: () => this.setState({ step: 'saved', modal: null }),
+      reset: () => this.setState({ step: 'upload', modal: null, bagTagged: false, taggedAsNew: false, pinRemoved: false, pick: 0, occasion: 'everyday', logWorn: true }),
+    };
+  }
+}
+</script>
+</body>
+</html>

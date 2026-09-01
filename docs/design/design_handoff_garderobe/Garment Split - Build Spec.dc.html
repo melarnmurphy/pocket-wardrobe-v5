@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Karla:ital,wght@0,300..700;1,300..500&display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"><style>
+body{margin:0;font-family:Karla,system-ui,sans-serif}
+doc-page:not(:defined){visibility:hidden}
+a{color:#6d2a24}a:hover{color:#43170f}
+</style><script src="./doc-page.js"></script></helmet>
+
+<doc-page margin="0.8in">
+
+<div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid rgba(30,26,23,.18);padding-bottom:14px">
+<div style="display:flex;align-items:center;gap:10px">
+<div style="width:18px;height:22px;position:relative;flex:none">
+<div style="position:absolute;top:0;left:0;width:18px;height:3px;background:#6d2a24;border-radius:100px"></div>
+<div style="position:absolute;top:4px;left:1.2px;width:15.6px;height:14.6px;border:1.4px solid #6d2a24;border-radius:7px 7px 4px 4px;box-sizing:border-box"></div>
+<div style="position:absolute;top:5.4px;left:8.7px;width:1.1px;height:12px;background:#6d2a24"></div>
+</div>
+<span style="font:400 15px/1 Karla,sans-serif;color:#1e1a17">garderobe</span>
+</div>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#8b8177">build spec · v1 · 31 aug 2026</span>
+</div>
+
+<h1 style="font:300 40px/1.06 Karla,sans-serif;color:#1e1a17;margin:30px 0 0;letter-spacing:-.01em">Garment split and cut-out</h1>
+<p style="font:400 15px/1.6 Karla,sans-serif;color:#4a453f;margin:16px 0 0;max-width:34em">How one photo becomes one or more wardrobe pieces, each with a transparent cut-out, a category, a colour and a fabric guess. This is the pipeline behind screens 14a and 14b in the phone mockups, w1a and w1d on desktop, and the press-and-hold lift in the cut-outs prototype. Written for an engineer or a coding agent to implement directly.</p>
+
+<div style="display:flex;gap:1px;background:rgba(30,26,23,.14);border-top:1px solid rgba(30,26,23,.14);border-bottom:1px solid rgba(30,26,23,.14);margin:26px 0 0">
+<div style="flex:1;background:#fff;padding:13px 15px"><div style="font:600 8px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8b8177">runs</div><div style="font:400 14px/1.3 Karla,sans-serif;color:#1e1a17;padding-top:8px">on device first, server as fallback</div></div>
+<div style="flex:1;background:#fff;padding:13px 15px"><div style="font:600 8px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8b8177">budget</div><div style="font:400 14px/1.3 Karla,sans-serif;color:#1e1a17;padding-top:8px">≤ 1.2s per photo, 12 photos in parallel batches of 3</div></div>
+<div style="flex:1;background:#fff;padding:13px 15px"><div style="font:600 8px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8b8177">never blocks</div><div style="font:400 14px/1.3 Karla,sans-serif;color:#1e1a17;padding-top:8px">user can leave; work resumes in background</div></div>
+</div>
+
+<h2 style="font:600 9px/1 Karla,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#1e1a17;margin:34px 0 0">The sequence</h2>
+<p style="font:400 13px/1.6 Karla,sans-serif;color:#6b6459;margin:10px 0 0">Every step names its actor, its input and its output. Steps 2–5 are the ones worth getting right; the rest is plumbing.</p>
+
+<div style="margin:18px 0 0;border-top:1px solid rgba(30,26,23,.14)">
+
+<div style="display:flex;gap:20px;padding:16px 0;border-bottom:1px solid rgba(30,26,23,.11);break-inside:avoid">
+<div style="width:34px;flex:none;font:300 26px/1 Karla,sans-serif;color:#6d2a24">1</div>
+<div style="flex:1">
+<div style="font:500 16px/1.3 Karla,sans-serif;color:#1e1a17">Intake</div>
+<div style="font:400 13.5px/1.6 Karla,sans-serif;color:#4a453f;padding-top:6px">Client. Multi-select from the library, live camera capture, a pasted transparent PNG, or a drag-and-drop folder on desktop. Accept HEIC, JPEG, PNG, WebP. Downscale the working copy to 1600px on the long edge; keep the original for re-processing.</div>
+<div style="font:400 12px/1.5 IBM Plex Mono,monospace;color:#6b6459;padding-top:8px">out: Upload[] { id, originalUri, workingUri, exifDate?, source: library|camera|paste|drop }</div>
+</div>
+</div>
+
+<div style="display:flex;gap:20px;padding:16px 0;border-bottom:1px solid rgba(30,26,23,.11);break-inside:avoid">
+<div style="width:34px;flex:none;font:300 26px/1 Karla,sans-serif;color:#6d2a24">2</div>
+<div style="flex:1">
+<div style="font:500 16px/1.3 Karla,sans-serif;color:#1e1a17">Instance segmentation — how many garments?</div>
+<div style="font:400 13.5px/1.6 Karla,sans-serif;color:#4a453f;padding-top:6px">Ask for <em>all</em> foreground instances, not one subject. On iOS 17+ that is Vision's foreground instance mask request, which returns an instance count and a per-instance mask. On the web, run a segmentation model server-side (SAM-family or a garment-tuned equivalent) behind one endpoint. Discard instances under 3% of frame area or with fewer than 400px of mask width — those are jewellery, hardware and shadow.</div>
+<div style="font:400 12px/1.5 IBM Plex Mono,monospace;color:#6b6459;padding-top:8px">out: Instance[] { maskUri, bbox, areaRatio, confidence }</div>
+<div style="background:#f7f2ea;border-left:2px solid #6d2a24;padding:11px 14px;margin-top:10px;font:400 12.5px/1.55 Karla,sans-serif;color:#4a453f">One instance is the common case (a garment on a hanger). Two or three means a worn outfit — that is what triggers the split prompt in 14b. More than four almost always means a cluttered background: fall back to single-subject lift and let the user crop.</div>
+</div>
+</div>
+
+<div style="display:flex;gap:20px;padding:16px 0;border-bottom:1px solid rgba(30,26,23,.11);break-inside:avoid">
+<div style="width:34px;flex:none;font:300 26px/1 Karla,sans-serif;color:#6d2a24">3</div>
+<div style="flex:1">
+<div style="font:500 16px/1.3 Karla,sans-serif;color:#1e1a17">Body-part split when instances are fused</div>
+<div style="font:400 13.5px/1.6 Karla,sans-serif;color:#4a453f;padding-top:6px">A person wearing an outfit usually returns as <em>one</em> instance. Split it with a human-pose estimate: shoulders, hips, knees, ankles. Cut top from bottom at the hip keypoint, footwear at the ankle keypoint, outerwear from the top only if the pose model reports layered edges. Never cut on fixed percentages — that is what the mockups do (band crops at 0.155–0.475 and so on), and it is only acceptable for static artwork.</div>
+<div style="font:400 12px/1.5 IBM Plex Mono,monospace;color:#6b6459;padding-top:8px">out: GarmentCandidate[] { maskUri, bbox, slot: top|bottom|dress|outer|shoe|bag, sourceInstanceId }</div>
+</div>
+</div>
+
+<div style="display:flex;gap:20px;padding:16px 0;border-bottom:1px solid rgba(30,26,23,.11);break-inside:avoid">
+<div style="width:34px;flex:none;font:300 26px/1 Karla,sans-serif;color:#6d2a24">4</div>
+<div style="flex:1">
+<div style="font:500 16px/1.3 Karla,sans-serif;color:#1e1a17">Matte and export</div>
+<div style="font:400 13.5px/1.6 Karla,sans-serif;color:#4a453f;padding-top:6px">Feather the mask edge by 1–2px, erode 1px to kill background fringe, then composite to a premultiplied PNG with an alpha-tight bounding box and 4px of padding. Store at two sizes: 1200px long edge for detail views, 400px for grids. Keep the mask so a cut can be redone without re-segmenting.</div>
+<div style="font:400 12px/1.5 IBM Plex Mono,monospace;color:#6b6459;padding-top:8px">out: Cutout { pngUri, pngThumbUri, maskUri, width, height, alphaBbox }</div>
+<div style="background:#f7f2ea;border-left:2px solid #6d2a24;padding:11px 14px;margin-top:10px;font:400 12.5px/1.55 Karla,sans-serif;color:#4a453f">Sheer fabric is the hard case. Chiffon and mesh carry partial alpha; do not threshold the mask to binary or the garment turns into a silhouette. The blouse in the mockups is the test image.</div>
+</div>
+</div>
+
+<div style="display:flex;gap:20px;padding:16px 0;border-bottom:1px solid rgba(30,26,23,.11);break-inside:avoid">
+<div style="width:34px;flex:none;font:300 26px/1 Karla,sans-serif;color:#6d2a24">5</div>
+<div style="flex:1">
+<div style="font:500 16px/1.3 Karla,sans-serif;color:#1e1a17">Attributes — category, colour, fabric
+</div>
+<div style="font:400 13.5px/1.6 Karla,sans-serif;color:#4a453f;padding-top:6px">Run one vision-language pass per cut-out and ask for a constrained JSON answer against our own taxonomy — free-text labels will not join to the filter set. Colour comes from the mask's dominant cluster mapped to the ten wardrobe colours, not from the model's prose. Fabric is a guess and must be labelled as one: below 0.6 confidence, render the dashed "fabric?" chip from 14b rather than a wrong answer.</div>
+<div style="font:400 12px/1.5 IBM Plex Mono,monospace;color:#6b6459;padding-top:8px">out: Attributes { category, subcategory?, colour, colourHex, fabric?, fabricConfidence, season[], name }</div>
+</div>
+</div>
+
+<div style="display:flex;gap:20px;padding:16px 0;border-bottom:1px solid rgba(30,26,23,.11);break-inside:avoid">
+<div style="width:34px;flex:none;font:300 26px/1 Karla,sans-serif;color:#6d2a24">6</div>
+<div style="flex:1">
+<div style="font:500 16px/1.3 Karla,sans-serif;color:#1e1a17">Duplicate check</div>
+<div style="font:400 13.5px/1.6 Karla,sans-serif;color:#4a453f;padding-top:6px">Embed each cut-out and compare against the existing wardrobe by cosine similarity within the same category and colour. Above 0.92, show the side-by-side "you may already own this" dialog from 14a. Never merge silently — people own two of the same white shirt.</div>
+<div style="font:400 12px/1.5 IBM Plex Mono,monospace;color:#6b6459;padding-top:8px">out: DuplicateHint? { pieceId, similarity }</div>
+</div>
+</div>
+
+<div style="display:flex;gap:20px;padding:16px 0;border-bottom:1px solid rgba(30,26,23,.11);break-inside:avoid">
+<div style="width:34px;flex:none;font:300 26px/1 Karla,sans-serif;color:#6d2a24">7</div>
+<div style="flex:1">
+<div style="font:500 16px/1.3 Karla,sans-serif;color:#1e1a17">Review, then commit</div>
+<div style="font:400 13.5px/1.6 Karla,sans-serif;color:#4a453f;padding-top:6px">Nothing enters the wardrobe until the user confirms the batch (14b, and the desktop table in w1d). Editing a row writes back to the candidate, not to the wardrobe. On commit, create Piece records, attach cut-outs, and leave price null — prices arrive later from a store connection or a receipt, and a null price must render as "add later", never as A$0.</div>
+<div style="font:400 12px/1.5 IBM Plex Mono,monospace;color:#6b6459;padding-top:8px">out: Piece[] { id, name, category, colour, fabric?, cutoutUri, price: null, addedAt, availability: "wearable" }</div>
+</div>
+</div>
+
+</div>
+
+<h2 style="font:600 9px/1 Karla,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#1e1a17;margin:34px 0 0">States the UI must express</h2>
+<p style="font:400 13px/1.6 Karla,sans-serif;color:#6b6459;margin:10px 0 0">One row per state, with the screen that already shows it. If a state has no screen, it needs one before build.</p>
+<table style="width:100%;border-collapse:collapse;margin-top:16px;font:400 13px/1.5 Karla,sans-serif;color:#4a453f">
+<thead>
+<tr>
+<th style="text-align:left;font:600 8px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8b8177;padding:0 10px 9px 0;border-bottom:1px solid rgba(30,26,23,.14)">state</th>
+<th style="text-align:left;font:600 8px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8b8177;padding:0 10px 9px 0;border-bottom:1px solid rgba(30,26,23,.14)">what the user sees</th>
+<th style="text-align:left;font:600 8px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8b8177;padding:0 0 9px;border-bottom:1px solid rgba(30,26,23,.14)">screen</th>
+</tr>
+</thead>
+<tbody>
+<tr><td style="padding:11px 10px 11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">selecting</td><td style="padding:11px 10px 11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">library grid, running count, one-garment-per-photo hint</td><td style="padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">14a</td></tr>
+<tr><td style="padding:11px 10px 11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">processing</td><td style="padding:11px 10px 11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">count done of total, progress bar, "keep going in the background"</td><td style="padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">14a</td></tr>
+<tr><td style="padding:11px 10px 11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">split offered</td><td style="padding:11px 10px 11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">the three proposed garments, split or keep as a look</td><td style="padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">14b</td></tr>
+<tr><td style="padding:11px 10px 11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">low confidence</td><td style="padding:11px 10px 11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">dashed "fabric?" chip, tap to answer</td><td style="padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">14b</td></tr>
+<tr><td style="padding:11px 10px 11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">possible duplicate</td><td style="padding:11px 10px 11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">side-by-side compare, skip or add anyway</td><td style="padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">14a</td></tr>
+<tr><td style="padding:11px 10px 11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">cut-out rejected</td><td style="padding:11px 10px 11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">"redo the cut-out" on the piece sheet</td><td style="padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">14b</td></tr>
+<tr><td style="padding:11px 10px 11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">nothing found</td><td style="padding:11px 10px 11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">another photo, or place it by hand</td><td style="padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">7b</td></tr>
+<tr><td style="padding:11px 10px 11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">committed</td><td style="padding:11px 10px 11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">toast with count and how many need a price</td><td style="padding:11px 0;border-bottom:1px solid rgba(30,26,23,.08);vertical-align:top">14b</td></tr>
+</tbody>
+</table>
+
+<h2 style="font:600 9px/1 Karla,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#1e1a17;margin:34px 0 0">Thresholds, in one place</h2>
+<div style="margin-top:14px;background:#f7f2ea;border-radius:4px;padding:18px 20px;font:400 12.5px/1.9 IBM Plex Mono,monospace;color:#4a453f;break-inside:avoid">
+MIN_INSTANCE_AREA_RATIO = 0.03<br>
+MIN_INSTANCE_MASK_WIDTH_PX = 400<br>
+MAX_INSTANCES_BEFORE_FALLBACK = 4<br>
+EDGE_FEATHER_PX = 1.5 · EDGE_ERODE_PX = 1<br>
+CUTOUT_PAD_PX = 4 · LONG_EDGE_FULL = 1200 · LONG_EDGE_THUMB = 400<br>
+FABRIC_CONFIDENCE_MIN = 0.60<br>
+DUPLICATE_SIMILARITY_MIN = 0.92<br>
+BATCH_CONCURRENCY = 3 · PER_PHOTO_BUDGET_MS = 1200
+</div>
+
+<h2 style="font:600 9px/1 Karla,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#1e1a17;margin:34px 0 0">Rules that are product decisions, not engineering ones</h2>
+<div style="margin-top:14px;border-top:1px solid rgba(30,26,23,.14)">
+<div style="display:flex;gap:16px;padding:13px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:22px;flex:none;font:300 17px/1 Karla,sans-serif;color:#6d2a24">·</span><span style="flex:1;font:400 13.5px/1.6 Karla,sans-serif;color:#4a453f">A photo never enters the wardrobe unreviewed. Batch of one included.</span></div>
+<div style="display:flex;gap:16px;padding:13px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:22px;flex:none;font:300 17px/1 Karla,sans-serif;color:#6d2a24">·</span><span style="flex:1;font:400 13.5px/1.6 Karla,sans-serif;color:#4a453f">A guess the machine is unsure of is shown as a question, never as a fact.</span></div>
+<div style="display:flex;gap:16px;padding:13px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:22px;flex:none;font:300 17px/1 Karla,sans-serif;color:#6d2a24">·</span><span style="flex:1;font:400 13.5px/1.6 Karla,sans-serif;color:#4a453f">Price stays null until it comes from a receipt, a store, or the user. Cost per wear hides rather than lying.</span></div>
+<div style="display:flex;gap:16px;padding:13px 0;border-bottom:1px solid rgba(30,26,23,.08)"><span style="width:22px;flex:none;font:300 17px/1 Karla,sans-serif;color:#6d2a24">·</span><span style="flex:1;font:400 13.5px/1.6 Karla,sans-serif;color:#4a453f">Photos and masks are processed on device where the platform allows it; anything sent to a server is deleted within 30 days, and the copy says which is which.</span></div>
+<div style="display:flex;gap:16px;padding:13px 0"><span style="width:22px;flex:none;font:300 17px/1 Karla,sans-serif;color:#6d2a24">·</span><span style="flex:1;font:400 13.5px/1.6 Karla,sans-serif;color:#4a453f">Splitting is offered, not imposed. Some people think in outfits.</span></div>
+</div>
+
+<h2 style="font:600 9px/1 Karla,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#1e1a17;margin:34px 0 0">Done means</h2>
+<div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+<div style="border:1px solid rgba(30,26,23,.14);border-radius:4px;padding:14px 16px;break-inside:avoid"><div style="font:600 8px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8b8177">1</div><div style="font:400 13px/1.55 Karla,sans-serif;color:#4a453f;padding-top:8px">Twelve library photos become twelve reviewable candidates in under fifteen seconds on a three-year-old phone.</div></div>
+<div style="border:1px solid rgba(30,26,23,.14);border-radius:4px;padding:14px 16px;break-inside:avoid"><div style="font:600 8px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8b8177">2</div><div style="font:400 13px/1.55 Karla,sans-serif;color:#4a453f;padding-top:8px">A full-length outfit photo proposes the right number of garments, and the hip and ankle cuts land on the garment edge, not mid-thigh.</div></div>
+<div style="border:1px solid rgba(30,26,23,.14);border-radius:4px;padding:14px 16px;break-inside:avoid"><div style="font:600 8px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8b8177">3</div><div style="font:400 13px/1.55 Karla,sans-serif;color:#4a453f;padding-top:8px">A sheer garment keeps its transparency, and a white garment on a white wall still separates.</div></div>
+<div style="border:1px solid rgba(30,26,23,.14);border-radius:4px;padding:14px 16px;break-inside:avoid"><div style="font:600 8px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8b8177">4</div><div style="font:400 13px/1.55 Karla,sans-serif;color:#4a453f;padding-top:8px">Leaving the screen mid-batch loses nothing, and returning shows what finished.</div></div>
+</div>
+
+<div style="margin-top:30px;border-top:1px solid rgba(30,26,23,.18);padding-top:14px;display:flex;justify-content:space-between">
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8b8177">screens: 14a, 14b, w1a, w1d · prototype: cut-outs</span>
+<span style="font:600 8.5px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8b8177">garment split · v1</span>
+</div>
+
+</doc-page></x-dc>
+</body>
+</html>
