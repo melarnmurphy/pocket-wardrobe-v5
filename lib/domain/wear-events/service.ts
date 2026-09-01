@@ -26,6 +26,14 @@ const recentWearEventListSchema = recentWearEventSchema.extend({
 
 export type RecentWearEvent = z.infer<typeof recentWearEventListSchema>;
 
+/**
+ * Every write here is a wear_events row and nothing else. wear_count,
+ * last_worn_at and cost_per_wear are recomputed authoritatively by the
+ * sync_garment_wear_stats_from_events() trigger (schema.sql) from a
+ * COUNT(*) over wear_events — never written directly — so that "wear
+ * counts, cost per wear, least-worn sort and the calendar all agree,
+ * because they all read wear_events" (BUILD_ORDER phase 5).
+ */
 export async function logWearEvent(input: z.input<typeof createWearEventSchema>) {
   const user = await getRequiredUser();
   const supabase = await createClient();
@@ -44,46 +52,14 @@ export async function logWearEvent(input: z.input<typeof createWearEventSchema>)
     throw new Error(error.message);
   }
 
-  const { data: garment, error: garmentError } = await supabase
-    .from("garments")
-    .select("id,wear_count,purchase_price,last_worn_at")
-    .eq("id", payload.garment_id)
-    .eq("user_id", user.id)
-    .single();
-
-  if (garmentError || !garment) {
-    throw new Error(garmentError?.message || "Garment not found.");
-  }
-
-  const parsedGarment = garment as Pick<
-    GarmentRow,
-    "id" | "wear_count" | "purchase_price" | "last_worn_at"
-  >;
-  const wornAt = payload.worn_at ?? new Date().toISOString();
-  const nextWearCount = parsedGarment.wear_count + 1;
-  const nextLastWornAt = latestTimestamp(parsedGarment.last_worn_at, wornAt);
-  const nextCostPerWear =
-    parsedGarment.purchase_price != null
-      ? parsedGarment.purchase_price / Math.max(nextWearCount, 1)
-      : null;
-
-  const { error: updateGarmentError } = await supabase
-    .from("garments")
-    .update({
-      wear_count: nextWearCount,
-      last_worn_at: nextLastWornAt,
-      cost_per_wear: nextCostPerWear
-    } as never)
-    .eq("id", payload.garment_id)
-    .eq("user_id", user.id);
-
-  if (updateGarmentError) {
-    throw new Error(updateGarmentError.message);
-  }
-
   return recentWearEventSchema.parse(data);
 }
 
+/**
+ * "Quick add N wears" — still one wear_events row per wear (never a direct
+ * wear_count write), backdated one day at a time from wornAt so multiple
+ * wears logged at once don't collide with "one wear per piece per day".
+ */
 export async function incrementWearCount(params: {
   garmentId: string;
   wearsToAdd: number;
@@ -94,10 +70,28 @@ export async function incrementWearCount(params: {
 
   const garmentId = z.string().uuid().parse(params.garmentId);
   const wearsToAdd = z.number().int().positive().parse(params.wearsToAdd);
+  const anchor = params.wornAt?.trim() ? new Date(params.wornAt) : new Date();
+  const anchorTime = Number.isNaN(anchor.getTime()) ? new Date() : anchor;
+
+  const rows: WearEventInsert[] = Array.from({ length: wearsToAdd }, (_, index) => {
+    const date = new Date(anchorTime);
+    date.setUTCDate(date.getUTCDate() - index);
+    return wearEventSchema.parse({
+      garment_id: garmentId,
+      user_id: user.id,
+      worn_at: date.toISOString()
+    });
+  });
+
+  const { error: insertError } = await supabase.from("wear_events").insert(rows as never);
+
+  if (insertError) {
+    throw new Error(insertError.message);
+  }
 
   const { data: garment, error: garmentError } = await supabase
     .from("garments")
-    .select("id,wear_count,purchase_price,last_worn_at")
+    .select("wear_count,last_worn_at,cost_per_wear")
     .eq("id", garmentId)
     .eq("user_id", user.id)
     .single();
@@ -106,52 +100,53 @@ export async function incrementWearCount(params: {
     throw new Error(garmentError?.message || "Garment not found.");
   }
 
-  const parsedGarment = garment as Pick<
-    GarmentRow,
-    "id" | "wear_count" | "purchase_price" | "last_worn_at"
-  >;
-  const effectiveWornAt = params.wornAt?.trim() ? params.wornAt : new Date().toISOString();
-  const nextWearCount = parsedGarment.wear_count + wearsToAdd;
-  const nextLastWornAt = latestTimestamp(parsedGarment.last_worn_at, effectiveWornAt);
-  const nextCostPerWear =
-    parsedGarment.purchase_price != null
-      ? parsedGarment.purchase_price / Math.max(nextWearCount, 1)
-      : null;
-
-  const { error: updateGarmentError } = await supabase
-    .from("garments")
-    .update({
-      wear_count: nextWearCount,
-      last_worn_at: nextLastWornAt,
-      cost_per_wear: nextCostPerWear
-    } as never)
-    .eq("id", garmentId)
-    .eq("user_id", user.id);
-
-  if (updateGarmentError) {
-    throw new Error(updateGarmentError.message);
-  }
-
-  return {
-    wear_count: nextWearCount,
-    last_worn_at: nextLastWornAt,
-    cost_per_wear: nextCostPerWear
-  };
+  return garment as Pick<GarmentRow, "wear_count" | "last_worn_at" | "cost_per_wear">;
 }
 
-function latestTimestamp(current: string | null, candidate: string) {
-  const currentDate = current ? new Date(current) : null;
-  const candidateDate = new Date(candidate);
+/** 11b / w3g — "what you wore, and when" for one look. */
+export async function listWearEventsForOutfit(outfitId: string): Promise<string[]> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedOutfitId = z.string().uuid().parse(outfitId);
 
-  if (Number.isNaN(candidateDate.getTime())) {
-    return current ?? candidate;
+  const { data, error } = await supabase
+    .from("wear_events")
+    .select("worn_at")
+    .eq("user_id", user.id)
+    .eq("outfit_id", parsedOutfitId)
+    .order("worn_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
   }
 
-  if (!currentDate || Number.isNaN(currentDate.getTime())) {
-    return candidateDate.toISOString();
+  return ((data ?? []) as Array<{ worn_at: string }>).map((row) => row.worn_at);
+}
+
+export type WearDayEntry = {
+  garmentId: string;
+  title: string | null;
+  category: string;
+  previewUrl: string | null;
+};
+
+/** 9d / w3h — the calendar reads wear_events, grouped by the local date it was worn. */
+export async function listWearEventsByDate(limit = 500): Promise<Map<string, WearDayEntry[]>> {
+  const events = await listRecentWearEvents(limit);
+  const byDate = new Map<string, WearDayEntry[]>();
+
+  for (const event of events) {
+    const dateKey = event.worn_at.slice(0, 10);
+    const entry: WearDayEntry = {
+      garmentId: event.garment_id,
+      title: event.garment_title ?? null,
+      category: event.garment_category ?? "piece",
+      previewUrl: event.garment_preview_url ?? null
+    };
+    byDate.set(dateKey, [...(byDate.get(dateKey) ?? []), entry]);
   }
 
-  return candidateDate > currentDate ? candidateDate.toISOString() : currentDate.toISOString();
+  return byDate;
 }
 
 export async function listRecentWearEvents(limit = 10): Promise<RecentWearEvent[]> {

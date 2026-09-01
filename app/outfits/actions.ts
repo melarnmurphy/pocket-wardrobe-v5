@@ -9,8 +9,10 @@ import {
 import {
   deleteOutfit,
   generateOutfitForUser,
-  saveOutfit
+  saveOutfit,
+  saveOutfitPlacements
 } from "@/lib/domain/outfits/service";
+import type { PlacementInput } from "@/lib/domain/outfits";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import { categoryToRole } from "@/lib/domain/outfits/generator";
 import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
@@ -60,6 +62,23 @@ export async function saveOutfitAction(
     return { id };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Save failed" };
+  }
+}
+
+/** 6d / w1b — save where each piece was dragged on the look canvas. */
+export async function saveOutfitPlacementsAction(
+  outfitId: string,
+  placements: PlacementInput[]
+): Promise<{ status: "success" } | { status: "error"; message: string }> {
+  try {
+    await saveOutfitPlacements({ outfitId, placements });
+    revalidatePath(`/outfits/${outfitId}`);
+    return { status: "success" };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to save the arrangement."
+    };
   }
 }
 

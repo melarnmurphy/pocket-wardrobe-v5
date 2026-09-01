@@ -1,6 +1,7 @@
 import { AuthenticationError } from "@/lib/auth";
 import { listSavedOutfits } from "@/lib/domain/outfits/service";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
+import { listWearEventsByDate } from "@/lib/domain/wear-events/service";
 import { AuthRequiredCard } from "@/components/auth-required-card";
 import { OutfitCalendar } from "@/components/outfit-calendar";
 
@@ -17,9 +18,10 @@ function localTodayKey(): string {
 
 export default async function CalendarPage() {
   try {
-    const [outfits, garments] = await Promise.all([
+    const [outfits, garments, wearsByDate] = await Promise.all([
       listSavedOutfits(),
-      listWardrobeGarments()
+      listWardrobeGarments(),
+      listWearEventsByDate()
     ]);
 
     const previewByGarmentId = new Map<string, string | null>();
@@ -59,7 +61,7 @@ export default async function CalendarPage() {
           </h1>
         </div>
         <div className="mt-8">
-          <OutfitCalendar outfits={enriched} todayKey={localTodayKey()} />
+          <OutfitCalendar outfits={enriched} todayKey={localTodayKey()} wearsByDate={wearsByDate} />
         </div>
       </main>
     );

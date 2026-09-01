@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
 import { z } from "zod";
@@ -131,6 +132,11 @@ function SavedOutfitCard({ outfit }: { outfit: OutfitWithItems }) {
           {outfit.items.length} item{outfit.items.length !== 1 ? "s" : ""} ·{" "}
           {new Date(outfit.created_at ?? "").toLocaleDateString()}
         </p>
+        {outfit.id ? (
+          <Link href={`/outfits/${outfit.id}`} className="mt-2 inline-block text-xs underline">
+            arrange &amp; wear history
+          </Link>
+        ) : null}
 
         {insights.length ? (
           <div className="mt-4 space-y-3">

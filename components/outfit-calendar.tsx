@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { OutfitWithItems } from "@/lib/domain/outfits";
 import { buildMonthGrid, bucketOutfitsByDate, pickHeroImage } from "@/lib/domain/outfits/calendar";
+import type { WearDayEntry } from "@/lib/domain/wear-events/service";
 import { planOutfitForDateAction, unplanOutfitAction } from "@/app/calendar/actions";
 import { showAppToast } from "@/lib/ui/app-toast";
 
@@ -19,10 +20,12 @@ function outfitChips(outfit: OutfitWithItems): string[] {
 
 export function OutfitCalendar({
   outfits,
-  todayKey
+  todayKey,
+  wearsByDate = new Map()
 }: {
   outfits: OutfitWithItems[];
   todayKey: string;
+  wearsByDate?: Map<string, WearDayEntry[]>;
 }) {
   const [year, month] = todayKey.split("-").map(Number); // month is 1-based
   const [viewYear, setViewYear] = useState(year);
@@ -64,6 +67,7 @@ export function OutfitCalendar({
   }
 
   const selectedOutfit = selected ? byDate.get(selected) : undefined;
+  const selectedWears = selected ? wearsByDate.get(selected) ?? [] : [];
   const unplanned = outfits.filter((o) => !o.planned_for);
 
   return (
@@ -90,6 +94,7 @@ export function OutfitCalendar({
         {grid.weeks.flat().map((cell, i) => {
           if (!cell) return <div key={`b${i}`} />;
           const dayOutfit = byDate.get(cell.date);
+          const dayWears = wearsByDate.get(cell.date) ?? [];
           const hero = dayOutfit ? pickHeroImage(dayOutfit) : null;
           const isToday = cell.date === todayKey;
           const isSel = cell.date === selected;
@@ -117,6 +122,14 @@ export function OutfitCalendar({
                 <span className="absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full"
                   style={{ background: "var(--accent)" }} />
               )}
+              {dayWears.length ? (
+                <span
+                  className="absolute right-1 top-1 rounded-full px-1 text-[0.6rem] font-semibold"
+                  style={{ background: "var(--oxblood, var(--accent))", color: "#fff" }}
+                >
+                  {dayWears.length}
+                </span>
+              ) : null}
             </button>
           );
         })}
@@ -126,6 +139,29 @@ export function OutfitCalendar({
         <div className="mt-6 rounded-2xl p-5" style={{ border: "1px solid var(--line)" }}>
           <p className="text-[0.72rem] font-semibold uppercase"
             style={{ color: "var(--muted)", letterSpacing: "0.2em" }}>{selected}</p>
+
+          {selectedWears.length ? (
+            <div className="mt-3">
+              <p className="text-[0.72rem] font-semibold uppercase" style={{ color: "var(--muted)", letterSpacing: "0.16em" }}>
+                what you actually wore
+              </p>
+              <div className="mt-2 flex gap-2 overflow-x-auto">
+                {selectedWears.map((wear, index) => (
+                  <div key={`${wear.garmentId}-${index}`} className="flex w-16 shrink-0 flex-col items-center gap-1">
+                    <div className="h-16 w-16 overflow-hidden rounded-lg" style={{ border: "1px solid var(--line)" }}>
+                      {wear.previewUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={wear.previewUrl} alt={wear.title ?? wear.category} className="h-full w-full object-cover" />
+                      ) : null}
+                    </div>
+                    <span className="text-center text-[0.62rem]" style={{ color: "var(--muted)" }}>
+                      {wear.category}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           {selectedOutfit ? (
             <div className="mt-3">

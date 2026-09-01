@@ -1,9 +1,55 @@
 "use server";
 
+import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { saveOutfitInputSchema } from "@/lib/domain/outfits";
+import { saveOutfitInputSchema, type GeneratedOutfit } from "@/lib/domain/outfits";
 import { plannedForDateFromLocal } from "@/lib/domain/outfits/appeal";
-import { saveOutfit } from "@/lib/domain/outfits/service";
+import { saveOutfit, listSavedOutfits } from "@/lib/domain/outfits/service";
+import { suggestTodayOutfit } from "@/lib/domain/outfits/today";
+import { listStyleRules } from "@/lib/domain/style-rules/service";
+import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
+
+/**
+ * 12a — "the forecast decides the layers." Called from the client once a
+ * location is known (browser geolocation, via /api/weather/local), so
+ * weather feeds the suggestion instead of it always being weather-agnostic.
+ */
+export async function suggestTodayOutfitWithWeatherAction(
+  weather: string
+): Promise<{ outfit: GeneratedOutfit } | { error: string }> {
+  const parsedWeather = z.string().trim().min(1).max(80).safeParse(weather);
+  if (!parsedWeather.success) {
+    return { error: "Missing weather." };
+  }
+
+  try {
+    const [garments, styleRules, savedOutfits] = await Promise.all([
+      listWardrobeGarments(),
+      listStyleRules(),
+      listSavedOutfits()
+    ]);
+
+    const nowMs = Date.now();
+    const weekAgo = nowMs - 7 * 24 * 60 * 60 * 1000;
+    const recentOutfitGarmentIds = savedOutfits.flatMap((outfit) => {
+      const created = outfit.created_at ? Date.parse(outfit.created_at) : 0;
+      if (Number.isNaN(created) || created < weekAgo) return [];
+      return outfit.items.map((item) => item.garment_id);
+    });
+
+    const outfit = suggestTodayOutfit({
+      garments,
+      styleRules,
+      recentOutfitGarmentIds,
+      nowMs,
+      weather: parsedWeather.data
+    });
+
+    return { outfit };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Unable to check the weather." };
+  }
+}
 
 function readJsonField(formData: FormData, key: string): unknown {
   const raw = formData.get(key);

@@ -4,11 +4,14 @@ import { getRequiredUser } from "@/lib/auth";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import { listStyleRules } from "@/lib/domain/style-rules/service";
 import { generateOutfit } from "@/lib/domain/outfits/generator";
+import { z } from "zod";
 import {
   outfitWithItemsSchema,
+  placementInputSchema,
   type GenerateOutfitInput,
   type GeneratedOutfit,
   type OutfitWithItems,
+  type PlacementInput,
   type SaveOutfitInput
 } from "@/lib/domain/outfits";
 import {
@@ -16,7 +19,6 @@ import {
   type UserTrendMatchWithSignal
 } from "@/lib/domain/trends";
 import type { TablesInsert } from "@/types/database";
-import { z } from "zod";
 
 type OutfitInsert = TablesInsert<"outfits">;
 type OutfitItemInsert = TablesInsert<"outfit_items">;
@@ -123,6 +125,7 @@ export const listSavedOutfits = cache(async (): Promise<OutfitWithItems[]> => {
       explanation, explanation_json, source_type, created_at, planned_for,
       items:outfit_items(
         id, outfit_id, garment_id, role, created_at,
+        placement_x, placement_y, placement_z, placement_scale, placement_rotation,
         garment:garments(id, title, category)
       )
     `)
@@ -132,6 +135,70 @@ export const listSavedOutfits = cache(async (): Promise<OutfitWithItems[]> => {
   if (error) throw new Error(error.message);
   return z.array(outfitWithItemsSchema).parse(data ?? []);
 });
+
+/** 11b / w3g — a single look, with its wear history and canvas placements. */
+export const getOutfitById = cache(async (outfitId: string): Promise<OutfitWithItems | null> => {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(outfitId);
+
+  const { data, error } = await supabase
+    .from("outfits")
+    .select(`
+      id, user_id, title, occasion, dress_code, weather_context_json,
+      explanation, explanation_json, source_type, created_at, planned_for,
+      items:outfit_items(
+        id, outfit_id, garment_id, role, created_at,
+        placement_x, placement_y, placement_z, placement_scale, placement_rotation,
+        garment:garments(id, title, category)
+      )
+    `)
+    .eq("id", parsedId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+
+  return outfitWithItemsSchema.parse(data);
+});
+
+/** 6d / w1b — save where each piece was dragged on the look canvas. */
+export async function saveOutfitPlacements(params: {
+  outfitId: string;
+  placements: PlacementInput[];
+}): Promise<void> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedOutfitId = z.string().uuid().parse(params.outfitId);
+  const parsedPlacements = z.array(placementInputSchema).parse(params.placements);
+
+  const { data: outfit, error: outfitError } = await supabase
+    .from("outfits")
+    .select("id")
+    .eq("id", parsedOutfitId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (outfitError) throw new Error(outfitError.message);
+  if (!outfit) throw new Error("Look not found.");
+
+  for (const placement of parsedPlacements) {
+    const { error } = await supabase
+      .from("outfit_items")
+      .update({
+        placement_x: placement.x,
+        placement_y: placement.y,
+        placement_z: placement.z,
+        placement_scale: placement.scale,
+        placement_rotation: placement.rotation
+      } as never)
+      .eq("outfit_id", parsedOutfitId)
+      .eq("garment_id", placement.garment_id);
+
+    if (error) throw new Error(error.message);
+  }
+}
 
 export async function deleteOutfit(outfitId: string) {
   const user = await getRequiredUser();

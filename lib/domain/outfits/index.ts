@@ -28,8 +28,24 @@ export const outfitItemSchema = z.object({
     "bag",
     "jewellery",
     "other"
-  ])
+  ]),
+  // The look canvas (6d, w1b) — null until a piece has been placed.
+  placement_x: z.coerce.number().min(0).max(1).nullable().optional(),
+  placement_y: z.coerce.number().min(0).max(1).nullable().optional(),
+  placement_z: z.coerce.number().int().nullable().optional(),
+  placement_scale: z.coerce.number().positive().nullable().optional(),
+  placement_rotation: z.coerce.number().nullable().optional()
 });
+
+export const placementInputSchema = z.object({
+  garment_id: z.string().uuid(),
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  z: z.number().int(),
+  scale: z.number().positive(),
+  rotation: z.number()
+});
+export type PlacementInput = z.infer<typeof placementInputSchema>;
 
 export type Outfit = z.infer<typeof outfitSchema>;
 export type OutfitItem = z.infer<typeof outfitItemSchema>;

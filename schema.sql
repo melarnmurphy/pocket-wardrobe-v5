@@ -286,6 +286,12 @@ create table if not exists public.outfit_items (
     role in ('top', 'bottom', 'dress', 'outerwear', 'shoes', 'accessory', 'bag', 'jewellery', 'other')
   ),
   created_at timestamptz not null default now(),
+  -- the look canvas (6d, w1b) — see migration 027
+  placement_x numeric(6,4) check (placement_x is null or (placement_x >= 0 and placement_x <= 1)),
+  placement_y numeric(6,4) check (placement_y is null or (placement_y >= 0 and placement_y <= 1)),
+  placement_z integer,
+  placement_scale numeric(5,3) check (placement_scale is null or placement_scale > 0),
+  placement_rotation numeric(6,2),
   unique (outfit_id, garment_id, role)
 );
 

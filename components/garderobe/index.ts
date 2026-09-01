@@ -8,3 +8,4 @@ export { PillToast } from "./toast";
 export { CutoutTile } from "./cutout-tile";
 export { ArchiveControl } from "./archive-control";
 export { BatchProgressBanner } from "./batch-progress-banner";
+export { LookCanvas } from "./look-canvas";

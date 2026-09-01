@@ -673,6 +673,11 @@ export type Database = {
           garment_id: string
           id: string
           outfit_id: string
+          placement_rotation: number | null
+          placement_scale: number | null
+          placement_x: number | null
+          placement_y: number | null
+          placement_z: number | null
           role: string
         }
         Insert: {
@@ -680,6 +685,11 @@ export type Database = {
           garment_id: string
           id?: string
           outfit_id: string
+          placement_rotation?: number | null
+          placement_scale?: number | null
+          placement_x?: number | null
+          placement_y?: number | null
+          placement_z?: number | null
           role: string
         }
         Update: {
@@ -687,6 +697,11 @@ export type Database = {
           garment_id?: string
           id?: string
           outfit_id?: string
+          placement_rotation?: number | null
+          placement_scale?: number | null
+          placement_x?: number | null
+          placement_y?: number | null
+          placement_z?: number | null
           role?: string
         }
         Relationships: [
