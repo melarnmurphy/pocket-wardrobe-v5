@@ -453,6 +453,9 @@ export type Database = {
       }
       garments: {
         Row: {
+          archive_reason: string | null
+          archived_at: string | null
+          availability: string
           brand: string | null
           category: string
           cost_per_wear: number | null
@@ -465,6 +468,9 @@ export type Database = {
           formality_level: string | null
           id: string
           last_worn_at: string | null
+          let_go_added_at: string | null
+          let_go_estimate_cents: number | null
+          let_go_reason: string | null
           material: string | null
           pattern: string | null
           purchase_currency: string | null
@@ -482,6 +488,9 @@ export type Database = {
           wear_count: number
         }
         Insert: {
+          archive_reason?: string | null
+          archived_at?: string | null
+          availability?: string
           brand?: string | null
           category: string
           cost_per_wear?: number | null
@@ -494,6 +503,9 @@ export type Database = {
           formality_level?: string | null
           id?: string
           last_worn_at?: string | null
+          let_go_added_at?: string | null
+          let_go_estimate_cents?: number | null
+          let_go_reason?: string | null
           material?: string | null
           pattern?: string | null
           purchase_currency?: string | null
@@ -511,6 +523,9 @@ export type Database = {
           wear_count?: number
         }
         Update: {
+          archive_reason?: string | null
+          archived_at?: string | null
+          availability?: string
           brand?: string | null
           category?: string
           cost_per_wear?: number | null
@@ -523,6 +538,9 @@ export type Database = {
           formality_level?: string | null
           id?: string
           last_worn_at?: string | null
+          let_go_added_at?: string | null
+          let_go_estimate_cents?: number | null
+          let_go_reason?: string | null
           material?: string | null
           pattern?: string | null
           purchase_currency?: string | null

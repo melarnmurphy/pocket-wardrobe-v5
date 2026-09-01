@@ -4,6 +4,8 @@ export type AppToastDetail = {
   id?: string;
   message: string;
   tone?: "success" | "error" | "info";
+  actionLabel?: string;
+  onAction?: () => void;
 };
 
 export function showAppToast(detail: AppToastDetail) {

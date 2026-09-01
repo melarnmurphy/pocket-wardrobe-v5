@@ -1,5 +1,31 @@
 import { z } from "zod";
 
+// Availability (9a) is distinct from wardrobe_status/archival: a piece stays in the
+// wardrobe and in counts while merely unavailable. See DATA_MODEL.md "Piece".
+export const AVAILABILITY_VALUES = [
+  "wearable",
+  "in the wash",
+  "at the tailor",
+  "lent out",
+  "packed",
+  "listed for sale"
+] as const;
+
+export const availabilitySchema = z.enum(AVAILABILITY_VALUES);
+export type Availability = z.infer<typeof availabilitySchema>;
+
+// Let-go list (9b) — DATA_MODEL.md "LetGoState".
+export const LET_GO_REASON_VALUES = [
+  "never worn",
+  "does not fit",
+  "not me anymore",
+  "worn out",
+  "duplicate"
+] as const;
+
+export const letGoReasonSchema = z.enum(LET_GO_REASON_VALUES);
+export type LetGoReason = z.infer<typeof letGoReasonSchema>;
+
 export const garmentSchema = z.object({
   id: z.string().uuid().optional(),
   user_id: z.string().uuid(),

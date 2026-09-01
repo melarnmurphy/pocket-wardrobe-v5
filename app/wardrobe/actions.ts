@@ -8,12 +8,18 @@ import {
   createGarment,
   addGarment3dAsset,
   addGarmentImage,
+  addGarmentToLetGo,
+  archiveGarment,
   deleteGarment,
+  removeGarmentFromLetGo,
+  setGarmentAvailability,
+  unarchiveGarment,
   setGarmentFeatureImage,
   setGarmentPrimaryColourFamily,
   toggleGarmentFavourite,
   updateGarment
 } from "@/lib/domain/wardrobe/service";
+import { availabilitySchema, letGoReasonSchema } from "@/lib/domain/wardrobe";
 import {
   type WardrobeColourFamily
 } from "@/lib/domain/wardrobe/colours";
@@ -149,6 +155,26 @@ const logWearFormSchema = z.object({
 
 const deleteGarmentFormSchema = z.object({
   garment_id: z.string().uuid()
+});
+
+const setAvailabilityFormSchema = z.object({
+  garment_id: z.string().uuid(),
+  availability: availabilitySchema
+});
+
+const addToLetGoFormSchema = z.object({
+  garment_id: z.string().uuid(),
+  reason: letGoReasonSchema,
+  estimate_cents: z.coerce.number().int().nonnegative().nullable().optional()
+});
+
+const removeFromLetGoFormSchema = z.object({
+  garment_id: z.string().uuid()
+});
+
+const archiveGarmentFormSchema = z.object({
+  garment_id: z.string().uuid(),
+  reason: nullableText(200)
 });
 
 const setFeatureImageFormSchema = z.object({
@@ -790,6 +816,128 @@ export async function deleteGarmentAction(
       message: error instanceof Error ? error.message : "Unable to delete item."
     };
   }
+}
+
+export async function setAvailabilityAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = setAvailabilityFormSchema.parse({
+      garment_id: formData.get("garment_id"),
+      availability: formData.get("availability")
+    });
+
+    await setGarmentAvailability(values.garment_id, values.availability);
+    revalidatePath("/wardrobe");
+    revalidatePath(`/wardrobe/${values.garment_id}`);
+
+    return {
+      status: "success",
+      garmentId: values.garment_id,
+      message: `Marked ${values.availability}.`
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to update availability."
+    };
+  }
+}
+
+export async function addToLetGoAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = addToLetGoFormSchema.parse({
+      garment_id: formData.get("garment_id"),
+      reason: formData.get("reason"),
+      estimate_cents: formData.get("estimate_cents")
+    });
+
+    await addGarmentToLetGo({
+      garmentId: values.garment_id,
+      reason: values.reason,
+      estimateCents: values.estimate_cents
+    });
+    revalidatePath("/wardrobe");
+    revalidatePath("/wardrobe/let-go");
+    revalidatePath(`/wardrobe/${values.garment_id}`);
+
+    return {
+      status: "success",
+      garmentId: values.garment_id,
+      message: "Added to the let-go list."
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to add to the let-go list."
+    };
+  }
+}
+
+export async function removeFromLetGoAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = removeFromLetGoFormSchema.parse({
+      garment_id: formData.get("garment_id")
+    });
+
+    await removeGarmentFromLetGo(values.garment_id);
+    revalidatePath("/wardrobe");
+    revalidatePath("/wardrobe/let-go");
+    revalidatePath(`/wardrobe/${values.garment_id}`);
+
+    return {
+      status: "success",
+      garmentId: values.garment_id,
+      message: "Kept in the wardrobe."
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to update the let-go list."
+    };
+  }
+}
+
+export async function archiveGarmentAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = archiveGarmentFormSchema.parse({
+      garment_id: formData.get("garment_id"),
+      reason: formData.get("reason")
+    });
+
+    await archiveGarment(values.garment_id, values.reason);
+    revalidatePath("/wardrobe");
+    revalidatePath("/wardrobe/let-go");
+
+    return {
+      status: "success",
+      garmentId: values.garment_id,
+      message: "Let go — you can undo this from the wardrobe.",
+      nextPath: "/wardrobe"
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to let this piece go."
+    };
+  }
+}
+
+/** Plain callable, not FormData-based — bound to a toast's undo action. */
+export async function undoArchiveGarmentAction(garmentId: string): Promise<void> {
+  await unarchiveGarment(garmentId);
+  revalidatePath("/wardrobe");
+  revalidatePath(`/wardrobe/${garmentId}`);
 }
 
 export async function setGarmentFeatureImageAction(

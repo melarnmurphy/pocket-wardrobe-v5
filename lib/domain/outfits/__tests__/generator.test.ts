@@ -72,6 +72,7 @@ function makeGarment(overrides: Partial<GarmentListItem> & { id: string; categor
     formality_level: null,
     seasonality: [],
     wardrobe_status: "active",
+    availability: "wearable",
     purchase_price: null,
     purchase_currency: null,
     purchase_date: null,

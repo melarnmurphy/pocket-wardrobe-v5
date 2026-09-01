@@ -135,6 +135,21 @@ create table if not exists public.garments (
   seasonality text[] not null default '{}',
   wardrobe_status text not null default 'active'
     check (wardrobe_status in ('active', 'archived', 'in_laundry', 'packed', 'sold', 'donated', 'unavailable')),
+  -- Availability (9a) and the let-go list (9b) — see migration 024. Distinct from
+  -- wardrobe_status: a piece stays in the wardrobe and in counts while merely
+  -- unavailable, and only leaves on archival, tracked separately from wear history.
+  availability text not null default 'wearable'
+    check (availability in (
+      'wearable', 'in the wash', 'at the tailor', 'lent out', 'packed', 'listed for sale'
+    )),
+  archived_at timestamptz,
+  archive_reason text,
+  let_go_reason text
+    check (let_go_reason is null or let_go_reason in (
+      'never worn', 'does not fit', 'not me anymore', 'worn out', 'duplicate'
+    )),
+  let_go_added_at timestamptz,
+  let_go_estimate_cents integer check (let_go_estimate_cents is null or let_go_estimate_cents >= 0),
   purchase_price numeric(12,2),
   purchase_currency text,
   purchase_date date,

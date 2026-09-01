@@ -39,6 +39,7 @@ function toSyntheticGarment(
     formality_level: null,
     seasonality: [],
     wardrobe_status: "active",
+    availability: "wearable",
     purchase_price: null,
     purchase_currency: null,
     purchase_date: null,

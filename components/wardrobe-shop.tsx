@@ -25,6 +25,7 @@ import {
 } from "@/lib/domain/wardrobe/action-state";
 import { canonicalWardrobeColours } from "@/lib/domain/wardrobe/colours";
 import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
+import { AVAILABILITY_VALUES } from "@/lib/domain/wardrobe";
 import { compareNeglected } from "@/lib/domain/outfits/neglect";
 
 const seasonOptions = ["spring", "summer", "autumn", "winter"] as const;
@@ -148,6 +149,7 @@ export function WardrobeShop({
   const [colourFilter, setColourFilter] = useState(
     initialBrowseState?.colourFilter ?? "all"
   );
+  const [availabilityFilter, setAvailabilityFilter] = useState("all");
   const [favouritesOnly, setFavouritesOnly] = useState(
     initialBrowseState?.favouritesOnly ?? false
   );
@@ -188,6 +190,7 @@ export function WardrobeShop({
     typeFilter !== "all" ||
     seasonFilter !== "all" ||
     colourFilter !== "all" ||
+    availabilityFilter !== "all" ||
     favouritesOnly ||
     sortBy !== "newest";
 
@@ -197,6 +200,7 @@ export function WardrobeShop({
     setTypeFilter("all");
     setSeasonFilter("all");
     setColourFilter("all");
+    setAvailabilityFilter("all");
     setFavouritesOnly(false);
     setSortBy("newest");
   };
@@ -240,6 +244,10 @@ export function WardrobeShop({
           return false;
         }
 
+        if (availabilityFilter !== "all" && garment.availability !== availabilityFilter) {
+          return false;
+        }
+
         if (favouritesOnly && !(garment.favourite_score && garment.favourite_score > 0)) {
           return false;
         }
@@ -272,6 +280,7 @@ export function WardrobeShop({
     garments,
     occasionFilter,
     colourFilter,
+    availabilityFilter,
     seasonFilter,
     sortBy,
     typeFilter
@@ -479,6 +488,10 @@ export function WardrobeShop({
               </span>
               <span className="divider">/</span>
               <span>{garments.reduce((total, garment) => total + garment.wear_count, 0)} wears tracked</span>
+              <span className="divider">/</span>
+              <Link href="/wardrobe/let-go" className="underline">
+                let-go list
+              </Link>
             </div>
           </div>
           <button
@@ -596,6 +609,17 @@ export function WardrobeShop({
               />
 
               <FilterSelect
+                icon={<SunIcon />}
+                label="Availability"
+                value={availabilityFilter}
+                onChange={setAvailabilityFilter}
+                options={[
+                  { value: "all", label: "Any availability" },
+                  ...AVAILABILITY_VALUES.map((value) => ({ value, label: value }))
+                ]}
+              />
+
+              <FilterSelect
                 icon={<SortIcon />}
                 label="Sort"
                 value={sortBy}
@@ -668,7 +692,7 @@ export function WardrobeShop({
               <GarmentCard
                 key={garment.id}
                 garment={garment}
-                onOpen={() => setSelectedGarmentId(garment.id as string)}
+                onOpen={() => router.push(`/wardrobe/${garment.id}`)}
                 deleteGarmentAction={deleteGarmentAction}
                 toggleGarmentFavouriteAction={toggleGarmentFavouriteAction}
               />

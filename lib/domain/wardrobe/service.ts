@@ -2,7 +2,14 @@ import { cache } from "react";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
-import { createGarmentSchema, garmentSchema } from "@/lib/domain/wardrobe";
+import {
+  availabilitySchema,
+  createGarmentSchema,
+  garmentSchema,
+  letGoReasonSchema,
+  type Availability,
+  type LetGoReason
+} from "@/lib/domain/wardrobe";
 import {
   getCanonicalWardrobeColour,
   type WardrobeColourFamily
@@ -32,6 +39,12 @@ type GarmentListRow = Pick<
   | "formality_level"
   | "seasonality"
   | "wardrobe_status"
+  | "availability"
+  | "archived_at"
+  | "archive_reason"
+  | "let_go_reason"
+  | "let_go_added_at"
+  | "let_go_estimate_cents"
   | "purchase_price"
   | "purchase_currency"
   | "purchase_date"
@@ -67,6 +80,12 @@ const garmentListItemSchema = garmentSchema.extend({
   last_worn_at: timestampSchema.nullable().optional(),
   primary_colour_family: z.string().nullable().optional(),
   primary_colour_hex: z.string().nullable().optional(),
+  availability: availabilitySchema.default("wearable"),
+  archived_at: timestampSchema.nullable().optional(),
+  archive_reason: z.string().nullable().optional(),
+  let_go_reason: letGoReasonSchema.nullable().optional(),
+  let_go_added_at: timestampSchema.nullable().optional(),
+  let_go_estimate_cents: z.coerce.number().int().nonnegative().nullable().optional(),
   created_at: timestampSchema,
   updated_at: timestampSchema
 });
@@ -370,7 +389,7 @@ const garmentColourWithColourSchema = garmentColourSchema.extend({
 });
 
 const GARMENT_LIST_SELECT =
-  "id,user_id,title,description,brand,category,subcategory,pattern,material,size,fit,formality_level,seasonality,wardrobe_status,purchase_price,purchase_currency,purchase_date,retailer,favourite_score,wear_count,last_worn_at,cost_per_wear,extraction_metadata_json,created_at,updated_at," +
+  "id,user_id,title,description,brand,category,subcategory,pattern,material,size,fit,formality_level,seasonality,wardrobe_status,availability,archived_at,archive_reason,let_go_reason,let_go_added_at,let_go_estimate_cents,purchase_price,purchase_currency,purchase_date,retailer,favourite_score,wear_count,last_worn_at,cost_per_wear,extraction_metadata_json,created_at,updated_at," +
   "garment_images(id,garment_id,image_type,storage_path,width,height,created_at)," +
   "garment_colours(id,garment_id,colour_id,dominance,is_primary,created_at,colours(id,family,hex))," +
   "garment_3d_assets(id,garment_id,asset_type,storage_path,file_format,material_profile_json,physics_profile_json,renderer_metadata_json,source_type,confidence,status,created_at,updated_at)," +
@@ -389,6 +408,7 @@ export const listWardrobeGarments = cache(async (): Promise<GarmentListItem[]> =
     .from("garments")
     .select(GARMENT_LIST_SELECT)
     .eq("user_id", user.id)
+    .is("archived_at", null)
     .order("created_at", { ascending: false })
     .order("created_at", { ascending: false, referencedTable: "garment_images" })
     .order("is_primary", { ascending: false, referencedTable: "garment_colours" })
@@ -509,7 +529,7 @@ export async function createGarment(
     .from("garments")
     .insert(payload as never)
     .select(
-      "id,user_id,title,description,brand,category,subcategory,pattern,material,size,fit,formality_level,seasonality,wardrobe_status,purchase_price,purchase_currency,purchase_date,retailer,wear_count,last_worn_at,cost_per_wear,extraction_metadata_json,created_at,updated_at"
+      "id,user_id,title,description,brand,category,subcategory,pattern,material,size,fit,formality_level,seasonality,wardrobe_status,availability,archived_at,archive_reason,let_go_reason,let_go_added_at,let_go_estimate_cents,purchase_price,purchase_currency,purchase_date,retailer,wear_count,last_worn_at,cost_per_wear,extraction_metadata_json,created_at,updated_at"
       .replace("retailer,", "retailer,favourite_score,")
     )
     .single();
@@ -567,7 +587,7 @@ export async function updateGarment(
     .eq("id", parsedGarmentId)
     .eq("user_id", user.id)
     .select(
-      "id,user_id,title,description,brand,category,subcategory,pattern,material,size,fit,formality_level,seasonality,wardrobe_status,purchase_price,purchase_currency,purchase_date,retailer,wear_count,last_worn_at,cost_per_wear,extraction_metadata_json,created_at,updated_at"
+      "id,user_id,title,description,brand,category,subcategory,pattern,material,size,fit,formality_level,seasonality,wardrobe_status,availability,archived_at,archive_reason,let_go_reason,let_go_added_at,let_go_estimate_cents,purchase_price,purchase_currency,purchase_date,retailer,wear_count,last_worn_at,cost_per_wear,extraction_metadata_json,created_at,updated_at"
       .replace("retailer,", "retailer,favourite_score,")
     )
     .single();
@@ -618,6 +638,178 @@ export async function deleteGarment(garmentId: string) {
   if (error) {
     throw new Error(error.message);
   }
+}
+
+/** 11a — a single piece, including archived ones, with a signed hero image. */
+export async function getGarmentById(garmentId: string): Promise<GarmentListItem | null> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(garmentId);
+
+  const { data: row, error } = await supabase
+    .from("garments")
+    .select(GARMENT_LIST_SELECT)
+    .eq("id", parsedId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!row) {
+    return null;
+  }
+
+  const rawRow = row as Record<string, unknown>;
+  const garment = garmentListItemSchema.parse(rawRow);
+  const images = z.array(garmentImageSchema).parse(rawRow.garment_images ?? []);
+  const colourLinks = z.array(garmentColourWithColourSchema).parse(rawRow.garment_colours ?? []);
+  const primaryLink = colourLinks.find((link) => link.is_primary);
+  const assets = z.array(garment3dAssetRowSchema).parse(rawRow.garment_3d_assets ?? []);
+  const wears = z.array(garmentRecentWearSchema).parse(rawRow.wear_events ?? []);
+
+  const preferredFeatureImageId = getPreferredFeatureImageId(garment.extraction_metadata_json as Json);
+  const featurePath = getFeatureImagePath(images, preferredFeatureImageId);
+
+  let previewUrl: string | null = null;
+  if (featurePath) {
+    const { data: signedUrl } = await supabase.storage
+      .from("garment-originals")
+      .createSignedUrl(featurePath, 60 * 60);
+    previewUrl = signedUrl?.signedUrl ?? null;
+  }
+
+  return {
+    ...garment,
+    primary_colour_family: primaryLink?.colours?.family ?? null,
+    primary_colour_hex: primaryLink?.colours?.hex ?? null,
+    images,
+    three_d_assets: assets,
+    recent_wear_events: wears.slice(0, 3),
+    preview_url: previewUrl
+  };
+}
+
+/** 9a — availability never removes a piece from the wardrobe or its counts. */
+export async function setGarmentAvailability(garmentId: string, availability: Availability) {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(garmentId);
+  const parsedAvailability = availabilitySchema.parse(availability);
+
+  const { error } = await supabase
+    .from("garments")
+    .update(({ availability: parsedAvailability } satisfies Partial<GarmentInsert>) as never)
+    .eq("id", parsedId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/** 9b — adds a piece to the let-go list. The piece stays in the wardrobe. */
+export async function addGarmentToLetGo(params: {
+  garmentId: string;
+  reason: LetGoReason;
+  estimateCents?: number | null;
+}) {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(params.garmentId);
+  const parsedReason = letGoReasonSchema.parse(params.reason);
+  const parsedEstimate =
+    params.estimateCents === undefined || params.estimateCents === null
+      ? null
+      : z.number().int().nonnegative().parse(params.estimateCents);
+
+  const { error } = await supabase
+    .from("garments")
+    .update(({
+      let_go_reason: parsedReason,
+      let_go_added_at: new Date().toISOString(),
+      let_go_estimate_cents: parsedEstimate
+    } satisfies Partial<GarmentInsert>) as never)
+    .eq("id", parsedId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function removeGarmentFromLetGo(garmentId: string) {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(garmentId);
+
+  const { error } = await supabase
+    .from("garments")
+    .update(({
+      let_go_reason: null,
+      let_go_added_at: null,
+      let_go_estimate_cents: null
+    } satisfies Partial<GarmentInsert>) as never)
+    .eq("id", parsedId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/**
+ * Soft archive: keeps wear history, unlike deleteGarment. This is the
+ * "let go, confirmed" and "sold" endpoint — standing rule: deletion is
+ * always undoable, so this only ever sets archived_at, never removes a row.
+ */
+export async function archiveGarment(garmentId: string, reason?: string | null) {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(garmentId);
+  const parsedReason = reason ? z.string().trim().max(200).parse(reason) : null;
+
+  const { error } = await supabase
+    .from("garments")
+    .update(({
+      archived_at: new Date().toISOString(),
+      archive_reason: parsedReason
+    } satisfies Partial<GarmentInsert>) as never)
+    .eq("id", parsedId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function unarchiveGarment(garmentId: string) {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(garmentId);
+
+  const { error } = await supabase
+    .from("garments")
+    .update(({ archived_at: null, archive_reason: null } satisfies Partial<GarmentInsert>) as never)
+    .eq("id", parsedId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/** 9b — pieces on the let-go list, still fully part of the wardrobe. */
+export async function listLetGoGarments(): Promise<GarmentListItem[]> {
+  const all = await listWardrobeGarments();
+  return all
+    .filter((garment) => garment.let_go_reason)
+    .sort((a, b) => {
+      const aTime = a.let_go_added_at ? new Date(a.let_go_added_at).getTime() : 0;
+      const bTime = b.let_go_added_at ? new Date(b.let_go_added_at).getTime() : 0;
+      return bTime - aTime;
+    });
 }
 
 export async function toggleGarmentFavourite(garmentId: string) {
