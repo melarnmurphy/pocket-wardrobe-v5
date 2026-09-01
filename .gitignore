@@ -28,3 +28,6 @@ ios/**/Secrets.plist
 # Xcode user-local state
 ios/**/*.xcuserstate
 ios/**/xcuserdata/
+
+# python dev venv for pipeline eval
+.venv-dev/

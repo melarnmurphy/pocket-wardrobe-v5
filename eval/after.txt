@@ -1,0 +1,12 @@
+image      #det  categories
+IMG_3700      3  ['belt', 'dress', 'skirt']
+IMG_4005      3  ['shoe', 'dress', 'belt']
+IMG_4364      7  ['top, t-shirt, sweatshirt', 'top, t-shirt, sweatshirt', 'shoe', 'shoe', 'glasses', 'pants', 'jacket']
+IMG_4541      2  ['shoe', 'skirt']
+IMG_4551      7  ['belt', 'belt', 'hat', 'shoe', 'shoe', 'pants', 'shirt, blouse']
+IMG_4618      6  ['shoe', 'shoe', 'bag, wallet', 'bag, wallet', 'pants', 'jacket']
+IMG_4790      6  ['shoe', 'shoe', 'belt', 'belt', 'hat', 'pants']
+IMG_4881      6  ['watch', 'watch', 'shoe', 'shoe', 'pants', 'top, t-shirt, sweatshirt']
+IMG_4885      6  ['shoe', 'shoe', 'glasses', 'dress', 'hat', 'watch']
+
+empty results: 0/9   duplicate detections: 11

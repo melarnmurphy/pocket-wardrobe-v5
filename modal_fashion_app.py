@@ -2,7 +2,11 @@ import modal
 from pathlib import Path
 
 # --- Modal app definition ---
-app = modal.App("fashion-pipeline")
+# App name is parameterised so dev eval deploys use `fashion-pipeline-dev`
+# (FASHION_APP_NAME=fashion-pipeline-dev) and never touch the prod app.
+# Defaults to the prod name for the eventual human-gated promotion.
+import os as _os
+app = modal.App(_os.environ.get("FASHION_APP_NAME", "fashion-pipeline"))
 
 # Heavy ML image — used by the GPU inference class only
 image = (
@@ -18,6 +22,8 @@ image = (
         "ftfy",
         "open_clip_torch",
     )
+    # Make the pure post-processing helpers importable inside the GPU container.
+    .add_local_python_source("pipeline_lib")
 )
 
 # Lightweight API image — used by the FastAPI wrapper (no GPU, adds Playwright)
@@ -115,72 +121,107 @@ class FashionPipeline:
         print("Models ready.")
         model_cache.commit()
 
-    def _classify_attribute(self, crop, labels: list[str]) -> tuple[str, float]:
+    def _classify_attribute(self, crop, labels: list[str], floor: float = 0.45) -> tuple[str, float]:
         import torch
+        from pipeline_lib import apply_confidence_floor
+        prompts = [f"a photo of {label} clothing" for label in labels]
         inputs = self.siglip_processor(
-            text=labels, images=[crop], padding="max_length", return_tensors="pt"
+            text=prompts, images=[crop], padding="max_length", return_tensors="pt"
         ).to(self.device)
         with torch.no_grad():
             img_f = self.siglip_model.get_image_features(inputs["pixel_values"], normalize=True)
             txt_f = self.siglip_model.get_text_features(inputs["input_ids"], normalize=True)
             probs = (100.0 * img_f @ txt_f.T).softmax(dim=-1).squeeze(0)
         best_idx = probs.argmax().item()
-        return labels[best_idx], round(probs[best_idx].item(), 3)
+        label, score = apply_confidence_floor(labels[best_idx], round(probs[best_idx].item(), 3), floor)
+        return label, score
+
+    def _detect(self, image, threshold: float):
+        import torch
+        from pipeline_lib import clamp_box
+        inputs = self.yolos_processor(images=image, return_tensors="pt").to(self.device)
+        with torch.no_grad():
+            outputs = self.yolos_model(**inputs)
+        target_sizes = torch.tensor([image.size[::-1]]).to(self.device)
+        results = self.yolos_processor.post_process_object_detection(
+            outputs, threshold=threshold, target_sizes=target_sizes
+        )[0]
+        dets = []
+        for score, label, box in zip(results["scores"], results["labels"], results["boxes"]):
+            bbox = clamp_box([int(v) for v in box.tolist()], image.size[0], image.size[1])
+            dets.append({
+                "category": self.yolos_model.config.id2label[label.item()],
+                "confidence": round(score.item(), 3),
+                "bbox": bbox,
+            })
+        return dets
 
     @modal.method()
     def process(self, image_bytes: bytes, threshold: float = 0.5) -> list[dict]:
         import io
         import torch
-        from PIL import Image
+        from PIL import Image, ImageOps
+        from pipeline_lib import (
+            nms_per_class, filter_parts, drop_low_confidence_accessories,
+            cap_instances_per_class, union_box, should_crop, pad_box,
+            map_box_to_original, build_tag,
+        )
 
-        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        image = ImageOps.exif_transpose(Image.open(io.BytesIO(image_bytes))).convert("RGB")
+        width, height = image.size
 
-        # Step 1: Detect garments
-        inputs = self.yolos_processor(images=image, return_tensors="pt").to(self.device)
-        with torch.no_grad():
-            outputs = self.yolos_model(**inputs)
+        # Stage 1: initial detection
+        dets = self._detect(image, threshold)
 
-        target_sizes = torch.tensor([image.size[::-1]]).to(self.device)
-        results = self.yolos_processor.post_process_object_detection(
-            outputs, threshold=threshold, target_sizes=target_sizes
-        )[0]
+        # Stage 2: person-crop ROI — if subject is small, crop+upscale and re-detect once
+        if dets:
+            union = union_box([d["bbox"] for d in dets])
+            if should_crop(union, width, height):
+                padded = pad_box(union, width, height)
+                crop = image.crop(tuple(padded))
+                scale = 2.0
+                upscaled = crop.resize((int(crop.size[0] * scale), int(crop.size[1] * scale)))
+                recropped = self._detect(upscaled, threshold)
+                if recropped:
+                    for d in recropped:
+                        d["bbox"] = map_box_to_original(d["bbox"], (padded[0], padded[1]), scale)
+                    dets = recropped
 
+        # Stage 3: de-duplicate, drop accessory phantoms, part labels, cap per-class counts
+        dets = cap_instances_per_class(
+            filter_parts(
+                drop_low_confidence_accessories(nms_per_class(dets, iou_threshold=0.55))
+            )
+        )
+
+        # Stage 4: attributes per surviving detection
+        # NOTE: a SigLIP category-reconcile experiment (reconcile_category in
+        # pipeline_lib) was trialled here but did NOT beat baseline — both models
+        # share the same dress/skirt confusion — so it is intentionally not wired.
+        # Category accuracy is the post-pitch fine-tuning task.
         garments = []
-
-        for score, label, box in zip(results["scores"], results["labels"], results["boxes"]):
-            x1, y1, x2, y2 = [int(v) for v in box.tolist()]
-            category   = self.yolos_model.config.id2label[label.item()]
-            confidence = round(score.item(), 3)
-
-            # Step 2: Crop
+        for det in dets:
+            x1, y1, x2, y2 = det["bbox"]
             crop = image.crop((x1, y1, x2, y2))
-
-            # Step 3: Zero-shot attribute tagging
-            colour,   colour_conf   = self._classify_attribute(crop, COLOURS)
+            category = det["category"]
+            colour, colour_conf = self._classify_attribute(crop, COLOURS)
             material, material_conf = self._classify_attribute(crop, MATERIALS)
-            style,    style_conf    = self._classify_attribute(crop, STYLES)
-
-            # Step 4: Embedding (returned as a plain list for JSON serialisation)
+            style, style_conf = self._classify_attribute(crop, STYLES)
             emb_inputs = self.siglip_processor(images=[crop], return_tensors="pt").to(self.device)
             with torch.no_grad():
                 embedding = self.siglip_model.get_image_features(
                     emb_inputs["pixel_values"], normalize=True
                 ).squeeze(0).cpu().tolist()
-
             garments.append({
-                "category":        category,
-                "confidence":      confidence,
-                "bbox":            [x1, y1, x2, y2],
-                "colour":          colour,
-                "colour_conf":     colour_conf,
-                "material":        material,
-                "material_conf":   material_conf,
-                "style":           style,
-                "style_conf":      style_conf,
-                "tag":             f"{colour} {material} {category}",
-                "embedding":       embedding,   # 768-dim list — store in vector DB
+                "category": category,
+                "confidence": det["confidence"],
+                "bbox": det["bbox"],
+                "colour": colour, "colour_conf": colour_conf,
+                "material": material, "material_conf": material_conf,
+                "style": style, "style_conf": style_conf,
+                "tag": build_tag(colour, material, category),
+                "embedding": embedding,
             })
-
         return garments
 
 
