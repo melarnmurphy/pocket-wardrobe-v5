@@ -13,13 +13,14 @@ import {
   type SizesInput,
   type UpdateProfileInput
 } from "@/lib/domain/profile";
+import { resolveSuburbCentroid } from "@/lib/domain/local-threads/adelaide-suburbs";
 import type { TablesInsert, TablesUpdate } from "@/types/database";
 
 type ProfileInsert = TablesInsert<"profiles">;
 type ProfileUpdate = TablesUpdate<"profiles">;
 
 const PROFILE_SELECT =
-  "user_id,local_name,suburb,tops_size,bottoms_size,shoes_size,tops_size_system,bottoms_size_system,shoes_size_system,height_cm,one_size_either_way,show_suburb,show_wear_count,created_at,updated_at";
+  "user_id,local_name,suburb,tops_size,bottoms_size,shoes_size,tops_size_system,bottoms_size_system,shoes_size_system,height_cm,one_size_either_way,show_suburb,show_wear_count,suburb_lat,suburb_lng,radius_km,created_at,updated_at";
 
 /** No signup trigger creates this row — it's created lazily on first read. */
 export const getOrCreateProfile = cache(async (): Promise<Profile> => {
@@ -59,8 +60,13 @@ export async function updateProfile(input: UpdateProfileInput): Promise<Profile>
   const user = await getRequiredUser();
   const supabase = await createClient();
   const parsed = updateProfileSchema.parse(input);
+  const centroid = resolveSuburbCentroid(parsed.suburb);
 
-  const update: ProfileUpdate = parsed;
+  const update: ProfileUpdate = {
+    ...parsed,
+    suburb_lat: centroid?.lat ?? null,
+    suburb_lng: centroid?.lng ?? null
+  };
   const { data, error } = await supabase
     .from("profiles")
     .update(update as never)
@@ -117,6 +123,21 @@ export async function updateLocalPrivacy(input: LocalPrivacyInput): Promise<Prof
   return profileSchema.parse(data);
 }
 
+/** Radius defaults to 30km, user-settable 5-100, persisted on the profile. */
+export async function updateRadiusKm(radiusKm: number): Promise<void> {
+  await getOrCreateProfile();
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsed = z.number().int().min(5).max(100).parse(radiusKm);
+
+  const update: ProfileUpdate = { radius_km: parsed };
+  const { error } = await supabase.from("profiles").update(update as never).eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 /**
  * The self-preview for 17a/w3e — "what other people see" — computed from
  * the signed-in user's own profile with LocalPrivacy applied. This is not
@@ -139,6 +160,51 @@ export async function getMyPublicProfilePreview(): Promise<PublicProfilePreview>
     // set once, at first profile read/write, which is close enough and
     // stable, unlike the JWT-derived value.
     joinedAt: profile.created_at,
+    handoverCount: 0,
+    listedCount: 0
+  };
+}
+
+const publicProfileRowSchema = z.object({
+  user_id: z.string().uuid(),
+  local_name: z.string().nullable(),
+  suburb: z.string().nullable(),
+  show_suburb: z.boolean(),
+  created_at: z.string()
+});
+
+/**
+ * 16b/w2b — "the only cross-user read of a person" (API_CONTRACT.md
+ * getPublicProfile). RLS (profiles_select_via_live_listing) only gates
+ * which *row* a stranger may read; it does not hide suburb when
+ * show_suburb is false, so that masking has to happen here, in code, same
+ * as getMyPublicProfilePreview — never trust a raw RLS-permitted row to
+ * already reflect LocalPrivacy.
+ */
+export async function getPublicProfile(userId: string): Promise<PublicProfilePreview | null> {
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(userId);
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("user_id,local_name,suburb,show_suburb,created_at")
+    .eq("user_id", parsedId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) return null;
+
+  const row = publicProfileRowSchema.parse(data);
+
+  return {
+    userId: row.user_id,
+    localName: row.local_name,
+    suburb: row.show_suburb ? row.suburb : null,
+    avatarUri: null,
+    joinedAt: row.created_at,
     handoverCount: 0,
     listedCount: 0
   };

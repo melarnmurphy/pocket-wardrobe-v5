@@ -39,6 +39,9 @@ export const profileSchema = updateProfileSchema
   .merge(localPrivacySchema)
   .extend({
     user_id: z.string().uuid(),
+    suburb_lat: z.coerce.number().nullable(),
+    suburb_lng: z.coerce.number().nullable(),
+    radius_km: z.number().int().min(5).max(100).default(30),
     created_at: z.string(),
     updated_at: z.string()
   });

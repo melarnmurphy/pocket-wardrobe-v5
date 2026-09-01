@@ -9,7 +9,8 @@ const PRIMARY_NAV_ITEMS = [
   { id: "planner", label: "Planner", href: "/outfits" },
   { id: "lookbook", label: "Lookbook", href: "/lookbook" },
   { id: "calendar", label: "Calendar", href: "/calendar" },
-  { id: "trends", label: "Trends", href: "/trends" }
+  { id: "trends", label: "Trends", href: "/trends" },
+  { id: "nearby", label: "Nearby", href: "/local/nearby" }
 ] as const;
 
 export function AtelierPrimaryNav() {
@@ -56,5 +57,6 @@ function activeId(pathname: string): string | null {
   if (pathname.startsWith("/lookbook")) return "lookbook";
   if (pathname.startsWith("/calendar")) return "calendar";
   if (pathname.startsWith("/trends")) return "trends";
+  if (pathname.startsWith("/local")) return "nearby";
   return null;
 }

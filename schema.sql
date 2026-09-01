@@ -695,6 +695,12 @@ create table if not exists public.profiles (
   -- LocalPrivacy — defaults match DATA_MODEL.md exactly.
   show_suburb boolean not null default true,
   show_wear_count boolean not null default true,
+  -- NearbyQuery.centre — "the user's suburb centroid, not their device"
+  -- (migration 030), resolved from suburb via
+  -- lib/domain/local-threads/adelaide-suburbs.ts.
+  suburb_lat numeric(9,6),
+  suburb_lng numeric(9,6),
+  radius_km integer not null default 30 check (radius_km >= 5 and radius_km <= 100),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -734,6 +740,43 @@ create table if not exists public.processing_jobs (
 );
 
 -- =============================================================================
+-- Local threads, read-only (phase 7). See migration 029 for the
+-- nearby_listings() haversine + jitter RPC — omitted here, as with other
+-- RPCs (match_trend_signals, match_garments_by_embedding), to keep this
+-- file focused on table shape.
+-- =============================================================================
+
+create table if not exists public.local_listings (
+  id uuid primary key default gen_random_uuid(),
+  piece_id uuid not null references public.garments(id) on delete cascade,
+  seller_id uuid not null references auth.users(id) on delete cascade,
+  status text not null default 'draft'
+    check (status in ('draft', 'live', 'reserved', 'handover arranged', 'sold', 'expired', 'withdrawn')),
+  ask_cents integer not null check (ask_cents >= 0),
+  currency text not null default 'AUD',
+  negotiable boolean not null default true,
+  description text not null default '',
+  photo_uris text[] not null default '{}',
+  show_wear_count boolean not null default true,
+  wear_count_at_listing integer,
+  size text,
+  suburb text not null,
+  -- Exact location — never selected by the buyer-facing RPC.
+  lat numeric(9,6) not null check (lat >= -90 and lat <= 90),
+  lng numeric(9,6) not null check (lng >= -180 and lng <= 180),
+  views integer not null default 0,
+  saves integer not null default 0,
+  listed_at timestamptz,
+  reserved_for_thread_id uuid,
+  sold_at timestamptz,
+  sold_for_cents integer check (sold_for_cents is null or sold_for_cents >= 0),
+  blocked_reason text,
+  photos_required integer not null default 2,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- =============================================================================
 -- Indexes
 -- =============================================================================
 
@@ -759,6 +802,10 @@ create index if not exists outfits_planned_for_idx
   where planned_for is not null;
 
 create index if not exists idx_garment_colours_garment_id on public.garment_colours(garment_id);
+
+create index if not exists local_listings_status_idx on public.local_listings (status);
+create index if not exists local_listings_seller_idx on public.local_listings (seller_id);
+create index if not exists local_listings_lat_lng_idx on public.local_listings (lat, lng);
 create index if not exists idx_garment_colours_colour_id on public.garment_colours(colour_id);
 create index if not exists idx_colour_relationships_a on public.colour_relationships(colour_id_a);
 create index if not exists idx_colour_relationships_b on public.colour_relationships(colour_id_b);
@@ -838,6 +885,12 @@ before update on public.profiles
 for each row
 execute function public.set_updated_at();
 
+drop trigger if exists trg_local_listings_set_updated_at on public.local_listings;
+create trigger trg_local_listings_set_updated_at
+before update on public.local_listings
+for each row
+execute function public.set_updated_at();
+
 drop trigger if exists trg_garments_price_change on public.garments;
 create trigger trg_garments_price_change
 after update of purchase_price, wear_count on public.garments
@@ -885,6 +938,7 @@ alter table public.avatar_measurement_sets enable row level security;
 alter table public.garment_3d_assets enable row level security;
 alter table public.processing_jobs enable row level security;
 alter table public.profiles enable row level security;
+alter table public.local_listings enable row level security;
 
 alter table public.colours enable row level security;
 alter table public.colour_relationships enable row level security;
@@ -1352,10 +1406,26 @@ for insert with check (auth.uid() = user_id);
 create policy profiles_update_own on public.profiles
 for update using (auth.uid() = user_id);
 
--- Cross-user visibility (a stranger reading a seller's public profile in
--- local threads) is deliberately not granted here — phase 6 only builds
--- the self-preview of "what other people see". A scoped policy limited to
--- users near a live listing is added in phase 7 alongside local_listings.
+create policy profiles_select_via_live_listing on public.profiles
+for select using (
+  exists (
+    select 1 from public.local_listings l
+    where l.seller_id = profiles.user_id
+      and l.status = 'live'
+  )
+);
+
+create policy local_listings_select_live_or_own on public.local_listings
+for select using (status = 'live' or seller_id = auth.uid());
+
+create policy local_listings_insert_own on public.local_listings
+for insert with check (seller_id = auth.uid());
+
+create policy local_listings_update_own on public.local_listings
+for update using (seller_id = auth.uid());
+
+create policy local_listings_delete_own on public.local_listings
+for delete using (seller_id = auth.uid());
 
 -- =============================================================================
 -- Seed global style rules

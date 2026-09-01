@@ -562,6 +562,98 @@ export type Database = {
         }
         Relationships: []
       }
+      local_listings: {
+        Row: {
+          ask_cents: number
+          blocked_reason: string | null
+          created_at: string
+          currency: string
+          description: string
+          id: string
+          lat: number
+          lng: number
+          listed_at: string | null
+          negotiable: boolean
+          photo_uris: string[]
+          photos_required: number
+          piece_id: string
+          reserved_for_thread_id: string | null
+          saves: number
+          seller_id: string
+          show_wear_count: boolean
+          size: string | null
+          sold_at: string | null
+          sold_for_cents: number | null
+          status: string
+          suburb: string
+          updated_at: string
+          views: number
+          wear_count_at_listing: number | null
+        }
+        Insert: {
+          ask_cents: number
+          blocked_reason?: string | null
+          created_at?: string
+          currency?: string
+          description?: string
+          id?: string
+          lat: number
+          lng: number
+          listed_at?: string | null
+          negotiable?: boolean
+          photo_uris?: string[]
+          photos_required?: number
+          piece_id: string
+          reserved_for_thread_id?: string | null
+          saves?: number
+          seller_id: string
+          show_wear_count?: boolean
+          size?: string | null
+          sold_at?: string | null
+          sold_for_cents?: number | null
+          status?: string
+          suburb: string
+          updated_at?: string
+          views?: number
+          wear_count_at_listing?: number | null
+        }
+        Update: {
+          ask_cents?: number
+          blocked_reason?: string | null
+          created_at?: string
+          currency?: string
+          description?: string
+          id?: string
+          lat?: number
+          lng?: number
+          listed_at?: string | null
+          negotiable?: boolean
+          photo_uris?: string[]
+          photos_required?: number
+          piece_id?: string
+          reserved_for_thread_id?: string | null
+          saves?: number
+          seller_id?: string
+          show_wear_count?: boolean
+          size?: string | null
+          sold_at?: string | null
+          sold_for_cents?: number | null
+          status?: string
+          suburb?: string
+          updated_at?: string
+          views?: number
+          wear_count_at_listing?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "local_listings_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: false
+            referencedRelation: "garments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lookbook_entries: {
         Row: {
           aesthetic_tags: string[]
@@ -774,8 +866,11 @@ export type Database = {
           show_suburb: boolean
           show_wear_count: boolean
           shoes_size: string | null
+          radius_km: number
           shoes_size_system: string
           suburb: string | null
+          suburb_lat: number | null
+          suburb_lng: number | null
           tops_size: string | null
           tops_size_system: string
           updated_at: string
@@ -791,8 +886,11 @@ export type Database = {
           show_suburb?: boolean
           show_wear_count?: boolean
           shoes_size?: string | null
+          radius_km?: number
           shoes_size_system?: string
           suburb?: string | null
+          suburb_lat?: number | null
+          suburb_lng?: number | null
           tops_size?: string | null
           tops_size_system?: string
           updated_at?: string
@@ -808,8 +906,11 @@ export type Database = {
           show_suburb?: boolean
           show_wear_count?: boolean
           shoes_size?: string | null
+          radius_km?: number
           shoes_size_system?: string
           suburb?: string | null
+          suburb_lat?: number | null
+          suburb_lng?: number | null
           tops_size?: string | null
           tops_size_system?: string
           updated_at?: string
