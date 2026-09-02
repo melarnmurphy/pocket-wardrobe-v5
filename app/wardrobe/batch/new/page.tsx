@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, type DragEvent } from "react";
 import { ChevronLeft, ImagePlus, X } from "lucide-react";
 import { PillButton } from "@/components/garderobe";
+import { UploadFailedDialog } from "@/components/garderobe/wardrobe/upload-failed-dialog";
+import { classifyUploadFile } from "@/lib/domain/ingestion/limits";
 
 type PickedPhoto = { file: File; previewUrl: string };
 
@@ -14,17 +16,37 @@ export default function ChoosePhotosPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadErrorCode, setUploadErrorCode] = useState<
+    "unsupported_format" | "too_large" | null
+  >(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   function addFiles(fileList: FileList | File[]) {
-    const nextFiles = Array.from(fileList).filter((file) => file.type.startsWith("image/"));
-    if (!nextFiles.length) return;
+    const incoming = Array.from(fileList).filter((file) => file.type.startsWith("image/"));
+    if (!incoming.length) return;
 
-    setPhotos((current) => [
-      ...current,
-      ...nextFiles.map((file) => ({ file, previewUrl: URL.createObjectURL(file) }))
-    ]);
+    const accepted: File[] = [];
+    let firstBadCode: "unsupported_format" | "too_large" | null = null;
+
+    for (const file of incoming) {
+      const check = classifyUploadFile(file);
+      if (check === "ok") {
+        accepted.push(file);
+      } else if (!firstBadCode) {
+        firstBadCode = check;
+      }
+    }
+
+    if (accepted.length) {
+      setPhotos((current) => [
+        ...current,
+        ...accepted.map((file) => ({ file, previewUrl: URL.createObjectURL(file) }))
+      ]);
+    }
+    if (firstBadCode) {
+      setUploadErrorCode(firstBadCode);
+    }
   }
 
   function removePhoto(index: number) {
@@ -149,6 +171,18 @@ export default function ChoosePhotosPage() {
             </PillButton>
           </div>
         </>
+      ) : null}
+
+      {uploadErrorCode ? (
+        <UploadFailedDialog
+          open
+          errorCode={uploadErrorCode}
+          onClose={() => setUploadErrorCode(null)}
+          onRetry={() => {
+            setUploadErrorCode(null);
+            inputRef.current?.click();
+          }}
+        />
       ) : null}
     </div>
   );

@@ -23,6 +23,7 @@ import { NewCollectionSheet } from "@/components/garderobe/wardrobe/new-collecti
 import { SortSheet } from "@/components/garderobe/wardrobe/sort-sheet";
 import { Dialog } from "@/components/garderobe/dialog";
 import { UsedElsewhereDialog } from "@/components/garderobe/wardrobe/used-elsewhere-dialog";
+import { UploadFailedDialog } from "@/components/garderobe/wardrobe/upload-failed-dialog";
 import { showAppToast } from "@/lib/ui/app-toast";
 import type { PlanTier } from "@/lib/domain/entitlements";
 import {
@@ -1571,6 +1572,9 @@ function GarmentDetailDialog({
     wardrobeActionState
   );
   const [showReupload, setShowReupload] = useState(false);
+  const [imageUploadDialogCode, setImageUploadDialogCode] = useState<
+    "unsupported_format" | "too_large" | null
+  >(null);
   const [wearEntryMode, setWearEntryMode] = useState<"quick" | "detail">("quick");
   const [quickWearCount, setQuickWearCount] = useState(
     Math.max(garment.wear_count, 1)
@@ -1803,6 +1807,7 @@ function GarmentDetailDialog({
                     garmentId={garment.id as string}
                     action={addGarmentImageAction}
                     latestPath={featureImage?.storage_path ?? garment.images[0]?.storage_path ?? null}
+                    onErrorCode={setImageUploadDialogCode}
                   />
                 </div>
               ) : null}
@@ -1813,9 +1818,19 @@ function GarmentDetailDialog({
                 garmentId={garment.id as string}
                 action={addGarmentImageAction}
                 latestPath={featureImage?.storage_path ?? garment.images[0]?.storage_path ?? null}
+                onErrorCode={setImageUploadDialogCode}
               />
             </div>
           )}
+
+          {imageUploadDialogCode ? (
+            <UploadFailedDialog
+              open
+              errorCode={imageUploadDialogCode}
+              onClose={() => setImageUploadDialogCode(null)}
+              onRetry={() => setImageUploadDialogCode(null)}
+            />
+          ) : null}
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard label="Wear Count" value={String(garment.wear_count)} />

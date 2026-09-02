@@ -13,7 +13,8 @@ import {
 export function GarmentImageUpload({
   garmentId,
   action,
-  latestPath
+  latestPath,
+  onErrorCode
 }: {
   garmentId: string;
   action: (
@@ -21,6 +22,7 @@ export function GarmentImageUpload({
     formData: FormData
   ) => Promise<WardrobeActionState>;
   latestPath?: string | null;
+  onErrorCode?: (errorCode: "unsupported_format" | "too_large") => void;
 }) {
   const inputId = useId();
   const [fileName, setFileName] = useState<string | null>(null);
@@ -44,6 +46,15 @@ export function GarmentImageUpload({
       });
     }
   }, [state.message, state.status]);
+
+  useEffect(() => {
+    if (
+      state.status === "error" &&
+      (state.errorCode === "unsupported_format" || state.errorCode === "too_large")
+    ) {
+      onErrorCode?.(state.errorCode);
+    }
+  }, [state.status, state.errorCode, onErrorCode]);
 
   const clearPreview = () => {
     if (previewUrl) {
