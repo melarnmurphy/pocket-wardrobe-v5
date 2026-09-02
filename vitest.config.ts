@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "node",
-    exclude: ["**/node_modules/**", "**/dist/**", ".worktrees/**"],
+    exclude: ["**/node_modules/**", "**/dist/**", ".worktrees/**", ".claude/**"],
     setupFiles: ["./vitest.setup.ts"],
   },
   resolve: {
