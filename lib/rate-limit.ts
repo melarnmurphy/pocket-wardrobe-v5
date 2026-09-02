@@ -53,6 +53,15 @@ export async function checkRateLimit(
     headerStore.get("x-real-ip") ??
     "anonymous";
 
-  const { success } = await limiter.limit(ip);
+  let success: boolean;
+  try {
+    ({ success } = await limiter.limit(ip));
+  } catch (error) {
+    // Upstash is configured but unreachable (wrong/stale credentials, outage). Fail open
+    // rather than break every rate-limited action (sign-in, sign-up, etc.) on a dependency
+    // that's meant to be a safety net, not a hard requirement.
+    console.error(`[rate-limit] Upstash unreachable for "${action}", failing open:`, error);
+    return;
+  }
   if (!success) throw new RateLimitError();
 }
