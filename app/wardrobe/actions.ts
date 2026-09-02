@@ -5,13 +5,17 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getServerEnv } from "@/lib/env";
 import {
+  createCollection,
   createGarment,
   addGarment3dAsset,
   addGarmentImage,
   addGarmentToLetGo,
   archiveGarment,
   deleteGarment,
+  getGarmentUsageBlockers,
+  mergeGarments,
   removeGarmentFromLetGo,
+  restoreGarment,
   setGarmentAvailability,
   setGarmentPriceManually,
   unarchiveGarment,
@@ -25,7 +29,12 @@ import {
   type WardrobeColourFamily
 } from "@/lib/domain/wardrobe/colours";
 import type { WardrobeActionState } from "@/lib/domain/wardrobe/action-state";
-import { incrementWearCount, logWearEvent } from "@/lib/domain/wear-events/service";
+import {
+  deleteWearEvent,
+  incrementWearCount,
+  logWearEvent,
+  updateWearEvent
+} from "@/lib/domain/wear-events/service";
 import {
   createGarmentSource,
   createDraftsFromPipelineResult,
@@ -156,6 +165,31 @@ const logWearFormSchema = z.object({
 
 const deleteGarmentFormSchema = z.object({
   garment_id: z.string().uuid()
+});
+
+const bulkGarmentIdsFormSchema = z.object({
+  garment_id: z.array(z.string().uuid()).min(1)
+});
+
+const mergeGarmentsFormSchema = z.object({
+  source_garment_id: z.string().uuid(),
+  target_garment_id: z.string().uuid()
+});
+
+const updateWearEventFormSchema = z.object({
+  wear_event_id: z.string().uuid(),
+  worn_at: nullableText(40),
+  occasion: nullableText(120),
+  notes: nullableText(2000)
+});
+
+const deleteWearEventFormSchema = z.object({
+  wear_event_id: z.string().uuid()
+});
+
+const createCollectionFormSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  garment_id: z.array(z.string().uuid()).default([])
 });
 
 const setAvailabilityFormSchema = z.object({
@@ -813,17 +847,193 @@ export async function deleteGarmentAction(
       garment_id: formData.get("garment_id")
     });
 
+    const blockers = await getGarmentUsageBlockers(values.garment_id);
+    if (blockers.activeOutfitCount > 0 || blockers.activeListingId) {
+      return {
+        status: "blocked",
+        garmentId: values.garment_id,
+        message: "This piece is used elsewhere. Archive it instead of deleting it.",
+        blocked: blockers
+      };
+    }
+
     await deleteGarment(values.garment_id);
     revalidatePath("/wardrobe");
 
     return {
       status: "success",
-      message: "Item deleted."
+      message: "Item deleted. You can restore it from recently deleted."
     };
   } catch (error) {
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Unable to delete item."
+    };
+  }
+}
+
+export async function restoreGarmentAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = deleteGarmentFormSchema.parse({
+      garment_id: formData.get("garment_id")
+    });
+
+    await restoreGarment(values.garment_id);
+    revalidatePath("/wardrobe");
+
+    return {
+      status: "success",
+      garmentId: values.garment_id,
+      message: "Restored to the wardrobe."
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to restore item."
+    };
+  }
+}
+
+export async function bulkDeleteGarmentsAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = bulkGarmentIdsFormSchema.parse({
+      garment_id: formData.getAll("garment_id")
+    });
+
+    const blocked: string[] = [];
+    for (const garmentId of values.garment_id) {
+      const blockers = await getGarmentUsageBlockers(garmentId);
+      if (blockers.activeOutfitCount > 0 || blockers.activeListingId) {
+        blocked.push(garmentId);
+        continue;
+      }
+      await deleteGarment(garmentId);
+    }
+
+    revalidatePath("/wardrobe");
+
+    const deletedCount = values.garment_id.length - blocked.length;
+    return {
+      status: blocked.length ? "partial" : "success",
+      message: blocked.length
+        ? `${deletedCount} deleted. ${blocked.length} used elsewhere and were skipped.`
+        : `${deletedCount} item${deletedCount === 1 ? "" : "s"} deleted. You can restore from recently deleted.`
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to delete items."
+    };
+  }
+}
+
+/**
+ * 18a / w6c — "merge these two": the source's wear history moves to the
+ * target (wear_count/cost_per_wear are trigger-derived from wear_events,
+ * so reassigning wear_events.garment_id recomputes both automatically),
+ * then the source is soft-deleted with merged_into_id set for the audit trail.
+ */
+export async function mergeGarmentsAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = mergeGarmentsFormSchema.parse({
+      source_garment_id: formData.get("source_garment_id"),
+      target_garment_id: formData.get("target_garment_id")
+    });
+
+    await mergeGarments(values.source_garment_id, values.target_garment_id);
+    revalidatePath("/wardrobe");
+    revalidatePath(`/wardrobe/${values.target_garment_id}`);
+
+    return {
+      status: "success",
+      garmentId: values.target_garment_id,
+      message: "Merged into one piece."
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to merge these pieces."
+    };
+  }
+}
+
+export async function updateWearEventAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = updateWearEventFormSchema.parse({
+      wear_event_id: formData.get("wear_event_id"),
+      worn_at: formData.get("worn_at"),
+      occasion: formData.get("occasion"),
+      notes: formData.get("notes")
+    });
+
+    await updateWearEvent({
+      wearEventId: values.wear_event_id,
+      wornAt: values.worn_at ?? undefined,
+      occasion: values.occasion,
+      notes: values.notes
+    });
+    revalidatePath("/wardrobe");
+
+    return { status: "success", message: "Wear updated." };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to update that wear."
+    };
+  }
+}
+
+export async function deleteWearEventAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = deleteWearEventFormSchema.parse({
+      wear_event_id: formData.get("wear_event_id")
+    });
+
+    await deleteWearEvent(values.wear_event_id);
+    revalidatePath("/wardrobe");
+
+    return { status: "success", message: "Wear removed." };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to remove that wear."
+    };
+  }
+}
+
+export async function createCollectionAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = createCollectionFormSchema.parse({
+      name: formData.get("name"),
+      garment_id: formData.getAll("garment_id")
+    });
+
+    await createCollection({ name: values.name, garmentIds: values.garment_id });
+    revalidatePath("/wardrobe");
+
+    return { status: "success", message: "Collection created." };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to create the collection."
     };
   }
 }
@@ -932,7 +1142,7 @@ export async function archiveGarmentAction(
     return {
       status: "success",
       garmentId: values.garment_id,
-      message: "Let go — you can undo this from the wardrobe.",
+      message: "Let go. You can undo this from the wardrobe.",
       nextPath: "/wardrobe"
     };
   } catch (error) {

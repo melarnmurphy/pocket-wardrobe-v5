@@ -2,19 +2,49 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { AVAILABILITY_VALUES, LET_GO_REASON_VALUES } from "@/lib/domain/wardrobe";
-import { getGarmentById } from "@/lib/domain/wardrobe/service";
+import { canonicalWardrobeColours } from "@/lib/domain/wardrobe/colours";
+import { RECIPE_WARDROBE_CATEGORIES } from "@/lib/domain/trends/styling-recipe";
+import { getGarmentById, listWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import type { WardrobeActionState } from "@/lib/domain/wardrobe/action-state";
 import { AuthenticationError } from "@/lib/auth";
 import { AuthRequiredCard } from "@/components/auth-required-card";
-import { ArchiveControl, Chip, CutoutTile } from "@/components/garderobe";
+import { Chip, CutoutTile } from "@/components/garderobe";
+import { PricePanel } from "@/components/garderobe/wardrobe/price-panel";
 import {
+  DisposalControl,
+  FieldPickerControl,
+  MergeControl,
+  RecutControl,
+  WearHistorySection,
+  type GarmentFieldSnapshot
+} from "@/components/garderobe/wardrobe/piece-detail-panels";
+import {
+  addGarmentImageAction,
   addToLetGoAction,
   archiveGarmentAction,
+  deleteWearEventAction,
+  mergeGarmentsAction,
   removeFromLetGoAction,
   setAvailabilityAction,
   setPriceManuallyAction,
-  undoArchiveGarmentAction
+  undoArchiveGarmentAction,
+  updateGarmentAction,
+  updateWearEventAction
 } from "@/app/wardrobe/actions";
+
+const MATERIAL_OPTIONS = [
+  "cotton",
+  "linen",
+  "wool",
+  "silk",
+  "leather",
+  "denim",
+  "cashmere",
+  "polyester",
+  "synthetic blend"
+];
+
+const COLOUR_OPTIONS = canonicalWardrobeColours.map((colour) => colour.family);
 
 const PRICE_SOURCE_LABEL: Record<string, string> = {
   store: "from the store",
@@ -48,11 +78,6 @@ async function removeFromLetGoFormAction(formData: FormData): Promise<void> {
   await removeFromLetGoAction(idleState, formData);
 }
 
-async function setPriceFormAction(formData: FormData): Promise<void> {
-  "use server";
-  await setPriceManuallyAction(idleState, formData);
-}
-
 export default async function PieceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -62,11 +87,37 @@ export default async function PieceDetailPage({ params }: { params: Promise<{ id
       notFound();
     }
 
-    const priceText = formatMoney(garment.purchase_price, garment.purchase_currency);
     const costPerWearText = formatMoney(garment.cost_per_wear, garment.purchase_currency);
     const isArchived = Boolean(garment.archived_at);
     const isOnLetGoList = Boolean(garment.let_go_reason);
     const pieceName = garment.title || garment.category;
+
+    const fieldSnapshot: GarmentFieldSnapshot = {
+      garment_id: garment.id as string,
+      title: garment.title ?? null,
+      brand: garment.brand ?? null,
+      category: garment.category,
+      subcategory: garment.subcategory ?? null,
+      material: garment.material ?? null,
+      size: garment.size ?? null,
+      fit: garment.fit ?? null,
+      formality_level: garment.formality_level ?? null,
+      purchase_currency: garment.purchase_currency ?? null,
+      purchase_price: garment.purchase_price ?? null,
+      purchase_date: garment.purchase_date ?? null,
+      retailer: garment.retailer ?? null,
+      primary_colour_family: garment.primary_colour_family ?? null,
+      seasonality: garment.seasonality ?? []
+    };
+
+    const mergeTargets = isArchived
+      ? []
+      : (await listWardrobeGarments())
+          .filter((candidate) => candidate.id !== garment.id && !candidate.archived_at)
+          .map((candidate) => ({
+            id: candidate.id as string,
+            title: candidate.title || candidate.category
+          }));
 
     return (
       <div className="mx-auto max-w-[520px] px-5 py-6 pb-16">
@@ -86,28 +137,64 @@ export default async function PieceDetailPage({ params }: { params: Promise<{ id
         ) : null}
 
         <div className="mt-5 grid grid-cols-[140px_1fr] gap-5">
-          <CutoutTile
-            src={garment.preview_url}
-            alt={pieceName}
-            centre={garment.category === "shoes" || garment.category === "bags"}
-          />
+          <div>
+            <CutoutTile
+              src={garment.preview_url}
+              alt={pieceName}
+              centre={garment.category === "shoes" || garment.category === "bags"}
+            />
+            {!isArchived ? (
+              <div className="pt-2 text-center">
+                <RecutControl garmentId={garment.id as string} addImageAction={addGarmentImageAction} />
+              </div>
+            ) : null}
+          </div>
           <div>
             <h1 className="text-[30px] font-light leading-[1.05] text-[var(--ink)]">{pieceName}</h1>
-            <p className="pt-1.5 text-[12.5px] text-[var(--slate)]">
-              {[garment.category, garment.subcategory, garment.brand].filter(Boolean).join(" · ")}
-            </p>
-            <div className="pt-4">
-              <div className="text-[26px] font-light leading-[1.2] text-[var(--ink)]">
-                {priceText ?? (
-                  <span className="text-[var(--stone)]">add later</span>
-                )}
+            {garment.subcategory || garment.brand ? (
+              <p className="pt-1.5 text-[12.5px] text-[var(--slate)]">
+                {[garment.subcategory, garment.brand].filter(Boolean).join(" · ")}
+              </p>
+            ) : null}
+            {!isArchived ? (
+              <div className="flex flex-wrap gap-4 pt-3">
+                <FieldPickerControl
+                  label="category"
+                  field="category"
+                  value={garment.category}
+                  options={[...RECIPE_WARDROBE_CATEGORIES]}
+                  snapshot={fieldSnapshot}
+                  updateAction={updateGarmentAction}
+                />
+                <FieldPickerControl
+                  label="colour"
+                  field="primary_colour_family"
+                  value={garment.primary_colour_family ?? null}
+                  options={COLOUR_OPTIONS}
+                  snapshot={fieldSnapshot}
+                  updateAction={updateGarmentAction}
+                />
+                <FieldPickerControl
+                  label="fabric"
+                  field="material"
+                  value={garment.material ?? null}
+                  options={MATERIAL_OPTIONS}
+                  snapshot={fieldSnapshot}
+                  updateAction={updateGarmentAction}
+                />
               </div>
-              {costPerWearText ? (
-                <p className="pt-1 text-[11px] uppercase tracking-[.14em] text-[var(--stone)]">
-                  {costPerWearText} / wear
-                </p>
-              ) : null}
-            </div>
+            ) : (
+              <p className="pt-1.5 text-[12.5px] text-[var(--slate)]">
+                {[garment.category, garment.primary_colour_family, garment.material]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            )}
+            {costPerWearText ? (
+              <p className="pt-4 text-[11px] uppercase tracking-[.14em] text-[var(--stone)]">
+                {costPerWearText} / wear
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -145,34 +232,32 @@ export default async function PieceDetailPage({ params }: { params: Promise<{ id
           <p className="pb-3 text-[9px] font-semibold uppercase tracking-[.18em] text-[var(--stone)]">
             price
           </p>
-          <form action={setPriceFormAction} className="flex items-end gap-2">
-            <input type="hidden" name="garment_id" value={garment.id} />
-            <input type="hidden" name="currency" value={garment.purchase_currency ?? "AUD"} />
-            <label className="flex-1">
-              <span className="block pb-1 text-[11px] text-[var(--stone)]">amount, AUD</span>
-              <input
-                name="price"
-                type="number"
-                step="0.01"
-                min="0"
-                defaultValue={garment.purchase_price ?? ""}
-                placeholder="add later"
-                className="w-full rounded-[5px] border border-[rgba(30,26,23,.22)] bg-transparent px-3 py-2 text-[14px] text-[var(--ink)] outline-none placeholder:text-[var(--stone)]"
-              />
-            </label>
-            <button
-              type="submit"
-              className="h-[38px] rounded-[100px] border border-[rgba(30,26,23,.22)] px-4 text-[9px] font-semibold uppercase tracking-[.18em] text-[var(--ink)]"
-            >
-              save
-            </button>
-          </form>
+          <PricePanel
+            garmentId={garment.id as string}
+            currentPrice={garment.purchase_price ?? null}
+            currentCurrency={garment.purchase_currency ?? null}
+            mode="panel"
+            setPriceAction={setPriceManuallyAction}
+          />
           {garment.price_source ? (
             <p className="pt-2 text-[11px] text-[var(--stone)]">
               {PRICE_SOURCE_LABEL[garment.price_source] ?? garment.price_source}
             </p>
           ) : null}
         </section>
+
+        {garment.recent_wear_events.length ? (
+          <section className="mt-8 border-t border-[rgba(30,26,23,.14)] pt-6">
+            <p className="pb-3 text-[9px] font-semibold uppercase tracking-[.18em] text-[var(--stone)]">
+              recent wears
+            </p>
+            <WearHistorySection
+              wearEvents={garment.recent_wear_events}
+              updateAction={updateWearEventAction}
+              deleteAction={deleteWearEventAction}
+            />
+          </section>
+        ) : null}
 
         {!isArchived ? (
           <section className="mt-8 border-t border-[rgba(30,26,23,.14)] pt-6">
@@ -220,12 +305,22 @@ export default async function PieceDetailPage({ params }: { params: Promise<{ id
 
         {!isArchived ? (
           <section className="mt-8 border-t border-[rgba(30,26,23,.14)] pt-6">
-            <ArchiveControl
+            <DisposalControl
               garmentId={garment.id as string}
               pieceName={pieceName}
               archiveAction={archiveGarmentAction}
               undoAction={undoArchiveGarmentAction}
             />
+            {mergeTargets.length ? (
+              <div className="pt-4 text-center">
+                <MergeControl
+                  sourceGarmentId={garment.id as string}
+                  sourceTitle={pieceName}
+                  targets={mergeTargets}
+                  mergeAction={mergeGarmentsAction}
+                />
+              </div>
+            ) : null}
           </section>
         ) : null}
       </div>

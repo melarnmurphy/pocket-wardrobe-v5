@@ -89,3 +89,88 @@ describe("analyzePipelineAction", () => {
     expect(result.message).toContain("Premium feature");
   });
 });
+
+describe("deleteGarmentAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns status 'blocked' instead of deleting when the piece is used elsewhere", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/domain/wardrobe/service", async () => {
+      const actual = await vi.importActual("@/lib/domain/wardrobe/service");
+      return {
+        ...actual,
+        getGarmentUsageBlockers: vi.fn(async () => ({ activeOutfitCount: 2, activeListingId: null })),
+        deleteGarment: vi.fn()
+      };
+    });
+    const { deleteGarmentAction } = await import("@/app/wardrobe/actions");
+    const { deleteGarment } = await import("@/lib/domain/wardrobe/service");
+
+    const formData = new FormData();
+    formData.set("garment_id", "33333333-3333-3333-3333-333333333333");
+
+    const result = await deleteGarmentAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("blocked");
+    expect(result.blocked?.activeOutfitCount).toBe(2);
+    expect(deleteGarment).not.toHaveBeenCalled();
+    vi.doUnmock("@/lib/domain/wardrobe/service");
+  });
+});
+
+describe("bulkDeleteGarmentsAction", () => {
+  it("deletes every garment id it is given and reports the count", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/domain/wardrobe/service", async () => {
+      const actual = await vi.importActual("@/lib/domain/wardrobe/service");
+      return {
+        ...actual,
+        getGarmentUsageBlockers: vi.fn(async () => ({ activeOutfitCount: 0, activeListingId: null })),
+        deleteGarment: vi.fn(async () => {})
+      };
+    });
+    const { bulkDeleteGarmentsAction } = await import("@/app/wardrobe/actions");
+
+    const formData = new FormData();
+    formData.append("garment_id", "44444444-4444-4444-4444-444444444444");
+    formData.append("garment_id", "55555555-5555-5555-5555-555555555555");
+
+    const result = await bulkDeleteGarmentsAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("success");
+    expect(result.message).toContain("2");
+    vi.doUnmock("@/lib/domain/wardrobe/service");
+  });
+});
+
+describe("createCollectionAction", () => {
+  it("creates a collection with the given name and garment ids", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/domain/wardrobe/service", async () => {
+      const actual = await vi.importActual("@/lib/domain/wardrobe/service");
+      return { ...actual, createCollection: vi.fn(async () => ({ id: "collection-1" })) };
+    });
+    const { createCollectionAction } = await import("@/app/wardrobe/actions");
+
+    const formData = new FormData();
+    formData.set("name", "Capsule");
+    formData.append("garment_id", "88888888-8888-8888-8888-888888888888");
+
+    const result = await createCollectionAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("success");
+    vi.doUnmock("@/lib/domain/wardrobe/service");
+  });
+
+  it("rejects an empty name", async () => {
+    const { createCollectionAction } = await import("@/app/wardrobe/actions");
+    const formData = new FormData();
+    formData.set("name", "");
+
+    const result = await createCollectionAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("error");
+  });
+});

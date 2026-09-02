@@ -161,6 +161,30 @@ export type Database = {
         }
         Relationships: []
       }
+      collections: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       colour_relationships: {
         Row: {
           colour_id_a: string
@@ -262,6 +286,39 @@ export type Database = {
           undertone?: string | null
         }
         Relationships: []
+      }
+      garment_collections: {
+        Row: {
+          added_at: string
+          collection_id: string
+          garment_id: string
+        }
+        Insert: {
+          added_at?: string
+          collection_id: string
+          garment_id: string
+        }
+        Update: {
+          added_at?: string
+          collection_id?: string
+          garment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "garment_collections_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "garment_collections_garment_id_fkey"
+            columns: ["garment_id"]
+            isOneToOne: false
+            referencedRelation: "garments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       garment_colours: {
         Row: {
@@ -496,6 +553,7 @@ export type Database = {
           category: string
           cost_per_wear: number | null
           created_at: string
+          deleted_at: string | null
           description: string | null
           embedding: string | null
           extraction_metadata_json: Json
@@ -507,6 +565,7 @@ export type Database = {
           let_go_added_at: string | null
           let_go_estimate_cents: number | null
           let_go_reason: string | null
+          merged_into_id: string | null
           price_source: string | null
           material: string | null
           pattern: string | null
@@ -532,6 +591,7 @@ export type Database = {
           category: string
           cost_per_wear?: number | null
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           embedding?: string | null
           extraction_metadata_json?: Json
@@ -543,6 +603,7 @@ export type Database = {
           let_go_added_at?: string | null
           let_go_estimate_cents?: number | null
           let_go_reason?: string | null
+          merged_into_id?: string | null
           price_source?: string | null
           material?: string | null
           pattern?: string | null
@@ -568,6 +629,7 @@ export type Database = {
           category?: string
           cost_per_wear?: number | null
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           embedding?: string | null
           extraction_metadata_json?: Json
@@ -579,6 +641,7 @@ export type Database = {
           let_go_added_at?: string | null
           let_go_estimate_cents?: number | null
           let_go_reason?: string | null
+          merged_into_id?: string | null
           price_source?: string | null
           material?: string | null
           pattern?: string | null
@@ -596,7 +659,15 @@ export type Database = {
           wardrobe_status?: string
           wear_count?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "garments_merged_into_id_fkey"
+            columns: ["merged_into_id"]
+            isOneToOne: false
+            referencedRelation: "garments"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       local_listings: {
         Row: {

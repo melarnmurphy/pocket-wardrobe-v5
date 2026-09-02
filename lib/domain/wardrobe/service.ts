@@ -19,7 +19,7 @@ import {
   analyseImageColours,
   buildFeatureDerivative
 } from "@/lib/domain/wardrobe/image-analysis";
-import type { Database, TablesInsert } from "@/types/database";
+import type { Database, TablesInsert, TablesUpdate } from "@/types/database";
 
 type Json = Database["public"]["Tables"]["garments"]["Row"]["extraction_metadata_json"];
 type GarmentRow = Database["public"]["Tables"]["garments"]["Row"];
@@ -68,6 +68,7 @@ type Garment3dAssetRow = Database["public"]["Tables"]["garment_3d_assets"]["Row"
 type Garment3dAssetInsert = TablesInsert<"garment_3d_assets">;
 type GarmentSourceInsert = TablesInsert<"garment_sources">;
 type WearEventRow = Database["public"]["Tables"]["wear_events"]["Row"];
+type WearEventUpdate = TablesUpdate<"wear_events">;
 type GarmentFavouriteLookupRow = Pick<GarmentRow, "id" | "favourite_score">;
 
 const PRODUCT_IMAGE_FETCH_TIMEOUT_MS = 2500;
@@ -397,32 +398,16 @@ const GARMENT_LIST_SELECT =
   "garment_3d_assets(id,garment_id,asset_type,storage_path,file_format,material_profile_json,physics_profile_json,renderer_metadata_json,source_type,confidence,status,created_at,updated_at)," +
   "wear_events(id,garment_id,worn_at,occasion,notes)";
 
-export const listWardrobeGarments = cache(async (): Promise<GarmentListItem[]> => {
-  const user = await getRequiredUser();
-  const supabase = await createClient();
-
-  // Fetch the garments and all of their child rows (images, colour links + the
-  // joined colour, 3d assets, recent wears) in a single embedded request. The
-  // alternative — a base query followed by one query per child table — costs an
-  // extra sequential round-trip per child, which dominates page latency when the
-  // database is remote. Embedded resources are ordered individually below.
-  const { data: garments, error } = await supabase
-    .from("garments")
-    .select(GARMENT_LIST_SELECT)
-    .eq("user_id", user.id)
-    .is("archived_at", null)
-    .order("created_at", { ascending: false })
-    .order("created_at", { ascending: false, referencedTable: "garment_images" })
-    .order("is_primary", { ascending: false, referencedTable: "garment_colours" })
-    .order("dominance", { ascending: false, referencedTable: "garment_colours" })
-    .order("created_at", { ascending: false, referencedTable: "garment_3d_assets" })
-    .order("worn_at", { ascending: false, referencedTable: "wear_events" });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const rawRows = (garments ?? []) as Array<Record<string, unknown>>;
+/**
+ * Shared by listWardrobeGarments and listRecentlyDeletedGarments: turns the
+ * embedded GARMENT_LIST_SELECT rows (images, colour links + joined colour,
+ * 3d assets, recent wears) into fully hydrated GarmentListItem values,
+ * including the one remaining separate round-trip for signed preview URLs.
+ */
+async function hydrateGarmentListRows(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  rawRows: Array<Record<string, unknown>>
+): Promise<GarmentListItem[]> {
   const parsedGarments = z.array(garmentListItemSchema).parse(rawRows);
 
   if (!parsedGarments.length) {
@@ -508,6 +493,36 @@ export const listWardrobeGarments = cache(async (): Promise<GarmentListItem[]> =
       })()
     };
   });
+}
+
+export const listWardrobeGarments = cache(async (): Promise<GarmentListItem[]> => {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  // Fetch the garments and all of their child rows (images, colour links + the
+  // joined colour, 3d assets, recent wears) in a single embedded request. The
+  // alternative — a base query followed by one query per child table — costs an
+  // extra sequential round-trip per child, which dominates page latency when the
+  // database is remote. Embedded resources are ordered individually below.
+  const { data: garments, error } = await supabase
+    .from("garments")
+    .select(GARMENT_LIST_SELECT)
+    .eq("user_id", user.id)
+    .is("archived_at", null)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .order("created_at", { ascending: false, referencedTable: "garment_images" })
+    .order("is_primary", { ascending: false, referencedTable: "garment_colours" })
+    .order("dominance", { ascending: false, referencedTable: "garment_colours" })
+    .order("created_at", { ascending: false, referencedTable: "garment_3d_assets" })
+    .order("worn_at", { ascending: false, referencedTable: "wear_events" });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const rawRows = (garments ?? []) as Array<Record<string, unknown>>;
+  return hydrateGarmentListRows(supabase, rawRows);
 });
 
 export async function createGarment(
@@ -626,6 +641,7 @@ export async function updateGarment(
   };
 }
 
+/** 18b / w6c — soft delete: sets deleted_at so "recently deleted" can restore it. */
 export async function deleteGarment(garmentId: string) {
   const user = await getRequiredUser();
   const supabase = await createClient();
@@ -633,13 +649,212 @@ export async function deleteGarment(garmentId: string) {
 
   const { error } = await supabase
     .from("garments")
-    .delete()
+    .update(({ deleted_at: new Date().toISOString() } satisfies Partial<GarmentInsert>) as never)
     .eq("id", parsedId)
     .eq("user_id", user.id);
 
   if (error) {
     throw new Error(error.message);
   }
+}
+
+/** 18b / w6c — undoes deleteGarment from the "recently deleted" sheet. */
+export async function restoreGarment(garmentId: string) {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(garmentId);
+
+  const { error } = await supabase
+    .from("garments")
+    .update(({ deleted_at: null } satisfies Partial<GarmentInsert>) as never)
+    .eq("id", parsedId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+const RECENTLY_DELETED_RETENTION_DAYS = 30;
+
+/**
+ * 18b / w6c — the "recently deleted" sheet's list.
+ *
+ * Excludes merged-away pieces: mergeGarments soft-deletes the merge source
+ * (setting deleted_at) but also sets merged_into_id, and restoring one of
+ * those from here would clear deleted_at while leaving merged_into_id set
+ * and wear history/wear_count stale on a piece that no longer exists as a
+ * standalone entity, so those never appear as restorable.
+ *
+ * Also windowed to the last 30 days: nothing currently purges rows older
+ * than this cutoff, so that is tracked as separate follow-on infrastructure
+ * work, not implemented here.
+ */
+export async function listRecentlyDeletedGarments(): Promise<GarmentListItem[]> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const retentionCutoff = new Date(
+    Date.now() - RECENTLY_DELETED_RETENTION_DAYS * 24 * 60 * 60 * 1000
+  ).toISOString();
+
+  const { data, error } = await supabase
+    .from("garments")
+    .select(GARMENT_LIST_SELECT)
+    .eq("user_id", user.id)
+    .not("deleted_at", "is", null)
+    .is("merged_into_id", null)
+    .gte("deleted_at", retentionCutoff)
+    .order("deleted_at", { ascending: false })
+    .order("created_at", { ascending: false, referencedTable: "garment_images" })
+    .order("is_primary", { ascending: false, referencedTable: "garment_colours" })
+    .order("dominance", { ascending: false, referencedTable: "garment_colours" })
+    .order("created_at", { ascending: false, referencedTable: "garment_3d_assets" })
+    .order("worn_at", { ascending: false, referencedTable: "wear_events" });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const rawRows = (data ?? []) as Array<Record<string, unknown>>;
+  return hydrateGarmentListRows(supabase, rawRows);
+}
+
+/**
+ * 18b / w6c — "piece is used elsewhere, refuse and offer archive" reads
+ * this before delete/merge. An active outfit reference or a live local
+ * listing means delete should refuse and offer archive instead.
+ *
+ * local_listings' "still in progress" states are 'live', 'reserved', and
+ * 'handover arranged' — 'draft' has not been published yet, and 'sold',
+ * 'expired', 'withdrawn' are all terminal (see migration 029's check
+ * constraint on local_listings.status).
+ */
+export async function getGarmentUsageBlockers(
+  garmentId: string
+): Promise<{ activeOutfitCount: number; activeListingId: string | null }> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(garmentId);
+
+  const { count: outfitCount, error: outfitError } = await supabase
+    .from("outfit_items")
+    .select("id", { count: "exact", head: true })
+    .eq("garment_id", parsedId);
+
+  if (outfitError) {
+    throw new Error(outfitError.message);
+  }
+
+  const { data: listing, error: listingError } = await supabase
+    .from("local_listings")
+    .select("id")
+    .eq("piece_id", parsedId)
+    .eq("seller_id", user.id)
+    .in("status", ["live", "reserved", "handover arranged"])
+    .maybeSingle();
+
+  if (listingError) {
+    throw new Error(listingError.message);
+  }
+
+  return {
+    activeOutfitCount: outfitCount ?? 0,
+    activeListingId: (listing as { id: string } | null)?.id ?? null
+  };
+}
+
+/** 18a / w6c — moves wear_events to target, then soft-deletes source. */
+export async function mergeGarments(sourceGarmentId: string, targetGarmentId: string) {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedSource = z.string().uuid().parse(sourceGarmentId);
+  const parsedTarget = z.string().uuid().parse(targetGarmentId);
+
+  const { error: reassignError } = await supabase
+    .from("wear_events")
+    .update(({ garment_id: parsedTarget } satisfies Partial<WearEventUpdate>) as never)
+    .eq("garment_id", parsedSource)
+    .eq("user_id", user.id);
+
+  if (reassignError) {
+    throw new Error(reassignError.message);
+  }
+
+  const { error: deleteError } = await supabase
+    .from("garments")
+    .update(({
+      deleted_at: new Date().toISOString(),
+      merged_into_id: parsedTarget
+    } satisfies Partial<GarmentInsert>) as never)
+    .eq("id", parsedSource)
+    .eq("user_id", user.id);
+
+  if (deleteError) {
+    throw new Error(deleteError.message);
+  }
+}
+
+/** 18c / w6a — "new collection" sheet on the grid's select mode. */
+export async function createCollection(params: {
+  name: string;
+  kind?: "user" | "batch" | "packing";
+  garmentIds?: string[];
+}): Promise<{ id: string }> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const name = z.string().trim().min(1).max(120).parse(params.name);
+  const kind = z.enum(["user", "batch", "packing"]).default("user").parse(params.kind ?? "user");
+  const garmentIds = z.array(z.string().uuid()).default([]).parse(params.garmentIds ?? []);
+
+  const { data, error } = await supabase
+    .from("collections")
+    .insert(({ user_id: user.id, name, kind } satisfies Record<string, unknown>) as never)
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "Could not create collection.");
+  }
+
+  const collectionId = (data as { id: string }).id;
+
+  if (garmentIds.length) {
+    const rows = garmentIds.map((garmentId) => ({ collection_id: collectionId, garment_id: garmentId }));
+    const { error: linkError } = await supabase.from("garment_collections").insert(rows as never);
+    if (linkError) {
+      throw new Error(linkError.message);
+    }
+  }
+
+  return { id: collectionId };
+}
+
+/** 18c / w6a — collections list for the grid's collection picker/filter. */
+export async function listCollections(): Promise<
+  Array<{ id: string; name: string; kind: string; garmentIds: string[] }>
+> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("collections")
+    .select("id,name,kind,garment_collections(garment_id)")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).map((row) => {
+    const typed = row as { id: string; name: string; kind: string; garment_collections: Array<{ garment_id: string }> | null };
+    return {
+      id: typed.id,
+      name: typed.name,
+      kind: typed.kind,
+      garmentIds: (typed.garment_collections ?? []).map((link) => link.garment_id)
+    };
+  });
 }
 
 /** 11a — a single piece, including archived ones, with a signed hero image. */
@@ -653,6 +868,7 @@ export async function getGarmentById(garmentId: string): Promise<GarmentListItem
     .select(GARMENT_LIST_SELECT)
     .eq("id", parsedId)
     .eq("user_id", user.id)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (error) {
@@ -1185,11 +1401,13 @@ export async function getDashboardStats(): Promise<{
     supabase
       .from("garments")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id),
+      .eq("user_id", user.id)
+      .is("deleted_at", null),
     supabase
       .from("garments")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
+      .is("deleted_at", null)
       .gt("favourite_score", 0),
     supabase
       .from("garment_drafts")
@@ -1224,6 +1442,7 @@ export async function getRecentGarments(n: number): Promise<
     .from("garments")
     .select("id, title, category, garment_images(storage_path,image_type,width,height,created_at,id,garment_id)")
     .eq("user_id", user.id)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(n);
 

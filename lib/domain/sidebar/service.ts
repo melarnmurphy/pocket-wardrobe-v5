@@ -36,7 +36,8 @@ export async function getSidebarCounts(): Promise<SidebarCounts> {
       .from("garments")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .is("archived_at", null),
+      .is("archived_at", null)
+      .is("deleted_at", null),
     supabase.from("outfits").select("id", { count: "exact", head: true }).eq("user_id", user.id),
     supabase
       .from("lookbook_entries")
@@ -49,6 +50,7 @@ export async function getSidebarCounts(): Promise<SidebarCounts> {
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
       .is("archived_at", null)
+      .is("deleted_at", null)
       .not("let_go_reason", "is", null),
     supabase
       .from("threads")
