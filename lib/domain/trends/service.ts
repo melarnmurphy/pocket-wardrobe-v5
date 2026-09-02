@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { createHash } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import { getAccountProfile } from "@/lib/domain/account/service";
@@ -45,6 +46,22 @@ function buildGarmentEmbeddingText(garment: {
   return [garment.title, garment.category, garment.subcategory, garment.material, garment.fit, garment.primary_colour_family]
     .filter(Boolean)
     .join(" ");
+}
+
+// In-memory cache of semantic upgrades, keyed by userId + a fingerprint of the
+// garment set that produced them. Skips a fresh OpenAI embeddings call (and the
+// downstream match_trend_signals RPC) when a user's wardrobe hasn't changed
+// since it was last computed. Same per-process, resets-on-cold-start convention
+// as suggestionEmbeddingCache in lib/domain/style-rules/semantic-matching.ts.
+const semanticUpgradeCache = new Map<string, Promise<UserTrendMatch[]>>();
+
+function computeGarmentFingerprint(
+  garments: Array<{ id?: string; updated_at?: string | null }>
+): string {
+  const parts = garments
+    .map((g) => `${g.id ?? ""}:${g.updated_at ?? ""}`)
+    .sort();
+  return createHash("sha256").update(parts.join("|")).digest("hex");
 }
 
 // Compatible relationship types — excludes contrast/clash types like high_contrast, warm_cool_balance
@@ -214,7 +231,8 @@ async function getCompatibleColourFamilies(
 
 async function getSemanticUpgrades(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  garments: Array<{ id?: string; title?: string | null; category?: string | null; subcategory?: string | null; material?: string | null; fit?: string | null; primary_colour_family?: string | null }>,
+  userId: string,
+  garments: Array<{ id?: string; updated_at?: string | null; title?: string | null; category?: string | null; subcategory?: string | null; material?: string | null; fit?: string | null; primary_colour_family?: string | null }>,
   existingMatches: UserTrendMatch[]
 ): Promise<UserTrendMatch[]> {
   // Only upgrade signals currently classified as missing_piece
@@ -226,6 +244,26 @@ async function getSemanticUpgrades(
 
   if (missingPieceSignalIds.size === 0) return [];
 
+  const cacheKey = `${userId}:${computeGarmentFingerprint(garments)}:${[...missingPieceSignalIds].sort().join(",")}`;
+  const cached = semanticUpgradeCache.get(cacheKey);
+  if (cached) return cached;
+
+  const pending = computeSemanticUpgrades(supabase, garments, missingPieceSignalIds, existingMatches);
+  semanticUpgradeCache.set(cacheKey, pending);
+  try {
+    return await pending;
+  } catch (error) {
+    semanticUpgradeCache.delete(cacheKey);
+    throw error;
+  }
+}
+
+async function computeSemanticUpgrades(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  garments: Array<{ id?: string; updated_at?: string | null; title?: string | null; category?: string | null; subcategory?: string | null; material?: string | null; fit?: string | null; primary_colour_family?: string | null }>,
+  missingPieceSignalIds: Set<string>,
+  existingMatches: UserTrendMatch[]
+): Promise<UserTrendMatch[]> {
   const env = getServerEnv();
   const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
@@ -335,7 +373,7 @@ export async function getUserTrendMatches(userId: string): Promise<UserTrendMatc
   });
   const matchesWithUser = matches.map((m) => ({ ...m, user_id: userId }));
 
-  const semanticUpgrades = await getSemanticUpgrades(supabase, garments, matchesWithUser);
+  const semanticUpgrades = await getSemanticUpgrades(supabase, userId, garments, matchesWithUser);
   const finalMatches = mergeMatches(matchesWithUser, semanticUpgrades);
 
   await upsertUserTrendMatches(userId, finalMatches);

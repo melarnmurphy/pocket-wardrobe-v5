@@ -50,7 +50,7 @@ STYLES    = ["casual", "formal", "smart-casual", "sporty", "streetwear", "busine
     image=image,
     gpu="T4",                        # swap to "A10G" for faster inference
     volumes={CACHE_DIR: model_cache},
-    scaledown_window=120,            # keep warm for 2 min between requests
+    scaledown_window=20,             # keep warm briefly between requests; longer windows bill idle GPU time (caused a prior billing incident)
     timeout=60,
 )
 class FashionPipeline:
