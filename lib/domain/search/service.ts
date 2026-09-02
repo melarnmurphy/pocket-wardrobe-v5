@@ -37,6 +37,7 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
       .select("id,title,category")
       .eq("user_id", user.id)
       .is("archived_at", null)
+      .is("deleted_at", null)
       .or(`title.ilike.${like},category.ilike.${like},brand.ilike.${like}`)
       .limit(6),
     supabase

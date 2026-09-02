@@ -675,16 +675,35 @@ export async function restoreGarment(garmentId: string) {
   }
 }
 
-/** 18b / w6c — the "recently deleted" sheet's list. */
+const RECENTLY_DELETED_RETENTION_DAYS = 30;
+
+/**
+ * 18b / w6c — the "recently deleted" sheet's list.
+ *
+ * Excludes merged-away pieces: mergeGarments soft-deletes the merge source
+ * (setting deleted_at) but also sets merged_into_id, and restoring one of
+ * those from here would clear deleted_at while leaving merged_into_id set
+ * and wear history/wear_count stale on a piece that no longer exists as a
+ * standalone entity, so those never appear as restorable.
+ *
+ * Also windowed to the last 30 days: nothing currently purges rows older
+ * than this cutoff, so that is tracked as separate follow-on infrastructure
+ * work, not implemented here.
+ */
 export async function listRecentlyDeletedGarments(): Promise<GarmentListItem[]> {
   const user = await getRequiredUser();
   const supabase = await createClient();
+  const retentionCutoff = new Date(
+    Date.now() - RECENTLY_DELETED_RETENTION_DAYS * 24 * 60 * 60 * 1000
+  ).toISOString();
 
   const { data, error } = await supabase
     .from("garments")
     .select(GARMENT_LIST_SELECT)
     .eq("user_id", user.id)
     .not("deleted_at", "is", null)
+    .is("merged_into_id", null)
+    .gte("deleted_at", retentionCutoff)
     .order("deleted_at", { ascending: false })
     .order("created_at", { ascending: false, referencedTable: "garment_images" })
     .order("is_primary", { ascending: false, referencedTable: "garment_colours" })
@@ -1382,11 +1401,13 @@ export async function getDashboardStats(): Promise<{
     supabase
       .from("garments")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id),
+      .eq("user_id", user.id)
+      .is("deleted_at", null),
     supabase
       .from("garments")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
+      .is("deleted_at", null)
       .gt("favourite_score", 0),
     supabase
       .from("garment_drafts")
@@ -1421,6 +1442,7 @@ export async function getRecentGarments(n: number): Promise<
     .from("garments")
     .select("id, title, category, garment_images(storage_path,image_type,width,height,created_at,id,garment_id)")
     .eq("user_id", user.id)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(n);
 

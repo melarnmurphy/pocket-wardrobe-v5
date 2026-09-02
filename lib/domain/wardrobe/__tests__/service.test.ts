@@ -45,10 +45,12 @@ describe("getDashboardStats", () => {
       garmentCallCount++;
       const selectResult =
         garmentCallCount === 1
-          ? { eq: mockCountResult(42) }
+          ? { eq: vi.fn().mockReturnValue({ is: mockCountResult(42) }) }
           : {
               eq: vi.fn().mockReturnValue({
-                gt: mockCountResult(8),
+                is: vi.fn().mockReturnValue({
+                  gt: mockCountResult(8),
+                }),
               }),
             };
       return { select: vi.fn().mockReturnValue(selectResult) };
@@ -79,8 +81,14 @@ describe("getDashboardStats", () => {
       garmentCallCount++;
       const selectResult =
         garmentCallCount === 1
-          ? { eq: vi.fn().mockResolvedValue({ count: null, error: null }) }
-          : { eq: vi.fn().mockReturnValue({ gt: vi.fn().mockResolvedValue({ count: null, error: null }) }) };
+          ? { eq: vi.fn().mockReturnValue({ is: vi.fn().mockResolvedValue({ count: null, error: null }) }) }
+          : {
+              eq: vi.fn().mockReturnValue({
+                is: vi.fn().mockReturnValue({
+                  gt: vi.fn().mockResolvedValue({ count: null, error: null }),
+                }),
+              }),
+            };
       return { select: vi.fn().mockReturnValue(selectResult) };
     });
     draftsCountBuilder = vi.fn(() => ({
@@ -114,8 +122,10 @@ describe("getRecentGarments", () => {
     recentGarmentsBuilder = vi.fn(() => ({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
-          order: vi.fn().mockReturnValue({
-            limit: limitSpy,
+          is: vi.fn().mockReturnValue({
+            order: vi.fn().mockReturnValue({
+              limit: limitSpy,
+            }),
           }),
         }),
       }),
