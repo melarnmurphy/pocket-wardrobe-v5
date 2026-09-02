@@ -19,7 +19,7 @@ import {
   analyseImageColours,
   buildFeatureDerivative
 } from "@/lib/domain/wardrobe/image-analysis";
-import type { Database, TablesInsert } from "@/types/database";
+import type { Database, TablesInsert, TablesUpdate } from "@/types/database";
 
 type Json = Database["public"]["Tables"]["garments"]["Row"]["extraction_metadata_json"];
 type GarmentRow = Database["public"]["Tables"]["garments"]["Row"];
@@ -68,6 +68,7 @@ type Garment3dAssetRow = Database["public"]["Tables"]["garment_3d_assets"]["Row"
 type Garment3dAssetInsert = TablesInsert<"garment_3d_assets">;
 type GarmentSourceInsert = TablesInsert<"garment_sources">;
 type WearEventRow = Database["public"]["Tables"]["wear_events"]["Row"];
+type WearEventUpdate = TablesUpdate<"wear_events">;
 type GarmentFavouriteLookupRow = Pick<GarmentRow, "id" | "favourite_score">;
 
 const PRODUCT_IMAGE_FETCH_TIMEOUT_MS = 2500;
@@ -741,6 +742,37 @@ export async function getGarmentUsageBlockers(
     activeOutfitCount: outfitCount ?? 0,
     activeListingId: (listing as { id: string } | null)?.id ?? null
   };
+}
+
+/** 18a / w6c — moves wear_events to target, then soft-deletes source. */
+export async function mergeGarments(sourceGarmentId: string, targetGarmentId: string) {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedSource = z.string().uuid().parse(sourceGarmentId);
+  const parsedTarget = z.string().uuid().parse(targetGarmentId);
+
+  const { error: reassignError } = await supabase
+    .from("wear_events")
+    .update(({ garment_id: parsedTarget } satisfies Partial<WearEventUpdate>) as never)
+    .eq("garment_id", parsedSource)
+    .eq("user_id", user.id);
+
+  if (reassignError) {
+    throw new Error(reassignError.message);
+  }
+
+  const { error: deleteError } = await supabase
+    .from("garments")
+    .update(({
+      deleted_at: new Date().toISOString(),
+      merged_into_id: parsedTarget
+    } satisfies Partial<GarmentInsert>) as never)
+    .eq("id", parsedSource)
+    .eq("user_id", user.id);
+
+  if (deleteError) {
+    throw new Error(deleteError.message);
+  }
 }
 
 /** 11a — a single piece, including archived ones, with a signed hero image. */

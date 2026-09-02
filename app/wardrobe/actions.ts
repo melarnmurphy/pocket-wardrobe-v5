@@ -11,7 +11,10 @@ import {
   addGarmentToLetGo,
   archiveGarment,
   deleteGarment,
+  getGarmentUsageBlockers,
+  mergeGarments,
   removeGarmentFromLetGo,
+  restoreGarment,
   setGarmentAvailability,
   setGarmentPriceManually,
   unarchiveGarment,
@@ -156,6 +159,15 @@ const logWearFormSchema = z.object({
 
 const deleteGarmentFormSchema = z.object({
   garment_id: z.string().uuid()
+});
+
+const bulkGarmentIdsFormSchema = z.object({
+  garment_id: z.array(z.string().uuid()).min(1)
+});
+
+const mergeGarmentsFormSchema = z.object({
+  source_garment_id: z.string().uuid(),
+  target_garment_id: z.string().uuid()
 });
 
 const setAvailabilityFormSchema = z.object({
@@ -813,17 +825,121 @@ export async function deleteGarmentAction(
       garment_id: formData.get("garment_id")
     });
 
+    const blockers = await getGarmentUsageBlockers(values.garment_id);
+    if (blockers.activeOutfitCount > 0 || blockers.activeListingId) {
+      return {
+        status: "blocked",
+        garmentId: values.garment_id,
+        message: "This piece is used elsewhere. Archive it instead of deleting it.",
+        blocked: blockers
+      };
+    }
+
     await deleteGarment(values.garment_id);
     revalidatePath("/wardrobe");
 
     return {
       status: "success",
-      message: "Item deleted."
+      message: "Item deleted — you can restore it from recently deleted."
     };
   } catch (error) {
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Unable to delete item."
+    };
+  }
+}
+
+export async function restoreGarmentAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = deleteGarmentFormSchema.parse({
+      garment_id: formData.get("garment_id")
+    });
+
+    await restoreGarment(values.garment_id);
+    revalidatePath("/wardrobe");
+
+    return {
+      status: "success",
+      garmentId: values.garment_id,
+      message: "Restored to the wardrobe."
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to restore item."
+    };
+  }
+}
+
+export async function bulkDeleteGarmentsAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = bulkGarmentIdsFormSchema.parse({
+      garment_id: formData.getAll("garment_id")
+    });
+
+    const blocked: string[] = [];
+    for (const garmentId of values.garment_id) {
+      const blockers = await getGarmentUsageBlockers(garmentId);
+      if (blockers.activeOutfitCount > 0 || blockers.activeListingId) {
+        blocked.push(garmentId);
+        continue;
+      }
+      await deleteGarment(garmentId);
+    }
+
+    revalidatePath("/wardrobe");
+
+    const deletedCount = values.garment_id.length - blocked.length;
+    return {
+      status: blocked.length ? "partial" : "success",
+      message: blocked.length
+        ? `${deletedCount} deleted. ${blocked.length} used elsewhere and were skipped.`
+        : `${deletedCount} item${deletedCount === 1 ? "" : "s"} deleted — you can restore from recently deleted.`
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to delete items."
+    };
+  }
+}
+
+/**
+ * 18a / w6c — "merge these two": the source's wear history moves to the
+ * target (wear_count/cost_per_wear are trigger-derived from wear_events,
+ * so reassigning wear_events.garment_id recomputes both automatically),
+ * then the source is soft-deleted with merged_into_id set for the audit trail.
+ */
+export async function mergeGarmentsAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = mergeGarmentsFormSchema.parse({
+      source_garment_id: formData.get("source_garment_id"),
+      target_garment_id: formData.get("target_garment_id")
+    });
+
+    await mergeGarments(values.source_garment_id, values.target_garment_id);
+    revalidatePath("/wardrobe");
+    revalidatePath(`/wardrobe/${values.target_garment_id}`);
+
+    return {
+      status: "success",
+      garmentId: values.target_garment_id,
+      message: "Merged into one piece."
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to merge these pieces."
     };
   }
 }

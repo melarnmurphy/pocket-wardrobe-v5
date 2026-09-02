@@ -6,7 +6,9 @@ export function FormFeedback({
   state,
   className = "mt-4"
 }: {
-  state: FormActionState | { status: "idle" | "success" | "error" | "partial"; message: string | null };
+  state:
+    | FormActionState
+    | { status: "idle" | "success" | "error" | "partial" | "blocked"; message: string | null };
   className?: string;
 }) {
   if (!state.message) {
@@ -16,7 +18,7 @@ export function FormFeedback({
   return (
     <p
       className={`${className} rounded-[1rem] border px-4 py-3 text-sm ${
-        state.status === "error" || state.status === "partial"
+        state.status === "error" || state.status === "partial" || state.status === "blocked"
           ? "border-red-200 bg-red-50 text-red-700"
           : "border-[var(--line)] bg-[rgba(255,255,255,0.82)] text-[var(--muted)]"
       }`}
