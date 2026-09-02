@@ -11,6 +11,7 @@ import { RecutSheet } from "./recut-sheet";
 import { WearCorrectionSheet } from "./wear-correction-sheet";
 import { PickerSheet } from "./picker-sheet";
 import { MergeDialog } from "./merge-dialog";
+import { SeasonalStorageDialog } from "./seasonal-storage-dialog";
 
 type ActionFn = (state: WardrobeActionState, formData: FormData) => Promise<WardrobeActionState>;
 
@@ -77,6 +78,80 @@ export function DisposalControl({ garmentId, pieceName, archiveAction, undoActio
         pieceName={pieceName}
         undoAction={undoAction}
       />
+    </>
+  );
+}
+
+type SeasonalStorageControlProps = {
+  garmentId: string;
+  pieceName: string;
+  stored: boolean;
+  setSeasonalStorageAction: ActionFn;
+};
+
+const idleSeasonalStorageState: WardrobeActionState = { status: "idle", message: null };
+
+/**
+ * Retire / store for the season — designed here (see the plan's ambiguity
+ * note): storing asks one confirming question via SeasonalStorageDialog;
+ * un-storing is a single reversing tap with no dialog, since it only ever
+ * restores the default state.
+ */
+export function SeasonalStorageControl({
+  garmentId,
+  pieceName,
+  stored,
+  setSeasonalStorageAction
+}: SeasonalStorageControlProps) {
+  const [open, setOpen] = useState(false);
+  const [state, formAction] = useActionState(setSeasonalStorageAction, idleSeasonalStorageState);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (state.status === "success") {
+      router.refresh();
+    }
+  }, [state.status, router]);
+
+  if (stored) {
+    return (
+      <form action={formAction}>
+        <input type="hidden" name="garment_id" value={garmentId} />
+        <input type="hidden" name="stored" value="false" />
+        <PillButton type="submit" variant="secondary">
+          bring it back
+        </PillButton>
+        {state.status === "error" ? (
+          <p className="pt-1 text-[11px] text-[var(--oxblood)]">{state.message}</p>
+        ) : null}
+      </form>
+    );
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-[12.5px] text-[var(--oxblood)] underline"
+      >
+        store for the season
+      </button>
+      <SeasonalStorageDialog
+        open={open}
+        pieceName={pieceName}
+        onClose={() => setOpen(false)}
+        onConfirm={() => {
+          setOpen(false);
+          const formData = new FormData();
+          formData.set("garment_id", garmentId);
+          formData.set("stored", "true");
+          formAction(formData);
+        }}
+      />
+      {state.status === "error" ? (
+        <p className="pt-1 text-[11px] text-[var(--oxblood)]">{state.message}</p>
+      ) : null}
     </>
   );
 }

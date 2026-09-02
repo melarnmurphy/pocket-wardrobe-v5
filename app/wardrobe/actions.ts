@@ -18,6 +18,7 @@ import {
   restoreGarment,
   setGarmentAvailability,
   setGarmentPriceManually,
+  setGarmentSeasonalStorage,
   unarchiveGarment,
   setGarmentFeatureImage,
   setGarmentPrimaryColourFamily,
@@ -195,6 +196,11 @@ const createCollectionFormSchema = z.object({
 const setAvailabilityFormSchema = z.object({
   garment_id: z.string().uuid(),
   availability: availabilitySchema
+});
+
+const setSeasonalStorageFormSchema = z.object({
+  garment_id: z.string().uuid(),
+  stored: z.enum(["true", "false"])
 });
 
 const addToLetGoFormSchema = z.object({
@@ -1061,6 +1067,36 @@ export async function setAvailabilityAction(
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Unable to update availability."
+    };
+  }
+}
+
+export async function setSeasonalStorageAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = setSeasonalStorageFormSchema.parse({
+      garment_id: formData.get("garment_id"),
+      stored: formData.get("stored")
+    });
+    const stored = values.stored === "true";
+
+    await setGarmentSeasonalStorage(values.garment_id, stored);
+    revalidatePath("/wardrobe");
+    revalidatePath(`/wardrobe/${values.garment_id}`);
+
+    return {
+      status: "success",
+      garmentId: values.garment_id,
+      message: stored
+        ? "Stored for the season. It still counts in your wardrobe."
+        : "Back in the everyday wardrobe."
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to update seasonal storage."
     };
   }
 }

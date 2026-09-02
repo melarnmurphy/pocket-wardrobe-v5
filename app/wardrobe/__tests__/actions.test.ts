@@ -174,3 +174,51 @@ describe("createCollectionAction", () => {
     expect(result.status).toBe("error");
   });
 });
+
+describe("setSeasonalStorageAction", () => {
+  it("stores a piece for the season", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/domain/wardrobe/service", async () => {
+      const actual = await vi.importActual("@/lib/domain/wardrobe/service");
+      return { ...actual, setGarmentSeasonalStorage: vi.fn(async () => {}) };
+    });
+    const { setSeasonalStorageAction } = await import("@/app/wardrobe/actions");
+    const { setGarmentSeasonalStorage } = await import("@/lib/domain/wardrobe/service");
+
+    const formData = new FormData();
+    formData.set("garment_id", "66666666-6666-6666-6666-666666666666");
+    formData.set("stored", "true");
+
+    const result = await setSeasonalStorageAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("success");
+    expect(setGarmentSeasonalStorage).toHaveBeenCalledWith(
+      "66666666-6666-6666-6666-666666666666",
+      true
+    );
+    vi.doUnmock("@/lib/domain/wardrobe/service");
+  });
+
+  it("brings a piece back from seasonal storage", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/domain/wardrobe/service", async () => {
+      const actual = await vi.importActual("@/lib/domain/wardrobe/service");
+      return { ...actual, setGarmentSeasonalStorage: vi.fn(async () => {}) };
+    });
+    const { setSeasonalStorageAction } = await import("@/app/wardrobe/actions");
+    const { setGarmentSeasonalStorage } = await import("@/lib/domain/wardrobe/service");
+
+    const formData = new FormData();
+    formData.set("garment_id", "66666666-6666-6666-6666-666666666666");
+    formData.set("stored", "false");
+
+    const result = await setSeasonalStorageAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("success");
+    expect(setGarmentSeasonalStorage).toHaveBeenCalledWith(
+      "66666666-6666-6666-6666-666666666666",
+      false
+    );
+    vi.doUnmock("@/lib/domain/wardrobe/service");
+  });
+});
