@@ -5,6 +5,8 @@ import {
   signInWithPasswordAction,
   signUpWithPasswordAction
 } from "@/app/auth/actions";
+import { ResetSentDialog } from "@/components/garderobe/auth/reset-sent-dialog";
+import { EmailTakenDialog } from "@/components/garderobe/auth/email-taken-dialog";
 
 export default async function SignInPage({
   searchParams
@@ -15,9 +17,13 @@ export default async function SignInPage({
     email?: string;
     error?: string;
     notice?: string;
+    resetSent?: string;
+    duplicate?: string;
   }>;
 }) {
   const params = await searchParams;
+  const resetSent = params.resetSent === "1";
+  const duplicate = params.duplicate === "1";
   const next = params.next && params.next.startsWith("/") ? params.next : "/onboarding";
   const email = params.email ?? "";
   const mode =
@@ -225,6 +231,10 @@ export default async function SignInPage({
           </div>
         </aside>
       </section>
+      {resetSent ? (
+        <ResetSentDialog email={email} next={next} resendAction={sendPasswordResetAction} />
+      ) : null}
+      {duplicate ? <EmailTakenDialog email={email} signInHref={signInHref} /> : null}
     </main>
   );
 }
