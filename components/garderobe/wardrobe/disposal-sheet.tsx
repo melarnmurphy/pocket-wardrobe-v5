@@ -60,7 +60,9 @@ export function DisposalSheet({
         <input type="hidden" name="garment_id" value={garmentId} />
         {DISPOSAL_REASONS.map((reason, index) => (
           <button key={reason} type="submit" name="reason" value={reason} className="w-full text-left">
-            <SheetAction last={index === DISPOSAL_REASONS.length - 1}>{reason}</SheetAction>
+            <SheetAction as="span" last={index === DISPOSAL_REASONS.length - 1}>
+              {reason}
+            </SheetAction>
           </button>
         ))}
       </form>
