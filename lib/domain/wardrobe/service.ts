@@ -859,6 +859,51 @@ export async function listCollections(): Promise<
   });
 }
 
+/**
+ * Rename a collection (missing from MODALS.md §2 — "new collection" is
+ * drawn at 18c, rename/delete are not). A single text edit, so its UI is a
+ * sheet like NewCollectionSheet, not a dialog.
+ */
+export async function renameCollection(params: { collectionId: string; name: string }): Promise<void> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const collectionId = z.string().uuid().parse(params.collectionId);
+  const name = z.string().trim().min(1).max(120).parse(params.name);
+
+  const { error } = await supabase
+    .from("collections")
+    .update(({ name } satisfies Record<string, unknown>) as never)
+    .eq("id", collectionId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/**
+ * Delete a collection (missing from MODALS.md §2). Only removes the
+ * collections row — garment_collections links cascade (migration 035) but
+ * garments themselves are never touched, so this never removes a piece from
+ * the wardrobe. Destructive but cheap: names that consequence plainly in
+ * the confirming dialog rather than treating it as a warning.
+ */
+export async function deleteCollection(collectionId: string): Promise<void> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(collectionId);
+
+  const { error } = await supabase
+    .from("collections")
+    .delete()
+    .eq("id", parsedId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 /** 11a — a single piece, including archived ones, with a signed hero image. */
 export async function getGarmentById(garmentId: string): Promise<GarmentListItem | null> {
   const user = await getRequiredUser();
