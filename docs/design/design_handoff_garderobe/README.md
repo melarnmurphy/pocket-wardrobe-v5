@@ -6,10 +6,14 @@ cost, how often it has been worn, and what it is worth now. From that it answers
 what to wear today, whether a trend is already covered by what you own, which pieces are
 expensive per wear, and what to let go of.
 
-This bundle covers the full designed surface: 60 phone screens across 17 turns, 17 desktop
+This bundle covers the full designed surface: 60 phone screens across 18 turns, 31 desktop
 screens, 3 clickable prototypes, a style sheet, an illustration spec, and the garment-split
 pipeline spec. The data model is in `DATA_MODEL.md`, the endpoint-per-screen contract in
-`API_CONTRACT.md`, and the sequence to build them in `BUILD_ORDER.md`.
+`API_CONTRACT.md`, the dialog inventory in `MODALS.md`, and the sequence to build them in
+`BUILD_ORDER.md`.
+
+`MODALS.md` matters more than its length suggests: roughly forty dialogs the product needs are
+not drawn, including most of the destructive ones in the wardrobe.
 
 **Read `BUILD_ORDER.md` first.** Its phase 0 lists three things in the repo that contradict these
 designs — the style guide's palette and fonts, an MVP non-goal that rules out the marketplace, and
@@ -34,7 +38,7 @@ state patterns.
 
 Each HTML file is a canvas of many screens side by side. Screens carry stable ids (`14a`, `w1d`)
 that this README and `DATA_MODEL.md` refer to. Open a file in a browser and use the id anchors
-(e.g. `Pocket Wardrobe.dc.html#15a`) to jump to a screen.
+(e.g. `Garderobe Phone.dc.html#15a`) to jump to a screen.
 
 ## Fidelity
 **High fidelity.** Colours, type, spacing, copy and component states are final and should be
@@ -110,12 +114,16 @@ processing rings). Nothing else animates. No parallax, no springs.
 
 ## Screen inventory
 
-### Phone — `Pocket Wardrobe.dc.html`
+### Phone — `Garderobe Phone.dc.html`
 Newest turn first in the file. Each screen is a phone frame; most sit beside a dark column
 holding that screen's modals, sheets and toasts.
 
 | id | screen |
 | --- | --- |
+| 18a | Price and provenance · merge duplicates · disposal · wear correction |
+| 18b | Deletes that refuse · unsaved changes · recently deleted · archive toast |
+| 18c | Select mode · delete 12 · new collection · sort |
+| 18d | Recut the photo · fabric picker |
 | 17a | You — details, sizes, and what other people see |
 | 16a | Nearby — what's for sale within 30 km |
 | 16b | A listing — the seller's own lookbook photos |
@@ -147,6 +155,20 @@ holding that screen's modals, sheets and toasts.
 ### Desktop — `Garderobe Web.dc.html`
 | id | screen |
 | --- | --- |
+| w7a | How it works — three steps under "wear more. waste less." |
+| w7b | Nearby — browsable signed out, wear counts attached |
+| w7c | Pricing — free wardrobe, plus at A$69 a year |
+| w7d | Local threads dialogs — safety brief, age check, decline, reschedule, no-show, report, block |
+| w7e | Account and data dialogs — sign out, delete photos, close account, card declined, export ready |
+| w7f | Plus on desktop — an interrupt over the blurred let-go list |
+| w6a | Wardrobe in select mode — bulk bar, delete N with its cost named |
+| w6b | Piece detail — price and fabric as a persistent side panel |
+| w6c | Wardrobe dialogs — refuse-and-archive, merge, recut, recently deleted, disposal, unsaved changes |
+| w5a | Homepage — signed out, garments on a rail |
+| w5b | Sign in — cold device, nothing personal on screen |
+| w5c | Welcome back — recognised device, name and avatar only |
+| w5d | Start your wardrobe — account, then straight into intake |
+| w5e | Homepage v2 — rail as live local listings, planner shown below the fold |
 | w4a–w4c | Onboarding — three steps, resumable, shared with the phone |
 | w3a | Wishlist |
 | w3b | Sources — receipts, dockets, resale accounts |
@@ -172,7 +194,7 @@ Phone-only by design: the in-store scan (8a), the share-a-look story canvas (6c)
 ### Prototypes (interactive)
 - `Garderobe Prototype - Add a Look v2.dc.html` — the add-a-look flow on real modals.
 - `Garderobe Cut-outs.dc.html` — press and hold a garment to lift it out of a photo.
-- `Pocket Wardrobe.dc.html#1e` — the filter sheet: section headers, checkboxes, swatches, sort.
+- `Garderobe Phone.dc.html#1e` — the filter sheet: section headers, checkboxes, swatches, sort.
 
 ### Specs
 - `Garderobe Style Sheet.dc.html` — colour, type, spacing, component states in one sheet.
@@ -302,15 +324,29 @@ screen-to-entity map.
 ## What is not designed, and needs a decision
 Not gaps in the mockups — things a build agent will otherwise invent:
 
-- **Sign-in and sign-up.** `app/auth/*` exists but is styled to the old palette.
-- **Error, empty and offline states** for most screens. `API_CONTRACT.md` sets the rules; the
-  specific copy is unwritten.
-- **Permission prompts** — photos, location, notifications.
-- **Trust and safety** beyond block and report: moderation queue, meeting-place guidance,
-  under-18 handling. A local marketplace needs a position on all three before launch.
-- **Legal pages** — terms, privacy, the marketplace disclaimer that no money moves through the app.
-- **Where trend data comes from.** The trend tables exist and are richly modelled; the ingestion
-  sources are a separate question.
+**Settle before writing code**
+- **Plus scope.** w7c's pricing copy claims plus helps you decide "what to wear, keep and buy
+  next", but wear planning, looks and cost per wear are all free in the drawn tiers. A dashed
+  placeholder note sits on the screen. Fix the scope, then the copy.
+- **Price conflict.** w3e's plan card says A$49; w7c and the phone paywall say A$69 a year with
+  A$9.90 monthly. One is stale.
+- The three phase 0 conflicts in `BUILD_ORDER.md` (style guide, MVP scope, `garment_sources`).
+
+**Still undesigned**
+- **Empty, loading, offline and error states.** Every screen in this bundle is drawn full and
+  happy. No empty wardrobe, no zero nearby results, no skeletons, no offline bar, no 404, no
+  focus rings. This is the largest remaining gap on both platforms.
+- **Auth failure states** — wrong password, reset sent, email already has a wardrobe, handle
+  taken, signed in elsewhere. See `MODALS.md` § 6.
+- **Intake modals** — photo library permission, notification permission, upload failed,
+  ambiguous receipt, disconnect a resale account. `MODALS.md` § 3.
+- **Collections** — rename and delete. `MODALS.md` § 2.
+- **Legal pages** — privacy, terms, contact. Linked from every marketing footer, none drawn.
+- **Responsive behaviour.** Every desktop frame is 1440 wide. Nothing defines 1280, tablet, or
+  what the marketing pages do when they scroll rather than fit a fixed window.
+- **Moderation queue** for what `reportListing` and `blockUser` produce. The user-facing report
+  dialog is drawn (w7d); the staff side is not.
+- **Icon set and a vector logo.** The mark is CSS boxes in the mockups — rebuild as a vector.
 
 ## Assets
 - `cutouts/` — 13 transparent PNG garment cut-outs used throughout the mockups. They stand in for
@@ -330,9 +366,10 @@ Not gaps in the mockups — things a build agent will otherwise invent:
 | --- | --- |
 | `BUILD_ORDER.md` | **start here** — phases, dependencies, acceptance criteria, standing rules |
 | `API_CONTRACT.md` | endpoint and server action per screen, in the repo's idiom |
+| `MODALS.md` | every dialog, sheet and toast — what is drawn, and the 40-odd that are not |
 | `DATA_MODEL.md` | entities, fields, invariants, screen-to-entity map, mapping onto the real Supabase schema |
-| `Pocket Wardrobe.dc.html` | all phone screens, turns 1–17 |
-| `Garderobe Web.dc.html` | desktop screens w1–w4 |
+| `Garderobe Phone.dc.html` | all phone screens, turns 1–17 |
+| `Garderobe Web.dc.html` | desktop screens w1–w7: app, marketing, auth, and every dialog |
 | `Garderobe Style Sheet.dc.html` | style sheet |
 | `Garderobe Prototype - Add a Look v2.dc.html` | clickable add-a-look flow |
 | `Garderobe Cut-outs.dc.html` | press-and-hold cut-out prototype |
