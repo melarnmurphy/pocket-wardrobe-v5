@@ -125,6 +125,16 @@ describe("updateWearEvent", () => {
 
     expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ occasion: "work" }));
   });
+
+  it("does not call the Supabase update chain when no fields are given (avoids spuriously bumping the linked garment's updated_at via the sync trigger)", async () => {
+    const { updateWearEvent } = await import("@/lib/domain/wear-events/service");
+    await updateWearEvent({
+      wearEventId: "66666666-6666-6666-6666-666666666666"
+    });
+
+    expect(wearEventsFrom).not.toHaveBeenCalled();
+    expect(updateMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("deleteWearEvent", () => {

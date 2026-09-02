@@ -130,6 +130,10 @@ export async function updateWearEvent(params: {
   if (values.occasion !== undefined) patch.occasion = values.occasion;
   if (values.notes !== undefined) patch.notes = values.notes;
 
+  if (Object.keys(patch).length === 0) {
+    return;
+  }
+
   const { error } = await supabase
     .from("wear_events")
     .update(patch as never)
