@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { AVAILABILITY_VALUES, LET_GO_REASON_VALUES } from "@/lib/domain/wardrobe";
-import { getGarmentById } from "@/lib/domain/wardrobe/service";
+import { canonicalWardrobeColours } from "@/lib/domain/wardrobe/colours";
+import { RECIPE_WARDROBE_CATEGORIES } from "@/lib/domain/trends/styling-recipe";
+import { getGarmentById, listWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import type { WardrobeActionState } from "@/lib/domain/wardrobe/action-state";
 import { AuthenticationError } from "@/lib/auth";
 import { AuthRequiredCard } from "@/components/auth-required-card";
@@ -10,20 +12,39 @@ import { Chip, CutoutTile } from "@/components/garderobe";
 import { PricePanel } from "@/components/garderobe/wardrobe/price-panel";
 import {
   DisposalControl,
+  FieldPickerControl,
+  MergeControl,
   RecutControl,
-  WearHistorySection
+  WearHistorySection,
+  type GarmentFieldSnapshot
 } from "@/components/garderobe/wardrobe/piece-detail-panels";
 import {
   addGarmentImageAction,
   addToLetGoAction,
   archiveGarmentAction,
   deleteWearEventAction,
+  mergeGarmentsAction,
   removeFromLetGoAction,
   setAvailabilityAction,
   setPriceManuallyAction,
   undoArchiveGarmentAction,
+  updateGarmentAction,
   updateWearEventAction
 } from "@/app/wardrobe/actions";
+
+const MATERIAL_OPTIONS = [
+  "cotton",
+  "linen",
+  "wool",
+  "silk",
+  "leather",
+  "denim",
+  "cashmere",
+  "polyester",
+  "synthetic blend"
+];
+
+const COLOUR_OPTIONS = canonicalWardrobeColours.map((colour) => colour.family);
 
 const PRICE_SOURCE_LABEL: Record<string, string> = {
   store: "from the store",
@@ -71,6 +92,33 @@ export default async function PieceDetailPage({ params }: { params: Promise<{ id
     const isOnLetGoList = Boolean(garment.let_go_reason);
     const pieceName = garment.title || garment.category;
 
+    const fieldSnapshot: GarmentFieldSnapshot = {
+      garment_id: garment.id as string,
+      title: garment.title ?? null,
+      brand: garment.brand ?? null,
+      category: garment.category,
+      subcategory: garment.subcategory ?? null,
+      material: garment.material ?? null,
+      size: garment.size ?? null,
+      fit: garment.fit ?? null,
+      formality_level: garment.formality_level ?? null,
+      purchase_currency: garment.purchase_currency ?? null,
+      purchase_price: garment.purchase_price ?? null,
+      purchase_date: garment.purchase_date ?? null,
+      retailer: garment.retailer ?? null,
+      primary_colour_family: garment.primary_colour_family ?? null,
+      seasonality: garment.seasonality ?? []
+    };
+
+    const mergeTargets = isArchived
+      ? []
+      : (await listWardrobeGarments())
+          .filter((candidate) => candidate.id !== garment.id && !candidate.archived_at)
+          .map((candidate) => ({
+            id: candidate.id as string,
+            title: candidate.title || candidate.category
+          }));
+
     return (
       <div className="mx-auto max-w-[520px] px-5 py-6 pb-16">
         <Link
@@ -103,9 +151,45 @@ export default async function PieceDetailPage({ params }: { params: Promise<{ id
           </div>
           <div>
             <h1 className="text-[30px] font-light leading-[1.05] text-[var(--ink)]">{pieceName}</h1>
-            <p className="pt-1.5 text-[12.5px] text-[var(--slate)]">
-              {[garment.category, garment.subcategory, garment.brand].filter(Boolean).join(" · ")}
-            </p>
+            {garment.subcategory || garment.brand ? (
+              <p className="pt-1.5 text-[12.5px] text-[var(--slate)]">
+                {[garment.subcategory, garment.brand].filter(Boolean).join(" · ")}
+              </p>
+            ) : null}
+            {!isArchived ? (
+              <div className="flex flex-wrap gap-4 pt-3">
+                <FieldPickerControl
+                  label="category"
+                  field="category"
+                  value={garment.category}
+                  options={[...RECIPE_WARDROBE_CATEGORIES]}
+                  snapshot={fieldSnapshot}
+                  updateAction={updateGarmentAction}
+                />
+                <FieldPickerControl
+                  label="colour"
+                  field="primary_colour_family"
+                  value={garment.primary_colour_family ?? null}
+                  options={COLOUR_OPTIONS}
+                  snapshot={fieldSnapshot}
+                  updateAction={updateGarmentAction}
+                />
+                <FieldPickerControl
+                  label="fabric"
+                  field="material"
+                  value={garment.material ?? null}
+                  options={MATERIAL_OPTIONS}
+                  snapshot={fieldSnapshot}
+                  updateAction={updateGarmentAction}
+                />
+              </div>
+            ) : (
+              <p className="pt-1.5 text-[12.5px] text-[var(--slate)]">
+                {[garment.category, garment.primary_colour_family, garment.material]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            )}
             {costPerWearText ? (
               <p className="pt-4 text-[11px] uppercase tracking-[.14em] text-[var(--stone)]">
                 {costPerWearText} / wear
@@ -227,6 +311,16 @@ export default async function PieceDetailPage({ params }: { params: Promise<{ id
               archiveAction={archiveGarmentAction}
               undoAction={undoArchiveGarmentAction}
             />
+            {mergeTargets.length ? (
+              <div className="pt-4 text-center">
+                <MergeControl
+                  sourceGarmentId={garment.id as string}
+                  sourceTitle={pieceName}
+                  targets={mergeTargets}
+                  mergeAction={mergeGarmentsAction}
+                />
+              </div>
+            ) : null}
           </section>
         ) : null}
       </div>
