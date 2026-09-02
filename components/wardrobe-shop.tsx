@@ -561,42 +561,54 @@ export function WardrobeShop({
     setCreatePreviewImageUrl(null);
   };
 
+  const swatchClass = (active: boolean, tone?: "favourite") =>
+    [
+      "inline-flex flex-none items-center gap-2 rounded-[100px] border px-3.5 py-2 text-sm font-medium transition-colors active:scale-[.98]",
+      active
+        ? tone === "favourite"
+          ? "border-[rgba(109,42,36,.5)] bg-[rgba(109,42,36,.12)] text-[var(--oxblood-dark,var(--oxblood))]"
+          : "border-[var(--ink)] text-[var(--ink)]"
+        : "border-[rgba(30,26,23,.14)] text-[var(--stone)] hover:border-[rgba(30,26,23,.28)]"
+    ].join(" ");
+
   return (
     <>
       <section className="space-y-5">
-        <div className="pw-page-head gap-4">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="space-y-3">
-            <h1 className="pw-page-title max-w-[9ch]">Dress from a system, not from memory.</h1>
-            <div className="pw-meta-row">
+            <h1 className="max-w-[9ch] text-[clamp(2.5rem,6vw,5.6rem)] font-light leading-[0.98] tracking-[-0.01em]">
+              Dress from a system, not from memory.
+            </h1>
+            <div className="flex flex-wrap gap-2 text-sm text-[var(--stone)]">
               <span>{garments.length} items</span>
-              <span className="divider">/</span>
+              <span className="text-[rgba(109,42,36,.32)]">/</span>
               <span>
                 {garments.filter((garment) => garment.favourite_score && garment.favourite_score > 0)
                   .length} favourites
               </span>
-              <span className="divider">/</span>
+              <span className="text-[rgba(109,42,36,.32)]">/</span>
               <span>{garments.reduce((total, garment) => total + garment.wear_count, 0)} wears tracked</span>
-              <span className="divider">/</span>
+              <span className="text-[rgba(109,42,36,.32)]">/</span>
               <Link href="/wardrobe/let-go" className="underline">
                 let-go list
               </Link>
-              <span className="divider">/</span>
+              <span className="text-[rgba(109,42,36,.32)]">/</span>
               <Link href="/wardrobe/batch/new" className="underline">
                 choose photos
               </Link>
-              <span className="divider">/</span>
+              <span className="text-[rgba(109,42,36,.32)]">/</span>
               <Link href="/wardrobe/review" className="underline">
                 review drafts
               </Link>
-              <span className="divider">/</span>
+              <span className="text-[rgba(109,42,36,.32)]">/</span>
               <Link href="/wardrobe/sources" className="underline">
                 sources
               </Link>
-              <span className="divider">/</span>
+              <span className="text-[rgba(109,42,36,.32)]">/</span>
               <Link href="/wishlist" className="underline">
                 wishlist
               </Link>
-              <span className="divider">/</span>
+              <span className="text-[rgba(109,42,36,.32)]">/</span>
               <Link href="/wardrobe/scan" className="underline">
                 scan it
               </Link>
@@ -605,7 +617,7 @@ export function WardrobeShop({
           <button
             type="button"
             onClick={openCreateComposer}
-            className="pw-button-primary w-full self-start sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-[100px] bg-[var(--oxblood)] px-5 py-3 text-sm font-semibold text-[var(--cream)] transition-colors hover:bg-[var(--oxblood-dark,var(--oxblood))] sm:w-auto"
           >
             <PlusIcon />
             Add Item
@@ -613,8 +625,8 @@ export function WardrobeShop({
         </div>
 
         <div
-          className={`pw-toolbar-shell pw-fade-up sticky top-2 z-20 transition-all duration-300 sm:top-4 ${
-            isFilterBarCondensed ? "p-3 shadow-[0_18px_36px_rgba(17,17,17,0.08)]" : "p-4 md:p-5"
+          className={`sticky top-2 z-20 rounded-[8px] border border-[rgba(30,26,23,.14)] bg-[var(--cream)] transition-all duration-300 sm:top-4 ${
+            isFilterBarCondensed ? "p-3" : "p-4 md:p-5"
           }`}
         >
           <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
@@ -639,7 +651,11 @@ export function WardrobeShop({
                 <span className="ml-1.5 hidden sm:inline">shown</span>
               </p>
               {hasActiveFilters ? (
-                <button type="button" onClick={resetFilters} className="pw-reset-link">
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="inline-flex items-center gap-1.5 rounded-[100px] px-2.5 py-1.5 text-xs font-semibold text-[var(--stone)] transition-colors hover:bg-[rgba(30,26,23,.05)] hover:text-[var(--ink)]"
+                >
                   <ResetIcon />
                   Reset
                 </button>
@@ -672,24 +688,25 @@ export function WardrobeShop({
 
           <div className="mt-4 flex flex-wrap gap-2.5">
               <label
-                className="pw-filter-control min-w-[15rem] flex-[2_1_15rem] sm:min-w-[17rem]"
-                data-active={query.trim() ? "true" : "false"}
+                className={`flex min-h-[2.85rem] min-w-[15rem] flex-[2_1_15rem] items-center gap-2.5 rounded-[10px] border bg-[var(--cream)]/60 px-3.5 transition-colors focus-within:border-[var(--ink)] sm:min-w-[17rem] ${
+                  query.trim() ? "border-[var(--ink)]" : "border-[rgba(30,26,23,.14)]"
+                }`}
               >
-                <span className="pw-filter-icon">
+                <span className={query.trim() ? "flex text-[var(--ink)]" : "flex text-[var(--stone)]"}>
                   <SearchIcon />
                 </span>
                 <input
                   suppressHydrationWarning
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--muted)]"
+                  className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--stone)]"
                   placeholder="Search brand, type, occasion"
                 />
                 {query.trim() ? (
                   <button
                     type="button"
                     onClick={() => setQuery("")}
-                    className="pw-filter-clear"
+                    className="flex h-6 w-6 flex-none items-center justify-center rounded-full text-[var(--stone)] transition-colors hover:bg-[rgba(30,26,23,.06)] hover:text-[var(--ink)]"
                     aria-label="Clear search"
                   >
                     <CloseIcon />
@@ -775,14 +792,12 @@ export function WardrobeShop({
                 type="button"
                 onClick={() => setFavouritesOnly((current) => !current)}
                 aria-pressed={favouritesOnly}
-                className="pw-swatch"
-                data-tone="favourite"
-                data-active={favouritesOnly ? "true" : "false"}
+                className={swatchClass(favouritesOnly, "favourite")}
               >
                 <StarIcon filled={favouritesOnly} />
                 Favourites
               </button>
-              <span className="mx-1 h-5 w-px shrink-0 bg-[var(--line)]" aria-hidden="true" />
+              <span className="mx-1 h-5 w-px shrink-0 bg-[rgba(30,26,23,.14)]" aria-hidden="true" />
               {canonicalWardrobeColours.map((colour) => {
                 const active = colourFilter === colour.family;
                 return (
@@ -795,10 +810,12 @@ export function WardrobeShop({
                         current === colour.family ? "all" : colour.family
                       )
                     }
-                    className="pw-swatch"
-                    data-active={active ? "true" : "false"}
+                    className={swatchClass(active)}
                   >
-                    <span className="pw-swatch-dot" style={{ backgroundColor: colour.hex }} />
+                    <span
+                      className="h-[.85rem] w-[.85rem] flex-none rounded-full outline outline-[.5px] outline-[rgba(30,26,23,.18)] outline-offset-[-.5px]"
+                      style={{ backgroundColor: colour.hex }}
+                    />
                     {categoryLabel(colour.family)}
                   </button>
                 );
@@ -821,8 +838,7 @@ export function WardrobeShop({
                           current === collection.id ? "all" : collection.id
                         )
                       }
-                      className="pw-swatch"
-                      data-active={active ? "true" : "false"}
+                      className={swatchClass(active)}
                     >
                       {collection.name}
                     </button>
@@ -835,10 +851,10 @@ export function WardrobeShop({
 
         {createState.message ? (
           <p
-            className={`rounded-2xl border px-4 py-3 text-sm ${
+            className={`rounded-[8px] border px-4 py-3 text-sm ${
               createState.status === "error" || createState.status === "partial"
                 ? "border-red-200 bg-red-50 text-red-700"
-                : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)]"
+                : "border-[rgba(30,26,23,.14)] bg-[var(--cream)] text-[var(--stone)]"
             }`}
           >
             {createState.message}
@@ -865,8 +881,8 @@ export function WardrobeShop({
             ))}
           </div>
         ) : (
-          <div className="pw-empty-state bg-white/80 px-6 py-12">
-            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.32em] text-[var(--muted)]">
+          <div className="rounded-[8px] border border-dashed border-[rgba(30,26,23,.18)] bg-[var(--cream)]/80 px-6 py-12 text-center">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.32em] text-[var(--stone)]">
               Wardrobe Start
             </p>
             <p className="mt-4 text-3xl font-semibold tracking-[-0.07em]">
@@ -874,7 +890,7 @@ export function WardrobeShop({
                 ? "Your wardrobe starts with the first piece"
                 : "No items match these filters"}
             </p>
-            <p className="mx-auto mt-3 max-w-xl text-sm text-[var(--muted)]">
+            <p className="mx-auto mt-3 max-w-xl text-sm text-[var(--stone)]">
               {garments.length === 0
                 ? "Add your first item to begin tracking wears, favourites, and outfit potential."
                 : "Adjust the filter bar or add a new wardrobe item."}
@@ -883,9 +899,9 @@ export function WardrobeShop({
               <button
                 type="button"
                 onClick={openCreateComposer}
-                className="mx-auto mt-8 inline-flex w-full max-w-[20rem] items-center justify-center gap-3 rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-white px-6 py-5 text-left text-[var(--foreground)] shadow-[0_24px_50px_rgba(17,17,17,0.08)] transition-transform hover:-translate-y-0.5"
+                className="mx-auto mt-8 inline-flex w-full max-w-[20rem] items-center justify-center gap-3 rounded-[8px] border border-[rgba(30,26,23,.14)] bg-[var(--cream)] px-6 py-5 text-left text-[var(--ink)] transition-colors hover:border-[rgba(30,26,23,.28)]"
               >
-                <span className="flex h-12 w-12 items-center justify-center rounded-[8px] bg-[#111111] text-white shadow-[0_10px_20px_rgba(17,17,17,0.14)]">
+                <span className="flex h-12 w-12 items-center justify-center rounded-[8px] bg-[var(--oxblood)] text-[var(--cream)]">
                   <svg
                     viewBox="0 0 20 20"
                     className="h-6 w-6 fill-none stroke-current stroke-[1.8]"
@@ -1297,15 +1313,15 @@ function GarmentCard({
   }, [favouriteState.status, serverFavourite]);
 
   return (
-    <article className="group relative overflow-hidden rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,246,241,0.94))] shadow-[0_18px_45px_rgba(17,17,17,0.07)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_60px_rgba(17,17,17,0.12)]">
+    <article className="group relative overflow-hidden rounded-[8px] border border-[rgba(30,26,23,.14)] bg-[var(--cream)] transition-colors duration-200 hover:border-[rgba(30,26,23,.28)]">
       {isSelectMode ? (
         <div className="absolute left-2 top-2 z-10 sm:left-3 sm:top-3">
           <span
             aria-hidden="true"
-            className={`flex h-6 w-6 items-center justify-center rounded-full border text-white transition-colors ${
+            className={`flex h-6 w-6 items-center justify-center rounded-full border text-[var(--cream)] transition-colors ${
               isSelected
                 ? "border-[var(--oxblood)] bg-[var(--oxblood)]"
-                : "border-[rgba(17,17,17,0.2)] bg-white/90"
+                : "border-[rgba(30,26,23,.2)] bg-[var(--cream)]/90"
             }`}
           >
             {isSelected ? <CheckIcon /> : null}
@@ -1330,7 +1346,7 @@ function GarmentCard({
             title="Delete item"
             onPointerDown={openDeleteConfirmation}
             onClick={openDeleteConfirmation}
-            className="rounded-full border border-[rgba(17,17,17,0.08)] bg-white/96 p-2 text-red-600 shadow-sm backdrop-blur transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(17,17,17,0.1)] active:translate-y-0 active:scale-[0.96]"
+            className="rounded-full border border-[rgba(30,26,23,.14)] bg-[var(--cream)] p-2 text-[#b91c1c] transition-colors duration-150 hover:border-[rgba(30,26,23,.28)]"
           >
             <TrashIcon />
           </button>
@@ -1342,14 +1358,14 @@ function GarmentCard({
         onClick={onOpen}
         className="block w-full text-left transition duration-200"
       >
-        <div className="relative aspect-[3/4] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))] sm:aspect-[4/5]">
+        <div className="relative aspect-[3/4] overflow-hidden bg-[var(--paper)] sm:aspect-[4/5]">
           {garment.preview_url ? (
             <img
               src={garment.preview_url}
               alt={garment.title || garment.category}
               loading="lazy"
               decoding="async"
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+              className="h-full w-full object-cover"
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center px-6 text-center">
@@ -1364,7 +1380,6 @@ function GarmentCard({
               </p>
             </div>
           )}
-          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/10 to-transparent sm:h-24" />
         </div>
 
         <div className="space-y-2.5 p-3 sm:space-y-3 sm:p-4">
@@ -1383,12 +1398,12 @@ function GarmentCard({
               </p>
             </div>
             <div className="flex shrink-0 flex-col items-end gap-2">
-              <p className="rounded-full bg-[#111111] px-2.5 py-1 text-right text-xs font-semibold text-white sm:px-3 sm:py-1.5 sm:text-sm">
+              <p className="rounded-full bg-[var(--oxblood)] px-2.5 py-1 text-right text-xs font-semibold text-[var(--cream)] sm:px-3 sm:py-1.5 sm:text-sm">
                 {costPerWear != null
                   ? `${garment.purchase_currency || ""} ${formatCurrencyValue(costPerWear)}/wear`
                   : "Cost per wear n/a"}
               </p>
-              <span className="rounded-full border border-[var(--line)] bg-white/88 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--muted)] sm:text-[11px]">
+              <span className="rounded-full border border-[rgba(30,26,23,.2)] bg-[var(--cream)]/88 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--muted)] sm:text-[11px]">
                 {garment.wear_count} wear{garment.wear_count === 1 ? "" : "s"}
               </span>
             </div>
@@ -1396,7 +1411,7 @@ function GarmentCard({
 
           <div className="flex flex-wrap gap-1.5 text-[11px] uppercase tracking-[0.12em] text-[var(--muted)] sm:gap-2 sm:text-xs sm:tracking-[0.15em]">
             {garment.primary_colour_family ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white/80 px-2 py-1 sm:gap-2 sm:px-2.5">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(30,26,23,.2)] bg-[var(--cream)]/80 px-2 py-1 sm:gap-2 sm:px-2.5">
                 <span
                   className="h-2 w-2 rounded-full border border-black/10 sm:h-2.5 sm:w-2.5"
                   style={{ backgroundColor: garment.primary_colour_hex || "#d7c1a1" }}
@@ -1405,12 +1420,12 @@ function GarmentCard({
               </span>
             ) : null}
             {optimisticFavourite ? (
-              <span className="rounded-full border border-[rgba(255,107,157,0.22)] bg-[rgba(255,107,157,0.12)] px-2 py-1 text-[var(--accent-strong)] sm:px-2.5">
+              <span className="rounded-full bg-[var(--blush)] px-2 py-1 text-[var(--blush-ink)] sm:px-2.5">
                 Favourite
               </span>
             ) : null}
             {garment.wear_count === 0 && garment.purchase_price != null ? (
-              <span className="pw-chip bg-white px-2 py-1 text-[10px] uppercase tracking-[0.16em] sm:px-2.5">
+              <span className="inline-flex items-center rounded-full border border-[rgba(30,26,23,.2)] bg-[var(--cream)] px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-[var(--slate)] sm:px-2.5">
                 Unworn · {garment.purchase_currency || ""} {formatCurrencyValue(garment.purchase_price)}
               </span>
             ) : null}
@@ -2440,24 +2455,35 @@ function FilterSelect({
   }, [open]);
 
   return (
-    <div ref={rootRef} className="pw-filter-select min-w-[11rem] flex-1">
+    <div ref={rootRef} className="relative min-w-[11rem] flex-1">
       <button
         type="button"
-        className="pw-filter-control pw-filter-trigger"
-        data-active={active ? "true" : "false"}
+        className={`flex min-h-[2.85rem] w-full cursor-pointer items-center gap-2.5 rounded-[10px] border bg-[var(--cream)]/60 px-3.5 text-left transition-colors ${
+          active ? "border-[var(--ink)]" : "border-[rgba(30,26,23,.14)] hover:border-[rgba(30,26,23,.28)]"
+        }`}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={label}
         onClick={() => setOpen((current) => !current)}
       >
-        <span className="pw-filter-icon">{icon}</span>
-        <span className="pw-filter-value">{selected?.label}</span>
-        <span className="pw-filter-caret" aria-hidden="true">
+        <span className={`flex flex-none ${active ? "text-[var(--ink)]" : "text-[var(--stone)]"}`}>
+          {icon}
+        </span>
+        <span
+          className={`min-w-0 flex-1 truncate text-sm ${active ? "text-[var(--ink)]" : "text-[var(--stone)]"}`}
+        >
+          {selected?.label}
+        </span>
+        <span className="ml-auto flex flex-none text-[var(--stone)]" aria-hidden="true">
           <ChevronIcon open={open} />
         </span>
       </button>
       {open ? (
-        <div className="pw-filter-menu" role="listbox" aria-label={label}>
+        <div
+          role="listbox"
+          aria-label={label}
+          className="absolute left-0 top-[calc(100%+.4rem)] z-40 max-h-64 w-max min-w-full max-w-[22rem] overflow-y-auto rounded-[10px] border border-[rgba(30,26,23,.14)] bg-[var(--cream)] p-1 shadow-[0_18px_40px_rgba(30,26,23,.14)]"
+        >
           {options.map((option) => {
             const isSelected = option.value === value;
             return (
@@ -2466,8 +2492,9 @@ function FilterSelect({
                 type="button"
                 role="option"
                 aria-selected={isSelected}
-                data-selected={isSelected ? "true" : "false"}
-                className="pw-filter-option"
+                className={`flex w-full items-center justify-between gap-3 rounded-[7px] px-3 py-2 text-left text-sm transition-colors hover:bg-[rgba(30,26,23,.05)] ${
+                  isSelected ? "font-semibold text-[var(--ink)]" : "text-[var(--stone)]"
+                }`}
                 onClick={() => {
                   onChange(option.value);
                   setOpen(false);
