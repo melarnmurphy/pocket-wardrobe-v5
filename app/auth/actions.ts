@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit, RateLimitError } from "@/lib/rate-limit";
+import { mapSignInPasswordError } from "@/lib/domain/auth/sign-in-errors";
 
 const signInSchema = z.object({
   email: z.string().trim().email(),
@@ -141,7 +142,7 @@ export async function signInWithPasswordAction(formData: FormData) {
         mode: "password",
         next,
         email: values.email,
-        error: error.message
+        error: mapSignInPasswordError(error.message)
       }) as never
     );
   }

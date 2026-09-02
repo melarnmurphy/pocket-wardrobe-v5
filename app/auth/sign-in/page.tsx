@@ -60,7 +60,7 @@ export default async function SignInPage({
               : "Existing magic-link accounts can send themselves a password setup email below, then use password sign-in from the same screen."}
           </p>
 
-          {params.error ? (
+          {params.error && mode !== "password" ? (
             <p className="mt-6 rounded-[1rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {params.error}
             </p>
@@ -141,6 +141,11 @@ export default async function SignInPage({
                     placeholder="Password"
                     className="w-full rounded-[1rem] border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
                   />
+                  {params.error && mode === "password" ? (
+                    <p className="rounded-[1rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {params.error}
+                    </p>
+                  ) : null}
                   <button
                     type="submit"
                     className="pw-button-primary"
