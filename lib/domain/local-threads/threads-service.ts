@@ -181,6 +181,89 @@ export async function sendMessage(
   await insertMessage(supabase, { threadId: parsedThreadId, senderId: user.id, kind: "text", body });
 }
 
+/**
+ * 16b column, missing — seller declines a buyer's offer. Scoped to the
+ * *other* party's message: a seller can decline any pending offer in a
+ * thread they're party to, but never their own.
+ */
+export async function respondToOffer(messageId: string): Promise<void> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(messageId);
+
+  const { data: message, error: messageError } = await supabase
+    .from("messages")
+    .select("thread_id,sender_id,offer_cents")
+    .eq("id", parsedId)
+    .maybeSingle();
+
+  if (messageError || !message) {
+    throw new Error("Offer not found.");
+  }
+
+  const parsedMessage = message as { thread_id: string; sender_id: string; offer_cents: number | null };
+  if (parsedMessage.sender_id === user.id) {
+    throw new Error("You can't decline your own offer.");
+  }
+
+  const { error } = await supabase
+    .from("messages")
+    .update({ offer_status: "declined" } as never)
+    .eq("id", parsedId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await insertMessage(supabase, {
+    threadId: parsedMessage.thread_id,
+    senderId: user.id,
+    kind: "system",
+    body: "offer declined"
+  });
+}
+
+/**
+ * 16b column, missing — buyer withdraws their own offer. Scoped to the
+ * sender: only the person who made the offer can withdraw it.
+ */
+export async function withdrawOffer(messageId: string): Promise<void> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(messageId);
+
+  const { data: message, error: messageError } = await supabase
+    .from("messages")
+    .select("thread_id,sender_id")
+    .eq("id", parsedId)
+    .maybeSingle();
+
+  if (messageError || !message) {
+    throw new Error("Offer not found.");
+  }
+
+  const parsedMessage = message as { thread_id: string; sender_id: string };
+  if (parsedMessage.sender_id !== user.id) {
+    throw new Error("You can only withdraw your own offer.");
+  }
+
+  const { error } = await supabase
+    .from("messages")
+    .update({ offer_status: "withdrawn" } as never)
+    .eq("id", parsedId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await insertMessage(supabase, {
+    threadId: parsedMessage.thread_id,
+    senderId: user.id,
+    kind: "system",
+    body: "offer withdrawn"
+  });
+}
+
 async function insertMessage(
   supabase: Awaited<ReturnType<typeof createClient>>,
   params: { threadId: string; senderId: string; kind: "text" | "offer" | "handover proposal" | "system"; body: string; offerCents?: number }
@@ -382,6 +465,7 @@ const messageSchema = z.object({
   kind: z.string(),
   body: z.string(),
   offer_cents: z.number().int().nullable(),
+  offer_status: z.enum(["pending", "accepted", "declined", "withdrawn"]).nullable(),
   sent_at: z.string(),
   read_at: z.string().nullable()
 });
@@ -456,7 +540,7 @@ export async function getThreadDetail(threadId: string): Promise<{
 
   const { data: messageRows, error: messagesError } = await supabase
     .from("messages")
-    .select("id,thread_id,sender_id,kind,body,offer_cents,sent_at,read_at")
+    .select("id,thread_id,sender_id,kind,body,offer_cents,offer_status,sent_at,read_at")
     .eq("thread_id", parsedId)
     .order("sent_at", { ascending: true });
 
