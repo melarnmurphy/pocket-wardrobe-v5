@@ -496,6 +496,7 @@ export type Database = {
           category: string
           cost_per_wear: number | null
           created_at: string
+          deleted_at: string | null
           description: string | null
           embedding: string | null
           extraction_metadata_json: Json
@@ -507,6 +508,7 @@ export type Database = {
           let_go_added_at: string | null
           let_go_estimate_cents: number | null
           let_go_reason: string | null
+          merged_into_id: string | null
           price_source: string | null
           material: string | null
           pattern: string | null
@@ -532,6 +534,7 @@ export type Database = {
           category: string
           cost_per_wear?: number | null
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           embedding?: string | null
           extraction_metadata_json?: Json
@@ -543,6 +546,7 @@ export type Database = {
           let_go_added_at?: string | null
           let_go_estimate_cents?: number | null
           let_go_reason?: string | null
+          merged_into_id?: string | null
           price_source?: string | null
           material?: string | null
           pattern?: string | null
@@ -568,6 +572,7 @@ export type Database = {
           category?: string
           cost_per_wear?: number | null
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           embedding?: string | null
           extraction_metadata_json?: Json
@@ -579,6 +584,7 @@ export type Database = {
           let_go_added_at?: string | null
           let_go_estimate_cents?: number | null
           let_go_reason?: string | null
+          merged_into_id?: string | null
           price_source?: string | null
           material?: string | null
           pattern?: string | null
@@ -596,7 +602,15 @@ export type Database = {
           wardrobe_status?: string
           wear_count?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "garments_merged_into_id_fkey"
+            columns: ["merged_into_id"]
+            isOneToOne: false
+            referencedRelation: "garments"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       local_listings: {
         Row: {
