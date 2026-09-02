@@ -174,3 +174,96 @@ describe("createCollectionAction", () => {
     expect(result.status).toBe("error");
   });
 });
+
+function fileOfType(type: string, size: number, name = "photo") {
+  const bytes = new Uint8Array(size);
+  return new File([bytes], name, { type });
+}
+
+describe("createPhotoDraftAction validation", () => {
+  it("rejects a HEIC file before attempting to upload it", async () => {
+    const { createPhotoDraftAction } = await import("@/app/wardrobe/actions");
+    const formData = new FormData();
+    formData.set("image", fileOfType("image/heic", 1000));
+
+    const result = await createPhotoDraftAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("error");
+    expect(result.errorCode).toBe("unsupported_format");
+  });
+
+  it("rejects a file over the size cap", async () => {
+    const { createPhotoDraftAction } = await import("@/app/wardrobe/actions");
+    const formData = new FormData();
+    formData.set("image", fileOfType("image/jpeg", 21 * 1024 * 1024));
+
+    const result = await createPhotoDraftAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("error");
+    expect(result.errorCode).toBe("too_large");
+  });
+});
+
+describe("addGarmentImageAction validation", () => {
+  it("rejects a HEIC file before attempting to upload it", async () => {
+    const { addGarmentImageAction } = await import("@/app/wardrobe/actions");
+    const formData = new FormData();
+    formData.set("garment_id", "00000000-0000-0000-0000-000000000001");
+    formData.set("image", fileOfType("image/heic", 1000));
+
+    const result = await addGarmentImageAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("error");
+    expect(result.errorCode).toBe("unsupported_format");
+  });
+});
+
+describe("createReceiptDraftAction validation", () => {
+  it("rejects an unsupported receipt file type", async () => {
+    const { createReceiptDraftAction } = await import("@/app/wardrobe/actions");
+    const formData = new FormData();
+    formData.set("receipt", fileOfType("image/heic", 1000, "receipt"));
+
+    const result = await createReceiptDraftAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("error");
+    expect(result.errorCode).toBe("unsupported_format");
+  });
+});
+
+describe("createProductUrlDraftAction dead link handling", () => {
+  it("returns a dead_url error instead of creating a draft when the fetch failed", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/domain/ingestion/extractors", async () => {
+      const actual = await vi.importActual("@/lib/domain/ingestion/extractors");
+      return {
+        ...actual,
+        extractProductMetadataFromUrl: vi.fn(async () => ({
+          title: null, brand: null, category: null, colour: null, fit: null,
+          material: null, retailer: "example.com", description: null, price: null,
+          currency: null, image_url: null, attributes: [], styling_suggestions: [],
+          fetch_failed: true
+        }))
+      };
+    });
+    // createProductUrlSource hits Supabase; stub just that export so this test
+    // stays hermetic and exercises the fetch_failed branch deterministically.
+    vi.doMock("@/lib/domain/ingestion/service", async () => {
+      const actual = await vi.importActual("@/lib/domain/ingestion/service");
+      return {
+        ...actual,
+        createProductUrlSource: vi.fn(async () => ({ sourceId: "00000000-0000-0000-0000-0000000000aa" }))
+      };
+    });
+    const { createProductUrlDraftAction } = await import("@/app/wardrobe/actions");
+    const formData = new FormData();
+    formData.set("product_url", "https://example.com/dead-product");
+
+    const result = await createProductUrlDraftAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("error");
+    expect(result.errorCode).toBe("dead_url");
+    vi.doUnmock("@/lib/domain/ingestion/extractors");
+    vi.doUnmock("@/lib/domain/ingestion/service");
+  });
+});

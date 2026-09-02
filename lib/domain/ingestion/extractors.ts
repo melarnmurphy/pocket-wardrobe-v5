@@ -127,6 +127,8 @@ export type ProductMetadata = {
    */
   attributes: GarmentAttribute[];
   styling_suggestions: StylingSuggestion[];
+  /** True only when the remote fetch itself failed (non-2xx or thrown) — never for a page that loaded with sparse metadata. */
+  fetch_failed?: boolean;
 };
 
 type RetailerAdapterMetadata = Partial<
@@ -185,6 +187,7 @@ export async function extractProductMetadataFromUrl(
           image_url: null,
           attributes: [],
           styling_suggestions: [],
+          fetch_failed: true,
         };
       }
 
@@ -287,6 +290,7 @@ export async function extractProductMetadataFromUrl(
       image_url: null,
       attributes: [],
       styling_suggestions: [],
+      fetch_failed: true,
     };
   }
 }

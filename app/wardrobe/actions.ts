@@ -55,6 +55,7 @@ import {
   readReceiptTextFromFile
 } from "@/lib/domain/ingestion/extractors";
 import { productUrlAdapter, receiptAdapter } from "@/lib/domain/ingestion/adapters";
+import { classifyUploadFile } from "@/lib/domain/ingestion/limits";
 
 const nullableText = (max: number) =>
   z.preprocess(
@@ -349,6 +350,18 @@ export async function createPhotoDraftAction(
       };
     }
 
+    const uploadCheck = classifyUploadFile(file);
+    if (uploadCheck !== "ok") {
+      return {
+        status: "error",
+        errorCode: uploadCheck,
+        message:
+          uploadCheck === "unsupported_format"
+            ? "That file type won't open. Garderobe reads JPEG, PNG and WEBP."
+            : "That photo's too large. Photos over 20MB won't upload."
+      };
+    }
+
     const values = photoDraftFormSchema.parse({
       source_width: formData.get("source_width"),
       source_height: formData.get("source_height")
@@ -440,6 +453,13 @@ export async function createProductUrlDraftAction(
       url.hostname;
     const { sourceId } = await createProductUrlSource({ url: values.product_url });
     const extracted = await extractProductMetadataFromUrl(values.product_url);
+    if (extracted.fetch_failed) {
+      return {
+        status: "error",
+        errorCode: "dead_url",
+        message: "That link didn't load, so nothing came back automatically. Add the piece's details yourself instead."
+      };
+    }
     const draftPayload = productUrlAdapter.buildDraft({
       productUrl: values.product_url,
       titleHint,
@@ -511,6 +531,21 @@ export async function createReceiptDraftAction(
         status: "error",
         message: "Choose a receipt file to upload."
       };
+    }
+
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if (!isPdf) {
+      const uploadCheck = classifyUploadFile(file);
+      if (uploadCheck !== "ok") {
+        return {
+          status: "error",
+          errorCode: uploadCheck,
+          message:
+            uploadCheck === "unsupported_format"
+              ? "That file type won't open. Garderobe reads JPEG, PNG, WEBP and PDF receipts."
+              : "That file's too large. Files over 20MB won't upload."
+        };
+      }
     }
 
     const values = receiptDraftFormSchema.parse({
@@ -613,6 +648,18 @@ export async function addGarmentImageAction(
       return {
         status: "error",
         message: "Choose an image file to upload."
+      };
+    }
+
+    const uploadCheck = classifyUploadFile(file);
+    if (uploadCheck !== "ok") {
+      return {
+        status: "error",
+        errorCode: uploadCheck,
+        message:
+          uploadCheck === "unsupported_format"
+            ? "That file type won't open. Garderobe reads JPEG, PNG and WEBP."
+            : "That photo's too large. Photos over 20MB won't upload."
       };
     }
 
