@@ -13,7 +13,6 @@ export type ProfileActionState = {
   message: string | null;
 };
 
-const idle: ProfileActionState = { status: "idle", message: null };
 
 export async function updateProfileAction(
   _previousState: ProfileActionState,
@@ -89,5 +88,3 @@ export async function completeOnboardingAction(): Promise<ProfileActionState> {
     };
   }
 }
-
-export { idle as idleProfileActionState };
