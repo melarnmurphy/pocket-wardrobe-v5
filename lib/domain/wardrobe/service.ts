@@ -42,6 +42,7 @@ type GarmentListRow = Pick<
   | "availability"
   | "archived_at"
   | "archive_reason"
+  | "seasonally_stored_at"
   | "let_go_reason"
   | "let_go_added_at"
   | "let_go_estimate_cents"
@@ -85,6 +86,7 @@ const garmentListItemSchema = garmentSchema.extend({
   availability: availabilitySchema.default("wearable"),
   archived_at: timestampSchema.nullable().optional(),
   archive_reason: z.string().nullable().optional(),
+  seasonally_stored_at: timestampSchema.nullable().optional(),
   let_go_reason: letGoReasonSchema.nullable().optional(),
   let_go_added_at: timestampSchema.nullable().optional(),
   let_go_estimate_cents: z.coerce.number().int().nonnegative().nullable().optional(),
@@ -392,7 +394,7 @@ const garmentColourWithColourSchema = garmentColourSchema.extend({
 });
 
 const GARMENT_LIST_SELECT =
-  "id,user_id,title,description,brand,category,subcategory,pattern,material,size,fit,formality_level,seasonality,wardrobe_status,availability,archived_at,archive_reason,let_go_reason,let_go_added_at,let_go_estimate_cents,price_source,purchase_price,purchase_currency,purchase_date,retailer,favourite_score,wear_count,last_worn_at,cost_per_wear,extraction_metadata_json,created_at,updated_at," +
+  "id,user_id,title,description,brand,category,subcategory,pattern,material,size,fit,formality_level,seasonality,wardrobe_status,availability,archived_at,archive_reason,seasonally_stored_at,let_go_reason,let_go_added_at,let_go_estimate_cents,price_source,purchase_price,purchase_currency,purchase_date,retailer,favourite_score,wear_count,last_worn_at,cost_per_wear,extraction_metadata_json,created_at,updated_at," +
   "garment_images(id,garment_id,image_type,storage_path,width,height,created_at)," +
   "garment_colours(id,garment_id,colour_id,dominance,is_primary,created_at,colours(id,family,hex))," +
   "garment_3d_assets(id,garment_id,asset_type,storage_path,file_format,material_profile_json,physics_profile_json,renderer_metadata_json,source_type,confidence,status,created_at,updated_at)," +
@@ -999,6 +1001,31 @@ export async function removeGarmentFromLetGo(garmentId: string) {
       let_go_reason: null,
       let_go_added_at: null,
       let_go_estimate_cents: null
+    } satisfies Partial<GarmentInsert>) as never)
+    .eq("id", parsedId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/**
+ * Retire / store for the season (missing from MODALS.md §1 — designed here).
+ * Reversible with one tap, like archived_at/let_go_added_at. Deliberately
+ * does NOT touch getDashboardStats or listWardrobeGarments's row set: per
+ * MODALS.md's own note on this row and the AVAILABILITY_VALUES invariant in
+ * lib/domain/wardrobe/index.ts, a stored piece stays fully counted.
+ */
+export async function setGarmentSeasonalStorage(garmentId: string, stored: boolean) {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(garmentId);
+
+  const { error } = await supabase
+    .from("garments")
+    .update(({
+      seasonally_stored_at: stored ? new Date().toISOString() : null
     } satisfies Partial<GarmentInsert>) as never)
     .eq("id", parsedId)
     .eq("user_id", user.id);

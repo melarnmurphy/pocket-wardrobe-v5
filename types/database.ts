@@ -574,6 +574,7 @@ export type Database = {
           purchase_price: number | null
           retailer: string | null
           seasonality: string[]
+          seasonally_stored_at: string | null
           size: string | null
           subcategory: string | null
           title: string | null
@@ -612,6 +613,7 @@ export type Database = {
           purchase_price?: number | null
           retailer?: string | null
           seasonality?: string[]
+          seasonally_stored_at?: string | null
           size?: string | null
           subcategory?: string | null
           title?: string | null
@@ -650,6 +652,7 @@ export type Database = {
           purchase_price?: number | null
           retailer?: string | null
           seasonality?: string[]
+          seasonally_stored_at?: string | null
           size?: string | null
           subcategory?: string | null
           title?: string | null
