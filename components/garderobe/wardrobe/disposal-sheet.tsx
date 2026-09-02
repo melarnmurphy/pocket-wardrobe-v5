@@ -42,7 +42,7 @@ export function DisposalSheet({
 
     if (pieceName && undoAction) {
       showAppToast({
-        message: `Let go — ${pieceName} left the wardrobe.`,
+        message: `Let go. ${pieceName} left the wardrobe.`,
         actionLabel: "undo",
         onAction: () => {
           void undoAction(garmentId).then(() => router.refresh());

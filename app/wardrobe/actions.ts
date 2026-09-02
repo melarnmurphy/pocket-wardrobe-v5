@@ -862,7 +862,7 @@ export async function deleteGarmentAction(
 
     return {
       status: "success",
-      message: "Item deleted — you can restore it from recently deleted."
+      message: "Item deleted. You can restore it from recently deleted."
     };
   } catch (error) {
     return {
@@ -923,7 +923,7 @@ export async function bulkDeleteGarmentsAction(
       status: blocked.length ? "partial" : "success",
       message: blocked.length
         ? `${deletedCount} deleted. ${blocked.length} used elsewhere and were skipped.`
-        : `${deletedCount} item${deletedCount === 1 ? "" : "s"} deleted — you can restore from recently deleted.`
+        : `${deletedCount} item${deletedCount === 1 ? "" : "s"} deleted. You can restore from recently deleted.`
     };
   } catch (error) {
     return {
@@ -1142,7 +1142,7 @@ export async function archiveGarmentAction(
     return {
       status: "success",
       garmentId: values.garment_id,
-      message: "Let go — you can undo this from the wardrobe.",
+      message: "Let go. You can undo this from the wardrobe.",
       nextPath: "/wardrobe"
     };
   } catch (error) {

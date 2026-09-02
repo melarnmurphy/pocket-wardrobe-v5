@@ -31,6 +31,7 @@ import {
 } from "@/lib/domain/wardrobe/action-state";
 import { canonicalWardrobeColours } from "@/lib/domain/wardrobe/colours";
 import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
+import { garmentInCollection } from "@/lib/domain/wardrobe/collections-filter";
 import { AVAILABILITY_VALUES } from "@/lib/domain/wardrobe";
 import { compareNeglected } from "@/lib/domain/outfits/neglect";
 
@@ -58,6 +59,7 @@ export function WardrobeShop({
   logWearAction,
   updateGarmentAction,
   recentlyDeletedGarments,
+  collections,
   restoreGarmentAction,
   bulkDeleteGarmentsAction,
   createCollectionAction,
@@ -128,6 +130,7 @@ export function WardrobeShop({
     formData: FormData
   ) => Promise<WardrobeActionState>;
   recentlyDeletedGarments: GarmentListItem[];
+  collections: Array<{ id: string; name: string; kind: string; garmentIds: string[] }>;
   restoreGarmentAction: (
     state: WardrobeActionState,
     formData: FormData
@@ -184,6 +187,7 @@ export function WardrobeShop({
     initialBrowseState?.colourFilter ?? "all"
   );
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
+  const [collectionFilter, setCollectionFilter] = useState("all");
   const [favouritesOnly, setFavouritesOnly] = useState(
     initialBrowseState?.favouritesOnly ?? false
   );
@@ -229,6 +233,7 @@ export function WardrobeShop({
     seasonFilter !== "all" ||
     colourFilter !== "all" ||
     availabilityFilter !== "all" ||
+    collectionFilter !== "all" ||
     favouritesOnly ||
     sortBy !== "newest";
 
@@ -239,6 +244,7 @@ export function WardrobeShop({
     setSeasonFilter("all");
     setColourFilter("all");
     setAvailabilityFilter("all");
+    setCollectionFilter("all");
     setFavouritesOnly(false);
     setSortBy("newest");
   };
@@ -290,6 +296,13 @@ export function WardrobeShop({
           return false;
         }
 
+        if (
+          collectionFilter !== "all" &&
+          !garmentInCollection(garment.id as string, collectionFilter, collections)
+        ) {
+          return false;
+        }
+
         return true;
       })
       .sort((left, right) => {
@@ -319,6 +332,8 @@ export function WardrobeShop({
     occasionFilter,
     colourFilter,
     availabilityFilter,
+    collectionFilter,
+    collections,
     seasonFilter,
     sortBy,
     typeFilter
@@ -790,6 +805,32 @@ export function WardrobeShop({
               })}
             </div>
           </div>
+
+          {collections.length > 0 ? (
+            <div className="-mx-1 mt-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex min-w-max items-center gap-2">
+                {collections.map((collection) => {
+                  const active = collectionFilter === collection.id;
+                  return (
+                    <button
+                      key={collection.id}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() =>
+                        setCollectionFilter((current) =>
+                          current === collection.id ? "all" : collection.id
+                        )
+                      }
+                      className="pw-swatch"
+                      data-active={active ? "true" : "false"}
+                    >
+                      {collection.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {createState.message ? (
@@ -1232,7 +1273,7 @@ function GarmentCard({
   useEffect(() => {
     if (archiveState.status === "success") {
       showAppToast({
-        message: archiveState.message || "Let go — you can undo this from the wardrobe.",
+        message: archiveState.message || "Let go. You can undo this from the wardrobe.",
         tone: "success"
       });
       setIsUsedElsewhereOpen(false);
