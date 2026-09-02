@@ -7,7 +7,7 @@ import { AuthRequiredCard } from "@/components/auth-required-card";
 import { AccountProfileForm } from "@/app/account/account-profile-form";
 import { PlanSection } from "@/app/account/plan-section";
 import { YouSection } from "@/app/account/you-section";
-import { signOutAction } from "@/app/auth/actions";
+import { SignOutRow } from "@/app/account/sign-out-row";
 
 export default async function AccountPage() {
   try {
@@ -58,15 +58,7 @@ export default async function AccountPage() {
 
         <PlanSection entitlements={entitlements} upgradeUrl={upgradeUrl} />
 
-        {/* Sign out */}
-        <form action={signOutAction} className="pb-4">
-          <button
-            type="submit"
-            className="text-sm text-[var(--muted)] underline underline-offset-2 hover:text-[var(--foreground)]"
-          >
-            Sign out
-          </button>
-        </form>
+        <SignOutRow />
       </main>
     );
   } catch (error) {
