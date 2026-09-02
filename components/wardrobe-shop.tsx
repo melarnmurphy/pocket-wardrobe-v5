@@ -17,6 +17,7 @@ import { DestructiveActionButton } from "@/components/destructive-action-button"
 import { FormFeedback } from "@/components/form-feedback";
 import { GarmentImageUpload } from "@/components/garment-image-upload";
 import { PremiumUpsellCard } from "@/components/premium-upsell-card";
+import { RecentlyDeletedSheet } from "@/components/garderobe/wardrobe/recently-deleted-sheet";
 import { showAppToast } from "@/lib/ui/app-toast";
 import type { PlanTier } from "@/lib/domain/entitlements";
 import {
@@ -50,7 +51,9 @@ export function WardrobeShop({
   setGarmentFeatureImageAction,
   toggleGarmentFavouriteAction,
   logWearAction,
-  updateGarmentAction
+  updateGarmentAction,
+  recentlyDeletedGarments,
+  restoreGarmentAction
 }: {
   garments: GarmentListItem[];
   planTier: PlanTier;
@@ -116,6 +119,11 @@ export function WardrobeShop({
     state: WardrobeActionState,
     formData: FormData
   ) => Promise<WardrobeActionState>;
+  recentlyDeletedGarments: GarmentListItem[];
+  restoreGarmentAction: (
+    state: WardrobeActionState,
+    formData: FormData
+  ) => Promise<WardrobeActionState>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -130,6 +138,7 @@ export function WardrobeShop({
   const [createMobileStep, setCreateMobileStep] = useState<1 | 2>(1);
   const [isCreateDetailsOpen, setIsCreateDetailsOpen] = useState(false);
   const [isFilterBarCondensed, setIsFilterBarCondensed] = useState(false);
+  const [isRecentlyDeletedOpen, setIsRecentlyDeletedOpen] = useState(false);
   const [createPreviewTitle, setCreatePreviewTitle] = useState("");
   const [createPreviewBrand, setCreatePreviewBrand] = useState("");
   const [createPreviewCategory, setCreatePreviewCategory] = useState("");
@@ -556,6 +565,13 @@ export function WardrobeShop({
                   Reset
                 </button>
               ) : null}
+              <button
+                type="button"
+                onClick={() => setIsRecentlyDeletedOpen(true)}
+                className="text-xs uppercase tracking-[0.2em] text-[var(--muted)] underline"
+              >
+                Recently deleted
+              </button>
             </div>
           </div>
 
@@ -1005,6 +1021,13 @@ export function WardrobeShop({
           updateGarmentAction={updateGarmentAction}
         />
       ) : null}
+
+      <RecentlyDeletedSheet
+        open={isRecentlyDeletedOpen}
+        items={recentlyDeletedGarments}
+        onClose={() => setIsRecentlyDeletedOpen(false)}
+        restoreAction={restoreGarmentAction}
+      />
     </>
   );
 }

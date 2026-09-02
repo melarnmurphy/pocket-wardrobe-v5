@@ -15,7 +15,10 @@ import {
 } from "@/lib/domain/outfits/service";
 import { suggestTodayOutfit } from "@/lib/domain/outfits/today";
 import { listStyleRules } from "@/lib/domain/style-rules/service";
-import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
+import {
+  listRecentlyDeletedGarments,
+  listWardrobeGarments
+} from "@/lib/domain/wardrobe/service";
 import { listUnfinishedPhotoBatches } from "@/lib/domain/ingestion/batch";
 import { AuthRequiredCard } from "@/components/auth-required-card";
 import { OwnedTrendCard } from "@/components/owned-trend-card";
@@ -30,6 +33,7 @@ import {
   createReceiptDraftAction,
   deleteGarmentAction,
   logWearAction,
+  restoreGarmentAction,
   setGarmentFeatureImageAction,
   updateGarmentAction,
   toggleGarmentFavouriteAction
@@ -53,14 +57,16 @@ export default async function WardrobeItemsPage({
       styleRules,
       trendMatches,
       savedOutfits,
-      unfinishedBatches
+      unfinishedBatches,
+      recentlyDeletedGarments
     ] = await Promise.all([
       listWardrobeGarments(),
       getUserEntitlements(),
       listStyleRules(),
       listUserTrendMatchesWithSignals(),
       listSavedOutfits(),
-      listUnfinishedPhotoBatches()
+      listUnfinishedPhotoBatches(),
+      listRecentlyDeletedGarments()
     ]);
     const runningBatches = unfinishedBatches.filter((batch) => batch.status === "running");
     const nowMs = Date.now();
@@ -142,6 +148,8 @@ export default async function WardrobeItemsPage({
           toggleGarmentFavouriteAction={toggleGarmentFavouriteAction}
           logWearAction={logWearAction}
           updateGarmentAction={updateGarmentAction}
+          recentlyDeletedGarments={recentlyDeletedGarments}
+          restoreGarmentAction={restoreGarmentAction}
         />
       </div>
     );
