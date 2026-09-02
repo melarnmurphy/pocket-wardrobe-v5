@@ -8,7 +8,7 @@ const garmentSelectSingle = vi.fn();
 const garmentSelectEqUserId = vi.fn(() => ({ single: garmentSelectSingle }));
 const garmentSelectEqId = vi.fn(() => ({ eq: garmentSelectEqUserId }));
 const garmentSelect = vi.fn(() => ({ eq: garmentSelectEqId }));
-const from = vi.fn((table: string) => {
+const from = vi.fn((table: string): Record<string, unknown> => {
   if (table === "wear_events") {
     return { insert };
   }
@@ -96,5 +96,58 @@ describe("incrementWearCount", () => {
     const rows = insert.mock.calls[0][0] as Array<{ worn_at: string }>;
     expect(rows).toHaveLength(3);
     expect(new Set(rows.map((row) => row.worn_at)).size).toBe(3);
+  });
+});
+
+describe("updateWearEvent", () => {
+  const eqMock = vi.fn(() => ({ eq: eqMock, error: null }));
+  const updateMock = vi.fn(() => ({ eq: eqMock }));
+  const wearEventsFrom = vi.fn(() => ({ update: updateMock }));
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getRequiredUser.mockResolvedValue({ id: "11111111-1111-1111-1111-111111111111" });
+    from.mockImplementation((table: string) => {
+      if (table === "wear_events") {
+        return wearEventsFrom();
+      }
+
+      throw new Error(`Unexpected table ${table}`);
+    });
+  });
+
+  it("updates only the fields given", async () => {
+    const { updateWearEvent } = await import("@/lib/domain/wear-events/service");
+    await updateWearEvent({
+      wearEventId: "66666666-6666-6666-6666-666666666666",
+      occasion: "work"
+    });
+
+    expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ occasion: "work" }));
+  });
+});
+
+describe("deleteWearEvent", () => {
+  const eqMock = vi.fn(() => ({ eq: eqMock, error: null }));
+  const deleteChainMock = vi.fn(() => ({ eq: eqMock }));
+  const wearEventsFrom = vi.fn(() => ({ delete: deleteChainMock }));
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getRequiredUser.mockResolvedValue({ id: "11111111-1111-1111-1111-111111111111" });
+    from.mockImplementation((table: string) => {
+      if (table === "wear_events") {
+        return wearEventsFrom();
+      }
+
+      throw new Error(`Unexpected table ${table}`);
+    });
+  });
+
+  it("deletes the wear_events row scoped to the current user", async () => {
+    const { deleteWearEvent } = await import("@/lib/domain/wear-events/service");
+    await deleteWearEvent("77777777-7777-7777-7777-777777777777");
+
+    expect(deleteChainMock).toHaveBeenCalled();
   });
 });

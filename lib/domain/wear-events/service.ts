@@ -26,6 +26,12 @@ const recentWearEventListSchema = recentWearEventSchema.extend({
 
 export type RecentWearEvent = z.infer<typeof recentWearEventListSchema>;
 
+const updateWearEventSchema = z.object({
+  wornAt: z.string().min(1).optional(),
+  occasion: z.string().trim().max(120).nullable().optional(),
+  notes: z.string().trim().max(2000).nullable().optional()
+});
+
 /**
  * Every write here is a wear_events row and nothing else. wear_count,
  * last_worn_at and cost_per_wear are recomputed authoritatively by the
@@ -101,6 +107,55 @@ export async function incrementWearCount(params: {
   }
 
   return garment as Pick<GarmentRow, "wear_count" | "last_worn_at" | "cost_per_wear">;
+}
+
+/** 18a / w6b — "remove or correct a logged wear". */
+export async function updateWearEvent(params: {
+  wearEventId: string;
+  wornAt?: string;
+  occasion?: string | null;
+  notes?: string | null;
+}) {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(params.wearEventId);
+  const values = updateWearEventSchema.parse({
+    wornAt: params.wornAt,
+    occasion: params.occasion,
+    notes: params.notes
+  });
+
+  const patch: Partial<WearEventInsert> = {};
+  if (values.wornAt !== undefined) patch.worn_at = values.wornAt;
+  if (values.occasion !== undefined) patch.occasion = values.occasion;
+  if (values.notes !== undefined) patch.notes = values.notes;
+
+  const { error } = await supabase
+    .from("wear_events")
+    .update(patch as never)
+    .eq("id", parsedId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/** 18a / w6b — the delete half of "remove or correct a logged wear". */
+export async function deleteWearEvent(wearEventId: string) {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(wearEventId);
+
+  const { error } = await supabase
+    .from("wear_events")
+    .delete()
+    .eq("id", parsedId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }
 
 /** 11b / w3g — "what you wore, and when" for one look. */

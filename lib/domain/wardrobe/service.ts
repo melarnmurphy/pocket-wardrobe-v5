@@ -775,6 +775,69 @@ export async function mergeGarments(sourceGarmentId: string, targetGarmentId: st
   }
 }
 
+/** 18c / w6a — "new collection" sheet on the grid's select mode. */
+export async function createCollection(params: {
+  name: string;
+  kind?: "user" | "batch" | "packing";
+  garmentIds?: string[];
+}): Promise<{ id: string }> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const name = z.string().trim().min(1).max(120).parse(params.name);
+  const kind = z.enum(["user", "batch", "packing"]).default("user").parse(params.kind ?? "user");
+  const garmentIds = z.array(z.string().uuid()).default([]).parse(params.garmentIds ?? []);
+
+  const { data, error } = await supabase
+    .from("collections")
+    .insert(({ user_id: user.id, name, kind } satisfies Record<string, unknown>) as never)
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "Could not create collection.");
+  }
+
+  const collectionId = (data as { id: string }).id;
+
+  if (garmentIds.length) {
+    const rows = garmentIds.map((garmentId) => ({ collection_id: collectionId, garment_id: garmentId }));
+    const { error: linkError } = await supabase.from("garment_collections").insert(rows as never);
+    if (linkError) {
+      throw new Error(linkError.message);
+    }
+  }
+
+  return { id: collectionId };
+}
+
+/** 18c / w6a — collections list for the grid's collection picker/filter. */
+export async function listCollections(): Promise<
+  Array<{ id: string; name: string; kind: string; garmentIds: string[] }>
+> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("collections")
+    .select("id,name,kind,garment_collections(garment_id)")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).map((row) => {
+    const typed = row as { id: string; name: string; kind: string; garment_collections: Array<{ garment_id: string }> | null };
+    return {
+      id: typed.id,
+      name: typed.name,
+      kind: typed.kind,
+      garmentIds: (typed.garment_collections ?? []).map((link) => link.garment_id)
+    };
+  });
+}
+
 /** 11a — a single piece, including archived ones, with a signed hero image. */
 export async function getGarmentById(garmentId: string): Promise<GarmentListItem | null> {
   const user = await getRequiredUser();

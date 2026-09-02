@@ -144,3 +144,33 @@ describe("bulkDeleteGarmentsAction", () => {
     vi.doUnmock("@/lib/domain/wardrobe/service");
   });
 });
+
+describe("createCollectionAction", () => {
+  it("creates a collection with the given name and garment ids", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/domain/wardrobe/service", async () => {
+      const actual = await vi.importActual("@/lib/domain/wardrobe/service");
+      return { ...actual, createCollection: vi.fn(async () => ({ id: "collection-1" })) };
+    });
+    const { createCollectionAction } = await import("@/app/wardrobe/actions");
+
+    const formData = new FormData();
+    formData.set("name", "Capsule");
+    formData.append("garment_id", "88888888-8888-8888-8888-888888888888");
+
+    const result = await createCollectionAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("success");
+    vi.doUnmock("@/lib/domain/wardrobe/service");
+  });
+
+  it("rejects an empty name", async () => {
+    const { createCollectionAction } = await import("@/app/wardrobe/actions");
+    const formData = new FormData();
+    formData.set("name", "");
+
+    const result = await createCollectionAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("error");
+  });
+});

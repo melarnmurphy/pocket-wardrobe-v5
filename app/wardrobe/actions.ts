@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getServerEnv } from "@/lib/env";
 import {
+  createCollection,
   createGarment,
   addGarment3dAsset,
   addGarmentImage,
@@ -28,7 +29,12 @@ import {
   type WardrobeColourFamily
 } from "@/lib/domain/wardrobe/colours";
 import type { WardrobeActionState } from "@/lib/domain/wardrobe/action-state";
-import { incrementWearCount, logWearEvent } from "@/lib/domain/wear-events/service";
+import {
+  deleteWearEvent,
+  incrementWearCount,
+  logWearEvent,
+  updateWearEvent
+} from "@/lib/domain/wear-events/service";
 import {
   createGarmentSource,
   createDraftsFromPipelineResult,
@@ -168,6 +174,22 @@ const bulkGarmentIdsFormSchema = z.object({
 const mergeGarmentsFormSchema = z.object({
   source_garment_id: z.string().uuid(),
   target_garment_id: z.string().uuid()
+});
+
+const updateWearEventFormSchema = z.object({
+  wear_event_id: z.string().uuid(),
+  worn_at: nullableText(40),
+  occasion: nullableText(120),
+  notes: nullableText(2000)
+});
+
+const deleteWearEventFormSchema = z.object({
+  wear_event_id: z.string().uuid()
+});
+
+const createCollectionFormSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  garment_id: z.array(z.string().uuid()).default([])
 });
 
 const setAvailabilityFormSchema = z.object({
@@ -940,6 +962,78 @@ export async function mergeGarmentsAction(
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Unable to merge these pieces."
+    };
+  }
+}
+
+export async function updateWearEventAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = updateWearEventFormSchema.parse({
+      wear_event_id: formData.get("wear_event_id"),
+      worn_at: formData.get("worn_at"),
+      occasion: formData.get("occasion"),
+      notes: formData.get("notes")
+    });
+
+    await updateWearEvent({
+      wearEventId: values.wear_event_id,
+      wornAt: values.worn_at ?? undefined,
+      occasion: values.occasion,
+      notes: values.notes
+    });
+    revalidatePath("/wardrobe");
+
+    return { status: "success", message: "Wear updated." };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to update that wear."
+    };
+  }
+}
+
+export async function deleteWearEventAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = deleteWearEventFormSchema.parse({
+      wear_event_id: formData.get("wear_event_id")
+    });
+
+    await deleteWearEvent(values.wear_event_id);
+    revalidatePath("/wardrobe");
+
+    return { status: "success", message: "Wear removed." };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to remove that wear."
+    };
+  }
+}
+
+export async function createCollectionAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = createCollectionFormSchema.parse({
+      name: formData.get("name"),
+      garment_id: formData.getAll("garment_id")
+    });
+
+    await createCollection({ name: values.name, garmentIds: values.garment_id });
+    revalidatePath("/wardrobe");
+
+    return { status: "success", message: "Collection created." };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to create the collection."
     };
   }
 }

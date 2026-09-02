@@ -161,6 +161,30 @@ export type Database = {
         }
         Relationships: []
       }
+      collections: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       colour_relationships: {
         Row: {
           colour_id_a: string
@@ -262,6 +286,39 @@ export type Database = {
           undertone?: string | null
         }
         Relationships: []
+      }
+      garment_collections: {
+        Row: {
+          added_at: string
+          collection_id: string
+          garment_id: string
+        }
+        Insert: {
+          added_at?: string
+          collection_id: string
+          garment_id: string
+        }
+        Update: {
+          added_at?: string
+          collection_id?: string
+          garment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "garment_collections_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "garment_collections_garment_id_fkey"
+            columns: ["garment_id"]
+            isOneToOne: false
+            referencedRelation: "garments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       garment_colours: {
         Row: {
