@@ -376,6 +376,87 @@ export async function respondToHandover(
   void user; // action is scoped to participants by RLS, not by this check
 }
 
+/** Sheet action for "cancel or reschedule a handover" — either party can cancel. */
+export async function cancelHandover(handoverId: string): Promise<void> {
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(handoverId);
+
+  const { data: handover, error: handoverError } = await supabase
+    .from("handovers")
+    .select("thread_id")
+    .eq("id", parsedId)
+    .maybeSingle();
+
+  if (handoverError || !handover) {
+    throw new Error("Handover not found.");
+  }
+
+  const { error } = await supabase
+    .from("handovers")
+    .update({ state: "cancelled" } as never)
+    .eq("id", parsedId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await supabase
+    .from("threads")
+    .update({ state: "open" } as never)
+    .eq("id", (handover as { thread_id: string }).thread_id);
+}
+
+/**
+ * "they didn't show" — the only trust signal the marketplace has. Records
+ * who was reported as a no-show (the *other* participant, never the
+ * reporter) and reopens the thread so the pair can still try again.
+ */
+export async function reportNoShow(handoverId: string): Promise<void> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(handoverId);
+
+  const { data: handover, error: handoverError } = await supabase
+    .from("handovers")
+    .select("thread_id")
+    .eq("id", parsedId)
+    .maybeSingle();
+
+  if (handoverError || !handover) {
+    throw new Error("Handover not found.");
+  }
+
+  const threadId = (handover as { thread_id: string }).thread_id;
+
+  const { data: thread, error: threadError } = await supabase
+    .from("threads")
+    .select("buyer_id,seller_id")
+    .eq("id", threadId)
+    .maybeSingle();
+
+  if (threadError || !thread) {
+    throw new Error("Thread not found.");
+  }
+
+  const parsedThread = thread as { buyer_id: string; seller_id: string };
+  const noShowBy = user.id === parsedThread.buyer_id ? parsedThread.seller_id : parsedThread.buyer_id;
+
+  const { error } = await supabase
+    .from("handovers")
+    .update({
+      state: "missed",
+      no_show_by: noShowBy,
+      no_show_reported_at: new Date().toISOString()
+    } as never)
+    .eq("id", parsedId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await supabase.from("threads").update({ state: "open" } as never).eq("id", threadId);
+}
+
 /**
  * Both parties must confirm. On the second confirmation, complete_handover()
  * (migration 031) archives the piece, closes the thread and writes
@@ -483,7 +564,9 @@ const handoverSchema = z.object({
   payment_method: z.string().nullable(),
   completed_at: z.string().nullable(),
   seller_confirmed: z.boolean(),
-  buyer_confirmed: z.boolean()
+  buyer_confirmed: z.boolean(),
+  no_show_by: z.string().uuid().nullable(),
+  no_show_reported_at: z.string().nullable()
 });
 export type ThreadHandover = z.infer<typeof handoverSchema>;
 
