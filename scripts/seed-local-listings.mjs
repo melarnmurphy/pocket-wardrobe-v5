@@ -96,7 +96,7 @@ async function main() {
 
     const { data: garments, error: garmentsError } = await supabase
       .from("garments")
-      .select("id, title, category")
+      .select("id, title, category, subcategory")
       .eq("user_id", userId)
       .is("archived_at", null)
       .order("created_at", { ascending: true })
@@ -116,6 +116,8 @@ async function main() {
         ask_cents: 2000 + Math.floor(Math.random() * 8000),
         negotiable: true,
         description: garment.title || garment.category,
+        category: garment.category,
+        subcategory: garment.subcategory,
         photo_uris: [],
         suburb,
         lat,
