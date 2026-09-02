@@ -5,6 +5,11 @@ export type WardrobeActionState = {
   draftIds?: string[];
   nextPath?: string;
   blocked?: { activeOutfitCount: number; activeListingId: string | null };
+  /**
+   * "Upload failed / unsupported file" (MODALS.md §3) — lets the UI pick
+   * dedicated copy instead of showing whatever raw Error.message surfaced.
+   */
+  errorCode?: "unsupported_format" | "too_large" | "dead_url";
 };
 
 export const wardrobeActionState: WardrobeActionState = {
