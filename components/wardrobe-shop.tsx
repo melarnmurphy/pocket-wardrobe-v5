@@ -18,6 +18,11 @@ import { FormFeedback } from "@/components/form-feedback";
 import { GarmentImageUpload } from "@/components/garment-image-upload";
 import { PremiumUpsellCard } from "@/components/premium-upsell-card";
 import { RecentlyDeletedSheet } from "@/components/garderobe/wardrobe/recently-deleted-sheet";
+import { SelectModeBar } from "@/components/garderobe/wardrobe/select-mode-bar";
+import { NewCollectionSheet } from "@/components/garderobe/wardrobe/new-collection-sheet";
+import { SortSheet } from "@/components/garderobe/wardrobe/sort-sheet";
+import { Dialog } from "@/components/garderobe/dialog";
+import { UsedElsewhereDialog } from "@/components/garderobe/wardrobe/used-elsewhere-dialog";
 import { showAppToast } from "@/lib/ui/app-toast";
 import type { PlanTier } from "@/lib/domain/entitlements";
 import {
@@ -53,7 +58,10 @@ export function WardrobeShop({
   logWearAction,
   updateGarmentAction,
   recentlyDeletedGarments,
-  restoreGarmentAction
+  restoreGarmentAction,
+  bulkDeleteGarmentsAction,
+  createCollectionAction,
+  archiveGarmentAction
 }: {
   garments: GarmentListItem[];
   planTier: PlanTier;
@@ -124,6 +132,18 @@ export function WardrobeShop({
     state: WardrobeActionState,
     formData: FormData
   ) => Promise<WardrobeActionState>;
+  bulkDeleteGarmentsAction: (
+    state: WardrobeActionState,
+    formData: FormData
+  ) => Promise<WardrobeActionState>;
+  createCollectionAction: (
+    state: WardrobeActionState,
+    formData: FormData
+  ) => Promise<WardrobeActionState>;
+  archiveGarmentAction: (
+    state: WardrobeActionState,
+    formData: FormData
+  ) => Promise<WardrobeActionState>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -139,6 +159,11 @@ export function WardrobeShop({
   const [isCreateDetailsOpen, setIsCreateDetailsOpen] = useState(false);
   const [isFilterBarCondensed, setIsFilterBarCondensed] = useState(false);
   const [isRecentlyDeletedOpen, setIsRecentlyDeletedOpen] = useState(false);
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isNewCollectionOpen, setIsNewCollectionOpen] = useState(false);
+  const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
   const [createPreviewTitle, setCreatePreviewTitle] = useState("");
   const [createPreviewBrand, setCreatePreviewBrand] = useState("");
   const [createPreviewCategory, setCreatePreviewCategory] = useState("");
@@ -178,6 +203,10 @@ export function WardrobeShop({
   );
   const [receiptDraftState, receiptDraftFormAction] = useActionState(
     createReceiptDraftAction,
+    wardrobeActionState
+  );
+  const [bulkDeleteState, bulkDeleteFormAction] = useActionState(
+    bulkDeleteGarmentsAction,
     wardrobeActionState
   );
 
@@ -466,6 +495,41 @@ export function WardrobeShop({
     createSourceMode
   ]);
 
+  useEffect(() => {
+    if (bulkDeleteState.status === "success" || bulkDeleteState.status === "partial") {
+      showAppToast({
+        message: bulkDeleteState.message || "Items deleted.",
+        tone: bulkDeleteState.status === "partial" ? "info" : "success"
+      });
+      setIsDeleteConfirmOpen(false);
+      exitSelectMode();
+    } else if (bulkDeleteState.status === "error" && bulkDeleteState.message) {
+      showAppToast({ message: bulkDeleteState.message, tone: "error" });
+    }
+  }, [bulkDeleteState.status, bulkDeleteState.message]);
+
+  const enterSelectMode = () => {
+    setIsSelectMode(true);
+    setSelectedIds(new Set());
+  };
+
+  const exitSelectMode = () => {
+    setIsSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelected = (garmentId: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(garmentId)) {
+        next.delete(garmentId);
+      } else {
+        next.add(garmentId);
+      }
+      return next;
+    });
+  };
+
   const openCreateComposer = () => {
     setSelectedGarmentId(null);
     setIsCreateOpen(true);
@@ -572,6 +636,22 @@ export function WardrobeShop({
               >
                 Recently deleted
               </button>
+              {!isSelectMode ? (
+                <button
+                  type="button"
+                  onClick={enterSelectMode}
+                  className="text-xs uppercase tracking-[0.2em] text-[var(--muted)] underline"
+                >
+                  Select
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setIsSortSheetOpen(true)}
+                className="text-xs uppercase tracking-[0.2em] text-[var(--muted)] underline sm:hidden"
+              >
+                Sort
+              </button>
             </div>
           </div>
 
@@ -655,21 +735,23 @@ export function WardrobeShop({
                 ]}
               />
 
-              <FilterSelect
-                icon={<SortIcon />}
-                label="Sort"
-                value={sortBy}
-                onChange={setSortBy}
-                options={[
-                  { value: "newest", label: "Newest first" },
-                  { value: "neglected", label: "Neglected value" },
-                  { value: "cost_desc", label: "Cost per wear: high to low" },
-                  { value: "cost_asc", label: "Cost per wear: low to high" },
-                  { value: "favourites", label: "Favourites first" },
-                  { value: "most_worn", label: "Most worn" },
-                  { value: "price_desc", label: "Price: high to low" }
-                ]}
-              />
+              <div className="hidden sm:block">
+                <FilterSelect
+                  icon={<SortIcon />}
+                  label="Sort"
+                  value={sortBy}
+                  onChange={setSortBy}
+                  options={[
+                    { value: "newest", label: "Newest first" },
+                    { value: "neglected", label: "Neglected value" },
+                    { value: "cost_desc", label: "Cost per wear: high to low" },
+                    { value: "cost_asc", label: "Cost per wear: low to high" },
+                    { value: "favourites", label: "Favourites first" },
+                    { value: "most_worn", label: "Most worn" },
+                    { value: "price_desc", label: "Price: high to low" }
+                  ]}
+                />
+              </div>
           </div>
 
           <div className="-mx-1 mt-3 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -728,9 +810,16 @@ export function WardrobeShop({
               <GarmentCard
                 key={garment.id}
                 garment={garment}
-                onOpen={() => router.push(`/wardrobe/${garment.id}`)}
+                onOpen={() =>
+                  isSelectMode
+                    ? toggleSelected(garment.id as string)
+                    : router.push(`/wardrobe/${garment.id}`)
+                }
                 deleteGarmentAction={deleteGarmentAction}
                 toggleGarmentFavouriteAction={toggleGarmentFavouriteAction}
+                archiveGarmentAction={archiveGarmentAction}
+                isSelectMode={isSelectMode}
+                isSelected={selectedIds.has(garment.id as string)}
               />
             ))}
           </div>
@@ -1028,6 +1117,43 @@ export function WardrobeShop({
         onClose={() => setIsRecentlyDeletedOpen(false)}
         restoreAction={restoreGarmentAction}
       />
+
+      <SortSheet
+        open={isSortSheetOpen}
+        value={sortBy}
+        onSelect={setSortBy}
+        onClose={() => setIsSortSheetOpen(false)}
+      />
+
+      {isSelectMode ? (
+        <SelectModeBar
+          selectedCount={selectedIds.size}
+          onRequestDelete={() => setIsDeleteConfirmOpen(true)}
+          onRequestNewCollection={() => setIsNewCollectionOpen(true)}
+          onExit={exitSelectMode}
+        />
+      ) : null}
+
+      <Dialog
+        open={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        title={`delete ${selectedIds.size} piece${selectedIds.size === 1 ? "" : "s"}?`}
+        description="Any that are used in a saved look or a live listing will be skipped, and you can restore the rest from recently deleted for a while."
+        confirmLabel="delete"
+        confirmVariant="primary"
+        onConfirm={() => {
+          const formData = new FormData();
+          selectedIds.forEach((garmentId) => formData.append("garment_id", garmentId));
+          bulkDeleteFormAction(formData);
+        }}
+      />
+
+      <NewCollectionSheet
+        open={isNewCollectionOpen}
+        garmentIds={Array.from(selectedIds)}
+        onClose={() => setIsNewCollectionOpen(false)}
+        createAction={createCollectionAction}
+      />
     </>
   );
 }
@@ -1036,7 +1162,10 @@ function GarmentCard({
   garment,
   onOpen,
   deleteGarmentAction,
-  toggleGarmentFavouriteAction
+  toggleGarmentFavouriteAction,
+  archiveGarmentAction,
+  isSelectMode = false,
+  isSelected = false
 }: {
   garment: GarmentListItem;
   onOpen: () => void;
@@ -1048,7 +1177,14 @@ function GarmentCard({
     state: WardrobeActionState,
     formData: FormData
   ) => Promise<WardrobeActionState>;
+  archiveGarmentAction: (
+    state: WardrobeActionState,
+    formData: FormData
+  ) => Promise<WardrobeActionState>;
+  isSelectMode?: boolean;
+  isSelected?: boolean;
 }) {
+  const router = useRouter();
   const [deleteState, deleteFormAction] = useActionState(
     deleteGarmentAction,
     wardrobeActionState
@@ -1057,14 +1193,19 @@ function GarmentCard({
     toggleGarmentFavouriteAction,
     wardrobeActionState
   );
+  const [archiveState, archiveFormAction] = useActionState(
+    archiveGarmentAction,
+    wardrobeActionState
+  );
   const serverFavourite = Boolean(garment.favourite_score && garment.favourite_score > 0);
   const [optimisticFavourite, setOptimisticFavourite] = useState(serverFavourite);
-  const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isUsedElsewhereOpen, setIsUsedElsewhereOpen] = useState(false);
   const costPerWear = displayCostPerWear(garment);
   const openDeleteConfirmation = (event: React.SyntheticEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    setIsDeleteConfirming(true);
+    setIsDeleteConfirmOpen(true);
   };
 
   useEffect(() => {
@@ -1077,8 +1218,27 @@ function GarmentCard({
         message: deleteState.message || "Item deleted",
         tone: "success"
       });
+    } else if (deleteState.status === "blocked") {
+      setIsUsedElsewhereOpen(true);
     }
-  }, [deleteState.message, deleteState.status]);
+    // Depend on the whole state object (not just its primitive fields) so a
+    // repeat delete attempt that resolves to the same status/message (e.g.
+    // still blocked) still re-triggers this — useActionState hands back a
+    // fresh object each dispatch, but two consecutive "blocked" results with
+    // identical text would otherwise look unchanged to a primitive-only dep
+    // array and silently fail to reopen the dialog.
+  }, [deleteState]);
+
+  useEffect(() => {
+    if (archiveState.status === "success") {
+      showAppToast({
+        message: archiveState.message || "Let go — you can undo this from the wardrobe.",
+        tone: "success"
+      });
+      setIsUsedElsewhereOpen(false);
+      router.refresh();
+    }
+  }, [archiveState.message, archiveState.status, router]);
 
   useEffect(() => {
     if (favouriteState.status === "error") {
@@ -1097,37 +1257,49 @@ function GarmentCard({
 
   return (
     <article className="group relative overflow-hidden rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,246,241,0.94))] shadow-[0_18px_45px_rgba(17,17,17,0.07)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_60px_rgba(17,17,17,0.12)]">
-      <div
-        className={`absolute right-2 top-2 z-10 flex gap-1.5 opacity-100 transition-opacity duration-200 sm:right-3 sm:top-3 sm:gap-2 ${
-          isDeleteConfirming ? "sm:opacity-100" : "sm:opacity-0 sm:group-hover:opacity-100"
-        }`}
-      >
-        <QuickIconForm
-          action={favouriteFormAction}
-          garmentId={garment.id as string}
-          onOptimisticSubmit={() => setOptimisticFavourite((current) => !current)}
-          title={optimisticFavourite ? "Remove favourite" : "Favourite item"}
-          tone={optimisticFavourite ? "favourite" : "light"}
-          icon={<StarIcon filled={optimisticFavourite} />}
-        />
-        <button
-          type="button"
-          title="Delete item"
-          onPointerDown={openDeleteConfirmation}
-          onClick={openDeleteConfirmation}
-          className="rounded-full border border-[rgba(17,17,17,0.08)] bg-white/96 p-2 text-red-600 shadow-sm backdrop-blur transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(17,17,17,0.1)] active:translate-y-0 active:scale-[0.96]"
+      {isSelectMode ? (
+        <div className="absolute left-2 top-2 z-10 sm:left-3 sm:top-3">
+          <span
+            aria-hidden="true"
+            className={`flex h-6 w-6 items-center justify-center rounded-full border text-white transition-colors ${
+              isSelected
+                ? "border-[var(--oxblood)] bg-[var(--oxblood)]"
+                : "border-[rgba(17,17,17,0.2)] bg-white/90"
+            }`}
+          >
+            {isSelected ? <CheckIcon /> : null}
+          </span>
+        </div>
+      ) : (
+        <div
+          className={`absolute right-2 top-2 z-10 flex gap-1.5 opacity-100 transition-opacity duration-200 sm:right-3 sm:top-3 sm:gap-2 ${
+            isDeleteConfirmOpen ? "sm:opacity-100" : "sm:opacity-0 sm:group-hover:opacity-100"
+          }`}
         >
-          <TrashIcon />
-        </button>
-      </div>
+          <QuickIconForm
+            action={favouriteFormAction}
+            garmentId={garment.id as string}
+            onOptimisticSubmit={() => setOptimisticFavourite((current) => !current)}
+            title={optimisticFavourite ? "Remove favourite" : "Favourite item"}
+            tone={optimisticFavourite ? "favourite" : "light"}
+            icon={<StarIcon filled={optimisticFavourite} />}
+          />
+          <button
+            type="button"
+            title="Delete item"
+            onPointerDown={openDeleteConfirmation}
+            onClick={openDeleteConfirmation}
+            className="rounded-full border border-[rgba(17,17,17,0.08)] bg-white/96 p-2 text-red-600 shadow-sm backdrop-blur transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(17,17,17,0.1)] active:translate-y-0 active:scale-[0.96]"
+          >
+            <TrashIcon />
+          </button>
+        </div>
+      )}
 
       <button
         type="button"
         onClick={onOpen}
-        className={`block w-full text-left transition duration-200 ${
-          isDeleteConfirming ? "pointer-events-none select-none opacity-40 grayscale" : ""
-        }`}
-        aria-hidden={isDeleteConfirming}
+        className="block w-full text-left transition duration-200"
       >
         <div className="relative aspect-[3/4] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))] sm:aspect-[4/5]">
           {garment.preview_url ? (
@@ -1205,37 +1377,32 @@ function GarmentCard({
         </div>
       </button>
 
-      {isDeleteConfirming ? (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-[rgba(247,244,238,0.78)] p-4 backdrop-blur-[2px]">
-          <div
-            className="w-full max-w-[16rem] rounded-[1.1rem] border border-[rgba(220,38,38,0.12)] bg-white/98 p-4 text-center shadow-[0_18px_38px_rgba(17,17,17,0.12)]"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <p className="text-[10px] uppercase tracking-[0.2em] text-red-600">
-              Confirm Delete
-            </p>
-            <p className="mt-3 text-sm font-medium leading-6 text-[var(--foreground)]">
-              Remove {garment.title || garment.category} from your wardrobe?
-            </p>
-            <form action={deleteFormAction} className="mt-4 space-y-3">
-              <input type="hidden" name="garment_id" value={garment.id} />
-              <button
-                type="submit"
-                className="inline-flex w-full items-center justify-center rounded-full bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700"
-              >
-                Confirm Delete
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsDeleteConfirming(false)}
-                className="pw-button-quiet w-full px-4 py-2 text-sm"
-              >
-                Cancel
-              </button>
-            </form>
-          </div>
-        </div>
-      ) : null}
+      <Dialog
+        open={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        title="delete this piece?"
+        description={`Remove ${garment.title || garment.category} from your wardrobe.`}
+        confirmLabel="delete"
+        confirmVariant="primary"
+        onConfirm={() => {
+          setIsDeleteConfirmOpen(false);
+          const formData = new FormData();
+          formData.set("garment_id", garment.id as string);
+          deleteFormAction(formData);
+        }}
+      />
+
+      <UsedElsewhereDialog
+        open={isUsedElsewhereOpen}
+        activeOutfitCount={deleteState.blocked?.activeOutfitCount ?? 0}
+        hasActiveListing={Boolean(deleteState.blocked?.activeListingId)}
+        onClose={() => setIsUsedElsewhereOpen(false)}
+        onArchiveInstead={() => {
+          const formData = new FormData();
+          formData.set("garment_id", garment.id as string);
+          archiveFormAction(formData);
+        }}
+      />
 
       {deleteState.status === "error" ? (
         <p className="px-4 pb-4 text-sm text-red-600">{deleteState.message}</p>

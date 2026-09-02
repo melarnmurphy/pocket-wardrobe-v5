@@ -27,6 +27,9 @@ import { WardrobeShop } from "@/components/wardrobe-shop";
 import {
   addGarment3dAssetAction,
   addGarmentImageAction,
+  archiveGarmentAction,
+  bulkDeleteGarmentsAction,
+  createCollectionAction,
   createGarmentAction,
   createPhotoDraftAction,
   createProductUrlDraftAction,
@@ -150,6 +153,9 @@ export default async function WardrobeItemsPage({
           updateGarmentAction={updateGarmentAction}
           recentlyDeletedGarments={recentlyDeletedGarments}
           restoreGarmentAction={restoreGarmentAction}
+          bulkDeleteGarmentsAction={bulkDeleteGarmentsAction}
+          createCollectionAction={createCollectionAction}
+          archiveGarmentAction={archiveGarmentAction}
         />
       </div>
     );
