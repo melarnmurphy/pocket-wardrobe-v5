@@ -52,8 +52,7 @@ export function DisposalSheet({
 
     onClose();
     router.push("/wardrobe");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.status]);
+  }, [state.status, pieceName, undoAction, garmentId, onClose, router]);
 
   return (
     <BottomSheet open={open} onClose={onClose} title="what happened to it?">

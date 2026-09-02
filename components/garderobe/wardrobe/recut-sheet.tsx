@@ -23,8 +23,7 @@ export function RecutSheet({ open, garmentId, onClose, addImageAction }: RecutSh
     if (state.status !== "success") return;
     onClose();
     router.refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.status]);
+  }, [state.status, onClose, router]);
 
   return (
     <BottomSheet open={open} onClose={onClose} title="recut the photo" description="upload a clearer shot to cut out again">

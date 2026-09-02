@@ -35,8 +35,7 @@ export function WearCorrectionSheet({
     if (updateState.status !== "success" && deleteState.status !== "success") return;
     onClose();
     router.refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [updateState.status, deleteState.status]);
+  }, [updateState.status, deleteState.status, onClose, router]);
 
   return (
     <BottomSheet open={open} onClose={onClose} title="this wear">
