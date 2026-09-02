@@ -376,6 +376,8 @@ export async function respondToHandover(
   void user; // action is scoped to participants by RLS, not by this check
 }
 
+const TERMINAL_HANDOVER_STATES = new Set(["completed", "cancelled", "missed"]);
+
 /** Sheet action for "cancel or reschedule a handover" — either party can cancel. */
 export async function cancelHandover(handoverId: string): Promise<void> {
   const supabase = await createClient();
@@ -383,12 +385,17 @@ export async function cancelHandover(handoverId: string): Promise<void> {
 
   const { data: handover, error: handoverError } = await supabase
     .from("handovers")
-    .select("thread_id")
+    .select("thread_id,state")
     .eq("id", parsedId)
     .maybeSingle();
 
   if (handoverError || !handover) {
     throw new Error("Handover not found.");
+  }
+
+  const parsedHandover = handover as { thread_id: string; state: string };
+  if (TERMINAL_HANDOVER_STATES.has(parsedHandover.state)) {
+    throw new Error("This handover has already been cancelled.");
   }
 
   const { error } = await supabase
@@ -403,7 +410,7 @@ export async function cancelHandover(handoverId: string): Promise<void> {
   await supabase
     .from("threads")
     .update({ state: "open" } as never)
-    .eq("id", (handover as { thread_id: string }).thread_id);
+    .eq("id", parsedHandover.thread_id);
 }
 
 /**
@@ -413,12 +420,13 @@ export async function cancelHandover(handoverId: string): Promise<void> {
  */
 export async function reportNoShow(handoverId: string): Promise<void> {
   const user = await getRequiredUser();
+  await checkRateLimit("local-handover-no-show", 10, 3600);
   const supabase = await createClient();
   const parsedId = z.string().uuid().parse(handoverId);
 
   const { data: handover, error: handoverError } = await supabase
     .from("handovers")
-    .select("thread_id")
+    .select("thread_id,state")
     .eq("id", parsedId)
     .maybeSingle();
 
@@ -426,7 +434,12 @@ export async function reportNoShow(handoverId: string): Promise<void> {
     throw new Error("Handover not found.");
   }
 
-  const threadId = (handover as { thread_id: string }).thread_id;
+  const parsedHandover = handover as { thread_id: string; state: string };
+  if (TERMINAL_HANDOVER_STATES.has(parsedHandover.state)) {
+    throw new Error("This handover was already resolved.");
+  }
+
+  const threadId = parsedHandover.thread_id;
 
   const { data: thread, error: threadError } = await supabase
     .from("threads")
@@ -439,6 +452,9 @@ export async function reportNoShow(handoverId: string): Promise<void> {
   }
 
   const parsedThread = thread as { buyer_id: string; seller_id: string };
+  if (user.id !== parsedThread.buyer_id && user.id !== parsedThread.seller_id) {
+    throw new Error("Not a participant in this handover.");
+  }
   const noShowBy = user.id === parsedThread.buyer_id ? parsedThread.seller_id : parsedThread.buyer_id;
 
   const { error } = await supabase
