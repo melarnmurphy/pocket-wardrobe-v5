@@ -16,6 +16,7 @@ import {
 import { suggestTodayOutfit } from "@/lib/domain/outfits/today";
 import { listStyleRules } from "@/lib/domain/style-rules/service";
 import {
+  listCollections,
   listRecentlyDeletedGarments,
   listWardrobeGarments
 } from "@/lib/domain/wardrobe/service";
@@ -61,7 +62,8 @@ export default async function WardrobeItemsPage({
       trendMatches,
       savedOutfits,
       unfinishedBatches,
-      recentlyDeletedGarments
+      recentlyDeletedGarments,
+      collections
     ] = await Promise.all([
       listWardrobeGarments(),
       getUserEntitlements(),
@@ -69,7 +71,8 @@ export default async function WardrobeItemsPage({
       listUserTrendMatchesWithSignals(),
       listSavedOutfits(),
       listUnfinishedPhotoBatches(),
-      listRecentlyDeletedGarments()
+      listRecentlyDeletedGarments(),
+      listCollections()
     ]);
     const runningBatches = unfinishedBatches.filter((batch) => batch.status === "running");
     const nowMs = Date.now();
@@ -152,6 +155,7 @@ export default async function WardrobeItemsPage({
           logWearAction={logWearAction}
           updateGarmentAction={updateGarmentAction}
           recentlyDeletedGarments={recentlyDeletedGarments}
+          collections={collections}
           restoreGarmentAction={restoreGarmentAction}
           bulkDeleteGarmentsAction={bulkDeleteGarmentsAction}
           createCollectionAction={createCollectionAction}
