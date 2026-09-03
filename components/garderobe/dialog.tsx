@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import type { Route } from "next";
 import Link from "next/link";
 import { PillButton } from "./pill-button";
 
@@ -78,7 +79,7 @@ export function Dialog({
           </PillButton>
           {confirmHref ? (
             <Link
-              href={confirmHref}
+              href={confirmHref as Route}
               className={[
                 "inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-[100px] px-6",
                 "font-semibold text-[9.5px] uppercase tracking-[.2em]",
