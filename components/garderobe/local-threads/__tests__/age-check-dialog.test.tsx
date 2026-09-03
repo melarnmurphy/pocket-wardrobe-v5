@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { AgeCheckDialog, AgeBlockedDialog } from "@/components/garderobe/local-threads/age-check-dialog";
+
+afterEach(cleanup);
 
 describe("AgeCheckDialog", () => {
   it("routes 18-or-over and under-18 to the two different handlers", () => {
@@ -17,6 +19,26 @@ describe("AgeCheckDialog", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /i'm 18 or over/i }));
     expect(onConfirmAdult).toHaveBeenCalled();
+  });
+
+  it("backdrop-dismiss records no answer either way", () => {
+    const onConfirmAdult = vi.fn();
+    const onDeclineUnderage = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <AgeCheckDialog
+        open
+        onConfirmAdult={onConfirmAdult}
+        onDeclineUnderage={onDeclineUnderage}
+        onClose={onClose}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /dismiss/i }));
+
+    expect(onConfirmAdult).not.toHaveBeenCalled();
+    expect(onDeclineUnderage).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
   });
 });
 
