@@ -24,6 +24,7 @@ import { SortSheet } from "@/components/garderobe/wardrobe/sort-sheet";
 import { Dialog } from "@/components/garderobe/dialog";
 import { UsedElsewhereDialog } from "@/components/garderobe/wardrobe/used-elsewhere-dialog";
 import { UploadFailedDialog } from "@/components/garderobe/wardrobe/upload-failed-dialog";
+import { NotificationPermissionDialog } from "@/components/garderobe/wardrobe/notification-permission-dialog";
 import { showAppToast } from "@/lib/ui/app-toast";
 import type { PlanTier } from "@/lib/domain/entitlements";
 import {
@@ -1575,6 +1576,7 @@ function GarmentDetailDialog({
   const [imageUploadDialogCode, setImageUploadDialogCode] = useState<
     "unsupported_format" | "too_large" | null
   >(null);
+  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
   const [wearEntryMode, setWearEntryMode] = useState<"quick" | "detail">("quick");
   const [quickWearCount, setQuickWearCount] = useState(
     Math.max(garment.wear_count, 1)
@@ -1651,6 +1653,23 @@ function GarmentDetailDialog({
       });
     }
   }, [wearState.message, wearState.status]);
+
+  useEffect(() => {
+    if (wearState.status !== "success") return;
+    if (typeof window === "undefined") return;
+    if (window.localStorage.getItem("gw.notificationPermissionPrompted") === "1") return;
+    if (typeof window.Notification === "undefined") return;
+    if (window.Notification.permission !== "default") return;
+
+    setShowNotificationPrompt(true);
+  }, [wearState.status]);
+
+  function dismissNotificationPrompt() {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("gw.notificationPermissionPrompted", "1");
+    }
+    setShowNotificationPrompt(false);
+  }
 
   useEffect(() => {
     if (assetState.status === "success") {
@@ -1829,6 +1848,19 @@ function GarmentDetailDialog({
               errorCode={imageUploadDialogCode}
               onClose={() => setImageUploadDialogCode(null)}
               onRetry={() => setImageUploadDialogCode(null)}
+            />
+          ) : null}
+
+          {showNotificationPrompt ? (
+            <NotificationPermissionDialog
+              open
+              onNotNow={dismissNotificationPrompt}
+              onTurnOn={() => {
+                if (typeof window !== "undefined" && typeof window.Notification !== "undefined") {
+                  void window.Notification.requestPermission();
+                }
+                dismissNotificationPrompt();
+              }}
             />
           ) : null}
 
