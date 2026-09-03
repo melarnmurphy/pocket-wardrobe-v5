@@ -10,32 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.4"
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -287,6 +262,86 @@ export type Database = {
         }
         Relationships: []
       }
+      data_export_requests: {
+        Row: {
+          id: string
+          ready_at: string | null
+          requested_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          ready_at?: string | null
+          requested_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          ready_at?: string | null
+          requested_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      garment_3d_assets: {
+        Row: {
+          asset_type: string
+          confidence: number | null
+          created_at: string
+          file_format: string | null
+          garment_id: string
+          id: string
+          material_profile_json: Json
+          physics_profile_json: Json
+          renderer_metadata_json: Json
+          source_type: string
+          status: string
+          storage_path: string | null
+          updated_at: string
+        }
+        Insert: {
+          asset_type: string
+          confidence?: number | null
+          created_at?: string
+          file_format?: string | null
+          garment_id: string
+          id?: string
+          material_profile_json?: Json
+          physics_profile_json?: Json
+          renderer_metadata_json?: Json
+          source_type?: string
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+        }
+        Update: {
+          asset_type?: string
+          confidence?: number | null
+          created_at?: string
+          file_format?: string | null
+          garment_id?: string
+          id?: string
+          material_profile_json?: Json
+          physics_profile_json?: Json
+          renderer_metadata_json?: Json
+          source_type?: string
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "garment_3d_assets_garment_id_fkey"
+            columns: ["garment_id"]
+            isOneToOne: false
+            referencedRelation: "garments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       garment_collections: {
         Row: {
           added_at: string
@@ -355,62 +410,6 @@ export type Database = {
           },
           {
             foreignKeyName: "garment_colours_garment_id_fkey"
-            columns: ["garment_id"]
-            isOneToOne: false
-            referencedRelation: "garments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      garment_3d_assets: {
-        Row: {
-          asset_type: string
-          confidence: number | null
-          created_at: string
-          file_format: string | null
-          garment_id: string
-          id: string
-          material_profile_json: Json
-          physics_profile_json: Json
-          renderer_metadata_json: Json
-          source_type: string
-          status: string
-          storage_path: string | null
-          updated_at: string
-        }
-        Insert: {
-          asset_type: string
-          confidence?: number | null
-          created_at?: string
-          file_format?: string | null
-          garment_id: string
-          id?: string
-          material_profile_json?: Json
-          physics_profile_json?: Json
-          renderer_metadata_json?: Json
-          source_type?: string
-          status?: string
-          storage_path?: string | null
-          updated_at?: string
-        }
-        Update: {
-          asset_type?: string
-          confidence?: number | null
-          created_at?: string
-          file_format?: string | null
-          garment_id?: string
-          id?: string
-          material_profile_json?: Json
-          physics_profile_json?: Json
-          renderer_metadata_json?: Json
-          source_type?: string
-          status?: string
-          storage_path?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "garment_3d_assets_garment_id_fkey"
             columns: ["garment_id"]
             isOneToOne: false
             referencedRelation: "garments"
@@ -494,6 +493,93 @@ export type Database = {
           },
         ]
       }
+      garment_label_events: {
+        Row: {
+          bbox: Json | null
+          corrected_fields: string[]
+          created_at: string
+          crop_height: number | null
+          crop_path: string | null
+          crop_width: number | null
+          draft_id: string | null
+          event_type: string
+          final_brand: string | null
+          final_category: string | null
+          final_colour: string | null
+          final_material: string | null
+          final_style: string | null
+          final_title: string | null
+          garment_id: string | null
+          id: string
+          model_brand: string | null
+          model_category: string | null
+          model_colour: string | null
+          model_confidence: number | null
+          model_field_confidence: Json | null
+          model_material: string | null
+          model_style: string | null
+          source_id: string | null
+          source_storage_path: string | null
+          user_id: string
+        }
+        Insert: {
+          bbox?: Json | null
+          corrected_fields?: string[]
+          created_at?: string
+          crop_height?: number | null
+          crop_path?: string | null
+          crop_width?: number | null
+          draft_id?: string | null
+          event_type: string
+          final_brand?: string | null
+          final_category?: string | null
+          final_colour?: string | null
+          final_material?: string | null
+          final_style?: string | null
+          final_title?: string | null
+          garment_id?: string | null
+          id?: string
+          model_brand?: string | null
+          model_category?: string | null
+          model_colour?: string | null
+          model_confidence?: number | null
+          model_field_confidence?: Json | null
+          model_material?: string | null
+          model_style?: string | null
+          source_id?: string | null
+          source_storage_path?: string | null
+          user_id: string
+        }
+        Update: {
+          bbox?: Json | null
+          corrected_fields?: string[]
+          created_at?: string
+          crop_height?: number | null
+          crop_path?: string | null
+          crop_width?: number | null
+          draft_id?: string | null
+          event_type?: string
+          final_brand?: string | null
+          final_category?: string | null
+          final_colour?: string | null
+          final_material?: string | null
+          final_style?: string | null
+          final_title?: string | null
+          garment_id?: string | null
+          id?: string
+          model_brand?: string | null
+          model_category?: string | null
+          model_colour?: string | null
+          model_confidence?: number | null
+          model_field_confidence?: Json | null
+          model_material?: string | null
+          model_style?: string | null
+          source_id?: string | null
+          source_storage_path?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       garment_sources: {
         Row: {
           confidence: number | null
@@ -565,10 +651,10 @@ export type Database = {
           let_go_added_at: string | null
           let_go_estimate_cents: number | null
           let_go_reason: string | null
-          merged_into_id: string | null
-          price_source: string | null
           material: string | null
+          merged_into_id: string | null
           pattern: string | null
+          price_source: string | null
           purchase_currency: string | null
           purchase_date: string | null
           purchase_price: number | null
@@ -604,10 +690,10 @@ export type Database = {
           let_go_added_at?: string | null
           let_go_estimate_cents?: number | null
           let_go_reason?: string | null
-          merged_into_id?: string | null
-          price_source?: string | null
           material?: string | null
+          merged_into_id?: string | null
           pattern?: string | null
+          price_source?: string | null
           purchase_currency?: string | null
           purchase_date?: string | null
           purchase_price?: number | null
@@ -643,10 +729,10 @@ export type Database = {
           let_go_added_at?: string | null
           let_go_estimate_cents?: number | null
           let_go_reason?: string | null
-          merged_into_id?: string | null
-          price_source?: string | null
           material?: string | null
+          merged_into_id?: string | null
           pattern?: string | null
+          price_source?: string | null
           purchase_currency?: string | null
           purchase_date?: string | null
           purchase_price?: number | null
@@ -669,183 +755,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "garments"
             referencedColumns: ["id"]
-          }
-        ]
-      }
-      local_listings: {
-        Row: {
-          ask_cents: number
-          blocked_reason: string | null
-          category: string
-          created_at: string
-          currency: string
-          description: string
-          id: string
-          lat: number
-          lng: number
-          listed_at: string | null
-          negotiable: boolean
-          photo_uris: string[]
-          photos_required: number
-          piece_id: string
-          reserved_for_thread_id: string | null
-          saves: number
-          seller_id: string
-          show_wear_count: boolean
-          size: string | null
-          sold_at: string | null
-          sold_for_cents: number | null
-          status: string
-          subcategory: string | null
-          suburb: string
-          updated_at: string
-          views: number
-          wear_count_at_listing: number | null
-        }
-        Insert: {
-          ask_cents: number
-          blocked_reason?: string | null
-          category: string
-          created_at?: string
-          currency?: string
-          description?: string
-          id?: string
-          lat: number
-          lng: number
-          listed_at?: string | null
-          negotiable?: boolean
-          photo_uris?: string[]
-          photos_required?: number
-          piece_id: string
-          reserved_for_thread_id?: string | null
-          saves?: number
-          seller_id: string
-          show_wear_count?: boolean
-          size?: string | null
-          sold_at?: string | null
-          sold_for_cents?: number | null
-          status?: string
-          subcategory?: string | null
-          suburb: string
-          updated_at?: string
-          views?: number
-          wear_count_at_listing?: number | null
-        }
-        Update: {
-          ask_cents?: number
-          blocked_reason?: string | null
-          category?: string
-          created_at?: string
-          currency?: string
-          description?: string
-          id?: string
-          lat?: number
-          lng?: number
-          listed_at?: string | null
-          negotiable?: boolean
-          photo_uris?: string[]
-          photos_required?: number
-          piece_id?: string
-          reserved_for_thread_id?: string | null
-          saves?: number
-          seller_id?: string
-          show_wear_count?: boolean
-          size?: string | null
-          sold_at?: string | null
-          sold_for_cents?: number | null
-          status?: string
-          subcategory?: string | null
-          suburb?: string
-          updated_at?: string
-          views?: number
-          wear_count_at_listing?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "local_listings_piece_id_fkey"
-            columns: ["piece_id"]
-            isOneToOne: false
-            referencedRelation: "garments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      threads: {
-        Row: {
-          buyer_id: string
-          created_at: string
-          id: string
-          last_message_at: string
-          listing_id: string
-          seller_id: string
-          state: string
-        }
-        Insert: {
-          buyer_id: string
-          created_at?: string
-          id?: string
-          last_message_at?: string
-          listing_id: string
-          seller_id: string
-          state?: string
-        }
-        Update: {
-          buyer_id?: string
-          created_at?: string
-          id?: string
-          last_message_at?: string
-          listing_id?: string
-          seller_id?: string
-          state?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "threads_listing_id_fkey"
-            columns: ["listing_id"]
-            isOneToOne: false
-            referencedRelation: "local_listings"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      messages: {
-        Row: {
-          body: string
-          id: string
-          kind: string
-          offer_cents: number | null
-          read_at: string | null
-          sender_id: string
-          sent_at: string
-          thread_id: string
-        }
-        Insert: {
-          body?: string
-          id?: string
-          kind?: string
-          offer_cents?: number | null
-          read_at?: string | null
-          sender_id: string
-          sent_at?: string
-          thread_id: string
-        }
-        Update: {
-          body?: string
-          id?: string
-          kind?: string
-          offer_cents?: number | null
-          read_at?: string | null
-          sender_id?: string
-          sent_at?: string
-          thread_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "messages_thread_id_fkey"
-            columns: ["thread_id"]
-            isOneToOne: false
-            referencedRelation: "threads"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -856,6 +765,8 @@ export type Database = {
           completed_at: string | null
           created_at: string
           id: string
+          no_show_by: string | null
+          no_show_reported_at: string | null
           payment_method: string | null
           place_name: string
           place_note: string | null
@@ -872,6 +783,8 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           id?: string
+          no_show_by?: string | null
+          no_show_reported_at?: string | null
           payment_method?: string | null
           place_name: string
           place_note?: string | null
@@ -888,6 +801,8 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           id?: string
+          no_show_by?: string | null
+          no_show_reported_at?: string | null
           payment_method?: string | null
           place_name?: string
           place_note?: string | null
@@ -907,27 +822,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      user_blocks: {
-        Row: {
-          blocked_id: string
-          blocker_id: string
-          created_at: string
-          id: string
-        }
-        Insert: {
-          blocked_id: string
-          blocker_id: string
-          created_at?: string
-          id?: string
-        }
-        Update: {
-          blocked_id?: string
-          blocker_id?: string
-          created_at?: string
-          id?: string
-        }
-        Relationships: []
       }
       listing_reports: {
         Row: {
@@ -957,6 +851,104 @@ export type Database = {
             columns: ["listing_id"]
             isOneToOne: false
             referencedRelation: "local_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      local_listings: {
+        Row: {
+          ask_cents: number
+          blocked_reason: string | null
+          category: string
+          created_at: string
+          currency: string
+          description: string
+          id: string
+          lat: number
+          listed_at: string | null
+          lng: number
+          negotiable: boolean
+          photo_uris: string[]
+          photos_required: number
+          piece_id: string
+          reserved_for_thread_id: string | null
+          saves: number
+          seller_id: string
+          show_wear_count: boolean
+          size: string | null
+          sold_at: string | null
+          sold_for_cents: number | null
+          status: string
+          subcategory: string | null
+          suburb: string
+          updated_at: string
+          views: number
+          wear_count_at_listing: number | null
+        }
+        Insert: {
+          ask_cents: number
+          blocked_reason?: string | null
+          category: string
+          created_at?: string
+          currency?: string
+          description?: string
+          id?: string
+          lat: number
+          listed_at?: string | null
+          lng: number
+          negotiable?: boolean
+          photo_uris?: string[]
+          photos_required?: number
+          piece_id: string
+          reserved_for_thread_id?: string | null
+          saves?: number
+          seller_id: string
+          show_wear_count?: boolean
+          size?: string | null
+          sold_at?: string | null
+          sold_for_cents?: number | null
+          status?: string
+          subcategory?: string | null
+          suburb: string
+          updated_at?: string
+          views?: number
+          wear_count_at_listing?: number | null
+        }
+        Update: {
+          ask_cents?: number
+          blocked_reason?: string | null
+          category?: string
+          created_at?: string
+          currency?: string
+          description?: string
+          id?: string
+          lat?: number
+          listed_at?: string | null
+          lng?: number
+          negotiable?: boolean
+          photo_uris?: string[]
+          photos_required?: number
+          piece_id?: string
+          reserved_for_thread_id?: string | null
+          saves?: number
+          seller_id?: string
+          show_wear_count?: boolean
+          size?: string | null
+          sold_at?: string | null
+          sold_for_cents?: number | null
+          status?: string
+          subcategory?: string | null
+          suburb?: string
+          updated_at?: string
+          views?: number
+          wear_count_at_listing?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "local_listings_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: false
+            referencedRelation: "garments"
             referencedColumns: ["id"]
           },
         ]
@@ -1025,7 +1017,15 @@ export type Database = {
           user_id?: string
           watch_price?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "lookbook_entries_bought_garment_id_fkey"
+            columns: ["bought_garment_id"]
+            isOneToOne: false
+            referencedRelation: "garments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lookbook_items: {
         Row: {
@@ -1065,6 +1065,50 @@ export type Database = {
             columns: ["lookbook_entry_id"]
             isOneToOne: false
             referencedRelation: "lookbook_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          body: string
+          id: string
+          kind: string
+          offer_cents: number | null
+          offer_status: string | null
+          read_at: string | null
+          sender_id: string
+          sent_at: string
+          thread_id: string
+        }
+        Insert: {
+          body?: string
+          id?: string
+          kind?: string
+          offer_cents?: number | null
+          offer_status?: string | null
+          read_at?: string | null
+          sender_id: string
+          sent_at?: string
+          thread_id: string
+        }
+        Update: {
+          body?: string
+          id?: string
+          kind?: string
+          offer_cents?: number | null
+          offer_status?: string | null
+          read_at?: string | null
+          sender_id?: string
+          sent_at?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
             referencedColumns: ["id"]
           },
         ]
@@ -1189,81 +1233,6 @@ export type Database = {
         }
         Relationships: []
       }
-      profiles: {
-        Row: {
-          age_confirmed_at: string | null
-          age_declined_at: string | null
-          bottoms_size: string | null
-          bottoms_size_system: string
-          created_at: string
-          height_cm: number | null
-          local_name: string | null
-          local_safety_brief_seen_at: string | null
-          onboarding_completed_at: string | null
-          one_size_either_way: boolean
-          show_suburb: boolean
-          show_wear_count: boolean
-          shoes_size: string | null
-          radius_km: number
-          shoes_size_system: string
-          suburb: string | null
-          suburb_lat: number | null
-          suburb_lng: number | null
-          tops_size: string | null
-          tops_size_system: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          age_confirmed_at?: string | null
-          age_declined_at?: string | null
-          bottoms_size?: string | null
-          bottoms_size_system?: string
-          created_at?: string
-          height_cm?: number | null
-          local_name?: string | null
-          local_safety_brief_seen_at?: string | null
-          onboarding_completed_at?: string | null
-          one_size_either_way?: boolean
-          show_suburb?: boolean
-          show_wear_count?: boolean
-          shoes_size?: string | null
-          radius_km?: number
-          shoes_size_system?: string
-          suburb?: string | null
-          suburb_lat?: number | null
-          suburb_lng?: number | null
-          tops_size?: string | null
-          tops_size_system?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          age_confirmed_at?: string | null
-          age_declined_at?: string | null
-          bottoms_size?: string | null
-          bottoms_size_system?: string
-          created_at?: string
-          height_cm?: number | null
-          local_name?: string | null
-          local_safety_brief_seen_at?: string | null
-          onboarding_completed_at?: string | null
-          one_size_either_way?: boolean
-          show_suburb?: boolean
-          show_wear_count?: boolean
-          shoes_size?: string | null
-          radius_km?: number
-          shoes_size_system?: string
-          suburb?: string | null
-          suburb_lat?: number | null
-          suburb_lng?: number | null
-          tops_size?: string | null
-          tops_size_system?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       processing_jobs: {
         Row: {
           created_at: string
@@ -1315,9 +1284,85 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          age_confirmed_at: string | null
+          age_declined_at: string | null
+          bottoms_size: string | null
+          bottoms_size_system: string
+          created_at: string
+          height_cm: number | null
+          local_name: string | null
+          local_safety_brief_seen_at: string | null
+          onboarding_completed_at: string | null
+          one_size_either_way: boolean
+          radius_km: number
+          shoes_size: string | null
+          shoes_size_system: string
+          show_suburb: boolean
+          show_wear_count: boolean
+          suburb: string | null
+          suburb_lat: number | null
+          suburb_lng: number | null
+          tops_size: string | null
+          tops_size_system: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          age_confirmed_at?: string | null
+          age_declined_at?: string | null
+          bottoms_size?: string | null
+          bottoms_size_system?: string
+          created_at?: string
+          height_cm?: number | null
+          local_name?: string | null
+          local_safety_brief_seen_at?: string | null
+          onboarding_completed_at?: string | null
+          one_size_either_way?: boolean
+          radius_km?: number
+          shoes_size?: string | null
+          shoes_size_system?: string
+          show_suburb?: boolean
+          show_wear_count?: boolean
+          suburb?: string | null
+          suburb_lat?: number | null
+          suburb_lng?: number | null
+          tops_size?: string | null
+          tops_size_system?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          age_confirmed_at?: string | null
+          age_declined_at?: string | null
+          bottoms_size?: string | null
+          bottoms_size_system?: string
+          created_at?: string
+          height_cm?: number | null
+          local_name?: string | null
+          local_safety_brief_seen_at?: string | null
+          onboarding_completed_at?: string | null
+          one_size_either_way?: boolean
+          radius_km?: number
+          shoes_size?: string | null
+          shoes_size_system?: string
+          show_suburb?: boolean
+          show_wear_count?: boolean
+          suburb?: string | null
+          suburb_lat?: number | null
+          suburb_lng?: number | null
+          tops_size?: string | null
+          tops_size_system?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       style_rules: {
         Row: {
           active: boolean
+          constraint_type: string
           created_at: string
           explanation: string | null
           id: string
@@ -1333,6 +1378,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          constraint_type?: string
           created_at?: string
           explanation?: string | null
           id?: string
@@ -1348,6 +1394,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          constraint_type?: string
           created_at?: string
           explanation?: string | null
           id?: string
@@ -1362,6 +1409,44 @@ export type Database = {
           weight?: number
         }
         Relationships: []
+      }
+      threads: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          id: string
+          last_message_at: string
+          listing_id: string
+          seller_id: string
+          state: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          listing_id: string
+          seller_id: string
+          state?: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          listing_id?: string
+          seller_id?: string
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "threads_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "local_listings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trend_colours: {
         Row: {
@@ -1515,44 +1600,29 @@ export type Database = {
         }
         Relationships: []
       }
-      trend_signal_sources: {
+      trend_people: {
         Row: {
-          created_at: string
-          evidence_json: Json
+          first_seen_at: string
           id: string
-          trend_signal_id: string
-          trend_source_id: string
+          last_seen_at: string
+          mention_count: number
+          name: string
         }
         Insert: {
-          created_at?: string
-          evidence_json?: Json
+          first_seen_at?: string
           id?: string
-          trend_signal_id: string
-          trend_source_id: string
+          last_seen_at?: string
+          mention_count?: number
+          name: string
         }
         Update: {
-          created_at?: string
-          evidence_json?: Json
+          first_seen_at?: string
           id?: string
-          trend_signal_id?: string
-          trend_source_id?: string
+          last_seen_at?: string
+          mention_count?: number
+          name?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "trend_signal_sources_trend_signal_id_fkey"
-            columns: ["trend_signal_id"]
-            isOneToOne: false
-            referencedRelation: "trend_signals"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "trend_signal_sources_trend_source_id_fkey"
-            columns: ["trend_source_id"]
-            isOneToOne: false
-            referencedRelation: "trend_sources"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       trend_signal_metrics: {
         Row: {
@@ -1619,19 +1689,61 @@ export type Database = {
           },
         ]
       }
+      trend_signal_sources: {
+        Row: {
+          created_at: string
+          evidence_json: Json
+          id: string
+          trend_signal_id: string
+          trend_source_id: string
+        }
+        Insert: {
+          created_at?: string
+          evidence_json?: Json
+          id?: string
+          trend_signal_id: string
+          trend_source_id: string
+        }
+        Update: {
+          created_at?: string
+          evidence_json?: Json
+          id?: string
+          trend_signal_id?: string
+          trend_source_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trend_signal_sources_trend_signal_id_fkey"
+            columns: ["trend_signal_id"]
+            isOneToOne: false
+            referencedRelation: "trend_signals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trend_signal_sources_trend_source_id_fkey"
+            columns: ["trend_source_id"]
+            isOneToOne: false
+            referencedRelation: "trend_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trend_signals: {
         Row: {
           authority_score: number | null
           canonical_label: string | null
           confidence_score: number | null
           created_at: string
+          embedding: string | null
           family: string | null
           first_seen_at: string | null
+          house_attribution: string[] | null
           id: string
           label: string
           last_seen_at: string | null
           micro_signal: string | null
           normalized_attributes_json: Json
+          person_attribution: string[] | null
           recency_score: number | null
           region: string | null
           score_30d_delta: number | null
@@ -1649,13 +1761,16 @@ export type Database = {
           canonical_label?: string | null
           confidence_score?: number | null
           created_at?: string
+          embedding?: string | null
           family?: string | null
           first_seen_at?: string | null
+          house_attribution?: string[] | null
           id?: string
           label: string
           last_seen_at?: string | null
           micro_signal?: string | null
           normalized_attributes_json?: Json
+          person_attribution?: string[] | null
           recency_score?: number | null
           region?: string | null
           score_30d_delta?: number | null
@@ -1673,13 +1788,16 @@ export type Database = {
           canonical_label?: string | null
           confidence_score?: number | null
           created_at?: string
+          embedding?: string | null
           family?: string | null
           first_seen_at?: string | null
+          house_attribution?: string[] | null
           id?: string
           label?: string
           last_seen_at?: string | null
           micro_signal?: string | null
           normalized_attributes_json?: Json
+          person_attribution?: string[] | null
           recency_score?: number | null
           region?: string | null
           score_30d_delta?: number | null
@@ -1736,27 +1854,69 @@ export type Database = {
         }
         Relationships: []
       }
-      data_export_requests: {
+      trend_stories: {
         Row: {
+          attributed_houses: string[]
+          attributed_people: string[]
+          confidence_score: number | null
+          created_at: string
+          dominant_type: string | null
+          framing: string | null
+          headline: string
           id: string
-          user_id: string
-          status: string
-          requested_at: string
-          ready_at: string | null
+          momentum_label: string | null
+          refreshed_at: string
+          signal_ids: string[]
+          status: string | null
         }
         Insert: {
+          attributed_houses?: string[]
+          attributed_people?: string[]
+          confidence_score?: number | null
+          created_at?: string
+          dominant_type?: string | null
+          framing?: string | null
+          headline: string
           id?: string
-          user_id: string
-          status?: string
-          requested_at?: string
-          ready_at?: string | null
+          momentum_label?: string | null
+          refreshed_at?: string
+          signal_ids?: string[]
+          status?: string | null
         }
         Update: {
+          attributed_houses?: string[]
+          attributed_people?: string[]
+          confidence_score?: number | null
+          created_at?: string
+          dominant_type?: string | null
+          framing?: string | null
+          headline?: string
           id?: string
-          user_id?: string
-          status?: string
-          requested_at?: string
-          ready_at?: string | null
+          momentum_label?: string | null
+          refreshed_at?: string
+          signal_ids?: string[]
+          status?: string | null
+        }
+        Relationships: []
+      }
+      user_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+          id?: string
         }
         Relationships: []
       }
@@ -1812,6 +1972,7 @@ export type Database = {
           match_type: string
           reasoning_json: Json
           score: number
+          story_id: string | null
           trend_signal_id: string
           user_id: string
         }
@@ -1821,6 +1982,7 @@ export type Database = {
           match_type: string
           reasoning_json?: Json
           score: number
+          story_id?: string | null
           trend_signal_id: string
           user_id: string
         }
@@ -1830,10 +1992,18 @@ export type Database = {
           match_type?: string
           reasoning_json?: Json
           score?: number
+          story_id?: string | null
           trend_signal_id?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_trend_matches_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "trend_stories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_trend_matches_trend_signal_id_fkey"
             columns: ["trend_signal_id"]
@@ -1932,7 +2102,87 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      complete_handover: { Args: { p_handover_id: string }; Returns: undefined }
+      get_blocked_user_names: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          local_name: string
+          user_id: string
+        }[]
+      }
+      increment_local_listing_views: {
+        Args: { listing_id: string }
+        Returns: undefined
+      }
       is_global_rule: { Args: { rule_scope: string }; Returns: boolean }
+      match_garments_by_embedding: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          match_user_id: string
+          query_embedding: string
+        }
+        Returns: {
+          category: string
+          id: string
+          similarity: number
+          title: string
+        }[]
+      }
+      match_trend_signals: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          authority_score: number
+          confidence_score: number
+          id: string
+          label: string
+          last_seen_at: string
+          normalized_attributes_json: Json
+          region: string
+          season: string
+          similarity: number
+          source_count: number
+          trend_type: string
+          year: number
+        }[]
+      }
+      nearby_listings: {
+        Args: {
+          max_price_cents?: number
+          radius_km?: number
+          sort_key?: string
+          viewer_lat: number
+          viewer_lng: number
+        }
+        Returns: {
+          ask_cents: number
+          category: string
+          created_at: string
+          currency: string
+          description: string
+          display_lat: number
+          display_lng: number
+          distance_km: number
+          id: string
+          listed_at: string
+          negotiable: boolean
+          photo_uris: string[]
+          piece_id: string
+          saves: number
+          seller_id: string
+          show_wear_count: boolean
+          size: string
+          status: string
+          subcategory: string
+          suburb: string
+          views: number
+          wear_count_at_listing: number
+        }[]
+      }
       recalculate_garment_cost_per_wear: {
         Args: { p_garment_id: string }
         Returns: undefined
@@ -1955,12 +2205,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1984,11 +2234,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2009,11 +2259,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2034,11 +2284,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2051,11 +2301,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2065,9 +2315,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

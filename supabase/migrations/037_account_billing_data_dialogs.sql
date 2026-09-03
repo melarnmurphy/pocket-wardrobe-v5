@@ -1,4 +1,3 @@
--- 036_account_billing_data_dialogs.sql
 -- Adds the hook point for the payment-failed/subscription-lapsed dialog
 -- (billing_status), and the record behind the export started/ready toast
 -- (data_export_requests). Neither is written to by a real payment or
