@@ -2,6 +2,9 @@ import { z } from "zod";
 
 export const planTierSchema = z.enum(["free", "pro", "premium"]);
 
+export const billingStatusSchema = z.enum(["active", "payment_failed", "lapsed"]);
+export type BillingStatus = z.infer<typeof billingStatusSchema>;
+
 export const userEntitlementsSchema = z.object({
   user_id: z.string().uuid(),
   plan_tier: planTierSchema,
@@ -12,6 +15,7 @@ export const userEntitlementsSchema = z.object({
   billing_provider: z.string().nullable(),
   billing_customer_id: z.string().nullable(),
   billing_subscription_id: z.string().nullable(),
+  billing_status: billingStatusSchema.nullable(),
   created_at: z.string(),
   updated_at: z.string()
 });

@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { listLetGoGarments } from "@/lib/domain/wardrobe/service";
+import { getUserEntitlements, hasPaidPlan } from "@/lib/domain/entitlements/service";
+import { getBillingStatus } from "@/lib/domain/billing/service";
 import { AuthenticationError } from "@/lib/auth";
 import { AuthRequiredCard } from "@/components/auth-required-card";
 import { CutoutTile, HairlineListRow } from "@/components/garderobe";
+import { PaywallGate } from "@/components/garderobe/account/paywall-gate";
 
 function formatMoney(amount: number | null | undefined) {
   if (amount === null || amount === undefined) return "add later";
@@ -12,7 +15,12 @@ function formatMoney(amount: number | null | undefined) {
 
 export default async function LetGoListPage() {
   try {
-    const garments = await listLetGoGarments();
+    const [garments, entitlements] = await Promise.all([
+      listLetGoGarments(),
+      getUserEntitlements()
+    ]);
+    const unlocked = hasPaidPlan(entitlements);
+    const { upgradeUrl } = getBillingStatus();
 
     return (
       <div className="mx-auto max-w-[560px] px-5 py-6 pb-16">
@@ -32,43 +40,50 @@ export default async function LetGoListPage() {
           you let one go for good.
         </p>
 
-        {garments.length ? (
-          <div className="mt-6 rounded-[4px] bg-[var(--cream)] px-[14px]">
-            {garments.map((garment, index) => (
-              <Link key={garment.id} href={`/wardrobe/${garment.id}`}>
-                <HairlineListRow last={index === garments.length - 1}>
-                  <div className="w-[52px] shrink-0">
-                    <CutoutTile
-                      src={garment.preview_url}
-                      alt={garment.title || garment.category}
-                      centre={garment.category === "shoes" || garment.category === "bags"}
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-[14px] leading-[1.2] text-[var(--ink)]">
-                      {garment.title || garment.category}
+        <PaywallGate
+          unlocked={unlocked}
+          feature="trend_calls"
+          teaserLabel="see your let-go list"
+          upgradeUrl={upgradeUrl}
+        >
+          {garments.length ? (
+            <div className="mt-6 rounded-[4px] bg-[var(--cream)] px-[14px]">
+              {garments.map((garment, index) => (
+                <Link key={garment.id} href={`/wardrobe/${garment.id}`}>
+                  <HairlineListRow last={index === garments.length - 1}>
+                    <div className="w-[52px] shrink-0">
+                      <CutoutTile
+                        src={garment.preview_url}
+                        alt={garment.title || garment.category}
+                        centre={garment.category === "shoes" || garment.category === "bags"}
+                      />
                     </div>
-                    <div className="pt-1.5 text-[8px] font-semibold uppercase tracking-[.14em] text-[var(--stone)]">
-                      {garment.let_go_reason} · worn {garment.wear_count}×
+                    <div className="flex-1">
+                      <div className="text-[14px] leading-[1.2] text-[var(--ink)]">
+                        {garment.title || garment.category}
+                      </div>
+                      <div className="pt-1.5 text-[8px] font-semibold uppercase tracking-[.14em] text-[var(--stone)]">
+                        {garment.let_go_reason} · worn {garment.wear_count}×
+                      </div>
                     </div>
-                  </div>
-                  <span className="text-[14px] text-[var(--stone)]">
-                    {garment.let_go_estimate_cents !== null && garment.let_go_estimate_cents !== undefined
-                      ? formatMoney(garment.let_go_estimate_cents / 100)
-                      : formatMoney(garment.purchase_price)}
-                  </span>
-                </HairlineListRow>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-8 rounded-[4px] border border-dashed border-[rgba(30,26,23,.3)] px-6 py-10 text-center">
-            <p className="text-[12.5px] text-[var(--stone)]">
-              Nothing here yet. Flag a piece from its detail page — never worn, does not fit, not
-              you anymore, worn out, or a duplicate.
-            </p>
-          </div>
-        )}
+                    <span className="text-[14px] text-[var(--stone)]">
+                      {garment.let_go_estimate_cents !== null && garment.let_go_estimate_cents !== undefined
+                        ? formatMoney(garment.let_go_estimate_cents / 100)
+                        : formatMoney(garment.purchase_price)}
+                    </span>
+                  </HairlineListRow>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-8 rounded-[4px] border border-dashed border-[rgba(30,26,23,.3)] px-6 py-10 text-center">
+              <p className="text-[12.5px] text-[var(--stone)]">
+                Nothing here yet. Flag a piece from its detail page, never worn, does not fit, not
+                you anymore, worn out, or a duplicate.
+              </p>
+            </div>
+          )}
+        </PaywallGate>
       </div>
     );
   } catch (error) {

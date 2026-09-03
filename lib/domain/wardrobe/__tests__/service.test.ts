@@ -150,3 +150,48 @@ describe("getRecentGarments", () => {
     expect(limitSpy).toHaveBeenCalledWith(3);
   });
 });
+
+describe("countWardrobeGarments", () => {
+  let eqSpy: ReturnType<typeof vi.fn>;
+  let firstIsSpy: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+
+    draftsCountBuilder = vi.fn(() => ({ select: vi.fn() }));
+
+    const countGarmentsBuilder = vi.fn(() => {
+      const secondIs = mockCountResult(7);
+      firstIsSpy = vi.fn().mockReturnValue({ is: secondIs });
+      eqSpy = vi.fn().mockReturnValue({ is: firstIsSpy });
+      return { select: vi.fn().mockReturnValue({ eq: eqSpy }) };
+    });
+
+    currentBuilder = () => (countGarmentsBuilder as () => unknown)();
+  });
+
+  it("does a count-only query filtered to the user's active garments", async () => {
+    const { countWardrobeGarments } = await import("@/lib/domain/wardrobe/service");
+    const count = await countWardrobeGarments();
+
+    expect(count).toBe(7);
+    expect(eqSpy).toHaveBeenCalledWith("user_id", "user-uuid-123");
+    expect(firstIsSpy).toHaveBeenCalledWith("archived_at", null);
+  });
+
+  it("returns zero when the count comes back null", async () => {
+    const nullCountBuilder = vi.fn(() => {
+      const secondIs = vi.fn().mockResolvedValue({ count: null, error: null });
+      const firstIs = vi.fn().mockReturnValue({ is: secondIs });
+      const eq = vi.fn().mockReturnValue({ is: firstIs });
+      return { select: vi.fn().mockReturnValue({ eq }) };
+    });
+    currentBuilder = () => (nullCountBuilder as () => unknown)();
+
+    const { countWardrobeGarments } = await import("@/lib/domain/wardrobe/service");
+    const count = await countWardrobeGarments();
+
+    expect(count).toBe(0);
+  });
+});

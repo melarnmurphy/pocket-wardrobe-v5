@@ -10,6 +10,12 @@ export type WardrobeActionState = {
    * dedicated copy instead of showing whatever raw Error.message surfaced.
    */
   errorCode?: "unsupported_format" | "too_large" | "dead_url";
+  /**
+   * Unused for now. Reserved for a future task that redesigns the
+   * availability control's UI around a real paywall gate; no action
+   * currently sets this field.
+   */
+  requiresPlus?: boolean;
 };
 
 export const wardrobeActionState: WardrobeActionState = {

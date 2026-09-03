@@ -18,6 +18,10 @@ type DialogProps = {
   cancelLabel?: string;
   confirmLabel: string;
   confirmVariant?: "primary" | "on-blush";
+  /** Extra content between the description and the button row, e.g. a type-to-confirm input. */
+  children?: ReactNode;
+  /** Disables and dims the confirm button, e.g. until a type-to-confirm input matches. */
+  confirmDisabled?: boolean;
 } & DialogConfirmProps;
 
 const CONFIRM_LINK_CLASSES: Record<"primary" | "on-blush", string> = {
@@ -32,7 +36,8 @@ const CONFIRM_LINK_CLASSES: Record<"primary" | "on-blush", string> = {
  * of `onConfirm` when the confirm action needs to be a real link (so
  * back/forward navigation and open-in-new-tab work) rather than a
  * click-handler-only button; it renders styled identically to the button it
- * replaces.
+ * replaces. `confirmDisabled` only applies to the button form, since a link
+ * has no disabled state.
  */
 export function Dialog({
   open,
@@ -44,7 +49,9 @@ export function Dialog({
   confirmLabel,
   onConfirm,
   confirmHref,
-  confirmVariant = "primary"
+  confirmVariant = "primary",
+  children,
+  confirmDisabled = false
 }: DialogProps) {
   if (!open) return null;
 
@@ -68,6 +75,7 @@ export function Dialog({
             {description}
           </div>
         ) : null}
+        {children ? <div className="pb-4 text-left">{children}</div> : null}
         <div className="flex gap-[9px] pt-1">
           <PillButton
             variant="secondary"
@@ -90,7 +98,12 @@ export function Dialog({
               {confirmLabel}
             </Link>
           ) : (
-            <PillButton variant={confirmVariant} onClick={onConfirm} className="h-11">
+            <PillButton
+              variant={confirmVariant}
+              onClick={onConfirm}
+              className="h-11"
+              disabled={confirmDisabled}
+            >
               {confirmLabel}
             </PillButton>
           )}

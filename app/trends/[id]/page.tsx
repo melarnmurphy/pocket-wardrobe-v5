@@ -5,9 +5,12 @@ import { loadTrendsPageData } from "@/app/trends/actions";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import { listStyleRules } from "@/lib/domain/style-rules/service";
 import { unlockCountForCandidate } from "@/lib/domain/outfits/unlock";
+import { getUserEntitlements, hasPaidPlan } from "@/lib/domain/entitlements/service";
+import { getBillingStatus } from "@/lib/domain/billing/service";
 import { AuthenticationError } from "@/lib/auth";
 import { AuthRequiredCard } from "@/components/auth-required-card";
 import { Chip } from "@/components/garderobe";
+import { PaywallGate } from "@/components/garderobe/account/paywall-gate";
 
 const PHASE_LABEL: Record<string, string> = {
   candidate: "just arriving",
@@ -30,7 +33,11 @@ export default async function TrendDetailPage({ params }: { params: Promise<{ id
     }
 
     const { signal, match } = entry;
-    const [garments, styleRules] = await Promise.all([listWardrobeGarments(), listStyleRules()]);
+    const [garments, styleRules, entitlements] = await Promise.all([
+      listWardrobeGarments(),
+      listStyleRules(),
+      getUserEntitlements()
+    ]);
 
     const attrs = (signal.normalized_attributes_json ?? {}) as Record<string, unknown>;
     const category = typeof attrs.category === "string" ? attrs.category : signal.label;
@@ -69,21 +76,28 @@ export default async function TrendDetailPage({ params }: { params: Promise<{ id
           {signal.region ? <Chip variant="available">{signal.region}</Chip> : null}
         </div>
 
-        <section className="mt-8 border-t border-[rgba(30,26,23,.14)] pt-6">
-          <p className="pb-3 text-[9px] font-semibold uppercase tracking-[.18em] text-[var(--stone)]">
-            how covered you are
-          </p>
-          <p className="text-[26px] font-light leading-[1.2] text-[var(--ink)]">
-            {Math.round(match.score * 100)}% match
-          </p>
-          <p className="pt-2 text-[12.5px] text-[var(--slate)]">
-            {match.match_type === "exact_match"
-              ? "you already own this"
-              : match.match_type === "missing_piece"
-                ? `unlocks ${unlockCount} look${unlockCount === 1 ? "" : "s"} if you add ${category}`
-                : "adjacent to pieces you already own"}
-          </p>
-        </section>
+        <PaywallGate
+          unlocked={hasPaidPlan(entitlements)}
+          feature="trend_calls"
+          teaserLabel="see how covered you are for this trend"
+          upgradeUrl={getBillingStatus().upgradeUrl}
+        >
+          <section className="mt-8 border-t border-[rgba(30,26,23,.14)] pt-6">
+            <p className="pb-3 text-[9px] font-semibold uppercase tracking-[.18em] text-[var(--stone)]">
+              how covered you are
+            </p>
+            <p className="text-[26px] font-light leading-[1.2] text-[var(--ink)]">
+              {Math.round(match.score * 100)}% match
+            </p>
+            <p className="pt-2 text-[12.5px] text-[var(--slate)]">
+              {match.match_type === "exact_match"
+                ? "you already own this"
+                : match.match_type === "missing_piece"
+                  ? `unlocks ${unlockCount} look${unlockCount === 1 ? "" : "s"} if you add ${category}`
+                  : "adjacent to pieces you already own"}
+            </p>
+          </section>
+        </PaywallGate>
       </div>
     );
   } catch (error) {

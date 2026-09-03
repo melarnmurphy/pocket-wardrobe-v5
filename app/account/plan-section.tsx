@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { UserEntitlements } from "@/lib/domain/entitlements";
+import { PLUS_FEATURE_COPY } from "@/components/garderobe/account/paywall-interrupt-sheet";
 
 type PlanSectionProps = {
   entitlements: UserEntitlements;
@@ -22,7 +23,11 @@ export function PlanSection({ entitlements, upgradeUrl }: PlanSectionProps) {
     { label: "AI feature labels & garment tagging", enabled: entitlements.feature_labels_enabled },
     { label: "Receipt photo scanning", enabled: entitlements.receipt_ocr_enabled },
     { label: "Product URL ingestion", enabled: entitlements.product_url_ingestion_enabled },
-    { label: "Outfit decomposition", enabled: entitlements.outfit_decomposition_enabled }
+    { label: "Outfit decomposition", enabled: entitlements.outfit_decomposition_enabled },
+    { label: PLUS_FEATURE_COPY.analytics.description, enabled: entitlements.plan_tier !== "free" },
+    { label: PLUS_FEATURE_COPY.in_store_scan.description, enabled: entitlements.plan_tier !== "free" },
+    { label: PLUS_FEATURE_COPY.trend_calls.description, enabled: entitlements.plan_tier !== "free" },
+    { label: PLUS_FEATURE_COPY.availability.description, enabled: entitlements.plan_tier !== "free" }
   ];
 
   const tierLabel = entitlements.plan_tier === "free"
@@ -85,7 +90,7 @@ export function PlanSection({ entitlements, upgradeUrl }: PlanSectionProps) {
               href={upgradeUrl}
               className="pw-button-primary mt-4 inline-flex"
             >
-              Upgrade to Premium →
+              Upgrade to plus: A$69 a year →
             </a>
           )}
         </div>

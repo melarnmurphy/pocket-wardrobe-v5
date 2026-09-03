@@ -527,6 +527,30 @@ export const listWardrobeGarments = cache(async (): Promise<GarmentListItem[]> =
   return hydrateGarmentListRows(supabase, rawRows);
 });
 
+/**
+ * A count-only equivalent of listWardrobeGarments, for callers that only need
+ * how many active garments a user has (e.g. wording the delete-photos
+ * dialog) and would otherwise pay the cost of fetching and hydrating every
+ * garment row just to read `.length`.
+ */
+export async function countWardrobeGarments(): Promise<number> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  const { count, error } = await supabase
+    .from("garments")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .is("archived_at", null)
+    .is("deleted_at", null);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return count ?? 0;
+}
+
 export async function createGarment(
   input: z.input<typeof createGarmentSchema>,
   options?: { primaryColourFamily?: WardrobeColourFamily | null }

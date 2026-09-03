@@ -47,6 +47,7 @@ describe("getUserEntitlements", () => {
         billing_provider: "stripe",
         billing_customer_id: "cus_123",
         billing_subscription_id: "sub_123",
+        billing_status: null,
         created_at: "2026-03-25T00:00:00.000Z",
         updated_at: "2026-03-25T00:00:00.000Z"
       },
@@ -61,5 +62,67 @@ describe("getUserEntitlements", () => {
 
     expect(entitlements.plan_tier).toBe("premium");
     expect(await canUseFeatureLabels()).toBe(true);
+  });
+});
+
+describe("isBillingLapsed", () => {
+  it("is false for an active subscription", async () => {
+    const { isBillingLapsed } = await import("@/lib/domain/entitlements/service");
+    expect(
+      isBillingLapsed({
+        user_id: "u1",
+        plan_tier: "premium",
+        feature_labels_enabled: true,
+        receipt_ocr_enabled: true,
+        product_url_ingestion_enabled: true,
+        outfit_decomposition_enabled: true,
+        billing_provider: "stripe",
+        billing_customer_id: "cus_1",
+        billing_subscription_id: "sub_1",
+        billing_status: "active",
+        created_at: "2026-01-01T00:00:00.000Z",
+        updated_at: "2026-01-01T00:00:00.000Z"
+      })
+    ).toBe(false);
+  });
+
+  it("is false when billing_status is null (no billing event has ever set it)", async () => {
+    const { isBillingLapsed } = await import("@/lib/domain/entitlements/service");
+    expect(
+      isBillingLapsed({
+        user_id: "u1",
+        plan_tier: "free",
+        feature_labels_enabled: false,
+        receipt_ocr_enabled: false,
+        product_url_ingestion_enabled: false,
+        outfit_decomposition_enabled: false,
+        billing_provider: null,
+        billing_customer_id: null,
+        billing_subscription_id: null,
+        billing_status: null,
+        created_at: "2026-01-01T00:00:00.000Z",
+        updated_at: "2026-01-01T00:00:00.000Z"
+      })
+    ).toBe(false);
+  });
+
+  it("is true when billing is payment_failed or lapsed", async () => {
+    const { isBillingLapsed } = await import("@/lib/domain/entitlements/service");
+    const base = {
+      user_id: "u1",
+      plan_tier: "premium" as const,
+      feature_labels_enabled: true,
+      receipt_ocr_enabled: true,
+      product_url_ingestion_enabled: true,
+      outfit_decomposition_enabled: true,
+      billing_provider: "stripe",
+      billing_customer_id: "cus_1",
+      billing_subscription_id: "sub_1",
+      created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-01T00:00:00.000Z"
+    };
+
+    expect(isBillingLapsed({ ...base, billing_status: "payment_failed" })).toBe(true);
+    expect(isBillingLapsed({ ...base, billing_status: "lapsed" })).toBe(true);
   });
 });

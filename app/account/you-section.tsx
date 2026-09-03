@@ -1,14 +1,20 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import type { Profile, PublicProfilePreview } from "@/lib/domain/profile";
 import { PillButton } from "@/components/garderobe";
+import { DeletePhotosDialog } from "@/components/garderobe/account/delete-photos-dialog";
+import { CloseAccountDialog } from "@/components/garderobe/account/close-account-dialog";
+import { ExportRow } from "@/components/garderobe/account/export-row";
 import {
   updateLocalPrivacyAction,
   updateProfileAction,
   updateSizesAction,
   type ProfileActionState
 } from "./profile-actions";
+import { deleteAllUserPhotosAction } from "./photos-actions";
+import { closeUserAccountAction, getCloseAccountBlockersAction } from "./close-account-actions";
+import { requestDataExportAction, checkDataExportReadyAction } from "./export-actions";
 
 const idleState: ProfileActionState = { status: "idle", message: null };
 const SIZE_SYSTEMS = ["AU", "UK", "US", "EU"] as const;
@@ -16,10 +22,12 @@ const SIZE_SYSTEMS = ["AU", "UK", "US", "EU"] as const;
 /** 17a / w3e — details, sizes, and what other people see. */
 export function YouSection({
   profile,
-  preview
+  preview,
+  garmentCount
 }: {
   profile: Profile;
   preview: PublicProfilePreview;
+  garmentCount: number;
 }) {
   const [profileState, profileFormAction] = useActionState(updateProfileAction, idleState);
   const [sizesState, sizesFormAction] = useActionState(updateSizesAction, idleState);
@@ -166,7 +174,83 @@ export function YouSection({
           wardrobe, wear dates, or contact details.
         </p>
       </div>
+
+      <PhotosSection garmentCount={garmentCount} />
+
+      <CloseAccountSection />
+
+      <ExportRow requestAction={requestDataExportAction} checkAction={checkDataExportReadyAction} />
     </section>
+  );
+}
+
+function PhotosSection({ garmentCount }: { garmentCount: number }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="mt-8 border-t border-[rgba(30,26,23,.14)] pt-6">
+      <p className="pb-3 text-[9px] font-semibold uppercase tracking-[.18em] text-[var(--stone)]">
+        your photos
+      </p>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-[14.5px] text-[var(--oxblood)]"
+      >
+        delete my photos, keep the records
+      </button>
+      <DeletePhotosDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        garmentCount={garmentCount}
+        action={deleteAllUserPhotosAction}
+      />
+    </div>
+  );
+}
+
+function CloseAccountSection() {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [blockers, setBlockers] = useState<{
+    liveListingCount: number;
+    openThreadCount: number;
+  } | null>(null);
+
+  async function handleOpen() {
+    setLoading(true);
+    try {
+      const result = await getCloseAccountBlockersAction();
+      setBlockers(result);
+      setOpen(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="mt-8 border-t border-[rgba(30,26,23,.14)] pt-6">
+      <p className="pb-3 text-[9px] font-semibold uppercase tracking-[.18em] text-[var(--stone)]">
+        close your account
+      </p>
+      <button
+        type="button"
+        onClick={handleOpen}
+        disabled={loading}
+        className="text-[14.5px] text-[var(--oxblood)] disabled:opacity-60"
+      >
+        {loading ? "checking your listings and threads..." : "close the account"}
+      </button>
+      {blockers ? (
+        <CloseAccountDialog
+          open={open}
+          onClose={() => setOpen(false)}
+          liveListingCount={blockers.liveListingCount}
+          openThreadCount={blockers.openThreadCount}
+          action={closeUserAccountAction}
+        />
+      ) : null}
+    </div>
   );
 }
 

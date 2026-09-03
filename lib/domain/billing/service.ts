@@ -79,14 +79,15 @@ export async function syncUserEntitlementsFromBillingEvent(rawPayload: unknown) 
       payload.outfit_decomposition_enabled ?? defaults.outfit_decomposition_enabled,
     billing_provider: payload.billing_provider ?? null,
     billing_customer_id: payload.billing_customer_id ?? null,
-    billing_subscription_id: payload.billing_subscription_id ?? null
+    billing_subscription_id: payload.billing_subscription_id ?? null,
+    billing_status: payload.billing_status ?? null
   };
 
   const { data, error } = await serviceClient
     .from("user_entitlements")
     .upsert(upsertPayload, { onConflict: "user_id" })
     .select(
-      "user_id,plan_tier,feature_labels_enabled,receipt_ocr_enabled,product_url_ingestion_enabled,outfit_decomposition_enabled,billing_provider,billing_customer_id,billing_subscription_id,created_at,updated_at"
+      "user_id,plan_tier,feature_labels_enabled,receipt_ocr_enabled,product_url_ingestion_enabled,outfit_decomposition_enabled,billing_provider,billing_customer_id,billing_subscription_id,billing_status,created_at,updated_at"
     )
     .single();
 

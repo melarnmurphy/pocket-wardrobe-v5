@@ -1,22 +1,26 @@
 import { AuthenticationError } from "@/lib/auth";
-import { getUserEntitlements } from "@/lib/domain/entitlements/service";
+import { getUserEntitlements, isBillingLapsed } from "@/lib/domain/entitlements/service";
 import { getAccountProfile } from "@/lib/domain/account/service";
 import { getBillingStatus } from "@/lib/domain/billing/service";
 import { getMyPublicProfilePreview, getOrCreateProfile } from "@/lib/domain/profile/service";
+import { countWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import { AuthRequiredCard } from "@/components/auth-required-card";
 import { AccountProfileForm } from "@/app/account/account-profile-form";
 import { PlanSection } from "@/app/account/plan-section";
 import { YouSection } from "@/app/account/you-section";
-import { signOutAction } from "@/app/auth/actions";
+import { SignOutRow } from "@/app/account/sign-out-row";
+import { PaymentFailedRow } from "@/app/account/payment-failed-row";
 
 export default async function AccountPage() {
   try {
-    const [profile, entitlements, garderobeProfile, publicPreview] = await Promise.all([
-      getAccountProfile(),
-      getUserEntitlements(),
-      getOrCreateProfile(),
-      getMyPublicProfilePreview()
-    ]);
+    const [profile, entitlements, garderobeProfile, publicPreview, garmentCount] =
+      await Promise.all([
+        getAccountProfile(),
+        getUserEntitlements(),
+        getOrCreateProfile(),
+        getMyPublicProfilePreview(),
+        countWardrobeGarments()
+      ]);
     const { upgradeUrl } = getBillingStatus();
 
     const tierLabel =
@@ -28,6 +32,7 @@ export default async function AccountPage() {
 
     return (
       <main className="pw-shell flex min-h-screen max-w-5xl flex-col gap-6 md:px-10">
+        {isBillingLapsed(entitlements) ? <PaymentFailedRow upgradeUrl={upgradeUrl} /> : null}
         {/* Editorial header */}
         <section className="border-b border-[var(--line)] pb-8 pt-2">
           <p className="pw-kicker">Account</p>
@@ -54,19 +59,11 @@ export default async function AccountPage() {
           currencyUnit={profile.currency_unit}
         />
 
-        <YouSection profile={garderobeProfile} preview={publicPreview} />
+        <YouSection profile={garderobeProfile} preview={publicPreview} garmentCount={garmentCount} />
 
         <PlanSection entitlements={entitlements} upgradeUrl={upgradeUrl} />
 
-        {/* Sign out */}
-        <form action={signOutAction} className="pb-4">
-          <button
-            type="submit"
-            className="text-sm text-[var(--muted)] underline underline-offset-2 hover:text-[var(--foreground)]"
-          >
-            Sign out
-          </button>
-        </form>
+        <SignOutRow />
       </main>
     );
   } catch (error) {

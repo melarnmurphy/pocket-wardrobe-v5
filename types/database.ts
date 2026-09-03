@@ -1727,10 +1727,35 @@ export type Database = {
         }
         Relationships: []
       }
+      data_export_requests: {
+        Row: {
+          id: string
+          user_id: string
+          status: string
+          requested_at: string
+          ready_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          status?: string
+          requested_at?: string
+          ready_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          status?: string
+          requested_at?: string
+          ready_at?: string | null
+        }
+        Relationships: []
+      }
       user_entitlements: {
         Row: {
           billing_customer_id: string | null
           billing_provider: string | null
+          billing_status: string | null
           billing_subscription_id: string | null
           created_at: string
           feature_labels_enabled: boolean
@@ -1744,6 +1769,7 @@ export type Database = {
         Insert: {
           billing_customer_id?: string | null
           billing_provider?: string | null
+          billing_status?: string | null
           billing_subscription_id?: string | null
           created_at?: string
           feature_labels_enabled?: boolean
@@ -1757,6 +1783,7 @@ export type Database = {
         Update: {
           billing_customer_id?: string | null
           billing_provider?: string | null
+          billing_status?: string | null
           billing_subscription_id?: string | null
           created_at?: string
           feature_labels_enabled?: boolean
