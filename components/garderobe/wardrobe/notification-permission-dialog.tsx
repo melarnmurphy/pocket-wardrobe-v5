@@ -21,7 +21,7 @@ export function NotificationPermissionDialog({ open, onTurnOn, onNotNow }: Notif
       open={open}
       onClose={onNotNow}
       title="a nudge to wear it again?"
-      description="Garderobe can remind you about pieces sitting unworn. Turn it off any time from account settings."
+      description="Garderobe can remind you about pieces sitting unworn, and you can turn it off any time from account settings."
       cancelLabel="not now"
       confirmLabel="turn on"
       onConfirm={onTurnOn}

@@ -25,6 +25,10 @@ import { Dialog } from "@/components/garderobe/dialog";
 import { UsedElsewhereDialog } from "@/components/garderobe/wardrobe/used-elsewhere-dialog";
 import { UploadFailedDialog } from "@/components/garderobe/wardrobe/upload-failed-dialog";
 import { NotificationPermissionDialog } from "@/components/garderobe/wardrobe/notification-permission-dialog";
+import {
+  shouldPromptForNotificationPermission,
+  markNotificationPermissionPrompted
+} from "@/components/garderobe/wardrobe/notification-permission";
 import { showAppToast } from "@/lib/ui/app-toast";
 import type { PlanTier } from "@/lib/domain/entitlements";
 import {
@@ -1656,18 +1660,13 @@ function GarmentDetailDialog({
 
   useEffect(() => {
     if (wearState.status !== "success") return;
-    if (typeof window === "undefined") return;
-    if (window.localStorage.getItem("gw.notificationPermissionPrompted") === "1") return;
-    if (typeof window.Notification === "undefined") return;
-    if (window.Notification.permission !== "default") return;
+    if (!shouldPromptForNotificationPermission()) return;
 
     setShowNotificationPrompt(true);
   }, [wearState.status]);
 
   function dismissNotificationPrompt() {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("gw.notificationPermissionPrompted", "1");
-    }
+    markNotificationPermissionPrompted();
     setShowNotificationPrompt(false);
   }
 
