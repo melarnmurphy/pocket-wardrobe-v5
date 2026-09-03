@@ -13,6 +13,7 @@ type DialogProps = {
   confirmLabel: string;
   onConfirm: () => void;
   confirmVariant?: "primary" | "on-blush";
+  hideCancel?: boolean;
 };
 
 /** The centred dialog primitive: 14px radius, 22px inset, two buttons maximum. */
@@ -25,7 +26,8 @@ export function Dialog({
   cancelLabel = "cancel",
   confirmLabel,
   onConfirm,
-  confirmVariant = "primary"
+  confirmVariant = "primary",
+  hideCancel = false
 }: DialogProps) {
   if (!open) return null;
 
@@ -50,9 +52,11 @@ export function Dialog({
           </div>
         ) : null}
         <div className="flex gap-[9px] pt-1">
-          <PillButton variant="secondary" onClick={onClose} className="h-11">
-            {cancelLabel}
-          </PillButton>
+          {!hideCancel ? (
+            <PillButton variant="secondary" onClick={onClose} className="h-11">
+              {cancelLabel}
+            </PillButton>
+          ) : null}
           <PillButton variant={confirmVariant} onClick={onConfirm} className="h-11">
             {confirmLabel}
           </PillButton>
