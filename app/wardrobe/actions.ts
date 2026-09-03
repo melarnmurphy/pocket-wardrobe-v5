@@ -11,10 +11,12 @@ import {
   addGarmentImage,
   addGarmentToLetGo,
   archiveGarment,
+  deleteCollection,
   deleteGarment,
   getGarmentUsageBlockers,
   mergeGarments,
   removeGarmentFromLetGo,
+  renameCollection,
   restoreGarment,
   setGarmentAvailability,
   setGarmentPriceManually,
@@ -191,6 +193,15 @@ const deleteWearEventFormSchema = z.object({
 const createCollectionFormSchema = z.object({
   name: z.string().trim().min(1).max(120),
   garment_id: z.array(z.string().uuid()).default([])
+});
+
+const renameCollectionFormSchema = z.object({
+  collection_id: z.string().uuid(),
+  name: z.string().trim().min(1).max(120)
+});
+
+const deleteCollectionFormSchema = z.object({
+  collection_id: z.string().uuid()
 });
 
 const setAvailabilityFormSchema = z.object({
@@ -1040,6 +1051,49 @@ export async function createCollectionAction(
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Unable to create the collection."
+    };
+  }
+}
+
+export async function renameCollectionAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = renameCollectionFormSchema.parse({
+      collection_id: formData.get("collection_id"),
+      name: formData.get("name")
+    });
+
+    await renameCollection({ collectionId: values.collection_id, name: values.name });
+    revalidatePath("/wardrobe");
+
+    return { status: "success", message: "Collection renamed." };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to rename the collection."
+    };
+  }
+}
+
+export async function deleteCollectionAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = deleteCollectionFormSchema.parse({
+      collection_id: formData.get("collection_id")
+    });
+
+    await deleteCollection(values.collection_id);
+    revalidatePath("/wardrobe");
+
+    return { status: "success", message: "Collection deleted. The pieces stay in your wardrobe." };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to delete the collection."
     };
   }
 }
