@@ -199,6 +199,69 @@ export async function getAccountClosureBlockers(): Promise<{
 }
 
 /**
+ * MODALS.md §5, "export started / export ready" toast. This records that a
+ * user asked for their data; it does not generate an export file, since no
+ * export pipeline exists in this codebase yet. status/ready_at are the hook
+ * a real export worker would set once one is built, flipping status to
+ * 'ready' and setting ready_at.
+ */
+export async function requestDataExport(): Promise<{ id: string; requestedAt: string }> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("data_export_requests")
+    .insert({ user_id: user.id } as never)
+    .select("id,requested_at")
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const row = data as { id: string; requested_at: string };
+
+  return { id: row.id, requestedAt: row.requested_at };
+}
+
+export async function getLatestDataExportRequest(): Promise<{
+  id: string;
+  requestedAt: string;
+  readyAt: string | null;
+  status: "requested" | "ready";
+} | null> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("data_export_requests")
+    .select("id,requested_at,ready_at,status")
+    .eq("user_id", user.id)
+    .order("requested_at", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const rows = (data ?? []) as {
+    id: string;
+    requested_at: string;
+    ready_at: string | null;
+    status: "requested" | "ready";
+  }[];
+  const row = rows[0];
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    requestedAt: row.requested_at,
+    readyAt: row.ready_at,
+    status: row.status
+  };
+}
+
+/**
  * Withdraws every live listing (so they stop appearing in the nearby feed
  * before the account disappears out from under them), then deletes the
  * auth user. Every user-owned table in this schema is

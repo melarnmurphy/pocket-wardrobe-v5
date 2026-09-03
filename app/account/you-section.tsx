@@ -5,6 +5,7 @@ import type { Profile, PublicProfilePreview } from "@/lib/domain/profile";
 import { PillButton } from "@/components/garderobe";
 import { DeletePhotosDialog } from "@/components/garderobe/account/delete-photos-dialog";
 import { CloseAccountDialog } from "@/components/garderobe/account/close-account-dialog";
+import { ExportRow } from "@/components/garderobe/account/export-row";
 import {
   updateLocalPrivacyAction,
   updateProfileAction,
@@ -13,6 +14,7 @@ import {
 } from "./profile-actions";
 import { deleteAllUserPhotosAction } from "./photos-actions";
 import { closeUserAccountAction } from "./close-account-actions";
+import { requestDataExportAction, checkDataExportReadyAction } from "./export-actions";
 
 const idleState: ProfileActionState = { status: "idle", message: null };
 const SIZE_SYSTEMS = ["AU", "UK", "US", "EU"] as const;
@@ -180,6 +182,8 @@ export function YouSection({
       <PhotosSection garmentCount={garmentCount} />
 
       <CloseAccountSection liveListingCount={liveListingCount} openThreadCount={openThreadCount} />
+
+      <ExportRow requestAction={requestDataExportAction} checkAction={checkDataExportReadyAction} />
     </section>
   );
 }
