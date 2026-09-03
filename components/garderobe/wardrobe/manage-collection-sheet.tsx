@@ -60,10 +60,15 @@ export function ManageCollectionSheet({
   }, [renameState.status]);
 
   useEffect(() => {
-    if (open && deleteState.status === "success") {
+    if (!open) return;
+    if (deleteState.status === "success") {
       showAppToast({ message: deleteState.message || "Collection deleted.", tone: "success" });
       setConfirmingDelete(false);
       onDeleted();
+    } else if (deleteState.status === "error") {
+      // Close the confirm dialog so the sheet underneath, with its inline
+      // error message, becomes visible again — but do not call onDeleted().
+      setConfirmingDelete(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deleteState.status]);
@@ -111,15 +116,12 @@ export function ManageCollectionSheet({
           const formData = new FormData();
           formData.set("collection_id", collection.id);
           deleteFormAction(formData);
-          // The delete only ever removes the collections row and its
-          // garment_collections links, never a garment, so there is
-          // nothing destructive to wait on here — close out optimistically
-          // rather than block on the round trip. The success effect below
-          // still fires the toast (and a redundant, harmless onDeleted())
-          // once the action resolves, covering the case the sheet is still
-          // mounted to see it.
-          setConfirmingDelete(false);
-          onDeleted();
+          // Deliberately nothing else here: this is a destructive action, so
+          // the sheet must stay open and the confirm dialog must not close
+          // until the server action actually resolves. The success effect
+          // below is the only place that closes the confirm dialog and
+          // calls onDeleted() — on an error, deleteState.status stays
+          // "error" and the inline message below stays visible instead.
         }}
       />
     </>

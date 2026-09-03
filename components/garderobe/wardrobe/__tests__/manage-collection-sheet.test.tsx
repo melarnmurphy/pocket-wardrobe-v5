@@ -39,7 +39,10 @@ describe("ManageCollectionSheet", () => {
 
   it("asks for confirmation before deleting, then submits the collection id", async () => {
     const renameAction = vi.fn(async (state: unknown, _formData: FormData) => state as never);
-    const deleteAction = vi.fn(async (state: unknown, _formData: FormData) => state as never);
+    const deleteAction = vi.fn(
+      async (_state: unknown, _formData: FormData) =>
+        ({ status: "success", message: "Collection deleted. The pieces stay in your wardrobe." }) as never
+    );
     const onDeleted = vi.fn();
 
     render(
@@ -60,5 +63,32 @@ describe("ManageCollectionSheet", () => {
     const [, formData] = deleteAction.mock.calls[0] as [unknown, FormData];
     expect(formData.get("collection_id")).toBe("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
     await waitFor(() => expect(onDeleted).toHaveBeenCalled());
+  });
+
+  it("keeps the sheet open and shows the error when deletion fails", async () => {
+    const renameAction = vi.fn(async (state: unknown, _formData: FormData) => state as never);
+    const deleteAction = vi.fn(
+      async (_state: unknown, _formData: FormData) =>
+        ({ status: "error", message: "Unable to delete the collection." }) as never
+    );
+    const onDeleted = vi.fn();
+
+    render(
+      <ManageCollectionSheet
+        open={true}
+        collection={{ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", name: "weekend capsule" }}
+        onClose={vi.fn()}
+        onDeleted={onDeleted}
+        renameAction={renameAction}
+        deleteAction={deleteAction}
+      />
+    );
+
+    fireEvent.click(screen.getByText("delete collection"));
+    fireEvent.click(await screen.findByText("delete collection", { selector: "button" }));
+
+    await waitFor(() => expect(deleteAction).toHaveBeenCalled());
+    expect(await screen.findByText("Unable to delete the collection.")).toBeInTheDocument();
+    expect(onDeleted).not.toHaveBeenCalled();
   });
 });
