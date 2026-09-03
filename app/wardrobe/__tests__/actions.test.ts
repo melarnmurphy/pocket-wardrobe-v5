@@ -279,3 +279,223 @@ describe("deleteCollectionAction", () => {
     vi.doUnmock("@/lib/domain/wardrobe/service");
   });
 });
+
+function fileOfType(type: string, size: number, name = "photo") {
+  const bytes = new Uint8Array(size);
+  return new File([bytes], name, { type });
+}
+
+describe("createPhotoDraftAction validation", () => {
+  it("rejects a HEIC file before attempting to upload it", async () => {
+    const { createPhotoDraftAction } = await import("@/app/wardrobe/actions");
+    const formData = new FormData();
+    formData.set("image", fileOfType("image/heic", 1000));
+
+    const result = await createPhotoDraftAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("error");
+    expect(result.errorCode).toBe("unsupported_format");
+  });
+
+  it("rejects a file over the size cap", async () => {
+    const { createPhotoDraftAction } = await import("@/app/wardrobe/actions");
+    const formData = new FormData();
+    formData.set("image", fileOfType("image/jpeg", 21 * 1024 * 1024));
+
+    const result = await createPhotoDraftAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("error");
+    expect(result.errorCode).toBe("too_large");
+  });
+});
+
+describe("addGarmentImageAction validation", () => {
+  it("rejects a HEIC file before attempting to upload it", async () => {
+    const { addGarmentImageAction } = await import("@/app/wardrobe/actions");
+    const formData = new FormData();
+    formData.set("garment_id", "00000000-0000-0000-0000-000000000001");
+    formData.set("image", fileOfType("image/heic", 1000));
+
+    const result = await addGarmentImageAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("error");
+    expect(result.errorCode).toBe("unsupported_format");
+  });
+});
+
+describe("createReceiptDraftAction validation", () => {
+  it("rejects an unsupported receipt file type", async () => {
+    const { createReceiptDraftAction } = await import("@/app/wardrobe/actions");
+    const formData = new FormData();
+    formData.set("receipt", fileOfType("image/heic", 1000, "receipt"));
+
+    const result = await createReceiptDraftAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("error");
+    expect(result.errorCode).toBe("unsupported_format");
+  });
+});
+
+describe("createProductUrlDraftAction dead link handling", () => {
+  it("returns a dead_url error instead of creating a draft when the fetch failed", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/domain/ingestion/extractors", async () => {
+      const actual = await vi.importActual("@/lib/domain/ingestion/extractors");
+      return {
+        ...actual,
+        extractProductMetadataFromUrl: vi.fn(async () => ({
+          title: null, brand: null, category: null, colour: null, fit: null,
+          material: null, retailer: "example.com", description: null, price: null,
+          currency: null, image_url: null, attributes: [], styling_suggestions: [],
+          fetch_failed: true
+        }))
+      };
+    });
+    // createProductUrlSource hits Supabase; stub just that export so this test
+    // stays hermetic and exercises the fetch_failed branch deterministically.
+    const createProductUrlSourceSpy = vi.fn(async () => ({
+      sourceId: "00000000-0000-0000-0000-0000000000aa"
+    }));
+    vi.doMock("@/lib/domain/ingestion/service", async () => {
+      const actual = await vi.importActual("@/lib/domain/ingestion/service");
+      return {
+        ...actual,
+        createProductUrlSource: createProductUrlSourceSpy
+      };
+    });
+    const { createProductUrlDraftAction } = await import("@/app/wardrobe/actions");
+    const formData = new FormData();
+    formData.set("product_url", "https://example.com/dead-product");
+
+    const result = await createProductUrlDraftAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("error");
+    expect(result.errorCode).toBe("dead_url");
+    // Regression: a dead link must never leave an orphan garment_sources row —
+    // the source is only created once extraction has succeeded.
+    expect(createProductUrlSourceSpy).not.toHaveBeenCalled();
+    vi.doUnmock("@/lib/domain/ingestion/extractors");
+    vi.doUnmock("@/lib/domain/ingestion/service");
+  });
+});
+
+describe("createReceiptDraftAction price matching", () => {
+  it("attaches price match candidates to the draft when two or more existing pieces match", async () => {
+    vi.resetModules();
+    // vi.spyOn on the already-resolved module's own exports, rather than
+    // vi.doMock's module-registry interception: "@/lib/domain/wardrobe/service"
+    // is also imported for real (via its own mocked dependencies) by the
+    // sibling price-match-candidates test file, and registry-level doMock of
+    // that same specifier from two files raced intermittently when both
+    // suites ran in the same worker. Patching the resolved export in place
+    // sidesteps the registry entirely, so it can't collide.
+    const wardrobeService = await import("@/lib/domain/wardrobe/service");
+    const ingestionService = await import("@/lib/domain/ingestion/service");
+
+    const findGarmentPriceMatchCandidatesSpy = vi
+      .spyOn(wardrobeService, "findGarmentPriceMatchCandidates")
+      .mockResolvedValue([
+        { garment_id: "cccccccc-cccc-cccc-cccc-cccccccccccc", title: "Navy blazer", category: "blazer" },
+        { garment_id: "dddddddd-dddd-dddd-dddd-dddddddddddd", title: "Wool blazer", category: "blazer" }
+      ]);
+    const createReceiptSourceSpy = vi
+      .spyOn(ingestionService, "createReceiptSource")
+      .mockResolvedValue({
+        sourceId: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+        storagePath: "user/receipt-uploads/receipt.jpg"
+      });
+    const createManualReviewDraftSpy = vi
+      .spyOn(ingestionService, "createManualReviewDraft")
+      .mockResolvedValue("ffffffff-ffff-ffff-ffff-ffffffffffff");
+    const attachPriceMatchCandidates = vi
+      .spyOn(ingestionService, "attachPriceMatchCandidates")
+      .mockResolvedValue(undefined);
+
+    const { createReceiptDraftAction } = await import("@/app/wardrobe/actions");
+
+    const formData = new FormData();
+    // Named ".pdf" with a text/plain type so isPdf's filename check lets it
+    // past the image-only upload-type gate, and readReceiptTextFromFile's own
+    // type check treats it as text-readable — giving it a non-null fileText
+    // and so skipping the receipt-OCR fallback (which would otherwise need
+    // getServerEnv()'s real, here-unset PIPELINE_SERVICE_URL) entirely.
+    formData.set(
+      "receipt",
+      new File(["Blazer $89.00"], "receipt.pdf", { type: "text/plain" })
+    );
+    formData.set("receipt_text", "Blazer $89.00");
+
+    const result = await createReceiptDraftAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("success");
+    expect(attachPriceMatchCandidates).toHaveBeenCalled();
+
+    findGarmentPriceMatchCandidatesSpy.mockRestore();
+    createReceiptSourceSpy.mockRestore();
+    createManualReviewDraftSpy.mockRestore();
+    attachPriceMatchCandidates.mockRestore();
+  });
+
+  it("never offers the price-match resolver for a candidate with no price", async () => {
+    vi.resetModules();
+    const wardrobeService = await import("@/lib/domain/wardrobe/service");
+    const ingestionService = await import("@/lib/domain/ingestion/service");
+
+    const findGarmentPriceMatchCandidatesSpy = vi
+      .spyOn(wardrobeService, "findGarmentPriceMatchCandidates")
+      .mockResolvedValue([
+        { garment_id: "cccccccc-cccc-cccc-cccc-cccccccccccc", title: "Navy blazer", category: "blazer" },
+        { garment_id: "dddddddd-dddd-dddd-dddd-dddddddddddd", title: "Wool blazer", category: "blazer" }
+      ]);
+    const createReceiptSourceSpy = vi
+      .spyOn(ingestionService, "createReceiptSource")
+      .mockResolvedValue({
+        sourceId: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+        storagePath: "user/receipt-uploads/receipt.jpg"
+      });
+    const createManualReviewDraftSpy = vi
+      .spyOn(ingestionService, "createManualReviewDraft")
+      .mockResolvedValue("ffffffff-ffff-ffff-ffff-ffffffffffff");
+    const attachPriceMatchCandidates = vi
+      .spyOn(ingestionService, "attachPriceMatchCandidates")
+      .mockResolvedValue(undefined);
+
+    const { createReceiptDraftAction } = await import("@/app/wardrobe/actions");
+
+    const formData = new FormData();
+    // No price in the receipt text, so the candidate's draft has no purchase
+    // price — the resolver sheet must not be offered for it (there is
+    // nothing for resolveReceiptMatchAction to attach a price to).
+    formData.set(
+      "receipt",
+      new File(["Blazer"], "receipt.pdf", { type: "text/plain" })
+    );
+    formData.set("receipt_text", "Blazer");
+
+    const result = await createReceiptDraftAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("success");
+    expect(findGarmentPriceMatchCandidatesSpy).not.toHaveBeenCalled();
+    expect(attachPriceMatchCandidates).not.toHaveBeenCalled();
+
+    findGarmentPriceMatchCandidatesSpy.mockRestore();
+    createReceiptSourceSpy.mockRestore();
+    createManualReviewDraftSpy.mockRestore();
+    attachPriceMatchCandidates.mockRestore();
+  });
+});
+
+describe("createReceiptDraftAction size cap", () => {
+  it("rejects a file over 20MB even when it is renamed to end in .pdf", async () => {
+    const { createReceiptDraftAction } = await import("@/app/wardrobe/actions");
+    const formData = new FormData();
+    // A PDF-named file skips the format allowlist check, but the size cap
+    // must still apply unconditionally.
+    formData.set("receipt", fileOfType("application/pdf", 21 * 1024 * 1024, "receipt.pdf"));
+
+    const result = await createReceiptDraftAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("error");
+    expect(result.errorCode).toBe("too_large");
+  });
+});

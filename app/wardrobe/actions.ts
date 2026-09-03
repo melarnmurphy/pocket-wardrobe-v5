@@ -18,6 +18,7 @@ import {
   removeGarmentFromLetGo,
   renameCollection,
   restoreGarment,
+  findGarmentPriceMatchCandidates,
   setGarmentAvailability,
   setGarmentPriceManually,
   setGarmentSeasonalStorage,
@@ -39,6 +40,7 @@ import {
   updateWearEvent
 } from "@/lib/domain/wear-events/service";
 import {
+  attachPriceMatchCandidates,
   createGarmentSource,
   createDraftsFromPipelineResult,
   createManualPhotoReviewDraft,
@@ -58,6 +60,7 @@ import {
   readReceiptTextFromFile
 } from "@/lib/domain/ingestion/extractors";
 import { productUrlAdapter, receiptAdapter } from "@/lib/domain/ingestion/adapters";
+import { classifyUploadFile, MAX_UPLOAD_BYTES } from "@/lib/domain/ingestion/limits";
 
 const nullableText = (max: number) =>
   z.preprocess(
@@ -366,6 +369,18 @@ export async function createPhotoDraftAction(
       };
     }
 
+    const uploadCheck = classifyUploadFile(file);
+    if (uploadCheck !== "ok") {
+      return {
+        status: "error",
+        errorCode: uploadCheck,
+        message:
+          uploadCheck === "unsupported_format"
+            ? "That file type won't open. Garderobe reads JPEG, PNG and WEBP."
+            : "That photo's too large. Photos over 20MB won't upload."
+      };
+    }
+
     const values = photoDraftFormSchema.parse({
       source_width: formData.get("source_width"),
       source_height: formData.get("source_height")
@@ -455,8 +470,15 @@ export async function createProductUrlDraftAction(
         .replace(/[-_]+/g, " ")
         .trim() ||
       url.hostname;
-    const { sourceId } = await createProductUrlSource({ url: values.product_url });
     const extracted = await extractProductMetadataFromUrl(values.product_url);
+    if (extracted.fetch_failed) {
+      return {
+        status: "error",
+        errorCode: "dead_url",
+        message: "That link didn't load, so nothing came back automatically. Add the piece's details yourself instead."
+      };
+    }
+    const { sourceId } = await createProductUrlSource({ url: values.product_url });
     const draftPayload = productUrlAdapter.buildDraft({
       productUrl: values.product_url,
       titleHint,
@@ -530,6 +552,29 @@ export async function createReceiptDraftAction(
       };
     }
 
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return {
+        status: "error",
+        errorCode: "too_large",
+        message: "That file's too large. Files over 20MB won't upload."
+      };
+    }
+
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if (!isPdf) {
+      const uploadCheck = classifyUploadFile(file);
+      if (uploadCheck !== "ok") {
+        return {
+          status: "error",
+          errorCode: uploadCheck,
+          message:
+            uploadCheck === "unsupported_format"
+              ? "That file type won't open. Garderobe reads JPEG, PNG, WEBP and PDF receipts."
+              : "That file's too large. Files over 20MB won't upload."
+        };
+      }
+    }
+
     const values = receiptDraftFormSchema.parse({
       receipt_text: formData.get("receipt_text"),
       notes: formData.get("notes"),
@@ -596,6 +641,18 @@ export async function createReceiptDraftAction(
       });
 
       draftIds.push(draftId);
+
+      if (draftPayload.purchasePrice !== null && draftPayload.purchasePrice !== undefined) {
+        const priceMatches = await findGarmentPriceMatchCandidates({
+          title: draftPayload.title ?? fallbackTitle,
+          brand: draftPayload.brand,
+          category: draftPayload.category
+        }).catch(() => []);
+
+        if (priceMatches.length >= 2) {
+          await attachPriceMatchCandidates(draftId, priceMatches);
+        }
+      }
     }
 
     revalidatePath("/wardrobe/review");
@@ -630,6 +687,18 @@ export async function addGarmentImageAction(
       return {
         status: "error",
         message: "Choose an image file to upload."
+      };
+    }
+
+    const uploadCheck = classifyUploadFile(file);
+    if (uploadCheck !== "ok") {
+      return {
+        status: "error",
+        errorCode: uploadCheck,
+        message:
+          uploadCheck === "unsupported_format"
+            ? "That file type won't open. Garderobe reads JPEG, PNG and WEBP."
+            : "That photo's too large. Photos over 20MB won't upload."
       };
     }
 

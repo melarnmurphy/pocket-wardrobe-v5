@@ -159,6 +159,46 @@ async function attachDuplicateHints(
   }
 }
 
+/**
+ * "This receipt matches three pieces" (MODALS.md §3) — attaches candidate
+ * garments onto an already-created draft, the same way attachDuplicateHints
+ * attaches a duplicate hint, so the review page's resolver sheet has
+ * something to read. Only called when there are 2+ candidates: a single
+ * confident match is a different, not-yet-built feature (auto-attach), and
+ * zero candidates means there is nothing to resolve.
+ */
+export async function attachPriceMatchCandidates(
+  draftId: string,
+  candidates: Array<{ garment_id: string; title: string | null; category: string }>
+): Promise<void> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  const { data: existing } = await supabase
+    .from("garment_drafts")
+    .select("draft_payload_json")
+    .eq("id", draftId)
+    .eq("user_id", user.id)
+    .single();
+
+  const currentPayload = (existing as { draft_payload_json?: Json } | null)?.draft_payload_json;
+  const basePayload =
+    currentPayload && typeof currentPayload === "object" && !Array.isArray(currentPayload)
+      ? (currentPayload as Record<string, unknown>)
+      : {};
+
+  await supabase
+    .from("garment_drafts")
+    .update({
+      draft_payload_json: {
+        ...basePayload,
+        price_match_candidates: candidates
+      } as Json
+    } as never)
+    .eq("id", draftId)
+    .eq("user_id", user.id);
+}
+
 async function createDraftCrops(params: {
   supabase: Awaited<ReturnType<typeof createClient>>;
   userId: string;
@@ -319,6 +359,7 @@ export interface PendingDraft {
       category: string;
       similarity: number;
     } | null;
+    price_match_candidates?: Array<{ garment_id: string; title: string | null; category: string }> | null;
   };
 }
 
@@ -723,7 +764,11 @@ export async function listPendingDrafts(): Promise<PendingDraft[]> {
           !Array.isArray(p.duplicate_hint) &&
           typeof (p.duplicate_hint as Record<string, unknown>).garment_id === "string"
             ? (p.duplicate_hint as PendingDraft["payload"]["duplicate_hint"])
-            : null
+            : null,
+        price_match_candidates:
+          Array.isArray(p.price_match_candidates) && p.price_match_candidates.length > 0
+            ? (p.price_match_candidates as PendingDraft["payload"]["price_match_candidates"])
+            : null,
       },
     };
   });

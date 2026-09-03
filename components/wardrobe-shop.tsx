@@ -25,6 +25,12 @@ import { ManageCollectionSheet } from "@/components/garderobe/wardrobe/manage-co
 import { SortSheet } from "@/components/garderobe/wardrobe/sort-sheet";
 import { Dialog } from "@/components/garderobe/dialog";
 import { UsedElsewhereDialog } from "@/components/garderobe/wardrobe/used-elsewhere-dialog";
+import { UploadFailedDialog } from "@/components/garderobe/wardrobe/upload-failed-dialog";
+import { NotificationPermissionDialog } from "@/components/garderobe/wardrobe/notification-permission-dialog";
+import {
+  shouldPromptForNotificationPermission,
+  markNotificationPermissionPrompted
+} from "@/components/garderobe/wardrobe/notification-permission";
 import { showAppToast } from "@/lib/ui/app-toast";
 import type { PlanTier } from "@/lib/domain/entitlements";
 import {
@@ -220,6 +226,7 @@ export function WardrobeShop({
     createProductUrlDraftAction,
     wardrobeActionState
   );
+  const [productUrlErrorCode, setProductUrlErrorCode] = useState<"dead_url" | null>(null);
   const [receiptDraftState, receiptDraftFormAction] = useActionState(
     createReceiptDraftAction,
     wardrobeActionState
@@ -446,6 +453,12 @@ export function WardrobeShop({
       });
     }
   }, [productUrlDraftState.message, productUrlDraftState.status]);
+
+  useEffect(() => {
+    if (productUrlDraftState.status === "error" && productUrlDraftState.errorCode === "dead_url") {
+      setProductUrlErrorCode("dead_url");
+    }
+  }, [productUrlDraftState.status, productUrlDraftState.errorCode]);
 
   useEffect(() => {
     if (
@@ -1169,10 +1182,20 @@ export function WardrobeShop({
                 <PendingButton idle="Add Item" pending="Adding Item..." />
               </form>
             ) : createSourceMode === "product_url" ? (
-              <ProductUrlDraftComposer
-                action={productUrlDraftFormAction}
-                state={productUrlDraftState}
-              />
+              <>
+                <ProductUrlDraftComposer
+                  action={productUrlDraftFormAction}
+                  state={productUrlDraftState}
+                />
+                {productUrlErrorCode ? (
+                  <UploadFailedDialog
+                    open
+                    errorCode={productUrlErrorCode}
+                    onClose={() => setProductUrlErrorCode(null)}
+                    onRetry={() => setProductUrlErrorCode(null)}
+                  />
+                ) : null}
+              </>
             ) : createSourceMode === "receipt" ? (
               <ReceiptDraftComposer action={receiptDraftFormAction} state={receiptDraftState} />
             ) : null}
@@ -1628,6 +1651,10 @@ function GarmentDetailDialog({
     wardrobeActionState
   );
   const [showReupload, setShowReupload] = useState(false);
+  const [imageUploadDialogCode, setImageUploadDialogCode] = useState<
+    "unsupported_format" | "too_large" | null
+  >(null);
+  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
   const [wearEntryMode, setWearEntryMode] = useState<"quick" | "detail">("quick");
   const [quickWearCount, setQuickWearCount] = useState(
     Math.max(garment.wear_count, 1)
@@ -1704,6 +1731,18 @@ function GarmentDetailDialog({
       });
     }
   }, [wearState.message, wearState.status]);
+
+  useEffect(() => {
+    if (wearState.status !== "success") return;
+    if (!shouldPromptForNotificationPermission()) return;
+
+    setShowNotificationPrompt(true);
+  }, [wearState.status]);
+
+  function dismissNotificationPrompt() {
+    markNotificationPermissionPrompted();
+    setShowNotificationPrompt(false);
+  }
 
   useEffect(() => {
     if (assetState.status === "success") {
@@ -1860,6 +1899,7 @@ function GarmentDetailDialog({
                     garmentId={garment.id as string}
                     action={addGarmentImageAction}
                     latestPath={featureImage?.storage_path ?? garment.images[0]?.storage_path ?? null}
+                    onErrorCode={setImageUploadDialogCode}
                   />
                 </div>
               ) : null}
@@ -1870,9 +1910,32 @@ function GarmentDetailDialog({
                 garmentId={garment.id as string}
                 action={addGarmentImageAction}
                 latestPath={featureImage?.storage_path ?? garment.images[0]?.storage_path ?? null}
+                onErrorCode={setImageUploadDialogCode}
               />
             </div>
           )}
+
+          {imageUploadDialogCode ? (
+            <UploadFailedDialog
+              open
+              errorCode={imageUploadDialogCode}
+              onClose={() => setImageUploadDialogCode(null)}
+              onRetry={() => setImageUploadDialogCode(null)}
+            />
+          ) : null}
+
+          {showNotificationPrompt ? (
+            <NotificationPermissionDialog
+              open
+              onNotNow={dismissNotificationPrompt}
+              onTurnOn={() => {
+                if (typeof window !== "undefined" && typeof window.Notification !== "undefined") {
+                  void window.Notification.requestPermission();
+                }
+                dismissNotificationPrompt();
+              }}
+            />
+          ) : null}
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard label="Wear Count" value={String(garment.wear_count)} />

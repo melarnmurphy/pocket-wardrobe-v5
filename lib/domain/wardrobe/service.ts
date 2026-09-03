@@ -966,19 +966,21 @@ export async function setGarmentPriceManually(params: {
   garmentId: string;
   priceCents: number;
   currency?: string;
+  priceSource?: "store" | "receipt" | "manual";
 }) {
   const user = await getRequiredUser();
   const supabase = await createClient();
   const parsedId = z.string().uuid().parse(params.garmentId);
   const parsedPrice = z.number().nonnegative().parse(params.priceCents / 100);
   const parsedCurrency = params.currency ? z.string().length(3).parse(params.currency) : "AUD";
+  const priceSource = params.priceSource ?? "manual";
 
   const { error } = await supabase
     .from("garments")
     .update(({
       purchase_price: parsedPrice,
       purchase_currency: parsedCurrency,
-      price_source: "manual"
+      price_source: priceSource
     } satisfies Partial<GarmentInsert>) as never)
     .eq("id", parsedId)
     .eq("user_id", user.id);
@@ -986,6 +988,56 @@ export async function setGarmentPriceManually(params: {
   if (error) {
     throw new Error(error.message);
   }
+}
+
+export type PriceMatchCandidate = { garment_id: string; title: string | null; category: string };
+
+/**
+ * "This receipt matches three pieces" (MODALS.md §3) — a fuzzy title match
+ * against the wardrobe's existing pieces, scoped to the same category where
+ * one is known, so a "blazer" receipt line doesn't surface boots. This never
+ * chooses on its own (standing rule 5): the caller only uses the result to
+ * decide whether the resolver sheet needs to ask.
+ */
+export async function findGarmentPriceMatchCandidates(params: {
+  title: string;
+  brand?: string | null;
+  category?: string | null;
+}): Promise<PriceMatchCandidate[]> {
+  const title = params.title.trim();
+  const words = title
+    .split(/\s+/)
+    .map((word) => word.replace(/[%,()]/g, ""))
+    .filter((word) => word.length > 2)
+    .slice(0, 3);
+
+  if (words.length === 0) {
+    return [];
+  }
+
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  const query = supabase
+    .from("garments")
+    .select("id,title,category")
+    .eq("user_id", user.id)
+    .is("deleted_at", null);
+
+  const scopedQuery = params.category ? query.eq("category", params.category) : query;
+
+  const { data, error } = await scopedQuery
+    .or(words.map((word) => `title.ilike.%${word}%`).join(","))
+    .limit(5);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).map((row) => {
+    const typed = row as { id: string; title: string | null; category: string };
+    return { garment_id: typed.id, title: typed.title, category: typed.category };
+  });
 }
 
 export async function setGarmentAvailability(garmentId: string, availability: Availability) {
