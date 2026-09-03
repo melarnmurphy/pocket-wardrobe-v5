@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const from = vi.fn();
 const deleteUser = vi.fn();
+const signOut = vi.fn();
 
 vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(async () => ({ from }))
+  createClient: vi.fn(async () => ({ from, auth: { signOut } }))
 }));
 vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: vi.fn(() => ({ auth: { admin: { deleteUser } } }))
@@ -54,12 +55,13 @@ describe("closeUserAccount", () => {
     (listMyThreads as ReturnType<typeof vi.fn>).mockResolvedValue([]);
   });
 
-  it("withdraws every live listing, then deletes the auth user", async () => {
+  it("withdraws every live listing, then deletes the auth user, then signs out the browser session", async () => {
     const inFn = vi.fn().mockResolvedValue({ data: [{ id: "l1" }, { id: "l2" }], error: null });
     const eqFn = vi.fn(() => ({ in: inFn }));
     const selectFn = vi.fn(() => ({ eq: eqFn }));
     from.mockReturnValue({ select: selectFn });
     deleteUser.mockResolvedValue({ error: null });
+    signOut.mockResolvedValue({ error: null });
 
     const { closeUserAccount } = await import("@/lib/domain/account/service");
     const { withdrawLocalListing } = await import("@/lib/domain/local-threads/threads-service");
@@ -68,6 +70,7 @@ describe("closeUserAccount", () => {
     expect(withdrawLocalListing).toHaveBeenCalledWith("l1");
     expect(withdrawLocalListing).toHaveBeenCalledWith("l2");
     expect(deleteUser).toHaveBeenCalledWith("11111111-1111-1111-1111-111111111111");
+    expect(signOut).toHaveBeenCalled();
   });
 
   it("throws if the auth user deletion fails", async () => {
@@ -77,5 +80,6 @@ describe("closeUserAccount", () => {
 
     const { closeUserAccount } = await import("@/lib/domain/account/service");
     await expect(closeUserAccount()).rejects.toThrow("boom");
+    expect(signOut).not.toHaveBeenCalled();
   });
 });
