@@ -83,3 +83,74 @@ export async function updateAccountProfile(input: {
 
   return getAccountProfile();
 }
+
+const ORIGINAL_BUCKET = "garment-originals";
+const CUTOUT_BUCKET = "garment-cutouts";
+
+function bucketForImageType(imageType: string) {
+  return imageType === "original" ? ORIGINAL_BUCKET : CUTOUT_BUCKET;
+}
+
+/**
+ * MODALS.md §5 — "delete my photos, keep the records": removes every photo
+ * from every garment this user owns, but never touches the garments
+ * themselves (name, wear history, prices, looks all stay exactly as they
+ * are). Storage removal is best-effort — a storage error never blocks the
+ * database cleanup, since a stray object left in storage is recoverable but
+ * a photo the user was told was gone and was not is not.
+ */
+export async function deleteAllUserPhotos(): Promise<{ deletedCount: number }> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  const { data: garments, error: garmentsError } = await supabase
+    .from("garments")
+    .select("id")
+    .eq("user_id", user.id);
+
+  if (garmentsError) {
+    throw new Error(garmentsError.message);
+  }
+
+  const garmentIds = ((garments ?? []) as { id: string }[]).map((garment) => garment.id);
+
+  if (garmentIds.length === 0) {
+    return { deletedCount: 0 };
+  }
+
+  const { data: images, error: imagesError } = await supabase
+    .from("garment_images")
+    .select("id,garment_id,image_type,storage_path")
+    .in("garment_id", garmentIds);
+
+  if (imagesError) {
+    throw new Error(imagesError.message);
+  }
+
+  const rows = (images ?? []) as {
+    id: string;
+    garment_id: string;
+    image_type: string;
+    storage_path: string;
+  }[];
+
+  for (const image of rows) {
+    await supabase.storage.from(bucketForImageType(image.image_type)).remove([image.storage_path]);
+  }
+
+  if (rows.length > 0) {
+    const { error: deleteError } = await supabase
+      .from("garment_images")
+      .delete()
+      .in(
+        "id",
+        rows.map((image) => image.id)
+      );
+
+    if (deleteError) {
+      throw new Error(deleteError.message);
+    }
+  }
+
+  return { deletedCount: rows.length };
+}
