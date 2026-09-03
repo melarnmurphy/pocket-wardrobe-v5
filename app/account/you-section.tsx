@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Profile, PublicProfilePreview } from "@/lib/domain/profile";
 import { PillButton } from "@/components/garderobe";
 import { unblockUserAction } from "@/app/local/actions";
@@ -195,6 +196,7 @@ export function YouSection({
 
 function UnblockButton({ userId }: { userId: string }) {
   const [isBusy, setIsBusy] = useState(false);
+  const router = useRouter();
   return (
     <button
       type="button"
@@ -204,6 +206,7 @@ function UnblockButton({ userId }: { userId: string }) {
         setIsBusy(true);
         await unblockUserAction(userId);
         setIsBusy(false);
+        router.refresh();
       }}
     >
       unblock

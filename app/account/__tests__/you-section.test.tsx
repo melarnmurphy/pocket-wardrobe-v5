@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { afterEach, describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { YouSection } from "@/app/account/you-section";
+
+// vitest.config.ts doesn't enable test.globals, so testing-library's
+// automatic afterEach cleanup never registers itself; without this, each
+// render in this file leaves its DOM behind for the next test.
+afterEach(cleanup);
 
 vi.mock("@/app/account/profile-actions", () => ({
   updateProfileAction: vi.fn(async (state: unknown) => state),
@@ -10,6 +15,10 @@ vi.mock("@/app/account/profile-actions", () => ({
 }));
 vi.mock("@/app/local/actions", () => ({
   unblockUserAction: vi.fn(async () => ({ status: "success" }))
+}));
+const refreshMock = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: refreshMock })
 }));
 
 const profile = {
@@ -65,5 +74,17 @@ describe("YouSection blocked list", () => {
     expect(screen.getByText(/blocked · 1/i)).toBeInTheDocument();
     expect(screen.getByText("sam")).toBeInTheDocument();
     fireEvent.click(screen.getByText("unblock"));
+  });
+
+  it("refreshes the page after a successful unblock, so the row disappears without a manual reload", async () => {
+    render(
+      <YouSection
+        profile={profile as never}
+        preview={preview}
+        blockedUsers={[{ userId: "33333333-3333-3333-3333-333333333333", localName: "sam", blockedAt: "2026-01-01T00:00:00Z" }]}
+      />
+    );
+    fireEvent.click(screen.getByText("unblock"));
+    await vi.waitFor(() => expect(refreshMock).toHaveBeenCalled());
   });
 });

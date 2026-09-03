@@ -11,7 +11,7 @@ type CancelListingDialogProps = {
   onClose: () => void;
 };
 
-/** Missing item — "cancel a listing with a live offer". */
+/** Missing item, "cancel a listing with a live offer". */
 export function CancelListingDialog({
   open,
   counterpartName,

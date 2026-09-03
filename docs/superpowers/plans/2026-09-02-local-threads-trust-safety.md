@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the 8 local-threads trust-and-safety dialogs/sheets `docs/design/design_handoff_garderobe/MODALS.md` §4 marks **missing**: decline/withdraw an offer, cancel a listing with a live offer, cancel or reschedule a handover, "they didn't show", report a listing/person, block confirm, first listing safety brief, and age check — so the marketplace stops relying on raw `confirm()`/`prompt()`/`alert()` and has no dialog-shaped gaps left before launch.
+**Goal:** Build the 8 local-threads trust-and-safety dialogs/sheets `docs/design/design_handoff_garderobe/MODALS.md` §4 marks **missing**: decline/withdraw an offer, cancel a listing with a live offer, cancel or reschedule a handover, "they didn't show", report a listing/person, block confirm, first listing safety brief, and age check, so the marketplace stops relying on raw `confirm()`/`prompt()`/`alert()` and has no dialog-shaped gaps left before launch.
 
-**Architecture:** One migration adds every new column/table this phase needs (offer state on `messages`, no-show tracking on `handovers`, three new `profiles` columns, no new tables). Service functions land in the existing `lib/domain/local-threads/threads-service.ts` and `lib/domain/profile/service.ts`. New dialogs/sheets are standalone components under a new `components/garderobe/local-threads/` directory, built only on the existing `Dialog` (`components/garderobe/dialog.tsx`) and `BottomSheet`/`SheetAction` (`components/garderobe/bottom-sheet.tsx`) primitives — `Dialog` gains one new optional prop (`hideCancel`) for single-button acknowledgement dialogs, used by the safety brief and the age-check block notice. They are wired into `app/local/threads/[id]/thread-view.tsx` (replacing the existing `confirm()`/`prompt()`/`alert()` calls), a new "manage this listing" section on `app/local/[id]/page.tsx`, `app/local/list/[garmentId]/page.tsx` (age check + safety brief gate before the listing form), and a new "blocked" section on `app/account/you-section.tsx`.
+**Architecture:** One migration adds every new column/table this phase needs (offer state on `messages`, no-show tracking on `handovers`, three new `profiles` columns, no new tables). Service functions land in the existing `lib/domain/local-threads/threads-service.ts` and `lib/domain/profile/service.ts`. New dialogs/sheets are standalone components under a new `components/garderobe/local-threads/` directory, built only on the existing `Dialog` (`components/garderobe/dialog.tsx`) and `BottomSheet`/`SheetAction` (`components/garderobe/bottom-sheet.tsx`) primitives, `Dialog` gains one new optional prop (`hideCancel`) for single-button acknowledgement dialogs, used by the safety brief and the age-check block notice. They are wired into `app/local/threads/[id]/thread-view.tsx` (replacing the existing `confirm()`/`prompt()`/`alert()` calls), a new "manage this listing" section on `app/local/[id]/page.tsx`, `app/local/list/[garmentId]/page.tsx` (age check + safety brief gate before the listing form), and a new "blocked" section on `app/account/you-section.tsx`.
 
 **Tech Stack:** Next.js App Router server actions, Zod validation, Supabase/Postgres with RLS, Vitest for unit tests, React Testing Library for component tests.
 
@@ -12,31 +12,31 @@
 
 ## Out of scope for this phase
 
-- Wiring `no_show_by`/no-show counts into `getPublicProfile`'s `handoverCount` — that field is
+- Wiring `no_show_by`/no-show counts into `getPublicProfile`'s `handoverCount`, that field is
   hard-coded to `0` everywhere today (`lib/domain/profile/service.ts:177-178,222-223`), a
   pre-existing gap. This phase records the no-show, it does not yet surface it as a trust score.
 - Gating the buyer side (browsing, starting a thread, offering, agreeing to a handover) behind
-  the age check — the spec flags this as a policy question for the human partner, not something
+  the age check, the spec flags this as a policy question for the human partner, not something
   this plan decides unilaterally. See spec §8's final paragraph.
 - Any self-service "actually I'm 18 now" override once `age_declined_at` is set.
 - Everything in MODALS.md still marked missing outside §4 (intake permissions, account/billing,
-  auth) — a separate phase per README.md's own scoping.
+  auth), a separate phase per README.md's own scoping.
 
 ## Global Constraints
 
 - Australian English, no em dashes, lowercase sentence-style copy, in all new UI copy (`~/.claude/CLAUDE.md`).
-- Destructive dialogs name the consequence, not the action (MODALS.md standing rule 1) — never "are you sure?".
-- Nothing destructive resolves in a toast alone (standing rule 2) — a toast is fine only for genuinely non-destructive submissions (e.g. sending a report).
+- Destructive dialogs name the consequence, not the action (MODALS.md standing rule 1), never "are you sure?".
+- Nothing destructive resolves in a toast alone (standing rule 2), a toast is fine only for genuinely non-destructive submissions (e.g. sending a report).
 - A dialog asks one question; if it needs two answers it is a sheet (standing rule 3).
-- Sheets carry a 38×3px grab handle and 20px top corners; dialogs are 14px radius, centred, 44px buttons; both dim with `rgba(30,26,23,.45)` (standing rule 7) — already baked into `Dialog`/`BottomSheet`, do not re-implement.
-- Every new dialog/sheet is built on `Dialog` or `BottomSheet`/`SheetAction` — extend a primitive's props if needed (this plan extends `Dialog` once, with `hideCancel`), never fork a new overlay pattern.
+- Sheets carry a 38×3px grab handle and 20px top corners; dialogs are 14px radius, centred, 44px buttons; both dim with `rgba(30,26,23,.45)` (standing rule 7), already baked into `Dialog`/`BottomSheet`, do not re-implement.
+- Every new dialog/sheet is built on `Dialog` or `BottomSheet`/`SheetAction`, extend a primitive's props if needed (this plan extends `Dialog` once, with `hideCancel`), never fork a new overlay pattern.
 - RLS is the enforcement boundary for every local-threads write; never the service-role client in a user-facing path (`API_CONTRACT.md`).
-- Rate limiting via `lib/rate-limit.ts`'s `checkRateLimit(action, requests, windowSeconds)` on any local-threads write that can be triggered repeatedly by one user against another (offers, reports, no-show reports) — every existing local-threads write already does this; new writes follow the same pattern.
-- A user can only report/block/decline/withdraw from their own session — every new service function is scoped by `getRequiredUser()` plus a `.eq(...)` or RLS check tying the row to that user, matching every existing function in `threads-service.ts`.
+- Rate limiting via `lib/rate-limit.ts`'s `checkRateLimit(action, requests, windowSeconds)` on any local-threads write that can be triggered repeatedly by one user against another (offers, reports, no-show reports), every existing local-threads write already does this; new writes follow the same pattern.
+- A user can only report/block/decline/withdraw from their own session, every new service function is scoped by `getRequiredUser()` plus a `.eq(...)` or RLS check tying the row to that user, matching every existing function in `threads-service.ts`.
 
 ---
 
-## Task 1: Migration — offer state, no-show tracking, profile flags
+## Task 1: Migration, offer state, no-show tracking, profile flags
 
 **Files:**
 - Create: `supabase/migrations/036_local_threads_trust_and_safety.sql`
@@ -62,7 +62,7 @@ alter table public.messages
     check (offer_status in ('pending', 'accepted', 'declined', 'withdrawn'))
     default 'pending';
 
--- "They didn't show" needs to record who — the handovers.state check
+-- "They didn't show" needs to record who, the handovers.state check
 -- constraint already allows 'missed' (migration 031) but no code has ever
 -- written it.
 alter table public.handovers
@@ -79,7 +79,7 @@ alter table public.profiles
 
 - [ ] **Step 2: Apply it and confirm it runs clean**
 
-Run: `supabase db push` (or this project's existing local/dev apply path — check current
+Run: `supabase db push` (or this project's existing local/dev apply path, check current
 migration state first, per the caveat in `HANDOFF.md` about unapplied migrations).
 Expected: migration `036_local_threads_trust_and_safety.sql` applies with no errors; `messages`,
 `handovers`, and `profiles` show the new columns via `list_tables`.
@@ -101,7 +101,7 @@ git commit -m "Add offer state, no-show tracking, and safety/age profile flags f
 
 **Interfaces:**
 - Consumes: `getRequiredUser`, `createClient`, the existing private `insertMessage` helper (same file), `checkRateLimit` from `@/lib/rate-limit`.
-- Produces: `respondToOffer(messageId: string): Promise<void>` (seller declines), `withdrawOffer(messageId: string): Promise<void>` (buyer withdraws) — both consumed by Task 6's UI.
+- Produces: `respondToOffer(messageId: string): Promise<void>` (seller declines), `withdrawOffer(messageId: string): Promise<void>` (buyer withdraws), both consumed by Task 6's UI.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -169,15 +169,15 @@ describe("withdrawOffer", () => {
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run lib/domain/local-threads/__tests__/offer-decisions.test.ts`
-Expected: FAIL — `respondToOffer`/`withdrawOffer` are not exported yet.
+Expected: FAIL, `respondToOffer`/`withdrawOffer` are not exported yet.
 
 - [ ] **Step 3: Implement**
 
 ```typescript
-// lib/domain/local-threads/threads-service.ts — add near sendMessage/insertMessage:
+// lib/domain/local-threads/threads-service.ts, add near sendMessage/insertMessage:
 
 /**
- * 16b column, missing — seller declines a buyer's offer. Scoped to the
+ * 16b column, missing, seller declines a buyer's offer. Scoped to the
  * *other* party's message: a seller can decline any pending offer in a
  * thread they're party to, but never their own.
  */
@@ -219,7 +219,7 @@ export async function respondToOffer(messageId: string): Promise<void> {
 }
 
 /**
- * 16b column, missing — buyer withdraws their own offer. Scoped to the
+ * 16b column, missing, buyer withdraws their own offer. Scoped to the
  * sender: only the person who made the offer can withdraw it.
  */
 export async function withdrawOffer(messageId: string): Promise<void> {
@@ -261,7 +261,7 @@ export async function withdrawOffer(messageId: string): Promise<void> {
 ```
 
 Add `offer_status: z.enum(["pending", "accepted", "declined", "withdrawn"]).nullable()` to the
-existing `messageSchema` in the same file (it currently has no `offer_status` field at all —
+existing `messageSchema` in the same file (it currently has no `offer_status` field at all,
 add it so `ThreadMessage` carries the new column through `getThreadDetail`).
 
 - [ ] **Step 4: Run tests to verify they pass**
@@ -286,7 +286,7 @@ git commit -m "Add offer decline and withdraw service functions with an offer_st
 
 **Interfaces:**
 - Consumes: same mocking pattern as Task 2; the existing `handoverSchema`.
-- Produces: `cancelHandover(handoverId: string): Promise<void>`, `reportNoShow(handoverId: string): Promise<void>` — both consumed by Task 7's UI.
+- Produces: `cancelHandover(handoverId: string): Promise<void>`, `reportNoShow(handoverId: string): Promise<void>`, both consumed by Task 7's UI.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -347,14 +347,14 @@ describe("reportNoShow", () => {
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run lib/domain/local-threads/__tests__/handover-lifecycle.test.ts`
-Expected: FAIL — `cancelHandover`/`reportNoShow` are not exported yet.
+Expected: FAIL, `cancelHandover`/`reportNoShow` are not exported yet.
 
 - [ ] **Step 3: Implement**
 
 ```typescript
-// lib/domain/local-threads/threads-service.ts — add near respondToHandover:
+// lib/domain/local-threads/threads-service.ts, add near respondToHandover:
 
-/** Sheet action for "cancel or reschedule a handover" — either party can cancel. */
+/** Sheet action for "cancel or reschedule a handover", either party can cancel. */
 export async function cancelHandover(handoverId: string): Promise<void> {
   const supabase = await createClient();
   const parsedId = z.string().uuid().parse(handoverId);
@@ -385,7 +385,7 @@ export async function cancelHandover(handoverId: string): Promise<void> {
 }
 
 /**
- * "they didn't show" — the only trust signal the marketplace has. Records
+ * "they didn't show", the only trust signal the marketplace has. Records
  * who was reported as a no-show (the *other* participant, never the
  * reporter) and reopens the thread so the pair can still try again.
  */
@@ -459,11 +459,11 @@ git commit -m "Add handover cancel and no-show reporting service functions."
 - Modify: `lib/domain/local-threads/threads-service.ts` (add `hasLiveOfferOrHandover`, `closeThreadForCancelledListing`, `listBlockedUsers`)
 - Modify: `lib/domain/profile/service.ts` (add `markSafetyBriefSeen`, `confirmAge`, `declineAge`)
 - Modify: `lib/domain/profile/index.ts` (extend `profileSchema` with the three new columns)
-- Test: `lib/domain/local-threads/__tests__/listing-cancel-and-blocks.test.ts`, `lib/domain/profile/__tests__/safety-flags.test.ts` (new file — check for an existing `__tests__` dir under `lib/domain/profile/` first, create it if absent)
+- Test: `lib/domain/local-threads/__tests__/listing-cancel-and-blocks.test.ts`, `lib/domain/profile/__tests__/safety-flags.test.ts` (new file, check for an existing `__tests__` dir under `lib/domain/profile/` first, create it if absent)
 
 **Interfaces:**
 - Consumes: `getRequiredUser`, `createClient`.
-- Produces: `hasLiveOfferOrHandover(listingId: string): Promise<{ hasOffer: boolean; hasHandover: boolean; counterpartUserId: string | null }>`, `closeThreadForCancelledListing(threadId: string): Promise<void>`, `listBlockedUsers(): Promise<Array<{ userId: string; localName: string | null; blockedAt: string }>>`, `markSafetyBriefSeen(): Promise<void>`, `confirmAge(): Promise<void>`, `declineAge(): Promise<void>` — all consumed by Tasks 6-9's UI. `Profile` type gains `local_safety_brief_seen_at: string | null`, `age_confirmed_at: string | null`, `age_declined_at: string | null`.
+- Produces: `hasLiveOfferOrHandover(listingId: string): Promise<{ hasOffer: boolean; hasHandover: boolean; counterpartUserId: string | null }>`, `closeThreadForCancelledListing(threadId: string): Promise<void>`, `listBlockedUsers(): Promise<Array<{ userId: string; localName: string | null; blockedAt: string }>>`, `markSafetyBriefSeen(): Promise<void>`, `confirmAge(): Promise<void>`, `declineAge(): Promise<void>`, all consumed by Tasks 6-9's UI. `Profile` type gains `local_safety_brief_seen_at: string | null`, `age_confirmed_at: string | null`, `age_declined_at: string | null`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -566,12 +566,12 @@ describe("confirmAge / declineAge / markSafetyBriefSeen", () => {
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run lib/domain/local-threads/__tests__/listing-cancel-and-blocks.test.ts lib/domain/profile/__tests__/safety-flags.test.ts`
-Expected: FAIL — none of the six functions are exported yet.
+Expected: FAIL, none of the six functions are exported yet.
 
 - [ ] **Step 3: Implement `threads-service.ts` additions**
 
 ```typescript
-// lib/domain/local-threads/threads-service.ts — add near withdrawLocalListing's callers:
+// lib/domain/local-threads/threads-service.ts, add near withdrawLocalListing's callers:
 
 /**
  * "cancel a listing with a live offer" reads this before showing the
@@ -641,7 +641,7 @@ export async function closeThreadForCancelledListing(threadId: string): Promise<
   }
 }
 
-/** Account page's "blocked · N people" list — RLS already scopes this to the caller's own rows. */
+/** Account page's "blocked · N people" list, RLS already scopes this to the caller's own rows. */
 export async function listBlockedUsers(): Promise<
   Array<{ userId: string; localName: string | null; blockedAt: string }>
 > {
@@ -672,7 +672,7 @@ export async function listBlockedUsers(): Promise<
 - [ ] **Step 4: Implement `profile/service.ts` and `profile/index.ts` additions**
 
 ```typescript
-// lib/domain/profile/index.ts — extend profileSchema's .extend({...}) block with:
+// lib/domain/profile/index.ts, extend profileSchema's .extend({...}) block with:
     local_safety_brief_seen_at: z.string().nullable(),
     age_confirmed_at: z.string().nullable(),
     age_declined_at: z.string().nullable()
@@ -681,14 +681,14 @@ export async function listBlockedUsers(): Promise<
 Add the same three columns to `PROFILE_SELECT` in `lib/domain/profile/service.ts`:
 
 ```typescript
-// lib/domain/profile/service.ts — PROFILE_SELECT gains:
+// lib/domain/profile/service.ts, PROFILE_SELECT gains:
 "...,onboarding_completed_at,local_safety_brief_seen_at,age_confirmed_at,age_declined_at,created_at,updated_at"
 ```
 
 ```typescript
-// lib/domain/profile/service.ts — add near completeOnboarding:
+// lib/domain/profile/service.ts, add near completeOnboarding:
 
-/** First-listing safety brief — dismissing it is an acknowledgement, not a gate. */
+/** First-listing safety brief, dismissing it is an acknowledgement, not a gate. */
 export async function markSafetyBriefSeen(): Promise<void> {
   await getOrCreateProfile();
   const user = await getRequiredUser();
@@ -702,7 +702,7 @@ export async function markSafetyBriefSeen(): Promise<void> {
   }
 }
 
-/** Age check — "I'm 18 or over". */
+/** Age check, "I'm 18 or over". */
 export async function confirmAge(): Promise<void> {
   await getOrCreateProfile();
   const user = await getRequiredUser();
@@ -717,9 +717,9 @@ export async function confirmAge(): Promise<void> {
 }
 
 /**
- * Age check — "I'm under 18". Conservative default: this permanently
+ * Age check, "I'm under 18". Conservative default: this permanently
  * blocks the local-listing/selling flow for this account. There is no
- * self-service reversal — see LOCAL_THREADS_TRUST_SAFETY_SPEC.md §8.
+ * self-service reversal, see LOCAL_THREADS_TRUST_SAFETY_SPEC.md §8.
  */
 export async function declineAge(): Promise<void> {
   await getOrCreateProfile();
@@ -753,12 +753,12 @@ git commit -m "Add cancel-listing checks, blocked-user listing, and safety/age p
 
 **Files:**
 - Modify: `app/local/actions.ts` (add actions wrapping every Task 2-4 function)
-- Modify: `app/account/profile-actions.ts` (add `markSafetyBriefSeenAction`, `confirmAgeAction`, `declineAgeAction` — check this file's existing pattern first; it already exports `updateProfileAction`, `updateSizesAction`, `updateLocalPrivacyAction` per `you-section.tsx`)
-- Test: `app/local/__tests__/actions.test.ts` (new — check for an existing `__tests__` dir under `app/local/` first, create it if absent)
+- Modify: `app/account/profile-actions.ts` (add `markSafetyBriefSeenAction`, `confirmAgeAction`, `declineAgeAction`, check this file's existing pattern first; it already exports `updateProfileAction`, `updateSizesAction`, `updateLocalPrivacyAction` per `you-section.tsx`)
+- Test: `app/local/__tests__/actions.test.ts` (new, check for an existing `__tests__` dir under `app/local/` first, create it if absent)
 
 **Interfaces:**
 - Consumes: every function from Tasks 2-4.
-- Produces: `respondToOfferAction(messageId): Promise<ActionResult>`, `withdrawOfferAction(messageId): Promise<ActionResult>`, `cancelHandoverAction(handoverId, threadId): Promise<ActionResult>`, `reportNoShowAction(handoverId, threadId): Promise<ActionResult>`, `cancelListingAction(listingId, threadIdToClose?: string): Promise<ActionResult>`, `listBlockedUsersAction(): Promise<Array<{ userId: string; localName: string | null; blockedAt: string }>>`, `markSafetyBriefSeenAction(): Promise<void>`, `confirmAgeAction(): Promise<void>`, `declineAgeAction(): Promise<void>` — all consumed by Tasks 6-9.
+- Produces: `respondToOfferAction(messageId): Promise<ActionResult>`, `withdrawOfferAction(messageId): Promise<ActionResult>`, `cancelHandoverAction(handoverId, threadId): Promise<ActionResult>`, `reportNoShowAction(handoverId, threadId): Promise<ActionResult>`, `cancelListingAction(listingId, threadIdToClose?: string): Promise<ActionResult>`, `listBlockedUsersAction(): Promise<Array<{ userId: string; localName: string | null; blockedAt: string }>>`, `markSafetyBriefSeenAction(): Promise<void>`, `confirmAgeAction(): Promise<void>`, `declineAgeAction(): Promise<void>`, all consumed by Tasks 6-9.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -813,12 +813,12 @@ describe("cancelListingAction", () => {
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run app/local/__tests__/actions.test.ts`
-Expected: FAIL — `respondToOfferAction`/`cancelListingAction` do not exist yet.
+Expected: FAIL, `respondToOfferAction`/`cancelListingAction` do not exist yet.
 
 - [ ] **Step 3: Implement**
 
 ```typescript
-// app/local/actions.ts — extend the existing import from
+// app/local/actions.ts, extend the existing import from
 // "@/lib/domain/local-threads/threads-service" with: respondToOffer,
 // withdrawOffer, cancelHandover, reportNoShow, hasLiveOfferOrHandover,
 // closeThreadForCancelledListing, listBlockedUsers
@@ -901,7 +901,7 @@ export async function declineAgeAction(): Promise<void> {
 
 Check `app/account/profile-actions.ts`'s existing style (the `ProfileActionState` reducer
 pattern `you-section.tsx` uses via `useActionState`) before deciding where
-`markSafetyBriefSeenAction`/`confirmAgeAction`/`declineAgeAction` should live — they are placed
+`markSafetyBriefSeenAction`/`confirmAgeAction`/`declineAgeAction` should live, they are placed
 in `app/local/actions.ts` above because they are called imperatively (not via `useActionState`)
 from `app/local/list/[garmentId]/page.tsx`'s dialogs in Task 9, matching how
 `blockUserAction`/`reportListingAction` are already called imperatively from `thread-view.tsx`.
@@ -930,15 +930,15 @@ git commit -m "Add server actions for offer decisions, handover lifecycle, listi
 
 **Interfaces:**
 - Consumes: `Dialog` from `components/garderobe/dialog.tsx`.
-- Produces: `<Dialog hideCancel />` (new prop, backward compatible — omitted, both buttons render as today), `<OfferDecisionDialog open variant="decline"|"withdraw" counterpartName offerCents onConfirm onClose />`, `<CancelListingDialog open counterpartName hasOffer hasHandover onConfirm onClose />` — both consumed by Task 8/Task 6's own wiring.
+- Produces: `<Dialog hideCancel />` (new prop, backward compatible, omitted, both buttons render as today), `<OfferDecisionDialog open variant="decline"|"withdraw" counterpartName offerCents onConfirm onClose />`, `<CancelListingDialog open counterpartName hasOffer hasHandover onConfirm onClose />`, both consumed by Task 8/Task 6's own wiring.
 
 - [ ] **Step 1: Extend `Dialog` with `hideCancel`**
 
 ```tsx
-// components/garderobe/dialog.tsx — add to DialogProps:
+// components/garderobe/dialog.tsx, add to DialogProps:
   hideCancel?: boolean;
 
-// — and in the render, replace the two-button block:
+//, and in the render, replace the two-button block:
         <div className="flex gap-[9px] pt-1">
           {!hideCancel ? (
             <PillButton variant="secondary" onClick={onClose} className="h-11">
@@ -1045,7 +1045,7 @@ describe("CancelListingDialog", () => {
 - [ ] **Step 3: Run tests to verify they fail**
 
 Run: `npx vitest run components/garderobe/local-threads/__tests__/offer-decision-dialog.test.tsx components/garderobe/local-threads/__tests__/cancel-listing-dialog.test.tsx`
-Expected: FAIL — neither component exists yet.
+Expected: FAIL, neither component exists yet.
 
 - [ ] **Step 4: Implement**
 
@@ -1064,7 +1064,7 @@ type OfferDecisionDialogProps = {
   onClose: () => void;
 };
 
-/** Missing item — "decline an offer / withdraw an offer". One dialog, two directions. */
+/** Missing item, "decline an offer / withdraw an offer". One dialog, two directions. */
 export function OfferDecisionDialog({
   open,
   variant,
@@ -1116,7 +1116,7 @@ type CancelListingDialogProps = {
   onClose: () => void;
 };
 
-/** Missing item — "cancel a listing with a live offer". */
+/** Missing item, "cancel a listing with a live offer". */
 export function CancelListingDialog({
   open,
   counterpartName,
@@ -1168,7 +1168,7 @@ git commit -m "Add the offer-decision and cancel-listing dialogs, and a hideCanc
 
 **Interfaces:**
 - Consumes: `BottomSheet`, `SheetAction` from `components/garderobe/bottom-sheet.tsx`.
-- Produces: `<HandoverManageSheet open placeName placeSuburb at onReschedule onCancel onClose />`, `<NoShowSheet open counterpartName placeName at onReport onClose />` — both consumed by Task 8's thread-view wiring.
+- Produces: `<HandoverManageSheet open placeName placeSuburb at onReschedule onCancel onClose />`, `<NoShowSheet open counterpartName placeName at onReport onClose />`, both consumed by Task 8's thread-view wiring.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1234,7 +1234,7 @@ describe("NoShowSheet", () => {
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run components/garderobe/local-threads/__tests__/handover-manage-sheet.test.tsx components/garderobe/local-threads/__tests__/no-show-sheet.test.tsx`
-Expected: FAIL — neither component exists yet.
+Expected: FAIL, neither component exists yet.
 
 - [ ] **Step 3: Implement**
 
@@ -1254,7 +1254,7 @@ type HandoverManageSheetProps = {
   onClose: () => void;
 };
 
-/** Missing item — "cancel or reschedule a handover". */
+/** Missing item, "cancel or reschedule a handover". */
 export function HandoverManageSheet({
   open,
   placeName,
@@ -1297,7 +1297,7 @@ type NoShowSheetProps = {
   onClose: () => void;
 };
 
-/** Missing item — "they didn't show" — the only trust signal the marketplace has. */
+/** Missing item, "they didn't show", the only trust signal the marketplace has. */
 export function NoShowSheet({ open, counterpartName, placeName, at, onReport, onClose }: NoShowSheetProps) {
   return (
     <BottomSheet
@@ -1340,7 +1340,7 @@ git commit -m "Add the handover manage and no-show sheets."
 
 **Interfaces:**
 - Consumes: `BottomSheet`, `SheetAction`, `Dialog`.
-- Produces: `<ReportListingSheet open onSubmit={(reason: string) => Promise<void>} onClose />`, `<BlockUserDialog open counterpartName onConfirm onClose />` — both consumed by Task 9's thread-view wiring.
+- Produces: `<ReportListingSheet open onSubmit={(reason: string) => Promise<void>} onClose />`, `<BlockUserDialog open counterpartName onConfirm onClose />`, both consumed by Task 9's thread-view wiring.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1397,7 +1397,7 @@ describe("BlockUserDialog", () => {
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run components/garderobe/local-threads/__tests__/report-listing-sheet.test.tsx components/garderobe/local-threads/__tests__/block-user-dialog.test.tsx`
-Expected: FAIL — neither component exists yet.
+Expected: FAIL, neither component exists yet.
 
 - [ ] **Step 3: Implement**
 
@@ -1423,7 +1423,7 @@ type ReportListingSheetProps = {
   onClose: () => void;
 };
 
-/** Missing item — "report a listing / report a person". `blockUser` and `reportListing`
+/** Missing item, "report a listing / report a person". `blockUser` and `reportListing`
  * already exist server-side; this is their first UI. */
 export function ReportListingSheet({ open, onSubmit, onClose }: ReportListingSheetProps) {
   const [selected, setSelected] = useState<(typeof REPORT_REASONS)[number] | null>(null);
@@ -1496,7 +1496,7 @@ type BlockUserDialogProps = {
   onClose: () => void;
 };
 
-/** Missing item — "block — confirm". Replaces the raw confirm() in thread-view.tsx. */
+/** Missing item, "block, confirm". Replaces the raw confirm() in thread-view.tsx. */
 export function BlockUserDialog({ open, counterpartName, onConfirm, onClose }: BlockUserDialogProps) {
   return (
     <Dialog
@@ -1534,7 +1534,7 @@ git commit -m "Add the report-listing sheet and block-confirm dialog."
 
 **Interfaces:**
 - Consumes: `Dialog` (with `hideCancel` from Task 6).
-- Produces: `<SafetyBriefDialog open onAcknowledge onClose />`, `<AgeCheckDialog open onConfirmAdult onDeclineUnderage onClose />`, `<AgeBlockedDialog open onDismiss />` — all consumed by Task 10's listing-page wiring.
+- Produces: `<SafetyBriefDialog open onAcknowledge onClose />`, `<AgeCheckDialog open onConfirmAdult onDeclineUnderage onClose />`, `<AgeBlockedDialog open onDismiss />`, all consumed by Task 10's listing-page wiring.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1599,7 +1599,7 @@ describe("AgeBlockedDialog", () => {
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run components/garderobe/local-threads/__tests__/safety-brief-dialog.test.tsx components/garderobe/local-threads/__tests__/age-check-dialog.test.tsx`
-Expected: FAIL — none of the components exist yet.
+Expected: FAIL, none of the components exist yet.
 
 - [ ] **Step 3: Implement**
 
@@ -1615,7 +1615,7 @@ type SafetyBriefDialogProps = {
   onClose: () => void;
 };
 
-/** Missing item — "first listing safety brief". One-time, informational, no "no" answer. */
+/** Missing item, "first listing safety brief". One-time, informational, no "no" answer. */
 export function SafetyBriefDialog({ open, onAcknowledge, onClose }: SafetyBriefDialogProps) {
   return (
     <Dialog
@@ -1625,7 +1625,7 @@ export function SafetyBriefDialog({ open, onAcknowledge, onClose }: SafetyBriefD
         onClose();
       }}
       title="before you list"
-      description="meet in a public place, and never share your address. garderobe doesn't move money for you — arrange cash, payid or a bank transfer directly with the other person."
+      description="meet in a public place, and never share your address. garderobe doesn't move money for you, arrange cash, payid or a bank transfer directly with the other person."
       confirmLabel="got it"
       hideCancel
       onConfirm={onAcknowledge}
@@ -1647,7 +1647,7 @@ type AgeCheckDialogProps = {
   onClose: () => void;
 };
 
-/** Missing item — "age check". Policy default on decline: LOCAL_THREADS_TRUST_SAFETY_SPEC.md §8. */
+/** Missing item, "age check". Policy default on decline: LOCAL_THREADS_TRUST_SAFETY_SPEC.md §8. */
 export function AgeCheckDialog({ open, onConfirmAdult, onDeclineUnderage, onClose }: AgeCheckDialogProps) {
   return (
     <Dialog
@@ -1682,7 +1682,7 @@ export function AgeBlockedDialog({ open, onDismiss }: AgeBlockedDialogProps) {
 }
 ```
 
-Note: `Dialog`'s `onClose` fires from the backdrop-dismiss button (`components/garderobe/dialog.tsx`'s `aria-label="dismiss"` button) as well as any `cancelLabel` button — `AgeCheckDialog` deliberately leaves `onClose` as a no-op-from-the-caller's-perspective dismiss (closes the dialog without recording either answer) rather than wiring it to `onDeclineUnderage`, since backdrop-dismiss is not the same affirmative action as tapping "I'm under 18".
+Note: `Dialog`'s `onClose` fires from the backdrop-dismiss button (`components/garderobe/dialog.tsx`'s `aria-label="dismiss"` button) as well as any `cancelLabel` button, `AgeCheckDialog` deliberately leaves `onClose` as a no-op-from-the-caller's-perspective dismiss (closes the dialog without recording either answer) rather than wiring it to `onDeclineUnderage`, since backdrop-dismiss is not the same affirmative action as tapping "I'm under 18".
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -1774,7 +1774,7 @@ describe("ListingGate", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run components/garderobe/local-threads/__tests__/listing-gate.test.tsx`
-Expected: FAIL — `ListingGate` does not exist yet.
+Expected: FAIL, `ListingGate` does not exist yet.
 
 - [ ] **Step 3: Implement**
 
@@ -1799,7 +1799,7 @@ type ListingGateProps = {
 /**
  * Orchestrates the two one-time gates in front of "list it locally":
  * age check, then the safety brief. Age-declined is permanent for this
- * build — see LOCAL_THREADS_TRUST_SAFETY_SPEC.md §8.
+ * build, see LOCAL_THREADS_TRUST_SAFETY_SPEC.md §8.
  */
 export function ListingGate({ ageConfirmed, ageDeclined, safetyBriefSeen, onBlockedDismiss, children }: ListingGateProps) {
   const router = useRouter();
@@ -1860,7 +1860,7 @@ Expected: PASS
 - [ ] **Step 5: Wire it into the listing page**
 
 ```tsx
-// app/local/list/[garmentId]/page.tsx — replace the getGarmentById-only fetch and the
+// app/local/list/[garmentId]/page.tsx, replace the getGarmentById-only fetch and the
 // direct <ListingForm ... /> render:
 
 import { getOrCreateProfile } from "@/lib/domain/profile/service";
@@ -1903,7 +1903,7 @@ git commit -m "Gate the listing flow behind the age check and first-listing safe
 
 **Files:**
 - Modify: `app/local/threads/[id]/thread-view.tsx` (render offer decision text-actions per pending offer message, add handover manage/no-show sheets, replace `confirm()`/`prompt()`/`alert()` with the new dialogs)
-- Test: `app/local/threads/[id]/__tests__/thread-view.test.tsx` (new — check for an existing `__tests__` dir under `app/local/threads/[id]/` first)
+- Test: `app/local/threads/[id]/__tests__/thread-view.test.tsx` (new, check for an existing `__tests__` dir under `app/local/threads/[id]/` first)
 
 **Interfaces:**
 - Consumes: `OfferDecisionDialog`, `CancelListingDialog` (unused here, wired in Task 12), `HandoverManageSheet`, `NoShowSheet`, `ReportListingSheet`, `BlockUserDialog` from Tasks 6-8; `respondToOfferAction`, `withdrawOfferAction`, `cancelHandoverAction`, `reportNoShowAction`, `reportListingAction`, `blockUserAction` from `@/app/local/actions`.
@@ -2012,7 +2012,7 @@ describe("ThreadView block and report", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run "app/local/threads/[id]/__tests__/thread-view.test.tsx"`
-Expected: FAIL — `window.confirm`/`window.prompt` are still called, offer decline text action doesn't exist, `offer_status` isn't read.
+Expected: FAIL, `window.confirm`/`window.prompt` are still called, offer decline text action doesn't exist, `offer_status` isn't read.
 
 - [ ] **Step 3: Implement**
 
@@ -2195,7 +2195,7 @@ git commit -m "Replace confirm/prompt/alert in the thread view with real offer, 
 - Create: `app/local/[id]/manage-listing.tsx` (client component: cancel-listing button + dialog)
 - Modify: `app/local/[id]/page.tsx` (render `ManageListing` in place of the current "this is your listing" paragraph, pass in the live-offer/handover check)
 - Modify: `app/account/you-section.tsx` (add the "blocked · N" section)
-- Test: `app/local/[id]/__tests__/manage-listing.test.tsx`, `app/account/__tests__/you-section.test.tsx` (new — check for an existing `__tests__` dir under `app/account/` first)
+- Test: `app/local/[id]/__tests__/manage-listing.test.tsx`, `app/account/__tests__/you-section.test.tsx` (new, check for an existing `__tests__` dir under `app/account/` first)
 
 **Interfaces:**
 - Consumes: `CancelListingDialog` (Task 6), `hasLiveOfferOrHandover`, `listBlockedUsers` (Task 4), `cancelListingAction`, `listBlockedUsersAction`, `unblockUserAction` (Task 5/existing).
@@ -2309,7 +2309,7 @@ describe("YouSection blocked list", () => {
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run "app/local/[id]/__tests__/manage-listing.test.tsx" app/account/__tests__/you-section.test.tsx`
-Expected: FAIL — `ManageListing` doesn't exist yet; `YouSection` doesn't accept a `blockedUsers` prop yet.
+Expected: FAIL, `ManageListing` doesn't exist yet; `YouSection` doesn't accept a `blockedUsers` prop yet.
 
 - [ ] **Step 3: Implement `ManageListing`**
 
@@ -2331,7 +2331,7 @@ type ManageListingProps = {
   counterpartThreadId: string | null;
 };
 
-/** Missing item — "cancel a listing with a live offer" (also covers the plain cancel case,
+/** Missing item, "cancel a listing with a live offer" (also covers the plain cancel case,
  * which had no UI at all before this). */
 export function ManageListing({ listingId, hasOffer, hasHandover, counterpartName, counterpartThreadId }: ManageListingProps) {
   const router = useRouter();
@@ -2365,7 +2365,7 @@ export function ManageListing({ listingId, hasOffer, hasHandover, counterpartNam
 - [ ] **Step 4: Wire it into `app/local/[id]/page.tsx`**
 
 ```tsx
-// app/local/[id]/page.tsx — add import:
+// app/local/[id]/page.tsx, add import:
 import { hasLiveOfferOrHandover } from "@/lib/domain/local-threads/threads-service";
 import { getPublicProfile } from "@/lib/domain/profile/service";
 import { ManageListing } from "./manage-listing";
@@ -2379,7 +2379,7 @@ import { ManageListing } from "./manage-listing";
 // replace the existing
 //   ) : listing.seller_id === viewer.id ? (
 //     <p className="pt-6 text-[11px] text-[var(--stone)]">
-//       this is your listing — <Link href="/local/threads" className="underline">see your threads</Link>
+//       this is your listing, <Link href="/local/threads" className="underline">see your threads</Link>
 //     </p>
 //   ) : null}
 // with:
@@ -2394,17 +2394,17 @@ import { ManageListing } from "./manage-listing";
         ) : null}
 ```
 
-Note: `counterpartThreadId` is left `null` here deliberately — `hasLiveOfferOrHandover` reports
+Note: `counterpartThreadId` is left `null` here deliberately, `hasLiveOfferOrHandover` reports
 *whether* a live offer/handover exists and who the counterpart is, but the seller may have
 multiple threads on one listing; resolving the specific thread id to close requires a small
 follow-up lookup (`listMyThreads()` filtered by `listing_id`) that the implementer should add
 inline in this step if `cancelListingAction`'s thread-closing behaviour needs to reach the exact
-thread — for a single-offer listing (the common case) this is the one thread on it.
+thread, for a single-offer listing (the common case) this is the one thread on it.
 
 - [ ] **Step 5: Implement the `YouSection` blocked list**
 
 ```tsx
-// app/account/you-section.tsx — extend YouSectionProps and add the section:
+// app/account/you-section.tsx, extend YouSectionProps and add the section:
 
 import { unblockUserAction } from "@/app/local/actions";
 
@@ -2442,7 +2442,7 @@ export function YouSection({
 ```
 
 ```tsx
-// app/account/you-section.tsx — add this component at the bottom of the file, alongside
+// app/account/you-section.tsx, add this component at the bottom of the file, alongside
 // SizeRow/ToggleVisual:
 
 function UnblockButton({ userId }: { userId: string }) {
@@ -2465,13 +2465,13 @@ function UnblockButton({ userId }: { userId: string }) {
 ```
 
 `useState` is already imported at the top of `you-section.tsx` for the existing
-`useActionState` calls' surrounding logic — confirm the import line includes plain `useState`
+`useActionState` calls' surrounding logic, confirm the import line includes plain `useState`
 alongside `useActionState`; add it if not already present.
 
 - [ ] **Step 6: Wire `blockedUsers` into `app/account/page.tsx`**
 
 ```tsx
-// app/account/page.tsx — add import:
+// app/account/page.tsx, add import:
 import { listBlockedUsers } from "@/lib/domain/local-threads/threads-service";
 
 // add to the Promise.all:
@@ -2512,7 +2512,7 @@ Expected: PASS, no regressions in any existing suite.
 
 - [ ] **Step 2: Run the project's typecheck**
 
-Run: `npx tsc --noEmit` (or the project's existing typecheck script — check `package.json` for a `typecheck` script first and prefer it if present).
+Run: `npx tsc --noEmit` (or the project's existing typecheck script, check `package.json` for a `typecheck` script first and prefer it if present).
 Expected: no type errors.
 
 - [ ] **Step 3: Grep for any remaining raw browser dialogs in the local-threads surface**

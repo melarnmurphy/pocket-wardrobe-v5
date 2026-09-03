@@ -11,7 +11,7 @@ type OfferDecisionDialogProps = {
   onClose: () => void;
 };
 
-/** Missing item — "decline an offer / withdraw an offer". One dialog, two directions. */
+/** Missing item, "decline an offer / withdraw an offer". One dialog, two directions. */
 export function OfferDecisionDialog({
   open,
   variant,
