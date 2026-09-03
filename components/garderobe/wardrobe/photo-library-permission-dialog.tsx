@@ -20,7 +20,7 @@ export function PhotoLibraryPermissionDialog({ open, onAllow, onNotNow }: PhotoL
       open={open}
       onClose={onNotNow}
       title="garderobe needs your photos"
-      description="Choosing from your library starts a batch. Nothing joins the wardrobe until you review and confirm each piece."
+      description="Choosing from your library starts a batch that only joins the wardrobe once you've reviewed and confirmed each piece."
       cancelLabel="not now"
       confirmLabel="allow access"
       onConfirm={onAllow}
