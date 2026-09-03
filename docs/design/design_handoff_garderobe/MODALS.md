@@ -64,7 +64,7 @@ Wardrobe modals are now designed on both platforms: phone turn 18 (18a–18d) an
 | **notification permission** | permission dialog | **missing** — asked after the first wear log, per the settings copy |
 | **upload failed / unsupported file** | dialog | **missing** — HEIC, size caps, a dead product URL |
 | **this receipt matches three pieces** | sheet | **missing** — the resolver for an ambiguous price |
-| **disconnect a resale account** | dialog | **missing** — what happens to pieces it imported |
+| **disconnect a resale account** | dialog | **missing, tracked for later** — no resale-account-connection feature exists anywhere in this codebase yet, so there's nothing to disconnect from. The human partner wants the connect feature itself eventually, but it's a separate, unscoped project — not started. |
 
 ## 4. Local threads
 
@@ -114,7 +114,7 @@ Wardrobe modals are now designed on both platforms: phone turn 18 (18a–18d) an
 | **check your email** — reset sent | dialog | **missing** |
 | **that email already has a wardrobe** | dialog | **missing** |
 | **handle taken** | inline | drawn as the positive state only (`available`) |
-| **signed in on another device** | dialog | **missing** |
+| ~~signed in on another device~~ | dialog | **dropped** — Supabase Auth's default multi-session behaviour is fine for this app; building single-session enforcement was never worth the infrastructure. Confirmed by the human partner. |
 
 ---
 
