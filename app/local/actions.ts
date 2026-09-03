@@ -2,18 +2,24 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { updateRadiusKm } from "@/lib/domain/profile/service";
+import { confirmAge, declineAge, markSafetyBriefSeen, updateRadiusKm } from "@/lib/domain/profile/service";
 import {
   blockUser,
+  cancelHandover,
+  closeThreadForCancelledListing,
   confirmHandover,
   createLocalListing,
+  listBlockedUsers,
   proposeHandover,
   reportListing,
+  reportNoShow,
   respondToHandover,
+  respondToOffer,
   sendMessage,
   startThread,
   unblockUser,
-  withdrawLocalListing
+  withdrawLocalListing,
+  withdrawOffer
 } from "@/lib/domain/local-threads/threads-service";
 import type { CreateLocalListingInput } from "@/lib/domain/local-threads";
 
@@ -161,6 +167,93 @@ export async function reportListingAction(listingId: string, reason: string): Pr
       message: error instanceof Error ? error.message : "Unable to send the report."
     };
   }
+}
+
+export async function respondToOfferAction(messageId: string, threadId: string): Promise<ActionResult> {
+  try {
+    await respondToOffer(messageId);
+    revalidatePath(`/local/threads/${threadId}`);
+    return { status: "success" };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to decline that offer."
+    };
+  }
+}
+
+export async function withdrawOfferAction(messageId: string, threadId: string): Promise<ActionResult> {
+  try {
+    await withdrawOffer(messageId);
+    revalidatePath(`/local/threads/${threadId}`);
+    return { status: "success" };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to withdraw that offer."
+    };
+  }
+}
+
+export async function cancelHandoverAction(handoverId: string, threadId: string): Promise<ActionResult> {
+  try {
+    await cancelHandover(handoverId);
+    revalidatePath(`/local/threads/${threadId}`);
+    return { status: "success" };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to cancel the handover."
+    };
+  }
+}
+
+export async function reportNoShowAction(handoverId: string, threadId: string): Promise<ActionResult> {
+  try {
+    await reportNoShow(handoverId);
+    revalidatePath(`/local/threads/${threadId}`);
+    return { status: "success" };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to record that."
+    };
+  }
+}
+
+export async function cancelListingAction(listingId: string, threadIdToClose?: string): Promise<ActionResult> {
+  try {
+    await withdrawLocalListing(listingId);
+    if (threadIdToClose) {
+      await closeThreadForCancelledListing(threadIdToClose);
+    }
+    revalidatePath(`/local/${listingId}`);
+    revalidatePath("/local/nearby");
+    return { status: "success" };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to cancel the listing."
+    };
+  }
+}
+
+export async function listBlockedUsersAction(): Promise<
+  Array<{ userId: string; localName: string | null; blockedAt: string }>
+> {
+  return listBlockedUsers();
+}
+
+export async function markSafetyBriefSeenAction(): Promise<void> {
+  await markSafetyBriefSeen();
+}
+
+export async function confirmAgeAction(): Promise<void> {
+  await confirmAge();
+}
+
+export async function declineAgeAction(): Promise<void> {
+  await declineAge();
 }
 
 export async function updateRadiusAction(
