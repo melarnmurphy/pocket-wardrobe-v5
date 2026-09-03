@@ -6,9 +6,11 @@ let selectMock: any;
 let updateMock: any;
 let insertMock: any;
 let fromMock: any;
+let updateSelectMock: any;
 
 maybeSingleMock = vi.fn();
-eqMock = vi.fn(() => ({ eq: eqMock, maybeSingle: maybeSingleMock }));
+eqMock = vi.fn(() => ({ eq: eqMock, maybeSingle: maybeSingleMock, select: updateSelectMock }));
+updateSelectMock = vi.fn(() => Promise.resolve({ data: [{ id: "44444444-4444-4444-4444-444444444444" }], error: null }));
 updateMock = vi.fn(() => ({ eq: eqMock }));
 selectMock = vi.fn(() => ({ eq: eqMock, maybeSingle: maybeSingleMock }));
 insertMock = vi.fn(() => ({ error: null }));
@@ -30,7 +32,8 @@ vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: vi.fn(async () => {}) }));
 describe("respondToOffer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    eqMock.mockReturnValue({ eq: eqMock, maybeSingle: maybeSingleMock });
+    eqMock.mockReturnValue({ eq: eqMock, maybeSingle: maybeSingleMock, select: updateSelectMock });
+    updateSelectMock.mockResolvedValue({ data: [{ id: "44444444-4444-4444-4444-444444444444" }], error: null });
     maybeSingleMock.mockResolvedValue({
       data: { thread_id: "22222222-2222-2222-2222-222222222222", sender_id: "33333333-3333-3333-3333-333333333333" },
       error: null
@@ -43,12 +46,23 @@ describe("respondToOffer", () => {
 
     expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ offer_status: "declined" }));
   });
+
+  it("throws instead of silently succeeding when the update matches zero rows", async () => {
+    updateSelectMock.mockResolvedValue({ data: [], error: null });
+
+    const { respondToOffer } = await import("@/lib/domain/local-threads/threads-service");
+    await expect(respondToOffer("44444444-4444-4444-4444-444444444444")).rejects.toThrow(
+      "Unable to update that offer."
+    );
+    expect(insertMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("withdrawOffer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    eqMock.mockReturnValue({ eq: eqMock, maybeSingle: maybeSingleMock });
+    eqMock.mockReturnValue({ eq: eqMock, maybeSingle: maybeSingleMock, select: updateSelectMock });
+    updateSelectMock.mockResolvedValue({ data: [{ id: "44444444-4444-4444-4444-444444444444" }], error: null });
     maybeSingleMock.mockResolvedValue({
       data: { thread_id: "22222222-2222-2222-2222-222222222222", sender_id: "11111111-1111-1111-1111-111111111111" },
       error: null
@@ -60,5 +74,15 @@ describe("withdrawOffer", () => {
     await withdrawOffer("44444444-4444-4444-4444-444444444444");
 
     expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ offer_status: "withdrawn" }));
+  });
+
+  it("throws instead of silently succeeding when the update matches zero rows", async () => {
+    updateSelectMock.mockResolvedValue({ data: [], error: null });
+
+    const { withdrawOffer } = await import("@/lib/domain/local-threads/threads-service");
+    await expect(withdrawOffer("44444444-4444-4444-4444-444444444444")).rejects.toThrow(
+      "Unable to update that offer."
+    );
+    expect(insertMock).not.toHaveBeenCalled();
   });
 });

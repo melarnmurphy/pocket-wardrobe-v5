@@ -10,7 +10,7 @@ type ListingGateProps = {
   ageConfirmed: boolean;
   ageDeclined: boolean;
   safetyBriefSeen: boolean;
-  onBlockedDismiss: () => void;
+  onBlockedDismiss?: () => void;
   children: ReactNode;
   /**
    * The garment being listed. When given, declining or being blocked routes
@@ -56,7 +56,7 @@ export function ListingGate({
       <AgeBlockedDialog
         open
         onDismiss={() => {
-          onBlockedDismiss();
+          onBlockedDismiss?.();
           leaveListingFlow();
         }}
       />

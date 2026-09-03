@@ -13,11 +13,38 @@ alter table public.messages
     check (offer_status in ('pending', 'accepted', 'declined', 'withdrawn'))
     default 'pending';
 
--- "They didn't show" needs to record who — the handovers.state check
+-- Migration 031 gave messages a select and an insert policy but no update
+-- policy, so an update matched zero rows under RLS default-deny and
+-- returned no error at all. respondToOffer/withdrawOffer in
+-- lib/domain/local-threads/threads-service.ts need to flip offer_status on
+-- an existing 'offer' message, so this adds the missing policy, scoped to
+-- offer rows only so plain text/system message bodies stay immutable.
+drop policy if exists messages_update_participant on public.messages;
+create policy messages_update_participant on public.messages
+  for update using (
+    kind = 'offer'
+    and exists (
+      select 1 from public.threads t
+      where t.id = messages.thread_id
+        and (t.buyer_id = auth.uid() or t.seller_id = auth.uid())
+    )
+  )
+  with check (
+    kind = 'offer'
+    and exists (
+      select 1 from public.threads t
+      where t.id = messages.thread_id
+        and (t.buyer_id = auth.uid() or t.seller_id = auth.uid())
+    )
+  );
+
+-- "They didn't show" needs to record who. The handovers.state check
 -- constraint already allows 'missed' (migration 031) but no code has ever
--- written it.
+-- written it. on delete set null, matching the column's nullable intent:
+-- the no-show record survives the deleted user's departure, it just loses
+-- the specific attribution.
 alter table public.handovers
-  add column if not exists no_show_by uuid references auth.users(id),
+  add column if not exists no_show_by uuid references auth.users(id) on delete set null,
   add column if not exists no_show_reported_at timestamptz;
 
 -- First listing safety brief and the age gate, same pattern as the

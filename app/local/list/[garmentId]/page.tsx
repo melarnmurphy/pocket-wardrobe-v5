@@ -47,7 +47,6 @@ export default async function ListLocallyPage({
           ageConfirmed={Boolean(profile.age_confirmed_at)}
           ageDeclined={Boolean(profile.age_declined_at)}
           safetyBriefSeen={Boolean(profile.local_safety_brief_seen_at)}
-          onBlockedDismiss={() => {}}
         >
           <ListingForm
             garmentId={garmentId}

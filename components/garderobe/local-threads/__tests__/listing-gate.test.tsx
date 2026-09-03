@@ -69,4 +69,19 @@ describe("ListingGate", () => {
 
     expect(screen.getByText("the form")).toBeInTheDocument();
   });
+
+  // The server component at app/local/list/[garmentId]/page.tsx cannot pass
+  // a function prop across the server/client boundary, so onBlockedDismiss
+  // must be optional and dismissing the block dialog must not crash when
+  // it's omitted.
+  it("does not crash when onBlockedDismiss is omitted and the age-declined dialog is dismissed", () => {
+    render(
+      <ListingGate ageConfirmed={false} ageDeclined safetyBriefSeen={false}>
+        <p>the form</p>
+      </ListingGate>
+    );
+
+    expect(screen.getByText(/needs an adult/i)).toBeInTheDocument();
+    expect(() => fireEvent.click(screen.getByRole("button", { name: "ok" }))).not.toThrow();
+  });
 });

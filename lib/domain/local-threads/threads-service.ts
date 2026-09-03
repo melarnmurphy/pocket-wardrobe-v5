@@ -13,7 +13,7 @@ type HandoverInsert = TablesInsert<"handovers">;
 type HandoverUpdate = TablesUpdate<"handovers">;
 type LocalListingInsert = TablesInsert<"local_listings">;
 
-/** 16c / w2c — list it locally, photos pre-picked from the piece's own images. */
+/** 16c / w2c, list it locally, photos pre-picked from the piece's own images. */
 export async function createLocalListing(input: CreateLocalListingInput): Promise<string> {
   const user = await getRequiredUser();
   await checkRateLimit("local-listing-create", 10, 3600);
@@ -27,13 +27,13 @@ export async function createLocalListing(input: CreateLocalListingInput): Promis
 
   const profile = await getOrCreateProfile();
   if (profile.age_declined_at) {
-    throw new Error("Local threads needs an adult. This stays off for this account.");
+    throw new Error("Selling locally needs an adult. This stays off for this account.");
   }
   if (profile.suburb_lat === null || profile.suburb_lng === null) {
     throw new Error("Set your suburb in your account before listing locally.");
   }
 
-  // Photos default to the piece's own images — cutout first. This repo has
+  // Photos default to the piece's own images, cutout first. This repo has
   // no separate "look photo" capture (5a/5b) to pull lookbook photos from,
   // so photo_uris is the piece's garment_images only, not yet the fuller
   // "lookbook photos the piece appears in" DATA_MODEL describes.
@@ -73,7 +73,7 @@ export async function createLocalListing(input: CreateLocalListingInput): Promis
     throw new Error(error?.message ?? "Unable to create the listing.");
   }
 
-  // Creating a listing does not remove the piece from the wardrobe — it
+  // Creating a listing does not remove the piece from the wardrobe, it
   // stays and counts, only becoming 'listed for sale'.
   await supabase
     .from("garments")
@@ -111,7 +111,7 @@ export async function withdrawLocalListing(listingId: string): Promise<void> {
   }
 }
 
-/** 16d / w2d — one thread per buyer per listing. */
+/** 16d / w2d, one thread per buyer per listing. */
 export async function startThread(listingId: string, firstMessage: string): Promise<string> {
   const user = await getRequiredUser();
   await checkRateLimit("local-thread-start", 20, 3600);
@@ -185,7 +185,7 @@ export async function sendMessage(
 }
 
 /**
- * 16b column, missing — seller declines a buyer's offer. Scoped to the
+ * 16b column, missing, seller declines a buyer's offer. Scoped to the
  * *other* party's message: a seller can decline any pending offer in a
  * thread they're party to, but never their own.
  */
@@ -209,13 +209,17 @@ export async function respondToOffer(messageId: string): Promise<void> {
     throw new Error("You can't decline your own offer.");
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("messages")
     .update({ offer_status: "declined" } as never)
-    .eq("id", parsedId);
+    .eq("id", parsedId)
+    .select("id");
 
   if (error) {
     throw new Error(error.message);
+  }
+  if (!updated || updated.length === 0) {
+    throw new Error("Unable to update that offer.");
   }
 
   await insertMessage(supabase, {
@@ -227,7 +231,7 @@ export async function respondToOffer(messageId: string): Promise<void> {
 }
 
 /**
- * 16b column, missing — buyer withdraws their own offer. Scoped to the
+ * 16b column, missing, buyer withdraws their own offer. Scoped to the
  * sender: only the person who made the offer can withdraw it.
  */
 export async function withdrawOffer(messageId: string): Promise<void> {
@@ -250,13 +254,17 @@ export async function withdrawOffer(messageId: string): Promise<void> {
     throw new Error("You can only withdraw your own offer.");
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("messages")
     .update({ offer_status: "withdrawn" } as never)
-    .eq("id", parsedId);
+    .eq("id", parsedId)
+    .select("id");
 
   if (error) {
     throw new Error(error.message);
+  }
+  if (!updated || updated.length === 0) {
+    throw new Error("Unable to update that offer.");
   }
 
   await insertMessage(supabase, {
@@ -310,7 +318,7 @@ async function insertMessage(
   }
 }
 
-/** Public places only — the place list is a free-text field the two people agree on. */
+/** Public places only, the place list is a free-text field the two people agree on. */
 export async function proposeHandover(
   threadId: string,
   input: { placeName: string; placeSuburb: string; placeNote?: string | null; at: string }
@@ -381,7 +389,7 @@ export async function respondToHandover(
 
 const TERMINAL_HANDOVER_STATES = new Set(["completed", "cancelled", "missed"]);
 
-/** Sheet action for "cancel or reschedule a handover" — either party can cancel. */
+/** Sheet action for "cancel or reschedule a handover", either party can cancel. */
 export async function cancelHandover(handoverId: string): Promise<void> {
   const supabase = await createClient();
   const parsedId = z.string().uuid().parse(handoverId);
@@ -417,7 +425,7 @@ export async function cancelHandover(handoverId: string): Promise<void> {
 }
 
 /**
- * "they didn't show" — the only trust signal the marketplace has. Records
+ * "they didn't show", the only trust signal the marketplace has. Records
  * who was reported as a no-show (the *other* participant, never the
  * reporter) and reopens the thread so the pair can still try again.
  */
@@ -479,7 +487,7 @@ export async function reportNoShow(handoverId: string): Promise<void> {
 /**
  * Both parties must confirm. On the second confirmation, complete_handover()
  * (migration 031) archives the piece, closes the thread and writes
- * sold_for — never a payment. paymentMethod is recorded as a label only.
+ * sold_for, never a payment. paymentMethod is recorded as a label only.
  */
 export async function confirmHandover(
   handoverId: string,
@@ -651,7 +659,7 @@ export async function getThreadDetail(threadId: string): Promise<{
   const { data: handoverRow } = await supabase
     .from("handovers")
     .select(
-      "id,thread_id,place_name,place_suburb,place_note,at,proposed_by,state,payment_method,completed_at,seller_confirmed,buyer_confirmed"
+      "id,thread_id,place_name,place_suburb,place_note,at,proposed_by,state,payment_method,completed_at,seller_confirmed,buyer_confirmed,no_show_by,no_show_reported_at"
     )
     .eq("thread_id", parsedId)
     .order("created_at", { ascending: false })
@@ -718,10 +726,30 @@ export async function hasLiveOfferOrHandover(
   };
 }
 
-/** Closes a thread once its listing has been cancelled out from under it. */
-export async function closeThreadForCancelledListing(threadId: string): Promise<void> {
+/**
+ * Closes a thread once its listing has been cancelled out from under it.
+ * threadIdToClose is client-supplied (see cancelListingAction), so this
+ * verifies the thread actually belongs to listingId before touching it,
+ * rather than trusting the caller's pairing of the two ids.
+ */
+export async function closeThreadForCancelledListing(threadId: string, listingId: string): Promise<void> {
   const supabase = await createClient();
   const parsedId = z.string().uuid().parse(threadId);
+  const parsedListingId = z.string().uuid().parse(listingId);
+
+  const { data: thread, error: threadError } = await supabase
+    .from("threads")
+    .select("id,listing_id")
+    .eq("id", parsedId)
+    .maybeSingle();
+
+  if (threadError) {
+    throw new Error(threadError.message);
+  }
+  const parsedThread = thread as { id: string; listing_id: string } | null;
+  if (!parsedThread || parsedThread.listing_id !== parsedListingId) {
+    throw new Error("That thread does not belong to this listing.");
+  }
 
   const { error } = await supabase
     .from("threads")
@@ -734,12 +762,15 @@ export async function closeThreadForCancelledListing(threadId: string): Promise<
 }
 
 /**
- * Account page's "blocked · N people" list — RLS already scopes this to
- * the caller's own rows. `blocked_id` and `profiles.user_id` share a
- * common parent (auth.users) but no direct foreign key, so PostgREST can't
- * embed this as a single query — two plain queries, joined in code.
- * profiles_select_via_block (migration 037) is what makes the second
- * query return anything at all.
+ * Account page's "blocked · N people" list. RLS already scopes the
+ * user_blocks query to the caller's own rows. `blocked_id` and
+ * `profiles.user_id` share a common parent (auth.users) but no direct
+ * foreign key, so PostgREST can't embed this as a single query, and a
+ * plain second query against profiles would need a row-level select
+ * policy that exposes far more of a blocked user's profile than just
+ * their name (see migration 037). Instead the name lookup goes through
+ * get_blocked_user_names, a security definer function scoped to the
+ * caller's own blocks and returning only (user_id, local_name).
  */
 export async function listBlockedUsers(): Promise<
   Array<{ userId: string; localName: string | null; blockedAt: string }>
@@ -763,10 +794,10 @@ export async function listBlockedUsers(): Promise<
   }
 
   const blockedIds = blockRows.map((row) => row.blocked_id);
-  const { data: profiles, error: profilesError } = await supabase
-    .from("profiles")
-    .select("user_id,local_name")
-    .in("user_id", blockedIds);
+  const { data: profiles, error: profilesError } = await supabase.rpc(
+    "get_blocked_user_names" as never,
+    { p_user_ids: blockedIds } as never
+  );
 
   if (profilesError) {
     throw new Error(profilesError.message);
