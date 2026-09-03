@@ -662,6 +662,101 @@ export async function getThreadDetail(threadId: string): Promise<{
   };
 }
 
+/**
+ * "cancel a listing with a live offer" reads this before showing the
+ * dialog. A pending offer is any kind='offer' message with offer_status
+ * 'pending' in a thread on this listing; a live handover is any handover
+ * not yet completed/cancelled/missed.
+ */
+export async function hasLiveOfferOrHandover(
+  listingId: string
+): Promise<{ hasOffer: boolean; hasHandover: boolean; counterpartUserId: string | null }> {
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(listingId);
+
+  const { data: threads, error: threadsError } = await supabase
+    .from("threads")
+    .select("id,buyer_id")
+    .eq("listing_id", parsedId);
+
+  if (threadsError) {
+    throw new Error(threadsError.message);
+  }
+
+  const threadRows = (threads ?? []) as Array<{ id: string; buyer_id: string }>;
+  if (threadRows.length === 0) {
+    return { hasOffer: false, hasHandover: false, counterpartUserId: null };
+  }
+
+  const threadIds = threadRows.map((thread) => thread.id);
+
+  const { data: offers } = await supabase
+    .from("messages")
+    .select("thread_id")
+    .in("thread_id", threadIds)
+    .eq("kind", "offer")
+    .eq("offer_status", "pending");
+
+  const { data: handovers } = await supabase
+    .from("handovers")
+    .select("thread_id")
+    .in("thread_id", threadIds)
+    .in("state", ["proposed", "agreed"]);
+
+  const offerThreadId = (offers as Array<{ thread_id: string }> | null)?.[0]?.thread_id ?? null;
+  const handoverThreadId = (handovers as Array<{ thread_id: string }> | null)?.[0]?.thread_id ?? null;
+  const matchedThreadId = handoverThreadId ?? offerThreadId;
+  const counterpart = threadRows.find((thread) => thread.id === matchedThreadId);
+
+  return {
+    hasOffer: Boolean(offerThreadId),
+    hasHandover: Boolean(handoverThreadId),
+    counterpartUserId: counterpart?.buyer_id ?? null
+  };
+}
+
+/** Closes a thread once its listing has been cancelled out from under it. */
+export async function closeThreadForCancelledListing(threadId: string): Promise<void> {
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(threadId);
+
+  const { error } = await supabase
+    .from("threads")
+    .update({ state: "declined" } as never)
+    .eq("id", parsedId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/** Account page's "blocked · N people" list — RLS already scopes this to the caller's own rows. */
+export async function listBlockedUsers(): Promise<
+  Array<{ userId: string; localName: string | null; blockedAt: string }>
+> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("user_blocks")
+    .select("blocked_id,created_at,profiles:blocked_id(local_name)")
+    .eq("blocker_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).map((row) => {
+    const typed = row as { blocked_id: string; created_at: string; profiles: { local_name: string | null } | null };
+    return {
+      userId: typed.blocked_id,
+      localName: typed.profiles?.local_name ?? null,
+      blockedAt: typed.created_at
+    };
+  });
+}
+
 export async function reportListing(listingId: string, reason: string): Promise<void> {
   const user = await getRequiredUser();
   await checkRateLimit("local-listing-report", 10, 3600);

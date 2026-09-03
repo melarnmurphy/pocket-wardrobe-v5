@@ -1188,11 +1188,14 @@ export type Database = {
       }
       profiles: {
         Row: {
+          age_confirmed_at: string | null
+          age_declined_at: string | null
           bottoms_size: string | null
           bottoms_size_system: string
           created_at: string
           height_cm: number | null
           local_name: string | null
+          local_safety_brief_seen_at: string | null
           onboarding_completed_at: string | null
           one_size_either_way: boolean
           show_suburb: boolean
@@ -1209,11 +1212,14 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          age_confirmed_at?: string | null
+          age_declined_at?: string | null
           bottoms_size?: string | null
           bottoms_size_system?: string
           created_at?: string
           height_cm?: number | null
           local_name?: string | null
+          local_safety_brief_seen_at?: string | null
           onboarding_completed_at?: string | null
           one_size_either_way?: boolean
           show_suburb?: boolean
@@ -1230,11 +1236,14 @@ export type Database = {
           user_id: string
         }
         Update: {
+          age_confirmed_at?: string | null
+          age_declined_at?: string | null
           bottoms_size?: string | null
           bottoms_size_system?: string
           created_at?: string
           height_cm?: number | null
           local_name?: string | null
+          local_safety_brief_seen_at?: string | null
           onboarding_completed_at?: string | null
           one_size_either_way?: boolean
           show_suburb?: boolean

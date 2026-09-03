@@ -20,7 +20,7 @@ type ProfileInsert = TablesInsert<"profiles">;
 type ProfileUpdate = TablesUpdate<"profiles">;
 
 const PROFILE_SELECT =
-  "user_id,local_name,suburb,tops_size,bottoms_size,shoes_size,tops_size_system,bottoms_size_system,shoes_size_system,height_cm,one_size_either_way,show_suburb,show_wear_count,suburb_lat,suburb_lng,radius_km,onboarding_completed_at,created_at,updated_at";
+  "user_id,local_name,suburb,tops_size,bottoms_size,shoes_size,tops_size_system,bottoms_size_system,shoes_size_system,height_cm,one_size_either_way,show_suburb,show_wear_count,suburb_lat,suburb_lng,radius_km,onboarding_completed_at,local_safety_brief_seen_at,age_confirmed_at,age_declined_at,created_at,updated_at";
 
 /** No signup trigger creates this row — it's created lazily on first read. */
 export const getOrCreateProfile = cache(async (): Promise<Profile> => {
@@ -130,6 +130,55 @@ export async function completeOnboarding(): Promise<void> {
   const supabase = await createClient();
 
   const update: ProfileUpdate = { onboarding_completed_at: new Date().toISOString() };
+  const { error } = await supabase.from("profiles").update(update as never).eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/**
+ * First-listing safety brief — dismissing it is an acknowledgement, not a
+ * gate. Unlike completeOnboarding, this deliberately skips
+ * getOrCreateProfile(): by the time a user reaches the safety brief, the
+ * age check, or a live listing/offer/handover, onboarding has already run
+ * and created the row, so there is no lazy-create case left to cover here.
+ */
+export async function markSafetyBriefSeen(): Promise<void> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  const update: ProfileUpdate = { local_safety_brief_seen_at: new Date().toISOString() };
+  const { error } = await supabase.from("profiles").update(update as never).eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/** Age check — "I'm 18 or over". */
+export async function confirmAge(): Promise<void> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  const update: ProfileUpdate = { age_confirmed_at: new Date().toISOString() };
+  const { error } = await supabase.from("profiles").update(update as never).eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/**
+ * Age check — "I'm under 18". Conservative default: this permanently
+ * blocks the local-listing/selling flow for this account. There is no
+ * self-service reversal — see LOCAL_THREADS_TRUST_SAFETY_SPEC.md §8.
+ */
+export async function declineAge(): Promise<void> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  const update: ProfileUpdate = { age_declined_at: new Date().toISOString() };
   const { error } = await supabase.from("profiles").update(update as never).eq("user_id", user.id);
 
   if (error) {
