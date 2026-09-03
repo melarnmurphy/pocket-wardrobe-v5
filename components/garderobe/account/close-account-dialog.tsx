@@ -27,10 +27,10 @@ function consequenceLine(liveListingCount: number, openThreadCount: number) {
       ? `You have ${parts.join(" and ")}. Closing withdraws every listing and ends every conversation.`
       : "You have no live listings or open threads.";
 
-  return `This is permanent — your wardrobe, photos, and history are gone. ${consequence}`;
+  return `This is permanent. Your wardrobe, photos, and history are gone. ${consequence}`;
 }
 
-/** MODALS.md §5 — "close the account": destructive, irreversible, type-to-confirm. */
+/** MODALS.md §5, "close the account": destructive, irreversible, type-to-confirm. */
 export function CloseAccountDialog({
   open,
   onClose,

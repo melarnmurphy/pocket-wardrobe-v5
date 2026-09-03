@@ -160,7 +160,7 @@ const LIVE_LISTING_STATUSES = ["live", "reserved", "handover arranged"] as const
 const OPEN_THREAD_STATES = ["open", "handover arranged"] as const;
 
 /**
- * MODALS.md §5 — "close the account": must say what happens to live
+ * MODALS.md §5, "close the account": must say what happens to live
  * listings and open threads before the type-to-confirm gate. A listing is
  * "live" while its status is live, reserved, or mid-handover; a thread is
  * "open" while its state is open or mid-handover (supabase/migrations/029
@@ -203,7 +203,7 @@ export async function getAccountClosureBlockers(): Promise<{
  * before the account disappears out from under them), then deletes the
  * auth user. Every user-owned table in this schema is
  * `references auth.users(id) on delete cascade`, so this one delete is
- * enough to remove the rest — garments, threads, messages, handovers,
+ * enough to remove the rest: garments, threads, messages, handovers,
  * profile, entitlements, everything.
  */
 export async function closeUserAccount(): Promise<void> {
