@@ -189,33 +189,12 @@ describe("createCollectionAction", () => {
 });
 
 describe("setAvailabilityAction", () => {
-  it("returns requiresPlus when the caller is not on a paid plan", async () => {
-    const { assertPaidPlanAccess, FeatureAccessError } = await import(
-      "@/lib/domain/entitlements/service"
-    );
-    (assertPaidPlanAccess as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
-      new FeatureAccessError("Marking availability is available on paid plans.")
-    );
-
-    const { setAvailabilityAction } = await import("@/app/wardrobe/actions");
-    const formData = new FormData();
-    formData.set("garment_id", "11111111-1111-1111-1111-111111111111");
-    formData.set("availability", "wearable");
-
-    const result = await setAvailabilityAction({ status: "idle", message: null }, formData);
-
-    expect(result.status).toBe("error");
-    expect(result.requiresPlus).toBe(true);
-  });
-
-  it("updates availability once the caller is confirmed on a paid plan", async () => {
+  it("updates availability regardless of plan tier (not plan-gated)", async () => {
     vi.resetModules();
     vi.doMock("@/lib/domain/wardrobe/service", async () => {
       const actual = await vi.importActual("@/lib/domain/wardrobe/service");
       return { ...actual, setGarmentAvailability: vi.fn(async () => {}) };
     });
-    const { assertPaidPlanAccess } = await import("@/lib/domain/entitlements/service");
-    (assertPaidPlanAccess as ReturnType<typeof vi.fn>).mockResolvedValueOnce(undefined);
 
     const { setAvailabilityAction } = await import("@/app/wardrobe/actions");
     const { setGarmentAvailability } = await import("@/lib/domain/wardrobe/service");
