@@ -1,10 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/headers", () => ({}));
 vi.mock("@/lib/domain/entitlements/service", () => ({
   assertPaidPlanAccess: vi.fn(),
   canUseFeatureLabels: vi.fn(async () => false),
+  getUserEntitlements: vi.fn(async () => ({})),
+  hasPaidPlan: vi.fn(() => true),
   FeatureAccessError: class FeatureAccessError extends Error {}
 }));
 
@@ -537,5 +539,89 @@ describe("createReceiptDraftAction size cap", () => {
 
     expect(result.status).toBe("error");
     expect(result.errorCode).toBe("too_large");
+  });
+});
+
+describe("createReceiptDraftAction OCR gating", () => {
+  const callReceiptOcrServiceMock = vi.fn(async () => "Blazer $89.00");
+
+  beforeEach(() => {
+    vi.resetModules();
+    vi.doMock("@/lib/domain/ingestion/client", async () => {
+      const actual = await vi.importActual("@/lib/domain/ingestion/client");
+      return { ...actual, callReceiptOcrService: callReceiptOcrServiceMock };
+    });
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon-key");
+    vi.stubEnv("OPENAI_API_KEY", "sk-test");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-key");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  async function stubIngestionService() {
+    const ingestionService = await import("@/lib/domain/ingestion/service");
+    const createReceiptSourceSpy = vi.spyOn(ingestionService, "createReceiptSource").mockResolvedValue({
+      sourceId: "33333333-3333-3333-3333-333333333333",
+      storagePath: "user/receipt-uploads/receipt.jpg"
+    });
+    const createManualReviewDraftSpy = vi
+      .spyOn(ingestionService, "createManualReviewDraft")
+      .mockResolvedValue("44444444-4444-4444-4444-444444444444");
+    const attachPriceMatchCandidatesSpy = vi
+      .spyOn(ingestionService, "attachPriceMatchCandidates")
+      .mockResolvedValue(undefined);
+    return () => {
+      createReceiptSourceSpy.mockRestore();
+      createManualReviewDraftSpy.mockRestore();
+      attachPriceMatchCandidatesSpy.mockRestore();
+    };
+  }
+
+  it("skips the paid OCR fallback for a free-tier user, even when the receipt has no readable text", async () => {
+    vi.doMock("@/lib/domain/entitlements/service", () => ({
+      assertPaidPlanAccess: vi.fn(),
+      canUseFeatureLabels: vi.fn(async () => false),
+      getUserEntitlements: vi.fn(async () => ({})),
+      hasPaidPlan: vi.fn(() => false),
+      FeatureAccessError: class FeatureAccessError extends Error {}
+    }));
+    const restoreIngestionMocks = await stubIngestionService();
+
+    const { createReceiptDraftAction } = await import("@/app/wardrobe/actions");
+    const formData = new FormData();
+    // A binary JPEG with no extractable text — readReceiptTextFromFile
+    // returns null for image files, so this is exactly the case that would
+    // otherwise trigger the paid OCR fallback.
+    formData.set("receipt", new File([new Uint8Array([1, 2, 3])], "receipt.jpg", { type: "image/jpeg" }));
+
+    const result = await createReceiptDraftAction({ status: "idle", message: null }, formData);
+
+    expect(callReceiptOcrServiceMock).not.toHaveBeenCalled();
+    expect(result.status).toBe("success");
+    restoreIngestionMocks();
+  });
+
+  it("still attempts OCR for a paid-tier user with the same unreadable receipt", async () => {
+    vi.doMock("@/lib/domain/entitlements/service", () => ({
+      assertPaidPlanAccess: vi.fn(),
+      canUseFeatureLabels: vi.fn(async () => false),
+      getUserEntitlements: vi.fn(async () => ({})),
+      hasPaidPlan: vi.fn(() => true),
+      FeatureAccessError: class FeatureAccessError extends Error {}
+    }));
+    const restoreIngestionMocks = await stubIngestionService();
+
+    const { createReceiptDraftAction } = await import("@/app/wardrobe/actions");
+    const formData = new FormData();
+    formData.set("receipt", new File([new Uint8Array([1, 2, 3])], "receipt.jpg", { type: "image/jpeg" }));
+
+    const result = await createReceiptDraftAction({ status: "idle", message: null }, formData);
+
+    expect(callReceiptOcrServiceMock).toHaveBeenCalled();
+    expect(result.status).toBe("success");
+    restoreIngestionMocks();
   });
 });

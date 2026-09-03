@@ -52,7 +52,7 @@ import {
   callPipelineService,
   callReceiptOcrService
 } from "@/lib/domain/ingestion/client";
-import { canUseFeatureLabels } from "@/lib/domain/entitlements/service";
+import { canUseFeatureLabels, getUserEntitlements, hasPaidPlan } from "@/lib/domain/entitlements/service";
 import {
   extractProductMetadataFromUrl,
   extractSizeFromNotes,
@@ -588,13 +588,19 @@ export async function createReceiptDraftAction(
       height: values.source_height
     });
     const fileText = await readReceiptTextFromFile(file);
-    const ocrText =
-      fileText || !shouldAttemptReceiptOcr(file)
-        ? null
-        : await callReceiptOcrService({
-            serviceUrl: getServerEnv().PIPELINE_SERVICE_URL,
-            file
-          }).catch(() => null);
+    let ocrText: string | null = null;
+    if (!fileText && shouldAttemptReceiptOcr(file)) {
+      // The Modal OCR fallback hits paid external infrastructure per call —
+      // only run it for a paying user. A free-tier user still gets the
+      // filename-fallback extraction below, just without OCR.
+      const entitlements = await getUserEntitlements();
+      if (hasPaidPlan(entitlements)) {
+        ocrText = await callReceiptOcrService({
+          serviceUrl: getServerEnv().PIPELINE_SERVICE_URL,
+          file
+        }).catch(() => null);
+      }
+    }
     const receiptText = [values.receipt_text, fileText, ocrText].filter(Boolean).join("\n");
     const hasStrongReceiptText = receiptText.trim().length > 0;
     const extractionSource = values.receipt_text

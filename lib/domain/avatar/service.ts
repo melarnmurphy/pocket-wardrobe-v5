@@ -3,6 +3,8 @@ import OpenAI, { toFile, type Uploadable } from "openai";
 import { getRequiredUser } from "@/lib/auth";
 import { getServerEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import { assertPaidPlanAccess } from "@/lib/domain/entitlements/service";
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   avatarMeasurementSetSchema,
   avatarLayoutSchema,
@@ -172,7 +174,18 @@ export async function uploadAvatarPhoto(file: File): Promise<AvatarProfile> {
   });
 }
 
+/**
+ * gpt-image-1.5's images.edit at high quality/fidelity costs roughly
+ * US$0.20-0.25 per call — expensive enough that this must never run
+ * unmetered. Gated behind a paid plan and rate-limited (by IP, matching
+ * every other checkRateLimit call site in this codebase) so neither a
+ * free-tier user nor a retry loop on a paid account can turn this into an
+ * open-ended cost.
+ */
 export async function generateAvatarFromReferencePhotos(files: File[]): Promise<AvatarProfile> {
+  await assertPaidPlanAccess("Digital twin avatar generation");
+  await checkRateLimit("avatar-generate", 5, 3600);
+
   const user = await getRequiredUser();
   const env = getServerEnv();
   const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
