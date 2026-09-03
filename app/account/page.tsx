@@ -1,5 +1,5 @@
 import { AuthenticationError } from "@/lib/auth";
-import { getUserEntitlements } from "@/lib/domain/entitlements/service";
+import { getUserEntitlements, isBillingLapsed } from "@/lib/domain/entitlements/service";
 import { getAccountProfile, getAccountClosureBlockers } from "@/lib/domain/account/service";
 import { getBillingStatus } from "@/lib/domain/billing/service";
 import { getMyPublicProfilePreview, getOrCreateProfile } from "@/lib/domain/profile/service";
@@ -9,6 +9,7 @@ import { AccountProfileForm } from "@/app/account/account-profile-form";
 import { PlanSection } from "@/app/account/plan-section";
 import { YouSection } from "@/app/account/you-section";
 import { SignOutRow } from "@/app/account/sign-out-row";
+import { PaymentFailedRow } from "@/app/account/payment-failed-row";
 
 export default async function AccountPage() {
   try {
@@ -32,6 +33,7 @@ export default async function AccountPage() {
 
     return (
       <main className="pw-shell flex min-h-screen max-w-5xl flex-col gap-6 md:px-10">
+        {isBillingLapsed(entitlements) ? <PaymentFailedRow upgradeUrl={upgradeUrl} /> : null}
         {/* Editorial header */}
         <section className="border-b border-[var(--line)] pb-8 pt-2">
           <p className="pw-kicker">Account</p>

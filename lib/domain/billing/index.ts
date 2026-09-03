@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { planTierSchema } from "@/lib/domain/entitlements";
+import { billingStatusSchema, planTierSchema } from "@/lib/domain/entitlements";
 
 export const billingSyncPayloadSchema = z.object({
   user_id: z.string().uuid(),
@@ -10,7 +10,8 @@ export const billingSyncPayloadSchema = z.object({
   outfit_decomposition_enabled: z.boolean().optional(),
   billing_provider: z.string().nullable().optional(),
   billing_customer_id: z.string().nullable().optional(),
-  billing_subscription_id: z.string().nullable().optional()
+  billing_subscription_id: z.string().nullable().optional(),
+  billing_status: billingStatusSchema.optional()
 });
 
 export type BillingSyncPayload = z.infer<typeof billingSyncPayloadSchema>;

@@ -34,6 +34,7 @@ function buildDefaultEntitlements(userId: string): UserEntitlements {
     billing_provider: null,
     billing_customer_id: null,
     billing_subscription_id: null,
+    billing_status: null,
     created_at: defaultTimestamp,
     updated_at: defaultTimestamp
   };
@@ -45,7 +46,7 @@ export const getUserEntitlements = cache(async (): Promise<UserEntitlements> => 
   const { data, error } = await supabase
     .from("user_entitlements")
     .select(
-      "user_id,plan_tier,feature_labels_enabled,receipt_ocr_enabled,product_url_ingestion_enabled,outfit_decomposition_enabled,billing_provider,billing_customer_id,billing_subscription_id,created_at,updated_at"
+      "user_id,plan_tier,feature_labels_enabled,receipt_ocr_enabled,product_url_ingestion_enabled,outfit_decomposition_enabled,billing_provider,billing_customer_id,billing_subscription_id,billing_status,created_at,updated_at"
     )
     .eq("user_id", user.id)
     .maybeSingle();
@@ -76,6 +77,10 @@ export async function getPlanTier(): Promise<PlanTier> {
 export async function canUseFeatureLabels(): Promise<boolean> {
   const entitlements = await getUserEntitlements();
   return isFeatureEnabled(entitlements, entitlementFeatures.featureLabels);
+}
+
+export function isBillingLapsed(entitlements: UserEntitlements) {
+  return entitlements.billing_status === "payment_failed" || entitlements.billing_status === "lapsed";
 }
 
 export function hasPaidPlan(entitlements: UserEntitlements) {
