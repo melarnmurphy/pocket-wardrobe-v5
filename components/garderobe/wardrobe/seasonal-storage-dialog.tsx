@@ -22,7 +22,7 @@ export function SeasonalStorageDialog({ open, pieceName, onClose, onConfirm }: S
       open={open}
       onClose={onClose}
       title={`store the ${pieceName} for the season?`}
-      description="It stays in your wardrobe and still counts in your totals. This just tucks it out of the everyday grid until you bring it back."
+      description="It stays in your wardrobe and still counts in your totals. This just marks it as put away until you bring it back."
       cancelLabel="cancel"
       confirmLabel="store it"
       onConfirm={onConfirm}

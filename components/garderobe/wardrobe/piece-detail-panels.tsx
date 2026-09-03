@@ -111,7 +111,7 @@ export function SeasonalStorageControl({
     if (state.status === "success") {
       router.refresh();
     }
-  }, [state.status, router]);
+  }, [state, router]);
 
   if (stored) {
     return (
