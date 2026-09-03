@@ -16,6 +16,7 @@ import {
   mergeGarments,
   removeGarmentFromLetGo,
   restoreGarment,
+  findGarmentPriceMatchCandidates,
   setGarmentAvailability,
   setGarmentPriceManually,
   unarchiveGarment,
@@ -36,6 +37,7 @@ import {
   updateWearEvent
 } from "@/lib/domain/wear-events/service";
 import {
+  attachPriceMatchCandidates,
   createGarmentSource,
   createDraftsFromPipelineResult,
   createManualPhotoReviewDraft,
@@ -614,6 +616,16 @@ export async function createReceiptDraftAction(
       });
 
       draftIds.push(draftId);
+
+      const priceMatches = await findGarmentPriceMatchCandidates({
+        title: draftPayload.title ?? fallbackTitle,
+        brand: draftPayload.brand,
+        category: draftPayload.category
+      }).catch(() => []);
+
+      if (priceMatches.length >= 2) {
+        await attachPriceMatchCandidates(draftId, priceMatches);
+      }
     }
 
     revalidatePath("/wardrobe/review");

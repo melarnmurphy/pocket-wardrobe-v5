@@ -267,3 +267,61 @@ describe("createProductUrlDraftAction dead link handling", () => {
     vi.doUnmock("@/lib/domain/ingestion/service");
   });
 });
+
+describe("createReceiptDraftAction price matching", () => {
+  it("attaches price match candidates to the draft when two or more existing pieces match", async () => {
+    vi.resetModules();
+    // vi.spyOn on the already-resolved module's own exports, rather than
+    // vi.doMock's module-registry interception: "@/lib/domain/wardrobe/service"
+    // is also imported for real (via its own mocked dependencies) by the
+    // sibling price-match-candidates test file, and registry-level doMock of
+    // that same specifier from two files raced intermittently when both
+    // suites ran in the same worker. Patching the resolved export in place
+    // sidesteps the registry entirely, so it can't collide.
+    const wardrobeService = await import("@/lib/domain/wardrobe/service");
+    const ingestionService = await import("@/lib/domain/ingestion/service");
+
+    const findGarmentPriceMatchCandidatesSpy = vi
+      .spyOn(wardrobeService, "findGarmentPriceMatchCandidates")
+      .mockResolvedValue([
+        { garment_id: "cccccccc-cccc-cccc-cccc-cccccccccccc", title: "Navy blazer", category: "blazer" },
+        { garment_id: "dddddddd-dddd-dddd-dddd-dddddddddddd", title: "Wool blazer", category: "blazer" }
+      ]);
+    const createReceiptSourceSpy = vi
+      .spyOn(ingestionService, "createReceiptSource")
+      .mockResolvedValue({
+        sourceId: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+        storagePath: "user/receipt-uploads/receipt.jpg"
+      });
+    const createManualReviewDraftSpy = vi
+      .spyOn(ingestionService, "createManualReviewDraft")
+      .mockResolvedValue("ffffffff-ffff-ffff-ffff-ffffffffffff");
+    const attachPriceMatchCandidates = vi
+      .spyOn(ingestionService, "attachPriceMatchCandidates")
+      .mockResolvedValue(undefined);
+
+    const { createReceiptDraftAction } = await import("@/app/wardrobe/actions");
+
+    const formData = new FormData();
+    // Named ".pdf" with a text/plain type so isPdf's filename check lets it
+    // past the image-only upload-type gate, and readReceiptTextFromFile's own
+    // type check treats it as text-readable — giving it a non-null fileText
+    // and so skipping the receipt-OCR fallback (which would otherwise need
+    // getServerEnv()'s real, here-unset PIPELINE_SERVICE_URL) entirely.
+    formData.set(
+      "receipt",
+      new File(["Blazer $89.00"], "receipt.pdf", { type: "text/plain" })
+    );
+    formData.set("receipt_text", "Blazer $89.00");
+
+    const result = await createReceiptDraftAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("success");
+    expect(attachPriceMatchCandidates).toHaveBeenCalled();
+
+    findGarmentPriceMatchCandidatesSpy.mockRestore();
+    createReceiptSourceSpy.mockRestore();
+    createManualReviewDraftSpy.mockRestore();
+    attachPriceMatchCandidates.mockRestore();
+  });
+});
