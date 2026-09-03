@@ -50,10 +50,14 @@ describe("deleteAllUserPhotos", () => {
     const result = await deleteAllUserPhotos();
 
     expect(result.deletedCount).toBe(2);
+    // Both buckets are attempted for every image, since the correct bucket depends on
+    // which upload path produced the row and storage remove() on a missing path is a
+    // safe no-op.
     expect(storageFrom).toHaveBeenCalledWith("garment-originals");
-    expect(storageFrom).not.toHaveBeenCalledWith("garment-cutouts");
+    expect(storageFrom).toHaveBeenCalledWith("garment-cutouts");
     expect(remove).toHaveBeenCalledWith(["u1/g1/a.jpg"]);
     expect(remove).toHaveBeenCalledWith(["u1/g2/b.png"]);
+    expect(remove).toHaveBeenCalledTimes(4);
     expect(imagesDelete).toHaveBeenCalled();
     expect(deleteIn).toHaveBeenCalledWith("id", ["img1", "img2"]);
     // garments themselves are never deleted or updated

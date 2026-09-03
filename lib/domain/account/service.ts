@@ -86,17 +86,21 @@ export async function updateAccountProfile(input: {
   return getAccountProfile();
 }
 
-// Every real upload path (lib/domain/wardrobe/service.ts, lib/domain/ingestion/service.ts)
-// writes garment_images.storage_path into this bucket regardless of image_type — the
-// "garment-cutouts" bucket only ever holds ephemeral draft-review crops that never become
-// garment_images rows, so there is no image_type whose object actually lives anywhere else.
-const ORIGINAL_BUCKET = "garment-originals";
+// Which bucket a garment_images row's file actually lives in depends on which upload path
+// produced it: lib/domain/wardrobe/service.ts writes some cutout/cropped rows into
+// "garment-originals", while lib/domain/ingestion/service.ts uploads draft crops into
+// "garment-cutouts" and app/wardrobe/review/actions.ts persists them as garment_images rows
+// pointing at that same bucket when a draft is accepted. Since removal here is already
+// best-effort and Supabase storage remove() on a path that does not exist in a given bucket
+// is a safe no-op, we attempt removal from both buckets for every row rather than trying to
+// infer the right one from image_type.
+const GARMENT_IMAGE_BUCKETS = ["garment-originals", "garment-cutouts"] as const;
 
 /**
- * MODALS.md §5 — "delete my photos, keep the records": removes every photo
+ * MODALS.md §5 - "delete my photos, keep the records": removes every photo
  * from every garment this user owns, but never touches the garments
  * themselves (name, wear history, prices, looks all stay exactly as they
- * are). Storage removal is best-effort — a storage error never blocks the
+ * are). Storage removal is best-effort: a storage error never blocks the
  * database cleanup, since a stray object left in storage is recoverable but
  * a photo the user was told was gone and was not is not.
  */
@@ -136,7 +140,9 @@ export async function deleteAllUserPhotos(): Promise<{ deletedCount: number }> {
   }[];
 
   for (const image of rows) {
-    await supabase.storage.from(ORIGINAL_BUCKET).remove([image.storage_path]);
+    for (const bucket of GARMENT_IMAGE_BUCKETS) {
+      await supabase.storage.from(bucket).remove([image.storage_path]);
+    }
   }
 
   if (rows.length > 0) {
@@ -267,7 +273,9 @@ export async function getLatestDataExportRequest(): Promise<{
  * auth user. Every user-owned table in this schema is
  * `references auth.users(id) on delete cascade`, so this one delete is
  * enough to remove the rest: garments, threads, messages, handovers,
- * profile, entitlements, everything.
+ * profile, entitlements, everything. Also signs the browser's own session
+ * out, since deleting the user does not by itself invalidate a still-valid
+ * access token sitting in the browser's cookies.
  */
 export async function closeUserAccount(): Promise<void> {
   const user = await getRequiredUser();
@@ -283,4 +291,7 @@ export async function closeUserAccount(): Promise<void> {
   if (error) {
     throw new Error(error.message);
   }
+
+  const supabase = await createClient();
+  await supabase.auth.signOut();
 }
