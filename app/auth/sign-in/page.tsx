@@ -5,6 +5,9 @@ import {
   signInWithPasswordAction,
   signUpWithPasswordAction
 } from "@/app/auth/actions";
+import { ResetSentDialog } from "@/components/garderobe/auth/reset-sent-dialog";
+import { EmailTakenDialog } from "@/components/garderobe/auth/email-taken-dialog";
+import { shouldShowInlinePasswordError, shouldShowTopBannerError } from "@/lib/domain/auth/error-display";
 
 export default async function SignInPage({
   searchParams
@@ -14,10 +17,15 @@ export default async function SignInPage({
     mode?: string;
     email?: string;
     error?: string;
+    errorSource?: string;
     notice?: string;
+    resetSent?: string;
+    duplicate?: string;
   }>;
 }) {
   const params = await searchParams;
+  const resetSent = params.resetSent === "1";
+  const duplicate = params.duplicate === "1";
   const next = params.next && params.next.startsWith("/") ? params.next : "/onboarding";
   const email = params.email ?? "";
   const mode =
@@ -60,7 +68,7 @@ export default async function SignInPage({
               : "Existing magic-link accounts can send themselves a password setup email below, then use password sign-in from the same screen."}
           </p>
 
-          {params.error ? (
+          {shouldShowTopBannerError(params) ? (
             <p className="mt-6 rounded-[1rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {params.error}
             </p>
@@ -141,6 +149,11 @@ export default async function SignInPage({
                     placeholder="Password"
                     className="w-full rounded-[1rem] border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
                   />
+                  {shouldShowInlinePasswordError(params) ? (
+                    <p className="rounded-[1rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {params.error}
+                    </p>
+                  ) : null}
                   <button
                     type="submit"
                     className="pw-button-primary"
@@ -220,6 +233,10 @@ export default async function SignInPage({
           </div>
         </aside>
       </section>
+      {resetSent ? (
+        <ResetSentDialog email={email} next={next} resendAction={sendPasswordResetAction} />
+      ) : null}
+      {duplicate ? <EmailTakenDialog email={email} signInHref={signInHref} /> : null}
     </main>
   );
 }

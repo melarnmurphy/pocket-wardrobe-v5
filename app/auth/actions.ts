@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit, RateLimitError } from "@/lib/rate-limit";
+import { mapSignInPasswordError } from "@/lib/domain/auth/sign-in-errors";
+import { isDuplicateAccountMessage, looksLikeExistingAccount } from "@/lib/domain/auth/duplicate-signup";
 
 const signInSchema = z.object({
   email: z.string().trim().email(),
@@ -84,7 +86,14 @@ export async function signInWithMagicLinkAction(formData: FormData) {
     await checkRateLimit("magic-link", 5, 600);
   } catch (error) {
     if (error instanceof RateLimitError) {
-      redirect(buildAuthPageRedirect({ next, email: values.email, error: error.message }) as never);
+      redirect(
+        buildAuthPageRedirect({
+          next,
+          email: values.email,
+          error: error.message,
+          errorSource: "magic-link"
+        }) as never
+      );
     }
     throw error;
   }
@@ -124,7 +133,15 @@ export async function signInWithPasswordAction(formData: FormData) {
     await checkRateLimit("sign-in-password", 10, 60);
   } catch (error) {
     if (error instanceof RateLimitError) {
-      redirect(buildAuthPageRedirect({ mode: "password", next, email: values.email, error: error.message }) as never);
+      redirect(
+        buildAuthPageRedirect({
+          mode: "password",
+          next,
+          email: values.email,
+          error: error.message,
+          errorSource: "password"
+        }) as never
+      );
     }
     throw error;
   }
@@ -141,7 +158,8 @@ export async function signInWithPasswordAction(formData: FormData) {
         mode: "password",
         next,
         email: values.email,
-        error: error.message
+        error: mapSignInPasswordError(error.message),
+        errorSource: "password"
       }) as never
     );
   }
@@ -166,7 +184,15 @@ export async function signUpWithPasswordAction(formData: FormData) {
     await checkRateLimit("sign-up", 10, 3600);
   } catch (error) {
     if (error instanceof RateLimitError) {
-      redirect(buildAuthPageRedirect({ mode: "signup", next, email: values.email, error: error.message }) as never);
+      redirect(
+        buildAuthPageRedirect({
+          mode: "signup",
+          next,
+          email: values.email,
+          error: error.message,
+          errorSource: "signup"
+        }) as never
+      );
     }
     throw error;
   }
@@ -187,13 +213,25 @@ export async function signUpWithPasswordAction(formData: FormData) {
   });
 
   if (error) {
+    if (isDuplicateAccountMessage(error.message)) {
+      redirect(
+        buildAuthPageRedirect({ mode: "signup", next, email: values.email, duplicate: "1" }) as never
+      );
+    }
     redirect(
       buildAuthPageRedirect({
         mode: "signup",
         next,
         email: values.email,
-        error: error.message
+        error: error.message,
+        errorSource: "signup"
       }) as never
+    );
+  }
+
+  if (looksLikeExistingAccount(data.user)) {
+    redirect(
+      buildAuthPageRedirect({ mode: "signup", next, email: values.email, duplicate: "1" }) as never
     );
   }
 
@@ -223,7 +261,15 @@ export async function sendPasswordResetAction(formData: FormData) {
     await checkRateLimit("password-reset", 3, 600);
   } catch (error) {
     if (error instanceof RateLimitError) {
-      redirect(buildAuthPageRedirect({ mode: "reset", next, email: values.email, error: error.message }) as never);
+      redirect(
+        buildAuthPageRedirect({
+          mode: "reset",
+          next,
+          email: values.email,
+          error: error.message,
+          errorSource: "reset"
+        }) as never
+      );
     }
     throw error;
   }
@@ -241,14 +287,15 @@ export async function sendPasswordResetAction(formData: FormData) {
   });
 
   if (error) {
-  redirect(
-    buildAuthPageRedirect({
-      mode: "reset",
-      next,
-      email: values.email,
-      error: error.message
-    }) as never
-  );
+    redirect(
+      buildAuthPageRedirect({
+        mode: "reset",
+        next,
+        email: values.email,
+        error: error.message,
+        errorSource: "reset"
+      }) as never
+    );
   }
 
   redirect(
@@ -256,7 +303,7 @@ export async function sendPasswordResetAction(formData: FormData) {
       mode: "reset",
       next,
       email: values.email,
-      notice: "Password reset link sent. Check your email."
+      resetSent: "1"
     }) as never
   );
 }
