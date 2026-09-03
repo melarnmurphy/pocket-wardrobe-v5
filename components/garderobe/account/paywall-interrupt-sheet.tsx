@@ -19,7 +19,7 @@ export const PLUS_FEATURE_COPY = {
   },
   trend_calls: {
     title: "trend calls are a plus feature",
-    description: "How covered you already are for a trend, what it would unlock, and when to pack it away."
+    description: "How covered you already are for a trend, what it would unlock, when to pack it away, and what's sitting on your let-go list."
   },
   availability: {
     title: "marking availability is a plus feature",
