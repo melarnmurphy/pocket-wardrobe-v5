@@ -26,6 +26,9 @@ export async function createLocalListing(input: CreateLocalListingInput): Promis
   }
 
   const profile = await getOrCreateProfile();
+  if (profile.age_declined_at) {
+    throw new Error("Local threads needs an adult. This stays off for this account.");
+  }
   if (profile.suburb_lat === null || profile.suburb_lng === null) {
     throw new Error("Set your suburb in your account before listing locally.");
   }
