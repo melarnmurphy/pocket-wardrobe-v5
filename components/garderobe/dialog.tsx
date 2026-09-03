@@ -10,6 +10,14 @@ type DialogProps = {
   description?: string;
   icon?: ReactNode;
   cancelLabel?: string;
+  /**
+   * Called when the cancel/secondary button is tapped. Defaults to `onClose`
+   * so existing dialogs keep their current behaviour. Pass this separately
+   * from `onClose` when the secondary button is a real, recordable choice
+   * (see age-check-dialog.tsx) rather than a plain dismissal, since the
+   * backdrop's own dismiss button always calls `onClose` and never this.
+   */
+  onCancel?: () => void;
   confirmLabel: string;
   onConfirm: () => void;
   confirmVariant?: "primary" | "on-blush";
@@ -24,6 +32,7 @@ export function Dialog({
   description,
   icon,
   cancelLabel = "cancel",
+  onCancel,
   confirmLabel,
   onConfirm,
   confirmVariant = "primary",
@@ -53,7 +62,7 @@ export function Dialog({
         ) : null}
         <div className="flex gap-[9px] pt-1">
           {!hideCancel ? (
-            <PillButton variant="secondary" onClick={onClose} className="h-11">
+            <PillButton variant="secondary" onClick={onCancel ?? onClose} className="h-11">
               {cancelLabel}
             </PillButton>
           ) : null}
