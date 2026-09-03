@@ -91,4 +91,58 @@ describe("ManageCollectionSheet", () => {
     expect(await screen.findByText("Unable to delete the collection.")).toBeInTheDocument();
     expect(onDeleted).not.toHaveBeenCalled();
   });
+
+  it("closes the confirm dialog again on a second consecutive delete failure", async () => {
+    // Each call resolves a freshly constructed object literal with the same
+    // "error" status, exactly like the real deleteCollectionAction does on
+    // two separate failed attempts. This guards against keying the
+    // reaction effect on `deleteState.status` alone: a same-value string
+    // comparison would miss the second failure and leave the confirm
+    // dialog stuck open.
+    const renameAction = vi.fn(async (state: unknown, _formData: FormData) => state as never);
+    const deleteAction = vi
+      .fn()
+      .mockImplementationOnce(
+        async () => ({ status: "error", message: "Unable to delete the collection." }) as never
+      )
+      .mockImplementationOnce(
+        async () => ({ status: "error", message: "Unable to delete the collection. Try again." }) as never
+      );
+    const onDeleted = vi.fn();
+
+    render(
+      <ManageCollectionSheet
+        open={true}
+        collection={{ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", name: "weekend capsule" }}
+        onClose={vi.fn()}
+        onDeleted={onDeleted}
+        renameAction={renameAction}
+        deleteAction={deleteAction}
+      />
+    );
+
+    // First attempt: opens the confirm dialog, confirms, fails, and the
+    // dialog should close again to reveal the sheet's inline error.
+    fireEvent.click(screen.getByText("delete collection"));
+    fireEvent.click(await screen.findByText("delete collection", { selector: "button" }));
+
+    await waitFor(() => expect(deleteAction).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(screen.queryByText("delete collection", { selector: "button" })).not.toBeInTheDocument()
+    );
+    expect(await screen.findByText("Unable to delete the collection.")).toBeInTheDocument();
+
+    // Second attempt: reopen the confirm dialog and confirm again. Even
+    // though this also resolves to `status: "error"`, the dialog must
+    // close again rather than sticking open from the reopen.
+    fireEvent.click(screen.getByText("delete collection"));
+    fireEvent.click(await screen.findByText("delete collection", { selector: "button" }));
+
+    await waitFor(() => expect(deleteAction).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.queryByText("delete collection", { selector: "button" })).not.toBeInTheDocument()
+    );
+    expect(await screen.findByText("Unable to delete the collection. Try again.")).toBeInTheDocument();
+    expect(onDeleted).not.toHaveBeenCalled();
+  });
 });

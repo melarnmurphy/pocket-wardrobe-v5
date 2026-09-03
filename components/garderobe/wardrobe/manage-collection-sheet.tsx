@@ -56,8 +56,13 @@ export function ManageCollectionSheet({
       onClose();
       onRenamed?.();
     }
+    // Depend on the whole state object, not just its `.status` string: two
+    // consecutive failed rename attempts both resolve to `{status: "error",
+    // ...}`, but useActionState hands back a freshly constructed object each
+    // time the server action resolves, so keying on the object catches the
+    // second (and every subsequent) failure too, not just the first.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [renameState.status]);
+  }, [renameState]);
 
   useEffect(() => {
     if (!open) return;
@@ -70,8 +75,11 @@ export function ManageCollectionSheet({
       // error message, becomes visible again — but do not call onDeleted().
       setConfirmingDelete(false);
     }
+    // Same reasoning as the rename effect above: key on the whole object so
+    // repeated same-status results (e.g. two failed deletes in a row) each
+    // re-run this effect, rather than only the first.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deleteState.status]);
+  }, [deleteState]);
 
   if (!collection) return null;
 
