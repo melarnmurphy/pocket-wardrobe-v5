@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { acceptDraftAction, rejectDraftAction } from "./actions";
+import { acceptDraftAction, rejectDraftAction, resolveReceiptMatchAction } from "./actions";
 import type { PendingDraft } from "@/lib/domain/ingestion/service";
+import { ReceiptMatchSheet } from "@/components/garderobe/wardrobe/receipt-match-sheet";
 
 interface Props {
   drafts: PendingDraft[];
@@ -21,6 +22,9 @@ export default function DraftReviewList({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [latestBatchOnly, setLatestBatchOnly] = useState(initialLatestBatchOnly);
+  const [matchSheetDraftId, setMatchSheetDraftId] = useState<string | null>(null);
+  const [matchPending, setMatchPending] = useState(false);
+  const [matchError, setMatchError] = useState<string | null>(null);
   const [edits, setEdits] = useState<Record<string, {
     title: string;
     category: string;
@@ -335,6 +339,18 @@ export default function DraftReviewList({
                   </a>
                 </div>
               ) : null}
+              {draft.payload.price_match_candidates && draft.payload.price_match_candidates.length >= 2 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMatchError(null);
+                    setMatchSheetDraftId(draft.id);
+                  }}
+                  className="mt-3 flex w-full items-center justify-between rounded-[4px] border border-dashed border-[rgba(30,26,23,.3)] bg-[var(--paper)] px-3 py-2.5 text-left text-[12.5px] text-[var(--slate)]"
+                >
+                  this receipt matches {draft.payload.price_match_candidates.length} pieces — resolve
+                </button>
+              ) : null}
               <div className="mt-4 grid gap-3 md:grid-cols-2">
                 <Field
                   id={fieldId(draft.id, "title")}
@@ -496,6 +512,34 @@ export default function DraftReviewList({
       })}
         </section>
       ))}
+      {matchSheetDraftId
+        ? (() => {
+            const matchDraft = drafts.find((d) => d.id === matchSheetDraftId);
+            const candidates = matchDraft?.payload.price_match_candidates ?? [];
+            return (
+              <ReceiptMatchSheet
+                open
+                draftId={matchSheetDraftId}
+                candidates={candidates}
+                pending={matchPending}
+                error={matchError}
+                onClose={() => setMatchSheetDraftId(null)}
+                onResolve={async (garmentId) => {
+                  setMatchPending(true);
+                  setMatchError(null);
+                  const result = await resolveReceiptMatchAction(matchSheetDraftId, garmentId);
+                  setMatchPending(false);
+                  if (result.status === "error") {
+                    setMatchError(result.message);
+                    return;
+                  }
+                  markActioned(matchSheetDraftId);
+                  setMatchSheetDraftId(null);
+                }}
+              />
+            );
+          })()
+        : null}
     </div>
   );
 }

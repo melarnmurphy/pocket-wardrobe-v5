@@ -6,7 +6,8 @@ import { revalidatePath } from "next/cache";
 import {
   addGarmentImageFromUrl,
   createGarment,
-  setGarmentPrimaryColourFamily
+  setGarmentPrimaryColourFamily,
+  setGarmentPriceManually
 } from "@/lib/domain/wardrobe/service";
 import { getCanonicalWardrobeColour } from "@/lib/domain/wardrobe/colours";
 import { z } from "zod";
@@ -279,6 +280,81 @@ export async function acceptDraftAction(
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Failed to accept draft.",
+    };
+  }
+}
+
+/**
+ * MODALS.md §3 — the resolver for "this receipt matches three pieces".
+ * `garmentId: null` means "none of these": fall through to the normal
+ * accept-as-new path. Otherwise the draft's price moves onto the chosen
+ * existing piece and the draft itself is discarded, since its other fields
+ * would just duplicate a garment that already exists.
+ */
+export async function resolveReceiptMatchAction(
+  draftId: string,
+  garmentId: string | null
+): Promise<DraftActionResult> {
+  if (!garmentId) {
+    return acceptDraftAction(draftId);
+  }
+
+  try {
+    const parsedGarmentId = z.string().uuid().parse(garmentId);
+    const user = await getRequiredUser();
+    const supabase = await createClient();
+
+    const { data: draft, error } = await supabase
+      .from("garment_drafts")
+      .select("id, status, draft_payload_json")
+      .eq("id", draftId)
+      .eq("user_id", user.id)
+      .single();
+
+    if (error || !draft) {
+      return { status: "error", message: "Draft not found." };
+    }
+
+    if ((draft as { status: string }).status !== "pending") {
+      return { status: "success" };
+    }
+
+    const payload = (draft as { draft_payload_json: Record<string, unknown> }).draft_payload_json;
+    const priceRaw = payload.purchase_price;
+    const price = priceRaw == null || priceRaw === "" ? null : Number(priceRaw);
+
+    if (price === null || !Number.isFinite(price)) {
+      return { status: "error", message: "This draft has no price to attach." };
+    }
+
+    const currency = typeof payload.purchase_currency === "string" ? payload.purchase_currency : "AUD";
+
+    await setGarmentPriceManually({
+      garmentId: parsedGarmentId,
+      priceCents: Math.round(price * 100),
+      currency,
+      priceSource: "receipt"
+    });
+
+    const { error: rejectError } = await supabase
+      .from("garment_drafts")
+      .update({ status: "rejected" } as never)
+      .eq("id", draftId)
+      .eq("user_id", user.id);
+
+    if (rejectError) {
+      return { status: "error", message: rejectError.message };
+    }
+
+    revalidatePath("/wardrobe");
+    revalidatePath(`/wardrobe/${parsedGarmentId}`);
+    revalidatePath("/wardrobe/review");
+
+    return { status: "success", garmentId: parsedGarmentId };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to resolve this match."
     };
   }
 }
