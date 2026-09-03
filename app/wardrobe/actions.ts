@@ -47,7 +47,11 @@ import {
   callPipelineService,
   callReceiptOcrService
 } from "@/lib/domain/ingestion/client";
-import { canUseFeatureLabels } from "@/lib/domain/entitlements/service";
+import {
+  assertPaidPlanAccess,
+  canUseFeatureLabels,
+  FeatureAccessError
+} from "@/lib/domain/entitlements/service";
 import {
   extractProductMetadataFromUrl,
   extractSizeFromNotes,
@@ -1043,6 +1047,8 @@ export async function setAvailabilityAction(
   formData: FormData
 ): Promise<WardrobeActionState> {
   try {
+    await assertPaidPlanAccess("Marking availability");
+
     const values = setAvailabilityFormSchema.parse({
       garment_id: formData.get("garment_id"),
       availability: formData.get("availability")
@@ -1058,6 +1064,10 @@ export async function setAvailabilityAction(
       message: `Marked ${values.availability}.`
     };
   } catch (error) {
+    if (error instanceof FeatureAccessError) {
+      return { status: "error", message: error.message, requiresPlus: true };
+    }
+
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Unable to update availability."

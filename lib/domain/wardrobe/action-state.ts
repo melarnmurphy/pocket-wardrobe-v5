@@ -5,6 +5,7 @@ export type WardrobeActionState = {
   draftIds?: string[];
   nextPath?: string;
   blocked?: { activeOutfitCount: number; activeListingId: string | null };
+  requiresPlus?: boolean;
 };
 
 export const wardrobeActionState: WardrobeActionState = {
