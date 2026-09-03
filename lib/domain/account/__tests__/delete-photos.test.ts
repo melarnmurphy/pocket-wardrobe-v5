@@ -51,7 +51,7 @@ describe("deleteAllUserPhotos", () => {
 
     expect(result.deletedCount).toBe(2);
     expect(storageFrom).toHaveBeenCalledWith("garment-originals");
-    expect(storageFrom).toHaveBeenCalledWith("garment-cutouts");
+    expect(storageFrom).not.toHaveBeenCalledWith("garment-cutouts");
     expect(remove).toHaveBeenCalledWith(["u1/g1/a.jpg"]);
     expect(remove).toHaveBeenCalledWith(["u1/g2/b.png"]);
     expect(imagesDelete).toHaveBeenCalled();

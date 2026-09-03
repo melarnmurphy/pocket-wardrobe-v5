@@ -84,12 +84,11 @@ export async function updateAccountProfile(input: {
   return getAccountProfile();
 }
 
+// Every real upload path (lib/domain/wardrobe/service.ts, lib/domain/ingestion/service.ts)
+// writes garment_images.storage_path into this bucket regardless of image_type — the
+// "garment-cutouts" bucket only ever holds ephemeral draft-review crops that never become
+// garment_images rows, so there is no image_type whose object actually lives anywhere else.
 const ORIGINAL_BUCKET = "garment-originals";
-const CUTOUT_BUCKET = "garment-cutouts";
-
-function bucketForImageType(imageType: string) {
-  return imageType === "original" ? ORIGINAL_BUCKET : CUTOUT_BUCKET;
-}
 
 /**
  * MODALS.md §5 — "delete my photos, keep the records": removes every photo
@@ -135,7 +134,7 @@ export async function deleteAllUserPhotos(): Promise<{ deletedCount: number }> {
   }[];
 
   for (const image of rows) {
-    await supabase.storage.from(bucketForImageType(image.image_type)).remove([image.storage_path]);
+    await supabase.storage.from(ORIGINAL_BUCKET).remove([image.storage_path]);
   }
 
   if (rows.length > 0) {
