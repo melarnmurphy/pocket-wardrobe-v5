@@ -23,7 +23,7 @@ export default async function AccountPage() {
         countWardrobeGarments(),
         listBlockedUsers()
       ]);
-    const { upgradeUrl } = getBillingStatus();
+    const { upgradeUrl, checkoutEnabled } = getBillingStatus();
 
     const tierLabel =
       entitlements.plan_tier === "free"
@@ -34,7 +34,9 @@ export default async function AccountPage() {
 
     return (
       <main className="pw-shell flex min-h-screen max-w-5xl flex-col gap-6 md:px-10">
-        {isBillingLapsed(entitlements) ? <PaymentFailedRow upgradeUrl={upgradeUrl} /> : null}
+        {isBillingLapsed(entitlements) ? (
+          <PaymentFailedRow upgradeUrl={upgradeUrl} hasStripeCustomer={Boolean(entitlements.billing_customer_id)} />
+        ) : null}
         {/* Editorial header */}
         <section className="border-b border-[var(--line)] pb-8 pt-2">
           <p className="pw-kicker">Account</p>
@@ -68,7 +70,7 @@ export default async function AccountPage() {
           blockedUsers={blockedUsers}
         />
 
-        <PlanSection entitlements={entitlements} upgradeUrl={upgradeUrl} />
+        <PlanSection entitlements={entitlements} checkoutEnabled={checkoutEnabled} />
 
         <SignOutRow />
       </main>

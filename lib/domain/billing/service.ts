@@ -1,5 +1,8 @@
-import { getBillingEnv, getPublicEnv } from "@/lib/env";
+import { getBillingEnv, getPublicEnv, getServerEnv } from "@/lib/env";
 import { createServiceClient } from "@/lib/supabase/service";
+import { getStripeClient } from "@/lib/stripe";
+import { getRequiredUser } from "@/lib/auth";
+import { getUserEntitlements } from "@/lib/domain/entitlements/service";
 import type { Database } from "@/types/database";
 import {
   entitlementFeatures,
@@ -14,16 +17,80 @@ type UserEntitlementsInsert = Database["public"]["Tables"]["user_entitlements"][
 
 export function getBillingStatus() {
   const env = getPublicEnv();
+  const serverEnv = getServerEnv();
   const billingEnv = getBillingEnv();
   const provider = billingEnv.BILLING_PROVIDER ?? null;
+  // Legacy fallback link, from before real Stripe Checkout was wired up.
+  // Every current call site already falls back to /account when this is
+  // unset, which is what happens everywhere today since this env var was
+  // never actually configured — kept only so an external override link
+  // remains possible without further code changes.
   const upgradeUrl = env.NEXT_PUBLIC_PREMIUM_UPGRADE_URL ?? null;
 
   return {
     provider,
     upgradeUrl,
     syncEnabled: Boolean(billingEnv.BILLING_SYNC_SECRET),
-    checkoutEnabled: Boolean(provider && upgradeUrl)
+    checkoutEnabled: Boolean(provider === "stripe" && serverEnv.STRIPE_PLUS_ANNUAL_PRICE_ID)
   };
+}
+
+/**
+ * Starts a subscription checkout for the single "plus" plan (A$69/year —
+ * the only price with a real purchase button anywhere in the UI; the
+ * A$5.75/month figure shown alongside it is informational only). Reuses
+ * the caller's existing Stripe customer id if they have one, so a second
+ * checkout doesn't create a duplicate customer.
+ */
+export async function createPlusCheckoutSession(baseUrl: string): Promise<{ url: string }> {
+  const user = await getRequiredUser();
+  const entitlements = await getUserEntitlements();
+  const env = getServerEnv();
+
+  if (!env.STRIPE_PLUS_ANNUAL_PRICE_ID) {
+    throw new Error("Plus checkout is not configured: STRIPE_PLUS_ANNUAL_PRICE_ID is unset.");
+  }
+
+  const stripe = getStripeClient();
+  const existingCustomerId = entitlements.billing_customer_id ?? undefined;
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    line_items: [{ price: env.STRIPE_PLUS_ANNUAL_PRICE_ID, quantity: 1 }],
+    client_reference_id: user.id,
+    customer: existingCustomerId,
+    customer_email: existingCustomerId ? undefined : user.email ?? undefined,
+    subscription_data: { metadata: { supabase_user_id: user.id } },
+    success_url: `${baseUrl}/account?checkout=success`,
+    cancel_url: `${baseUrl}/account`
+  });
+
+  if (!session.url) {
+    throw new Error("Stripe did not return a checkout URL.");
+  }
+
+  return { url: session.url };
+}
+
+/**
+ * Opens Stripe's self-service Customer Portal, for updating a payment
+ * method after a failed charge, or cancelling. Requires an existing Stripe
+ * customer — there's nothing to manage for a user who never checked out.
+ */
+export async function createBillingPortalSession(baseUrl: string): Promise<{ url: string }> {
+  const entitlements = await getUserEntitlements();
+
+  if (!entitlements.billing_customer_id) {
+    throw new Error("No Stripe customer on this account yet — nothing to manage.");
+  }
+
+  const stripe = getStripeClient();
+  const session = await stripe.billingPortal.sessions.create({
+    customer: entitlements.billing_customer_id,
+    return_url: `${baseUrl}/account`
+  });
+
+  return { url: session.url };
 }
 
 export function getPremiumFeatureSummary() {

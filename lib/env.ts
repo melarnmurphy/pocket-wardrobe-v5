@@ -30,7 +30,8 @@ const optionalCsvString = z.preprocess((value) => {
 const publicEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
-  NEXT_PUBLIC_PREMIUM_UPGRADE_URL: optionalUrl
+  NEXT_PUBLIC_PREMIUM_UPGRADE_URL: optionalUrl,
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: optionalString
 });
 
 const serverEnvSchema = publicEnvSchema.extend({
@@ -42,6 +43,9 @@ const serverEnvSchema = publicEnvSchema.extend({
   WEATHER_PROVIDER_DEFAULT: z.enum(["weatherapi", "open-meteo"]).optional(),
   BILLING_PROVIDER: z.enum(["stripe"]).optional(),
   BILLING_SYNC_SECRET: optionalString,
+  STRIPE_SECRET_KEY: optionalString,
+  STRIPE_WEBHOOK_SECRET: optionalString,
+  STRIPE_PLUS_ANNUAL_PRICE_ID: optionalString,
   // Open-source trend discovery adapter. Point this at a private SearXNG
   // instance, for example http://localhost:8080 in local development.
   SEARXNG_BASE_URL: optionalUrl,
@@ -76,7 +80,8 @@ export function getPublicEnv(): PublicEnv {
   return publicEnvSchema.parse({
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    NEXT_PUBLIC_PREMIUM_UPGRADE_URL: process.env.NEXT_PUBLIC_PREMIUM_UPGRADE_URL
+    NEXT_PUBLIC_PREMIUM_UPGRADE_URL: process.env.NEXT_PUBLIC_PREMIUM_UPGRADE_URL,
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   });
 }
 
@@ -93,6 +98,9 @@ export function getServerEnv(): ServerEnv {
     NEXT_PUBLIC_PREMIUM_UPGRADE_URL: process.env.NEXT_PUBLIC_PREMIUM_UPGRADE_URL,
     BILLING_PROVIDER: process.env.BILLING_PROVIDER,
     BILLING_SYNC_SECRET: process.env.BILLING_SYNC_SECRET,
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+    STRIPE_PLUS_ANNUAL_PRICE_ID: process.env.STRIPE_PLUS_ANNUAL_PRICE_ID,
     SEARXNG_BASE_URL: process.env.SEARXNG_BASE_URL,
     TAVILY_API_KEY: process.env.TAVILY_API_KEY,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,

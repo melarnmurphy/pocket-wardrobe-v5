@@ -3,10 +3,11 @@
 import { useState } from "react";
 import type { UserEntitlements } from "@/lib/domain/entitlements";
 import { PLUS_FEATURE_COPY } from "@/components/garderobe/account/paywall-interrupt-sheet";
+import { startPlusCheckoutAction } from "@/app/account/billing-actions";
 
 type PlanSectionProps = {
   entitlements: UserEntitlements;
-  upgradeUrl: string | null;
+  checkoutEnabled: boolean;
 };
 
 type Feature = {
@@ -14,7 +15,7 @@ type Feature = {
   enabled: boolean;
 };
 
-export function PlanSection({ entitlements, upgradeUrl }: PlanSectionProps) {
+export function PlanSection({ entitlements, checkoutEnabled }: PlanSectionProps) {
   const [expanded, setExpanded] = useState(false);
 
   const features: Feature[] = [
@@ -42,13 +43,15 @@ export function PlanSection({ entitlements, upgradeUrl }: PlanSectionProps) {
       <div className="mt-3 flex items-center justify-between gap-3">
         <span className="pw-chip normal-case tracking-normal">{tierLabel}</span>
         <div className="flex items-center gap-3">
-          {upgradeUrl && entitlements.plan_tier === "free" && (
-            <a
-              href={upgradeUrl}
-              className="text-sm text-[var(--muted)] underline underline-offset-2 hover:text-[var(--foreground)]"
-            >
-              Upgrade plan →
-            </a>
+          {checkoutEnabled && entitlements.plan_tier === "free" && (
+            <form action={startPlusCheckoutAction}>
+              <button
+                type="submit"
+                className="text-sm text-[var(--muted)] underline underline-offset-2 hover:text-[var(--foreground)]"
+              >
+                Upgrade plan →
+              </button>
+            </form>
           )}
           <button
             type="button"
@@ -85,13 +88,12 @@ export function PlanSection({ entitlements, upgradeUrl }: PlanSectionProps) {
               </li>
             ))}
           </ul>
-          {upgradeUrl && entitlements.plan_tier === "free" && (
-            <a
-              href={upgradeUrl}
-              className="pw-button-primary mt-4 inline-flex"
-            >
-              Upgrade to plus: A$69 a year →
-            </a>
+          {checkoutEnabled && entitlements.plan_tier === "free" && (
+            <form action={startPlusCheckoutAction}>
+              <button type="submit" className="pw-button-primary mt-4 inline-flex">
+                Upgrade to plus: A$69 a year →
+              </button>
+            </form>
           )}
         </div>
       )}
