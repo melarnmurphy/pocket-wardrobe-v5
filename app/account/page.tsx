@@ -1,9 +1,9 @@
 import { AuthenticationError } from "@/lib/auth";
 import { getUserEntitlements, isBillingLapsed } from "@/lib/domain/entitlements/service";
-import { getAccountProfile, getAccountClosureBlockers } from "@/lib/domain/account/service";
+import { getAccountProfile } from "@/lib/domain/account/service";
 import { getBillingStatus } from "@/lib/domain/billing/service";
 import { getMyPublicProfilePreview, getOrCreateProfile } from "@/lib/domain/profile/service";
-import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
+import { countWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import { AuthRequiredCard } from "@/components/auth-required-card";
 import { AccountProfileForm } from "@/app/account/account-profile-form";
 import { PlanSection } from "@/app/account/plan-section";
@@ -13,14 +13,13 @@ import { PaymentFailedRow } from "@/app/account/payment-failed-row";
 
 export default async function AccountPage() {
   try {
-    const [profile, entitlements, garderobeProfile, publicPreview, garments, closureBlockers] =
+    const [profile, entitlements, garderobeProfile, publicPreview, garmentCount] =
       await Promise.all([
         getAccountProfile(),
         getUserEntitlements(),
         getOrCreateProfile(),
         getMyPublicProfilePreview(),
-        listWardrobeGarments(),
-        getAccountClosureBlockers()
+        countWardrobeGarments()
       ]);
     const { upgradeUrl } = getBillingStatus();
 
@@ -60,13 +59,7 @@ export default async function AccountPage() {
           currencyUnit={profile.currency_unit}
         />
 
-        <YouSection
-          profile={garderobeProfile}
-          preview={publicPreview}
-          garmentCount={garments.length}
-          liveListingCount={closureBlockers.liveListingCount}
-          openThreadCount={closureBlockers.openThreadCount}
-        />
+        <YouSection profile={garderobeProfile} preview={publicPreview} garmentCount={garmentCount} />
 
         <PlanSection entitlements={entitlements} upgradeUrl={upgradeUrl} />
 

@@ -13,7 +13,7 @@ import {
   type ProfileActionState
 } from "./profile-actions";
 import { deleteAllUserPhotosAction } from "./photos-actions";
-import { closeUserAccountAction } from "./close-account-actions";
+import { closeUserAccountAction, getCloseAccountBlockersAction } from "./close-account-actions";
 import { requestDataExportAction, checkDataExportReadyAction } from "./export-actions";
 
 const idleState: ProfileActionState = { status: "idle", message: null };
@@ -23,15 +23,11 @@ const SIZE_SYSTEMS = ["AU", "UK", "US", "EU"] as const;
 export function YouSection({
   profile,
   preview,
-  garmentCount,
-  liveListingCount,
-  openThreadCount
+  garmentCount
 }: {
   profile: Profile;
   preview: PublicProfilePreview;
   garmentCount: number;
-  liveListingCount: number;
-  openThreadCount: number;
 }) {
   const [profileState, profileFormAction] = useActionState(updateProfileAction, idleState);
   const [sizesState, sizesFormAction] = useActionState(updateSizesAction, idleState);
@@ -181,7 +177,7 @@ export function YouSection({
 
       <PhotosSection garmentCount={garmentCount} />
 
-      <CloseAccountSection liveListingCount={liveListingCount} openThreadCount={openThreadCount} />
+      <CloseAccountSection />
 
       <ExportRow requestAction={requestDataExportAction} checkAction={checkDataExportReadyAction} />
     </section>
@@ -213,14 +209,24 @@ function PhotosSection({ garmentCount }: { garmentCount: number }) {
   );
 }
 
-function CloseAccountSection({
-  liveListingCount,
-  openThreadCount
-}: {
-  liveListingCount: number;
-  openThreadCount: number;
-}) {
+function CloseAccountSection() {
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [blockers, setBlockers] = useState<{
+    liveListingCount: number;
+    openThreadCount: number;
+  } | null>(null);
+
+  async function handleOpen() {
+    setLoading(true);
+    try {
+      const result = await getCloseAccountBlockersAction();
+      setBlockers(result);
+      setOpen(true);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="mt-8 border-t border-[rgba(30,26,23,.14)] pt-6">
@@ -229,18 +235,21 @@ function CloseAccountSection({
       </p>
       <button
         type="button"
-        onClick={() => setOpen(true)}
-        className="text-[14.5px] text-[var(--oxblood)]"
+        onClick={handleOpen}
+        disabled={loading}
+        className="text-[14.5px] text-[var(--oxblood)] disabled:opacity-60"
       >
-        close the account
+        {loading ? "checking your listings and threads..." : "close the account"}
       </button>
-      <CloseAccountDialog
-        open={open}
-        onClose={() => setOpen(false)}
-        liveListingCount={liveListingCount}
-        openThreadCount={openThreadCount}
-        action={closeUserAccountAction}
-      />
+      {blockers ? (
+        <CloseAccountDialog
+          open={open}
+          onClose={() => setOpen(false)}
+          liveListingCount={blockers.liveListingCount}
+          openThreadCount={blockers.openThreadCount}
+          action={closeUserAccountAction}
+        />
+      ) : null}
     </div>
   );
 }
