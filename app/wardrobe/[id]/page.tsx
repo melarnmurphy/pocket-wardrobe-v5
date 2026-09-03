@@ -15,6 +15,7 @@ import {
   FieldPickerControl,
   MergeControl,
   RecutControl,
+  SeasonalStorageControl,
   WearHistorySection,
   type GarmentFieldSnapshot
 } from "@/components/garderobe/wardrobe/piece-detail-panels";
@@ -27,6 +28,7 @@ import {
   removeFromLetGoAction,
   setAvailabilityAction,
   setPriceManuallyAction,
+  setSeasonalStorageAction,
   undoArchiveGarmentAction,
   updateGarmentAction,
   updateWearEventAction
@@ -89,6 +91,7 @@ export default async function PieceDetailPage({ params }: { params: Promise<{ id
 
     const costPerWearText = formatMoney(garment.cost_per_wear, garment.purchase_currency);
     const isArchived = Boolean(garment.archived_at);
+    const isSeasonallyStored = Boolean(garment.seasonally_stored_at);
     const isOnLetGoList = Boolean(garment.let_go_reason);
     const pieceName = garment.title || garment.category;
 
@@ -133,6 +136,12 @@ export default async function PieceDetailPage({ params }: { params: Promise<{ id
           <div className="mt-4 rounded-[4px] border border-dashed border-[rgba(30,26,23,.3)] bg-[var(--paper)] px-4 py-3 text-[12.5px] text-[var(--stone)]">
             let go{garment.archived_at ? ` on ${new Date(garment.archived_at).toLocaleDateString("en-AU")}` : ""}
             {garment.archive_reason ? ` — ${garment.archive_reason}` : ""}. Wear history is kept.
+          </div>
+        ) : null}
+
+        {isSeasonallyStored ? (
+          <div className="mt-4 rounded-[4px] border border-dashed border-[rgba(30,26,23,.3)] bg-[var(--paper)] px-4 py-3 text-[12.5px] text-[var(--stone)]">
+            stored for the season. Still counts in your wardrobe.
           </div>
         ) : null}
 
@@ -224,6 +233,14 @@ export default async function PieceDetailPage({ params }: { params: Promise<{ id
                   </Chip>
                 </form>
               ))}
+            </div>
+            <div className="pt-3">
+              <SeasonalStorageControl
+                garmentId={garment.id as string}
+                pieceName={pieceName}
+                stored={isSeasonallyStored}
+                setSeasonalStorageAction={setSeasonalStorageAction}
+              />
             </div>
           </section>
         ) : null}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Pencil } from "lucide-react";
 import {
   type ReactNode,
   useActionState,
@@ -20,6 +21,7 @@ import { PremiumUpsellCard } from "@/components/premium-upsell-card";
 import { RecentlyDeletedSheet } from "@/components/garderobe/wardrobe/recently-deleted-sheet";
 import { SelectModeBar } from "@/components/garderobe/wardrobe/select-mode-bar";
 import { NewCollectionSheet } from "@/components/garderobe/wardrobe/new-collection-sheet";
+import { ManageCollectionSheet } from "@/components/garderobe/wardrobe/manage-collection-sheet";
 import { SortSheet } from "@/components/garderobe/wardrobe/sort-sheet";
 import { Dialog } from "@/components/garderobe/dialog";
 import { UsedElsewhereDialog } from "@/components/garderobe/wardrobe/used-elsewhere-dialog";
@@ -63,6 +65,8 @@ export function WardrobeShop({
   restoreGarmentAction,
   bulkDeleteGarmentsAction,
   createCollectionAction,
+  renameCollectionAction,
+  deleteCollectionAction,
   archiveGarmentAction
 }: {
   garments: GarmentListItem[];
@@ -143,6 +147,14 @@ export function WardrobeShop({
     state: WardrobeActionState,
     formData: FormData
   ) => Promise<WardrobeActionState>;
+  renameCollectionAction: (
+    state: WardrobeActionState,
+    formData: FormData
+  ) => Promise<WardrobeActionState>;
+  deleteCollectionAction: (
+    state: WardrobeActionState,
+    formData: FormData
+  ) => Promise<WardrobeActionState>;
   archiveGarmentAction: (
     state: WardrobeActionState,
     formData: FormData
@@ -166,6 +178,9 @@ export function WardrobeShop({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isNewCollectionOpen, setIsNewCollectionOpen] = useState(false);
+  const [managingCollection, setManagingCollection] = useState<{ id: string; name: string } | null>(
+    null
+  );
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
   const [createPreviewTitle, setCreatePreviewTitle] = useState("");
   const [createPreviewBrand, setCreatePreviewBrand] = useState("");
@@ -829,19 +844,30 @@ export function WardrobeShop({
                 {collections.map((collection) => {
                   const active = collectionFilter === collection.id;
                   return (
-                    <button
-                      key={collection.id}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() =>
-                        setCollectionFilter((current) =>
-                          current === collection.id ? "all" : collection.id
-                        )
-                      }
-                      className={swatchClass(active)}
-                    >
-                      {collection.name}
-                    </button>
+                    <span key={collection.id} className="inline-flex items-center gap-1">
+                      <button
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() =>
+                          setCollectionFilter((current) =>
+                            current === collection.id ? "all" : collection.id
+                          )
+                        }
+                        className={swatchClass(active)}
+                      >
+                        {collection.name}
+                      </button>
+                      {active ? (
+                        <button
+                          type="button"
+                          aria-label={`manage ${collection.name}`}
+                          onClick={() => setManagingCollection({ id: collection.id, name: collection.name })}
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[var(--stone)]"
+                        >
+                          <Pencil size={12} strokeWidth={1.5} />
+                        </button>
+                      ) : null}
+                    </span>
                   );
                 })}
               </div>
@@ -1210,6 +1236,22 @@ export function WardrobeShop({
         garmentIds={Array.from(selectedIds)}
         onClose={() => setIsNewCollectionOpen(false)}
         createAction={createCollectionAction}
+      />
+
+      <ManageCollectionSheet
+        open={Boolean(managingCollection)}
+        collection={managingCollection}
+        onClose={() => setManagingCollection(null)}
+        onDeleted={() => {
+          setCollectionFilter((current) =>
+            managingCollection && current === managingCollection.id ? "all" : current
+          );
+          setManagingCollection(null);
+          router.refresh();
+        }}
+        renameAction={renameCollectionAction}
+        deleteAction={deleteCollectionAction}
+        onRenamed={() => router.refresh()}
       />
     </>
   );

@@ -35,8 +35,10 @@ import {
   createPhotoDraftAction,
   createProductUrlDraftAction,
   createReceiptDraftAction,
+  deleteCollectionAction,
   deleteGarmentAction,
   logWearAction,
+  renameCollectionAction,
   restoreGarmentAction,
   setGarmentFeatureImageAction,
   updateGarmentAction,
@@ -159,6 +161,8 @@ export default async function WardrobeItemsPage({
           restoreGarmentAction={restoreGarmentAction}
           bulkDeleteGarmentsAction={bulkDeleteGarmentsAction}
           createCollectionAction={createCollectionAction}
+          renameCollectionAction={renameCollectionAction}
+          deleteCollectionAction={deleteCollectionAction}
           archiveGarmentAction={archiveGarmentAction}
         />
       </div>

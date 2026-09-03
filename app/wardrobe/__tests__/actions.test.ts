@@ -174,3 +174,108 @@ describe("createCollectionAction", () => {
     expect(result.status).toBe("error");
   });
 });
+
+describe("setSeasonalStorageAction", () => {
+  it("stores a piece for the season", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/domain/wardrobe/service", async () => {
+      const actual = await vi.importActual("@/lib/domain/wardrobe/service");
+      return { ...actual, setGarmentSeasonalStorage: vi.fn(async () => {}) };
+    });
+    const { setSeasonalStorageAction } = await import("@/app/wardrobe/actions");
+    const { setGarmentSeasonalStorage } = await import("@/lib/domain/wardrobe/service");
+
+    const formData = new FormData();
+    formData.set("garment_id", "66666666-6666-6666-6666-666666666666");
+    formData.set("stored", "true");
+
+    const result = await setSeasonalStorageAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("success");
+    expect(setGarmentSeasonalStorage).toHaveBeenCalledWith(
+      "66666666-6666-6666-6666-666666666666",
+      true
+    );
+    vi.doUnmock("@/lib/domain/wardrobe/service");
+  });
+
+  it("brings a piece back from seasonal storage", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/domain/wardrobe/service", async () => {
+      const actual = await vi.importActual("@/lib/domain/wardrobe/service");
+      return { ...actual, setGarmentSeasonalStorage: vi.fn(async () => {}) };
+    });
+    const { setSeasonalStorageAction } = await import("@/app/wardrobe/actions");
+    const { setGarmentSeasonalStorage } = await import("@/lib/domain/wardrobe/service");
+
+    const formData = new FormData();
+    formData.set("garment_id", "66666666-6666-6666-6666-666666666666");
+    formData.set("stored", "false");
+
+    const result = await setSeasonalStorageAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("success");
+    expect(setGarmentSeasonalStorage).toHaveBeenCalledWith(
+      "66666666-6666-6666-6666-666666666666",
+      false
+    );
+    vi.doUnmock("@/lib/domain/wardrobe/service");
+  });
+});
+
+describe("renameCollectionAction", () => {
+  it("renames the collection", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/domain/wardrobe/service", async () => {
+      const actual = await vi.importActual("@/lib/domain/wardrobe/service");
+      return { ...actual, renameCollection: vi.fn(async () => {}) };
+    });
+    const { renameCollectionAction } = await import("@/app/wardrobe/actions");
+    const { renameCollection } = await import("@/lib/domain/wardrobe/service");
+
+    const formData = new FormData();
+    formData.set("collection_id", "99999999-9999-9999-9999-999999999999");
+    formData.set("name", "weekend capsule");
+
+    const result = await renameCollectionAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("success");
+    expect(renameCollection).toHaveBeenCalledWith({
+      collectionId: "99999999-9999-9999-9999-999999999999",
+      name: "weekend capsule"
+    });
+    vi.doUnmock("@/lib/domain/wardrobe/service");
+  });
+
+  it("rejects an empty name", async () => {
+    const { renameCollectionAction } = await import("@/app/wardrobe/actions");
+    const formData = new FormData();
+    formData.set("collection_id", "99999999-9999-9999-9999-999999999999");
+    formData.set("name", "");
+
+    const result = await renameCollectionAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("error");
+  });
+});
+
+describe("deleteCollectionAction", () => {
+  it("deletes the collection and reports the pieces are unaffected", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/domain/wardrobe/service", async () => {
+      const actual = await vi.importActual("@/lib/domain/wardrobe/service");
+      return { ...actual, deleteCollection: vi.fn(async () => {}) };
+    });
+    const { deleteCollectionAction } = await import("@/app/wardrobe/actions");
+    const { deleteCollection } = await import("@/lib/domain/wardrobe/service");
+
+    const formData = new FormData();
+    formData.set("collection_id", "99999999-9999-9999-9999-999999999999");
+
+    const result = await deleteCollectionAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("success");
+    expect(deleteCollection).toHaveBeenCalledWith("99999999-9999-9999-9999-999999999999");
+    vi.doUnmock("@/lib/domain/wardrobe/service");
+  });
+});

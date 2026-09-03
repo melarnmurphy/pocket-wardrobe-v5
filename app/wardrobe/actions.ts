@@ -11,13 +11,16 @@ import {
   addGarmentImage,
   addGarmentToLetGo,
   archiveGarment,
+  deleteCollection,
   deleteGarment,
   getGarmentUsageBlockers,
   mergeGarments,
   removeGarmentFromLetGo,
+  renameCollection,
   restoreGarment,
   setGarmentAvailability,
   setGarmentPriceManually,
+  setGarmentSeasonalStorage,
   unarchiveGarment,
   setGarmentFeatureImage,
   setGarmentPrimaryColourFamily,
@@ -192,9 +195,23 @@ const createCollectionFormSchema = z.object({
   garment_id: z.array(z.string().uuid()).default([])
 });
 
+const renameCollectionFormSchema = z.object({
+  collection_id: z.string().uuid(),
+  name: z.string().trim().min(1).max(120)
+});
+
+const deleteCollectionFormSchema = z.object({
+  collection_id: z.string().uuid()
+});
+
 const setAvailabilityFormSchema = z.object({
   garment_id: z.string().uuid(),
   availability: availabilitySchema
+});
+
+const setSeasonalStorageFormSchema = z.object({
+  garment_id: z.string().uuid(),
+  stored: z.enum(["true", "false"])
 });
 
 const addToLetGoFormSchema = z.object({
@@ -1038,6 +1055,49 @@ export async function createCollectionAction(
   }
 }
 
+export async function renameCollectionAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = renameCollectionFormSchema.parse({
+      collection_id: formData.get("collection_id"),
+      name: formData.get("name")
+    });
+
+    await renameCollection({ collectionId: values.collection_id, name: values.name });
+    revalidatePath("/wardrobe");
+
+    return { status: "success", message: "Collection renamed." };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to rename the collection."
+    };
+  }
+}
+
+export async function deleteCollectionAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = deleteCollectionFormSchema.parse({
+      collection_id: formData.get("collection_id")
+    });
+
+    await deleteCollection(values.collection_id);
+    revalidatePath("/wardrobe");
+
+    return { status: "success", message: "Collection deleted. The pieces stay in your wardrobe." };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to delete the collection."
+    };
+  }
+}
+
 export async function setAvailabilityAction(
   _previousState: WardrobeActionState,
   formData: FormData
@@ -1061,6 +1121,36 @@ export async function setAvailabilityAction(
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Unable to update availability."
+    };
+  }
+}
+
+export async function setSeasonalStorageAction(
+  _previousState: WardrobeActionState,
+  formData: FormData
+): Promise<WardrobeActionState> {
+  try {
+    const values = setSeasonalStorageFormSchema.parse({
+      garment_id: formData.get("garment_id"),
+      stored: formData.get("stored")
+    });
+    const stored = values.stored === "true";
+
+    await setGarmentSeasonalStorage(values.garment_id, stored);
+    revalidatePath("/wardrobe");
+    revalidatePath(`/wardrobe/${values.garment_id}`);
+
+    return {
+      status: "success",
+      garmentId: values.garment_id,
+      message: stored
+        ? "Stored for the season. It still counts in your wardrobe."
+        : "Back in the everyday wardrobe."
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to update seasonal storage."
     };
   }
 }
