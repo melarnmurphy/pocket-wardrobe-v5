@@ -13,7 +13,7 @@ type DialogProps = {
   confirmLabel: string;
   onConfirm: () => void;
   confirmVariant?: "primary" | "on-blush";
-  /** Extra content between the description and the button row — e.g. a type-to-confirm input. */
+  /** Extra content between the description and the button row, e.g. a type-to-confirm input. */
   children?: ReactNode;
   /** Disables and dims the confirm button, e.g. until a type-to-confirm input matches. */
   confirmDisabled?: boolean;

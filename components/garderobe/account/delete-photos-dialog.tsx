@@ -14,7 +14,7 @@ type DeletePhotosDialogProps = {
 
 const idleState: AccountActionState = { status: "idle", message: null };
 
-/** MODALS.md §5 — "delete my photos, keep the records": a row in w3e with no dialog behind it. */
+/** MODALS.md §5, "delete my photos, keep the records": a row in w3e with no dialog behind it. */
 export function DeletePhotosDialog({ open, onClose, garmentCount, action }: DeletePhotosDialogProps) {
   const [state, formAction] = useActionState(action, idleState);
   const formRef = useRef<HTMLFormElement>(null);

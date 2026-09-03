@@ -9,7 +9,7 @@ type SignOutDialogProps = {
   onClose: () => void;
 };
 
-/** MODALS.md §5 — sign out: one question, no consequence to name beyond the obvious. */
+/** MODALS.md §5, sign out: one question, no consequence to name beyond the obvious. */
 export function SignOutDialog({ open, onClose }: SignOutDialogProps) {
   const formRef = useRef<HTMLFormElement>(null);
 

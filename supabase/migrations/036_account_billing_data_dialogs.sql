@@ -2,7 +2,7 @@
 -- Adds the hook point for the payment-failed/subscription-lapsed dialog
 -- (billing_status), and the record behind the export started/ready toast
 -- (data_export_requests). Neither is written to by a real payment or
--- export pipeline yet — see HANDOFF.md-equivalent notes in the account
+-- export pipeline yet: see HANDOFF.md-equivalent notes in the account
 -- dialogs report for the follow-on work this leaves open.
 
 alter table public.user_entitlements
