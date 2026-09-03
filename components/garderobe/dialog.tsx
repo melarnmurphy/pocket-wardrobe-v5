@@ -1,7 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { PillButton } from "./pill-button";
+
+type DialogConfirmProps =
+  | { onConfirm: () => void; confirmHref?: never }
+  | { onConfirm?: never; confirmHref: string };
 
 type DialogProps = {
   open: boolean;
@@ -11,11 +16,23 @@ type DialogProps = {
   icon?: ReactNode;
   cancelLabel?: string;
   confirmLabel: string;
-  onConfirm: () => void;
   confirmVariant?: "primary" | "on-blush";
+} & DialogConfirmProps;
+
+const CONFIRM_LINK_CLASSES: Record<"primary" | "on-blush", string> = {
+  primary: "bg-[var(--oxblood)] text-[var(--cream)]",
+  "on-blush": "bg-[var(--blush)] text-[var(--blush-ink)]"
 };
 
-/** The centred dialog primitive: 14px radius, 22px inset, two buttons maximum. */
+/**
+ * The centred dialog primitive: 14px radius, 22px inset, two buttons maximum.
+ *
+ * The confirm side is a `PillButton` by default. Pass `confirmHref` instead
+ * of `onConfirm` when the confirm action needs to be a real link (so
+ * back/forward navigation and open-in-new-tab work) rather than a
+ * click-handler-only button; it renders styled identically to the button it
+ * replaces.
+ */
 export function Dialog({
   open,
   onClose,
@@ -25,6 +42,7 @@ export function Dialog({
   cancelLabel = "cancel",
   confirmLabel,
   onConfirm,
+  confirmHref,
   confirmVariant = "primary"
 }: DialogProps) {
   if (!open) return null;
@@ -50,12 +68,31 @@ export function Dialog({
           </div>
         ) : null}
         <div className="flex gap-[9px] pt-1">
-          <PillButton variant="secondary" onClick={onClose} className="h-11">
+          <PillButton
+            variant="secondary"
+            onClick={onClose}
+            fullWidth={!confirmHref}
+            className={confirmHref ? "h-11 flex-1" : "h-11"}
+          >
             {cancelLabel}
           </PillButton>
-          <PillButton variant={confirmVariant} onClick={onConfirm} className="h-11">
-            {confirmLabel}
-          </PillButton>
+          {confirmHref ? (
+            <Link
+              href={confirmHref}
+              className={[
+                "inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-[100px] px-6",
+                "font-semibold text-[9.5px] uppercase tracking-[.2em]",
+                "transition-transform duration-150 ease-out active:scale-[.98]",
+                CONFIRM_LINK_CLASSES[confirmVariant]
+              ].join(" ")}
+            >
+              {confirmLabel}
+            </Link>
+          ) : (
+            <PillButton variant={confirmVariant} onClick={onConfirm} className="h-11">
+              {confirmLabel}
+            </PillButton>
+          )}
         </div>
       </div>
     </div>

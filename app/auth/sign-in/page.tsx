@@ -7,6 +7,7 @@ import {
 } from "@/app/auth/actions";
 import { ResetSentDialog } from "@/components/garderobe/auth/reset-sent-dialog";
 import { EmailTakenDialog } from "@/components/garderobe/auth/email-taken-dialog";
+import { shouldShowInlinePasswordError, shouldShowTopBannerError } from "@/lib/domain/auth/error-display";
 
 export default async function SignInPage({
   searchParams
@@ -16,6 +17,7 @@ export default async function SignInPage({
     mode?: string;
     email?: string;
     error?: string;
+    errorSource?: string;
     notice?: string;
     resetSent?: string;
     duplicate?: string;
@@ -66,7 +68,7 @@ export default async function SignInPage({
               : "Existing magic-link accounts can send themselves a password setup email below, then use password sign-in from the same screen."}
           </p>
 
-          {params.error && mode !== "password" ? (
+          {shouldShowTopBannerError(params) ? (
             <p className="mt-6 rounded-[1rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {params.error}
             </p>
@@ -147,7 +149,7 @@ export default async function SignInPage({
                     placeholder="Password"
                     className="w-full rounded-[1rem] border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
                   />
-                  {params.error && mode === "password" ? (
+                  {shouldShowInlinePasswordError(params) ? (
                     <p className="rounded-[1rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                       {params.error}
                     </p>

@@ -86,7 +86,14 @@ export async function signInWithMagicLinkAction(formData: FormData) {
     await checkRateLimit("magic-link", 5, 600);
   } catch (error) {
     if (error instanceof RateLimitError) {
-      redirect(buildAuthPageRedirect({ next, email: values.email, error: error.message }) as never);
+      redirect(
+        buildAuthPageRedirect({
+          next,
+          email: values.email,
+          error: error.message,
+          errorSource: "magic-link"
+        }) as never
+      );
     }
     throw error;
   }
@@ -126,7 +133,15 @@ export async function signInWithPasswordAction(formData: FormData) {
     await checkRateLimit("sign-in-password", 10, 60);
   } catch (error) {
     if (error instanceof RateLimitError) {
-      redirect(buildAuthPageRedirect({ mode: "password", next, email: values.email, error: error.message }) as never);
+      redirect(
+        buildAuthPageRedirect({
+          mode: "password",
+          next,
+          email: values.email,
+          error: error.message,
+          errorSource: "password"
+        }) as never
+      );
     }
     throw error;
   }
@@ -143,7 +158,8 @@ export async function signInWithPasswordAction(formData: FormData) {
         mode: "password",
         next,
         email: values.email,
-        error: mapSignInPasswordError(error.message)
+        error: mapSignInPasswordError(error.message),
+        errorSource: "password"
       }) as never
     );
   }
@@ -168,7 +184,15 @@ export async function signUpWithPasswordAction(formData: FormData) {
     await checkRateLimit("sign-up", 10, 3600);
   } catch (error) {
     if (error instanceof RateLimitError) {
-      redirect(buildAuthPageRedirect({ mode: "signup", next, email: values.email, error: error.message }) as never);
+      redirect(
+        buildAuthPageRedirect({
+          mode: "signup",
+          next,
+          email: values.email,
+          error: error.message,
+          errorSource: "signup"
+        }) as never
+      );
     }
     throw error;
   }
@@ -199,7 +223,8 @@ export async function signUpWithPasswordAction(formData: FormData) {
         mode: "signup",
         next,
         email: values.email,
-        error: error.message
+        error: error.message,
+        errorSource: "signup"
       }) as never
     );
   }
@@ -236,7 +261,15 @@ export async function sendPasswordResetAction(formData: FormData) {
     await checkRateLimit("password-reset", 3, 600);
   } catch (error) {
     if (error instanceof RateLimitError) {
-      redirect(buildAuthPageRedirect({ mode: "reset", next, email: values.email, error: error.message }) as never);
+      redirect(
+        buildAuthPageRedirect({
+          mode: "reset",
+          next,
+          email: values.email,
+          error: error.message,
+          errorSource: "reset"
+        }) as never
+      );
     }
     throw error;
   }
@@ -254,14 +287,15 @@ export async function sendPasswordResetAction(formData: FormData) {
   });
 
   if (error) {
-  redirect(
-    buildAuthPageRedirect({
-      mode: "reset",
-      next,
-      email: values.email,
-      error: error.message
-    }) as never
-  );
+    redirect(
+      buildAuthPageRedirect({
+        mode: "reset",
+        next,
+        email: values.email,
+        error: error.message,
+        errorSource: "reset"
+      }) as never
+    );
   }
 
   redirect(
