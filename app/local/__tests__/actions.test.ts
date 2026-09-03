@@ -103,7 +103,10 @@ describe("cancelListingAction", () => {
     const result = await cancelListingAction("33333333-3333-3333-3333-333333333333", "44444444-4444-4444-4444-444444444444");
 
     expect(result.status).toBe("success");
-    expect(closeThreadForCancelledListing).toHaveBeenCalledWith("44444444-4444-4444-4444-444444444444");
+    expect(closeThreadForCancelledListing).toHaveBeenCalledWith(
+      "44444444-4444-4444-4444-444444444444",
+      "33333333-3333-3333-3333-333333333333"
+    );
     vi.doUnmock("@/lib/domain/local-threads/threads-service");
   });
 

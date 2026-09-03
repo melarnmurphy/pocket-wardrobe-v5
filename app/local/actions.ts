@@ -225,7 +225,7 @@ export async function cancelListingAction(listingId: string, threadIdToClose?: s
   try {
     await withdrawLocalListing(listingId);
     if (threadIdToClose) {
-      await closeThreadForCancelledListing(threadIdToClose);
+      await closeThreadForCancelledListing(threadIdToClose, listingId);
     }
     revalidatePath(`/local/${listingId}`);
     revalidatePath("/local/nearby");

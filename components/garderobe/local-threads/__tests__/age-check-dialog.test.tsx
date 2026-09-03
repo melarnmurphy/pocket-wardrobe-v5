@@ -48,7 +48,7 @@ describe("AgeBlockedDialog", () => {
     render(<AgeBlockedDialog open onDismiss={onDismiss} />);
 
     expect(screen.getByText(/needs an adult/i)).toBeInTheDocument();
-    expect(screen.getByText(/every other part of garderobe/i)).toBeInTheDocument();
+    expect(screen.getByText(/selling stays off until you're 18/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /ok/i }));
     expect(onDismiss).toHaveBeenCalled();
   });

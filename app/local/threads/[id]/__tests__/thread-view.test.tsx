@@ -30,6 +30,7 @@ vi.mock("@/app/local/actions", () => ({
   cancelHandoverAction: vi.fn(async () => ({ status: "success" })),
   reportNoShowAction: vi.fn(async () => ({ status: "success" }))
 }));
+vi.mock("@/lib/ui/app-toast", () => ({ showAppToast: vi.fn() }));
 
 const baseThread = {
   id: "11111111-1111-1111-1111-111111111111",
@@ -101,5 +102,63 @@ describe("ThreadView block and report", () => {
 
     fireEvent.click(screen.getByText("decline"));
     expect(screen.getByText(/decline this offer\?/i)).toBeInTheDocument();
+  });
+
+  it("updates the offer's status in place after a successful decline, without a reload", async () => {
+    render(
+      <ThreadView
+        viewerId={baseThread.seller_id}
+        thread={baseThread}
+        initialMessages={[
+          {
+            id: "55555555-5555-5555-5555-555555555555",
+            thread_id: baseThread.id,
+            sender_id: baseThread.buyer_id,
+            kind: "offer",
+            body: "",
+            offer_cents: 18500,
+            offer_status: "pending",
+            sent_at: "2026-01-01T00:00:00Z",
+            read_at: null
+          }
+        ]}
+        initialHandover={null}
+        counterpartName="sam"
+      />
+    );
+
+    fireEvent.click(screen.getAllByText("decline")[0]);
+    fireEvent.click(screen.getAllByText("decline")[1]);
+
+    expect(await screen.findByText(/· declined/)).toBeInTheDocument();
+  });
+
+  it("keeps the block dialog open and surfaces the error when blocking fails", async () => {
+    const { blockUserAction } = await import("@/app/local/actions");
+    const { showAppToast } = await import("@/lib/ui/app-toast");
+    (blockUserAction as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      status: "error",
+      message: "Unable to block this user."
+    });
+
+    render(
+      <ThreadView
+        viewerId={baseThread.buyer_id}
+        thread={baseThread}
+        initialMessages={[]}
+        initialHandover={null}
+        counterpartName="sam"
+      />
+    );
+
+    fireEvent.click(screen.getByText("block"));
+    fireEvent.click(screen.getAllByText("block")[screen.getAllByText("block").length - 1]);
+
+    await vi.waitFor(() => {
+      expect(showAppToast).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Unable to block this user.", tone: "error" })
+      );
+    });
+    expect(screen.getByText(/block sam\?/i)).toBeInTheDocument();
   });
 });

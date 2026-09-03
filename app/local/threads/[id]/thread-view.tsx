@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { PillButton } from "@/components/garderobe";
+import { showAppToast } from "@/lib/ui/app-toast";
 import { OfferDecisionDialog } from "@/components/garderobe/local-threads/offer-decision-dialog";
 import { HandoverManageSheet } from "@/components/garderobe/local-threads/handover-manage-sheet";
 import { NoShowSheet } from "@/components/garderobe/local-threads/no-show-sheet";
@@ -248,11 +249,20 @@ export function ThreadView({
           offerCents={offerDecision.offer_cents ?? 0}
           onClose={() => setOfferDecision(null)}
           onConfirm={async () => {
-            if (offerDecision.sender_id === viewerId) {
-              await withdrawOfferAction(offerDecision.id, thread.id);
-            } else {
-              await respondToOfferAction(offerDecision.id, thread.id);
+            const isMine = offerDecision.sender_id === viewerId;
+            const result = isMine
+              ? await withdrawOfferAction(offerDecision.id, thread.id)
+              : await respondToOfferAction(offerDecision.id, thread.id);
+            if (result.status === "error") {
+              showAppToast({ message: result.message, tone: "error" });
+              return;
             }
+            const nextStatus = isMine ? "withdrawn" : "declined";
+            setMessages((current) =>
+              current.map((message) =>
+                message.id === offerDecision.id ? { ...message, offer_status: nextStatus } : message
+              )
+            );
             setOfferDecision(null);
             router.refresh();
           }}
@@ -266,13 +276,23 @@ export function ThreadView({
           at={handover.at}
           onClose={() => setShowHandoverManage(false)}
           onReschedule={async () => {
-            await cancelHandoverAction(handover.id, thread.id);
+            const result = await cancelHandoverAction(handover.id, thread.id);
+            if (result.status === "error") {
+              showAppToast({ message: result.message, tone: "error" });
+              return;
+            }
+            setHandover(null);
             setShowHandoverManage(false);
             setShowHandoverForm(true);
             router.refresh();
           }}
           onCancel={async () => {
-            await cancelHandoverAction(handover.id, thread.id);
+            const result = await cancelHandoverAction(handover.id, thread.id);
+            if (result.status === "error") {
+              showAppToast({ message: result.message, tone: "error" });
+              return;
+            }
+            setHandover(null);
             setShowHandoverManage(false);
             router.refresh();
           }}
@@ -286,7 +306,12 @@ export function ThreadView({
           at={handover.at}
           onClose={() => setShowNoShow(false)}
           onReport={async () => {
-            await reportNoShowAction(handover.id, thread.id);
+            const result = await reportNoShowAction(handover.id, thread.id);
+            if (result.status === "error") {
+              showAppToast({ message: result.message, tone: "error" });
+              return;
+            }
+            setHandover((prev) => (prev ? { ...prev, state: "missed" } : prev));
             setShowNoShow(false);
             router.refresh();
           }}
@@ -296,7 +321,10 @@ export function ThreadView({
         open={showReport}
         onClose={() => setShowReport(false)}
         onSubmit={async (reason) => {
-          await reportListingAction(thread.listing_id, reason);
+          const result = await reportListingAction(thread.listing_id, reason);
+          if (result.status === "error") {
+            throw new Error(result.message);
+          }
         }}
       />
       <BlockUserDialog
@@ -305,7 +333,11 @@ export function ThreadView({
         onClose={() => setShowBlock(false)}
         onConfirm={async () => {
           const counterpartId = iAmBuyer ? thread.seller_id : thread.buyer_id;
-          await blockUserAction(counterpartId, thread.id);
+          const result = await blockUserAction(counterpartId, thread.id);
+          if (result.status === "error") {
+            showAppToast({ message: result.message, tone: "error" });
+            return;
+          }
           setShowBlock(false);
           router.refresh();
         }}
