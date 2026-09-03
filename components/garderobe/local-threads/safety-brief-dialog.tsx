@@ -17,7 +17,7 @@ export function SafetyBriefDialog({ open, onAcknowledge, onClose }: SafetyBriefD
         onAcknowledge();
         onClose();
       }}
-      title="before you list"
+      title="before you meet up"
       description="meet in a public place, and never share your address. garderobe doesn't move money for you. arrange cash, payid or a bank transfer directly with the other person."
       confirmLabel="got it"
       hideCancel

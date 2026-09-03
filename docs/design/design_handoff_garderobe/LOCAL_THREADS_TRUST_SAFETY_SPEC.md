@@ -274,12 +274,17 @@ That dialog routes back to `/wardrobe/{garmentId}` on dismiss. Once `age_decline
 gate is permanent for this build: there is no in-app "actually I'm 18 now" override. Re-enabling
 it would need a support-assisted or time-based path this plan does not build.
 
-**Scope of the gate, also not fully mine to decide.** This spec gates only the **sell** side:
-creating a listing (`app/local/list/[garmentId]/page.tsx`). It does **not** gate browsing the
-nearby feed, starting a thread as a buyer, sending offers, or agreeing to a handover as a buyer,
-all of which put an under-18 user in the same in-person-meetup situation as selling does. The
-task brief that produced this spec explicitly asked for the narrower "listing/selling flow"
-default, but a buyer meeting a stranger to hand over cash carries the identical physical-safety
-profile as a seller doing the same. **This narrower scope, and the "permanent, no self-service
-override" behaviour on decline, are both product/policy defaults chosen by the build, not a
-human decision-maker, and must be confirmed or overridden before this ships.**
+**Scope of the gate, updated after human confirmation.** This spec originally gated only the
+**sell** side: creating a listing (`app/local/list/[garmentId]/page.tsx`). Per the human partner's
+explicit follow-up decision, the gate now also covers a buyer's first message on a listing
+(`MessageSellerGate`, wired into `app/local/[id]/page.tsx`) — the buyer-side equivalent first
+step toward an in-person handover. `AgeCheckDialog`, `AgeBlockedDialog`, and `SafetyBriefDialog`
+all carry neutral copy covering both sides ("local threads needs an adult" / "before you meet
+up"), and share the same profile-level flags, so confirming age or acknowledging the safety
+brief on either side of the marketplace covers the other. Sending an offer or agreeing to a
+handover as a buyer both happen inside an already-started thread, so gating thread-start is the
+one entry point that needs it; nothing downstream needs its own separate gate. Browsing the
+nearby feed remains ungated, since it involves no interaction with another person. The
+"permanent, no self-service override" behaviour on decline is unchanged, still a product/policy
+default the build chose rather than a human decision-maker, and remains open — it was not
+part of this follow-up and still needs its own explicit confirmation before this ships.

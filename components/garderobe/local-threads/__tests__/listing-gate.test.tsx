@@ -53,7 +53,7 @@ describe("ListingGate", () => {
       </ListingGate>
     );
 
-    expect(screen.getByText(/before you list/i)).toBeInTheDocument();
+    expect(screen.getByText(/before you meet up/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /got it/i }));
     // markSafetyBriefSeenAction is awaited before the form renders, so the
     // state flip lands on a later microtask than the click itself.

@@ -8,7 +8,7 @@ describe("SafetyBriefDialog", () => {
     const onAcknowledge = vi.fn();
     render(<SafetyBriefDialog open onAcknowledge={onAcknowledge} onClose={() => {}} />);
 
-    expect(screen.getByText(/before you list/i)).toBeInTheDocument();
+    expect(screen.getByText(/before you meet up/i)).toBeInTheDocument();
     expect(screen.getByText(/meet in a public place/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /cancel/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /got it/i }));

@@ -24,9 +24,13 @@ type ListingGateProps = {
 };
 
 /**
- * Orchestrates the two one-time gates in front of "list it locally": age
- * check, then the safety brief. Age-declined is permanent for this build,
- * see LOCAL_THREADS_TRUST_SAFETY_SPEC.md section 8.
+ * Orchestrates the two one-time gates in front of any local-threads action
+ * that can lead to meeting a stranger in person: listing a piece, or (via
+ * MessageSellerGate) sending a buyer's first message on a listing. Both
+ * gates share one profile-level "seen" flag each, so confirming age or
+ * acknowledging the safety brief on one side of the marketplace covers the
+ * other too. Age-declined is permanent for this build, see
+ * LOCAL_THREADS_TRUST_SAFETY_SPEC.md section 8.
  */
 export function ListingGate({
   ageConfirmed,

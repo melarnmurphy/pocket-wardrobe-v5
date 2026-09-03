@@ -2,12 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { getLocalListingDetail, incrementListingViews } from "@/lib/domain/local-threads/service";
-import { getPublicProfile } from "@/lib/domain/profile/service";
+import { getOrCreateProfile, getPublicProfile } from "@/lib/domain/profile/service";
 import { hasLiveOfferOrHandover, listMyThreads } from "@/lib/domain/local-threads/threads-service";
 import { AuthenticationError, getRequiredUser } from "@/lib/auth";
 import { AuthRequiredCard } from "@/components/auth-required-card";
-import { CutoutTile, PillButton } from "@/components/garderobe";
-import { startThreadAction } from "@/app/local/actions";
+import { CutoutTile } from "@/components/garderobe";
+import { MessageSellerGate } from "@/components/garderobe/local-threads/message-seller-gate";
 import { ManageListing } from "./manage-listing";
 
 function formatMoney(cents: number) {
@@ -26,13 +26,19 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
     }
 
     const seller = await getPublicProfile(listing.seller_id);
+    const isSeller = listing.seller_id === viewer.id;
 
-    if (listing.seller_id !== viewer.id) {
+    if (!isSeller) {
       await incrementListingViews(listing.id);
     }
 
-    const ownershipCheck =
-      listing.seller_id === viewer.id ? await hasLiveOfferOrHandover(listing.id) : null;
+    // A buyer's first message is the buyer-side equivalent of the seller's
+    // "list it locally" gate — see MessageSellerGate. Only fetched when the
+    // viewer might actually need it, since a seller viewing their own
+    // listing never sees this form.
+    const viewerProfile = !isSeller ? await getOrCreateProfile() : null;
+
+    const ownershipCheck = isSeller ? await hasLiveOfferOrHandover(listing.id) : null;
     const counterpart =
       ownershipCheck?.counterpartUserId ? await getPublicProfile(ownershipCheck.counterpartUserId) : null;
     // Resolves the specific thread to close on cancel: hasLiveOfferOrHandover only reports
@@ -111,29 +117,16 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
           )}
         </section>
 
-        {listing.seller_id !== viewer.id && listing.status === "live" ? (
+        {!isSeller && listing.status === "live" && viewerProfile ? (
           <section className="mt-8 border-t border-[rgba(30,26,23,.14)] pt-6">
-            <form
-              action={async (formData: FormData) => {
-                "use server";
-                const body = String(formData.get("message") ?? "").trim();
-                if (!body) return;
-                await startThreadAction(listing.id, body);
-              }}
-              className="flex flex-col gap-3"
-            >
-              <textarea
-                name="message"
-                rows={2}
-                placeholder="is this still available?"
-                className="w-full rounded-[5px] border border-[rgba(30,26,23,.22)] bg-transparent px-3 py-2 text-[14px] text-[var(--ink)] outline-none placeholder:text-[var(--stone)]"
-              />
-              <PillButton type="submit" fullWidth={false}>
-                message the seller
-              </PillButton>
-            </form>
+            <MessageSellerGate
+              listingId={listing.id}
+              ageConfirmed={Boolean(viewerProfile.age_confirmed_at)}
+              ageDeclined={Boolean(viewerProfile.age_declined_at)}
+              safetyBriefSeen={Boolean(viewerProfile.local_safety_brief_seen_at)}
+            />
           </section>
-        ) : listing.seller_id === viewer.id && ownershipCheck ? (
+        ) : isSeller && ownershipCheck ? (
           <ManageListing
             listingId={listing.id}
             hasOffer={ownershipCheck.hasOffer}
