@@ -2,6 +2,8 @@ import { cache } from "react";
 import { z } from "zod";
 import { getRequiredUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
+import { listMyThreads, withdrawLocalListing } from "@/lib/domain/local-threads/threads-service";
 
 const accountProfileSchema = z.object({
   email: z.string().email().nullable(),
@@ -152,4 +154,70 @@ export async function deleteAllUserPhotos(): Promise<{ deletedCount: number }> {
   }
 
   return { deletedCount: rows.length };
+}
+
+const LIVE_LISTING_STATUSES = ["live", "reserved", "handover arranged"] as const;
+const OPEN_THREAD_STATES = ["open", "handover arranged"] as const;
+
+/**
+ * MODALS.md §5 — "close the account": must say what happens to live
+ * listings and open threads before the type-to-confirm gate. A listing is
+ * "live" while its status is live, reserved, or mid-handover; a thread is
+ * "open" while its state is open or mid-handover (supabase/migrations/029
+ * and /031).
+ */
+export async function getAccountClosureBlockers(): Promise<{
+  liveListingCount: number;
+  liveListingIds: string[];
+  openThreadCount: number;
+}> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  const { data, error: listingsError } = await supabase
+    .from("local_listings")
+    .select("id")
+    .eq("seller_id", user.id)
+    .in("status", [...LIVE_LISTING_STATUSES]);
+
+  if (listingsError) {
+    throw new Error(listingsError.message);
+  }
+
+  const listings = (data ?? []) as { id: string }[];
+
+  const threads = await listMyThreads();
+  const openThreadCount = threads.filter((thread) =>
+    (OPEN_THREAD_STATES as readonly string[]).includes(thread.state)
+  ).length;
+
+  return {
+    liveListingCount: listings.length,
+    liveListingIds: listings.map((listing) => listing.id),
+    openThreadCount
+  };
+}
+
+/**
+ * Withdraws every live listing (so they stop appearing in the nearby feed
+ * before the account disappears out from under them), then deletes the
+ * auth user. Every user-owned table in this schema is
+ * `references auth.users(id) on delete cascade`, so this one delete is
+ * enough to remove the rest — garments, threads, messages, handovers,
+ * profile, entitlements, everything.
+ */
+export async function closeUserAccount(): Promise<void> {
+  const user = await getRequiredUser();
+  const blockers = await getAccountClosureBlockers();
+
+  for (const listingId of blockers.liveListingIds) {
+    await withdrawLocalListing(listingId);
+  }
+
+  const serviceClient = createServiceClient();
+  const { error } = await serviceClient.auth.admin.deleteUser(user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }
