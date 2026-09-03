@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { getGarmentById } from "@/lib/domain/wardrobe/service";
+import { getOrCreateProfile } from "@/lib/domain/profile/service";
 import { AuthenticationError } from "@/lib/auth";
 import { AuthRequiredCard } from "@/components/auth-required-card";
+import { ListingGate } from "@/components/garderobe/local-threads/listing-gate";
 import { ListingForm } from "./listing-form";
 
 /** 16c / w2c — list it locally, photos pre-picked from the piece's own images. */
@@ -19,6 +21,8 @@ export default async function ListLocallyPage({
     if (!garment) {
       notFound();
     }
+
+    const profile = await getOrCreateProfile();
 
     return (
       <div className="mx-auto max-w-[520px] px-5 py-6 pb-16">
@@ -38,12 +42,19 @@ export default async function ListLocallyPage({
           Garderobe — you and the buyer arrange cash, payid or a bank transfer yourselves.
         </p>
 
-        <ListingForm
+        <ListingGate
           garmentId={garmentId}
-          suggestedTitle={garment.title || garment.category}
-          suggestedSize={garment.size ?? null}
-          wearCount={garment.wear_count}
-        />
+          ageConfirmed={Boolean(profile.age_confirmed_at)}
+          ageDeclined={Boolean(profile.age_declined_at)}
+          safetyBriefSeen={Boolean(profile.local_safety_brief_seen_at)}
+        >
+          <ListingForm
+            garmentId={garmentId}
+            suggestedTitle={garment.title || garment.category}
+            suggestedSize={garment.size ?? null}
+            wearCount={garment.wear_count}
+          />
+        </ListingGate>
       </div>
     );
   } catch (error) {

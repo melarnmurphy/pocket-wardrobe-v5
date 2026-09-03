@@ -20,9 +20,9 @@ type ProfileInsert = TablesInsert<"profiles">;
 type ProfileUpdate = TablesUpdate<"profiles">;
 
 const PROFILE_SELECT =
-  "user_id,local_name,suburb,tops_size,bottoms_size,shoes_size,tops_size_system,bottoms_size_system,shoes_size_system,height_cm,one_size_either_way,show_suburb,show_wear_count,suburb_lat,suburb_lng,radius_km,onboarding_completed_at,created_at,updated_at";
+  "user_id,local_name,suburb,tops_size,bottoms_size,shoes_size,tops_size_system,bottoms_size_system,shoes_size_system,height_cm,one_size_either_way,show_suburb,show_wear_count,suburb_lat,suburb_lng,radius_km,onboarding_completed_at,local_safety_brief_seen_at,age_confirmed_at,age_declined_at,created_at,updated_at";
 
-/** No signup trigger creates this row — it's created lazily on first read. */
+/** No signup trigger creates this row, it's created lazily on first read. */
 export const getOrCreateProfile = cache(async (): Promise<Profile> => {
   const user = await getRequiredUser();
   const supabase = await createClient();
@@ -123,13 +123,59 @@ export async function updateLocalPrivacy(input: LocalPrivacyInput): Promise<Prof
   return profileSchema.parse(data);
 }
 
-/** 6a/w4a-c — marks onboarding done so /onboarding stops intercepting sign-in. */
+/** 6a/w4a-c, marks onboarding done so /onboarding stops intercepting sign-in. */
 export async function completeOnboarding(): Promise<void> {
   await getOrCreateProfile();
   const user = await getRequiredUser();
   const supabase = await createClient();
 
   const update: ProfileUpdate = { onboarding_completed_at: new Date().toISOString() };
+  const { error } = await supabase.from("profiles").update(update as never).eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/** First-listing safety brief, dismissing it is an acknowledgement, not a gate. */
+export async function markSafetyBriefSeen(): Promise<void> {
+  await getOrCreateProfile();
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  const update: ProfileUpdate = { local_safety_brief_seen_at: new Date().toISOString() };
+  const { error } = await supabase.from("profiles").update(update as never).eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/** Age check, "I'm 18 or over". */
+export async function confirmAge(): Promise<void> {
+  await getOrCreateProfile();
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  const update: ProfileUpdate = { age_confirmed_at: new Date().toISOString() };
+  const { error } = await supabase.from("profiles").update(update as never).eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/**
+ * Age check, "I'm under 18". Conservative default: this permanently
+ * blocks the local-listing/selling flow for this account. There is no
+ * self-service reversal, see LOCAL_THREADS_TRUST_SAFETY_SPEC.md §8.
+ */
+export async function declineAge(): Promise<void> {
+  await getOrCreateProfile();
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+
+  const update: ProfileUpdate = { age_declined_at: new Date().toISOString() };
   const { error } = await supabase.from("profiles").update(update as never).eq("user_id", user.id);
 
   if (error) {
@@ -153,7 +199,7 @@ export async function updateRadiusKm(radiusKm: number): Promise<void> {
 }
 
 /**
- * The self-preview for 17a/w3e — "what other people see" — computed from
+ * The self-preview for 17a/w3e, "what other people see", computed from
  * the signed-in user's own profile with LocalPrivacy applied. This is not
  * yet a genuine cross-user read: local threads (phase 7) is what actually
  * lets another person view this, and that needs its own scoped RLS policy
@@ -170,7 +216,7 @@ export async function getMyPublicProfilePreview(): Promise<PublicProfilePreview>
     avatarUri: null,
     // auth.users.created_at isn't exposed by getClaims() (it reconstructs a
     // created_at from the JWT's issued-at claim instead, which drifts on
-    // every token refresh — not usable as "joined"). profiles.created_at is
+    // every token refresh, not usable as "joined"). profiles.created_at is
     // set once, at first profile read/write, which is close enough and
     // stable, unlike the JWT-derived value.
     joinedAt: profile.created_at,
@@ -188,11 +234,11 @@ const publicProfileRowSchema = z.object({
 });
 
 /**
- * 16b/w2b — "the only cross-user read of a person" (API_CONTRACT.md
+ * 16b/w2b, "the only cross-user read of a person" (API_CONTRACT.md
  * getPublicProfile). RLS (profiles_select_via_live_listing) only gates
  * which *row* a stranger may read; it does not hide suburb when
  * show_suburb is false, so that masking has to happen here, in code, same
- * as getMyPublicProfilePreview — never trust a raw RLS-permitted row to
+ * as getMyPublicProfilePreview, never trust a raw RLS-permitted row to
  * already reflect LocalPrivacy.
  */
 export async function getPublicProfile(userId: string): Promise<PublicProfilePreview | null> {

@@ -16,12 +16,22 @@ type DialogProps = {
   description?: string;
   icon?: ReactNode;
   cancelLabel?: string;
+  /**
+   * Called when the cancel/secondary button is tapped. Defaults to `onClose`
+   * so existing dialogs keep their current behaviour. Pass this separately
+   * from `onClose` when the secondary button is a real, recordable choice
+   * (see age-check-dialog.tsx) rather than a plain dismissal, since the
+   * backdrop's own dismiss button always calls `onClose` and never this.
+   */
+  onCancel?: () => void;
   confirmLabel: string;
   confirmVariant?: "primary" | "on-blush";
   /** Extra content between the description and the button row, e.g. a type-to-confirm input. */
   children?: ReactNode;
   /** Disables and dims the confirm button, e.g. until a type-to-confirm input matches. */
   confirmDisabled?: boolean;
+  /** Hides the cancel/secondary button, leaving only the confirm button. */
+  hideCancel?: boolean;
 } & DialogConfirmProps;
 
 const CONFIRM_LINK_CLASSES: Record<"primary" | "on-blush", string> = {
@@ -36,8 +46,8 @@ const CONFIRM_LINK_CLASSES: Record<"primary" | "on-blush", string> = {
  * of `onConfirm` when the confirm action needs to be a real link (so
  * back/forward navigation and open-in-new-tab work) rather than a
  * click-handler-only button; it renders styled identically to the button it
- * replaces. `confirmDisabled` only applies to the button form, since a link
- * has no disabled state.
+ * replaces. `confirmDisabled` and `hideCancel` only apply to the button form,
+ * since a link has no disabled state and always needs a way to back out.
  */
 export function Dialog({
   open,
@@ -46,12 +56,14 @@ export function Dialog({
   description,
   icon,
   cancelLabel = "cancel",
+  onCancel,
   confirmLabel,
   onConfirm,
   confirmHref,
   confirmVariant = "primary",
   children,
-  confirmDisabled = false
+  confirmDisabled = false,
+  hideCancel = false
 }: DialogProps) {
   if (!open) return null;
 
@@ -77,14 +89,16 @@ export function Dialog({
         ) : null}
         {children ? <div className="pb-4 text-left">{children}</div> : null}
         <div className="flex gap-[9px] pt-1">
-          <PillButton
-            variant="secondary"
-            onClick={onClose}
-            fullWidth={!confirmHref}
-            className={confirmHref ? "h-11 flex-1" : "h-11"}
-          >
-            {cancelLabel}
-          </PillButton>
+          {!hideCancel ? (
+            <PillButton
+              variant="secondary"
+              onClick={onCancel ?? onClose}
+              fullWidth={!confirmHref}
+              className={confirmHref ? "h-11 flex-1" : "h-11"}
+            >
+              {cancelLabel}
+            </PillButton>
+          ) : null}
           {confirmHref ? (
             <Link
               href={confirmHref as Route}

@@ -4,6 +4,7 @@ import { getAccountProfile } from "@/lib/domain/account/service";
 import { getBillingStatus } from "@/lib/domain/billing/service";
 import { getMyPublicProfilePreview, getOrCreateProfile } from "@/lib/domain/profile/service";
 import { countWardrobeGarments } from "@/lib/domain/wardrobe/service";
+import { listBlockedUsers } from "@/lib/domain/local-threads/threads-service";
 import { AuthRequiredCard } from "@/components/auth-required-card";
 import { AccountProfileForm } from "@/app/account/account-profile-form";
 import { PlanSection } from "@/app/account/plan-section";
@@ -13,13 +14,14 @@ import { PaymentFailedRow } from "@/app/account/payment-failed-row";
 
 export default async function AccountPage() {
   try {
-    const [profile, entitlements, garderobeProfile, publicPreview, garmentCount] =
+    const [profile, entitlements, garderobeProfile, publicPreview, garmentCount, blockedUsers] =
       await Promise.all([
         getAccountProfile(),
         getUserEntitlements(),
         getOrCreateProfile(),
         getMyPublicProfilePreview(),
-        countWardrobeGarments()
+        countWardrobeGarments(),
+        listBlockedUsers()
       ]);
     const { upgradeUrl } = getBillingStatus();
 
@@ -59,7 +61,12 @@ export default async function AccountPage() {
           currencyUnit={profile.currency_unit}
         />
 
-        <YouSection profile={garderobeProfile} preview={publicPreview} garmentCount={garmentCount} />
+        <YouSection
+          profile={garderobeProfile}
+          preview={publicPreview}
+          garmentCount={garmentCount}
+          blockedUsers={blockedUsers}
+        />
 
         <PlanSection entitlements={entitlements} upgradeUrl={upgradeUrl} />
 

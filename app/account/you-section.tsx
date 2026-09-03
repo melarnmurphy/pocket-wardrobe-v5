@@ -1,11 +1,13 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Profile, PublicProfilePreview } from "@/lib/domain/profile";
 import { PillButton } from "@/components/garderobe";
 import { DeletePhotosDialog } from "@/components/garderobe/account/delete-photos-dialog";
 import { CloseAccountDialog } from "@/components/garderobe/account/close-account-dialog";
 import { ExportRow } from "@/components/garderobe/account/export-row";
+import { unblockUserAction } from "@/app/local/actions";
 import {
   updateLocalPrivacyAction,
   updateProfileAction,
@@ -19,15 +21,19 @@ import { requestDataExportAction, checkDataExportReadyAction } from "./export-ac
 const idleState: ProfileActionState = { status: "idle", message: null };
 const SIZE_SYSTEMS = ["AU", "UK", "US", "EU"] as const;
 
+type BlockedUser = { userId: string; localName: string | null; blockedAt: string };
+
 /** 17a / w3e — details, sizes, and what other people see. */
 export function YouSection({
   profile,
   preview,
-  garmentCount
+  garmentCount,
+  blockedUsers
 }: {
   profile: Profile;
   preview: PublicProfilePreview;
   garmentCount: number;
+  blockedUsers: BlockedUser[];
 }) {
   const [profileState, profileFormAction] = useActionState(updateProfileAction, idleState);
   const [sizesState, sizesFormAction] = useActionState(updateSizesAction, idleState);
@@ -180,6 +186,24 @@ export function YouSection({
       <CloseAccountSection />
 
       <ExportRow requestAction={requestDataExportAction} checkAction={checkDataExportReadyAction} />
+
+      <div className="mt-8 border-t border-[rgba(30,26,23,.14)] pt-6">
+        <p className="pb-3 text-[9px] font-semibold uppercase tracking-[.18em] text-[var(--stone)]">
+          blocked · {blockedUsers.length}
+        </p>
+        {blockedUsers.length === 0 ? (
+          <p className="text-[12.5px] text-[var(--stone)]">you haven&apos;t blocked anyone.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {blockedUsers.map((blocked) => (
+              <div key={blocked.userId} className="flex items-center justify-between">
+                <span className="text-[13px] text-[var(--ink)]">{blocked.localName || "a Garderobe user"}</span>
+                <UnblockButton userId={blocked.userId} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
@@ -251,6 +275,26 @@ function CloseAccountSection() {
         />
       ) : null}
     </div>
+  );
+}
+
+function UnblockButton({ userId }: { userId: string }) {
+  const [isBusy, setIsBusy] = useState(false);
+  const router = useRouter();
+  return (
+    <button
+      type="button"
+      disabled={isBusy}
+      className="text-[11px] underline text-[var(--stone)]"
+      onClick={async () => {
+        setIsBusy(true);
+        await unblockUserAction(userId);
+        setIsBusy(false);
+        router.refresh();
+      }}
+    >
+      unblock
+    </button>
   );
 }
 
