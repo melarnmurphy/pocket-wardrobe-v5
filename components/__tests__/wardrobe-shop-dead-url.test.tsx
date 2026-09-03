@@ -55,6 +55,8 @@ describe("WardrobeShop product-url dead-link handling", () => {
         restoreGarmentAction={noopAction}
         bulkDeleteGarmentsAction={noopAction}
         createCollectionAction={noopAction}
+        renameCollectionAction={noopAction}
+        deleteCollectionAction={noopAction}
         archiveGarmentAction={noopAction}
       />
     );
