@@ -270,9 +270,16 @@ confirmLabel: "ok"
 hideCancel: true
 ```
 
-That dialog routes back to `/wardrobe/{garmentId}` on dismiss. Once `age_declined_at` is set, the
-gate is permanent for this build: there is no in-app "actually I'm 18 now" override. Re-enabling
-it would need a support-assisted or time-based path this plan does not build.
+That dialog routes back to `/wardrobe/{garmentId}` on dismiss.
+
+**Reversal, resolved by the human partner's follow-up decision.** `age_declined_at` is no longer
+permanent: `AgeReconfirmSection` in `app/account/you-section.tsx` lets a user who previously
+declined reconfirm from account settings at any time, and `confirmAge()` clears
+`age_declined_at` as well as setting `age_confirmed_at`, so the gate lets them straight through
+on their next visit. This is a genuine self-service override with no verification beyond the
+user's own click, which carries the same limitation the original age check itself always had
+(it's a self-report, not identity verification) — accepted as consistent with that existing
+tradeoff, not a new one introduced here.
 
 **Scope of the gate, updated after human confirmation.** This spec originally gated only the
 **sell** side: creating a listing (`app/local/list/[garmentId]/page.tsx`). Per the human partner's

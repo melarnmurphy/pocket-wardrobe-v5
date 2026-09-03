@@ -7,6 +7,7 @@ import { PillButton } from "@/components/garderobe";
 import { DeletePhotosDialog } from "@/components/garderobe/account/delete-photos-dialog";
 import { CloseAccountDialog } from "@/components/garderobe/account/close-account-dialog";
 import { ExportRow } from "@/components/garderobe/account/export-row";
+import { AgeReconfirmSection } from "@/app/account/age-reconfirm-section";
 import { unblockUserAction } from "@/app/local/actions";
 import {
   updateLocalPrivacyAction,
@@ -180,6 +181,8 @@ export function YouSection({
           wardrobe, wear dates, or contact details.
         </p>
       </div>
+
+      <AgeReconfirmSection ageDeclined={Boolean(profile.age_declined_at)} />
 
       <PhotosSection garmentCount={garmentCount} />
 

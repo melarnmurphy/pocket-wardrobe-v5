@@ -14,7 +14,8 @@ vi.mock("@/app/account/profile-actions", () => ({
   updateLocalPrivacyAction: vi.fn(async (state: unknown) => state)
 }));
 vi.mock("@/app/local/actions", () => ({
-  unblockUserAction: vi.fn(async () => ({ status: "success" }))
+  unblockUserAction: vi.fn(async () => ({ status: "success" })),
+  confirmAgeAction: vi.fn(async () => {})
 }));
 vi.mock("@/app/account/photos-actions", () => ({
   deleteAllUserPhotosAction: vi.fn(async (state: unknown) => state)

@@ -152,12 +152,17 @@ export async function markSafetyBriefSeen(): Promise<void> {
 }
 
 /** Age check, "I'm 18 or over". */
+/**
+ * Also clears age_declined_at, so a user who previously declined can
+ * reconfirm their age later (e.g. from account settings) rather than being
+ * locked out of local threads permanently.
+ */
 export async function confirmAge(): Promise<void> {
   await getOrCreateProfile();
   const user = await getRequiredUser();
   const supabase = await createClient();
 
-  const update: ProfileUpdate = { age_confirmed_at: new Date().toISOString() };
+  const update: ProfileUpdate = { age_confirmed_at: new Date().toISOString(), age_declined_at: null };
   const { error } = await supabase.from("profiles").update(update as never).eq("user_id", user.id);
 
   if (error) {

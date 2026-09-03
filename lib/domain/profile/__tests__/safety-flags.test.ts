@@ -51,6 +51,12 @@ describe("confirmAge / declineAge / markSafetyBriefSeen", () => {
     expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ age_confirmed_at: expect.any(String) }));
   });
 
+  it("confirmAge also clears age_declined_at, so a user who declined can reconfirm later", async () => {
+    const { confirmAge } = await import("@/lib/domain/profile/service");
+    await confirmAge();
+    expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ age_declined_at: null }));
+  });
+
   it("declineAge sets age_declined_at", async () => {
     const { declineAge } = await import("@/lib/domain/profile/service");
     await declineAge();
