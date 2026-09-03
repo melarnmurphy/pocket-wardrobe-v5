@@ -3,6 +3,7 @@ import { getUserEntitlements } from "@/lib/domain/entitlements/service";
 import { getAccountProfile } from "@/lib/domain/account/service";
 import { getBillingStatus } from "@/lib/domain/billing/service";
 import { getMyPublicProfilePreview, getOrCreateProfile } from "@/lib/domain/profile/service";
+import { listBlockedUsers } from "@/lib/domain/local-threads/threads-service";
 import { AuthRequiredCard } from "@/components/auth-required-card";
 import { AccountProfileForm } from "@/app/account/account-profile-form";
 import { PlanSection } from "@/app/account/plan-section";
@@ -11,11 +12,12 @@ import { signOutAction } from "@/app/auth/actions";
 
 export default async function AccountPage() {
   try {
-    const [profile, entitlements, garderobeProfile, publicPreview] = await Promise.all([
+    const [profile, entitlements, garderobeProfile, publicPreview, blockedUsers] = await Promise.all([
       getAccountProfile(),
       getUserEntitlements(),
       getOrCreateProfile(),
-      getMyPublicProfilePreview()
+      getMyPublicProfilePreview(),
+      listBlockedUsers()
     ]);
     const { upgradeUrl } = getBillingStatus();
 
@@ -54,7 +56,7 @@ export default async function AccountPage() {
           currencyUnit={profile.currency_unit}
         />
 
-        <YouSection profile={garderobeProfile} preview={publicPreview} />
+        <YouSection profile={garderobeProfile} preview={publicPreview} blockedUsers={blockedUsers} />
 
         <PlanSection entitlements={entitlements} upgradeUrl={upgradeUrl} />
 

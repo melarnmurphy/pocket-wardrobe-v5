@@ -3,10 +3,12 @@ import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { getLocalListingDetail, incrementListingViews } from "@/lib/domain/local-threads/service";
 import { getPublicProfile } from "@/lib/domain/profile/service";
+import { hasLiveOfferOrHandover, listMyThreads } from "@/lib/domain/local-threads/threads-service";
 import { AuthenticationError, getRequiredUser } from "@/lib/auth";
 import { AuthRequiredCard } from "@/components/auth-required-card";
 import { CutoutTile, PillButton } from "@/components/garderobe";
 import { startThreadAction } from "@/app/local/actions";
+import { ManageListing } from "./manage-listing";
 
 function formatMoney(cents: number) {
   return `A$${(cents / 100).toFixed(0)}`;
@@ -28,6 +30,22 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
     if (listing.seller_id !== viewer.id) {
       await incrementListingViews(listing.id);
     }
+
+    const ownershipCheck =
+      listing.seller_id === viewer.id ? await hasLiveOfferOrHandover(listing.id) : null;
+    const counterpart =
+      ownershipCheck?.counterpartUserId ? await getPublicProfile(ownershipCheck.counterpartUserId) : null;
+    // Resolves the specific thread to close on cancel: hasLiveOfferOrHandover only reports
+    // whether a live offer/handover exists and who the counterpart is, not which thread. A
+    // seller could in principle have more than one thread on a listing, so this looks up the
+    // one matching this listing and counterpart rather than guessing.
+    const counterpartThread =
+      ownershipCheck?.counterpartUserId
+        ? (await listMyThreads()).find(
+            (thread) =>
+              thread.listing_id === listing.id && thread.buyer_id === ownershipCheck.counterpartUserId
+          ) ?? null
+        : null;
 
     return (
       <div className="mx-auto max-w-[560px] px-5 py-6 pb-16">
@@ -115,13 +133,14 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
               </PillButton>
             </form>
           </section>
-        ) : listing.seller_id === viewer.id ? (
-          <p className="pt-6 text-[11px] text-[var(--stone)]">
-            this is your listing —{" "}
-            <Link href="/local/threads" className="underline">
-              see your threads
-            </Link>
-          </p>
+        ) : listing.seller_id === viewer.id && ownershipCheck ? (
+          <ManageListing
+            listingId={listing.id}
+            hasOffer={ownershipCheck.hasOffer}
+            hasHandover={ownershipCheck.hasHandover}
+            counterpartName={counterpart?.localName ?? null}
+            counterpartThreadId={counterpartThread?.id ?? null}
+          />
         ) : null}
       </div>
     );

@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import type { Profile, PublicProfilePreview } from "@/lib/domain/profile";
 import { PillButton } from "@/components/garderobe";
+import { unblockUserAction } from "@/app/local/actions";
 import {
   updateLocalPrivacyAction,
   updateProfileAction,
@@ -13,13 +14,17 @@ import {
 const idleState: ProfileActionState = { status: "idle", message: null };
 const SIZE_SYSTEMS = ["AU", "UK", "US", "EU"] as const;
 
+type BlockedUser = { userId: string; localName: string | null; blockedAt: string };
+
 /** 17a / w3e — details, sizes, and what other people see. */
 export function YouSection({
   profile,
-  preview
+  preview,
+  blockedUsers
 }: {
   profile: Profile;
   preview: PublicProfilePreview;
+  blockedUsers: BlockedUser[];
 }) {
   const [profileState, profileFormAction] = useActionState(updateProfileAction, idleState);
   const [sizesState, sizesFormAction] = useActionState(updateSizesAction, idleState);
@@ -166,7 +171,43 @@ export function YouSection({
           wardrobe, wear dates, or contact details.
         </p>
       </div>
+
+      <div className="mt-8 border-t border-[rgba(30,26,23,.14)] pt-6">
+        <p className="pb-3 text-[9px] font-semibold uppercase tracking-[.18em] text-[var(--stone)]">
+          blocked · {blockedUsers.length}
+        </p>
+        {blockedUsers.length === 0 ? (
+          <p className="text-[12.5px] text-[var(--stone)]">you haven&apos;t blocked anyone.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {blockedUsers.map((blocked) => (
+              <div key={blocked.userId} className="flex items-center justify-between">
+                <span className="text-[13px] text-[var(--ink)]">{blocked.localName || "a Garderobe user"}</span>
+                <UnblockButton userId={blocked.userId} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </section>
+  );
+}
+
+function UnblockButton({ userId }: { userId: string }) {
+  const [isBusy, setIsBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      disabled={isBusy}
+      className="text-[11px] underline text-[var(--stone)]"
+      onClick={async () => {
+        setIsBusy(true);
+        await unblockUserAction(userId);
+        setIsBusy(false);
+      }}
+    >
+      unblock
+    </button>
   );
 }
 
