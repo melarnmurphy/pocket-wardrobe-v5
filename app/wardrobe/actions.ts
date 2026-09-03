@@ -57,7 +57,7 @@ import {
   readReceiptTextFromFile
 } from "@/lib/domain/ingestion/extractors";
 import { productUrlAdapter, receiptAdapter } from "@/lib/domain/ingestion/adapters";
-import { classifyUploadFile } from "@/lib/domain/ingestion/limits";
+import { classifyUploadFile, MAX_UPLOAD_BYTES } from "@/lib/domain/ingestion/limits";
 
 const nullableText = (max: number) =>
   z.preprocess(
@@ -453,7 +453,6 @@ export async function createProductUrlDraftAction(
         .replace(/[-_]+/g, " ")
         .trim() ||
       url.hostname;
-    const { sourceId } = await createProductUrlSource({ url: values.product_url });
     const extracted = await extractProductMetadataFromUrl(values.product_url);
     if (extracted.fetch_failed) {
       return {
@@ -462,6 +461,7 @@ export async function createProductUrlDraftAction(
         message: "That link didn't load, so nothing came back automatically. Add the piece's details yourself instead."
       };
     }
+    const { sourceId } = await createProductUrlSource({ url: values.product_url });
     const draftPayload = productUrlAdapter.buildDraft({
       productUrl: values.product_url,
       titleHint,
@@ -532,6 +532,14 @@ export async function createReceiptDraftAction(
       return {
         status: "error",
         message: "Choose a receipt file to upload."
+      };
+    }
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return {
+        status: "error",
+        errorCode: "too_large",
+        message: "That file's too large. Files over 20MB won't upload."
       };
     }
 
@@ -617,14 +625,16 @@ export async function createReceiptDraftAction(
 
       draftIds.push(draftId);
 
-      const priceMatches = await findGarmentPriceMatchCandidates({
-        title: draftPayload.title ?? fallbackTitle,
-        brand: draftPayload.brand,
-        category: draftPayload.category
-      }).catch(() => []);
+      if (draftPayload.purchasePrice !== null && draftPayload.purchasePrice !== undefined) {
+        const priceMatches = await findGarmentPriceMatchCandidates({
+          title: draftPayload.title ?? fallbackTitle,
+          brand: draftPayload.brand,
+          category: draftPayload.category
+        }).catch(() => []);
 
-      if (priceMatches.length >= 2) {
-        await attachPriceMatchCandidates(draftId, priceMatches);
+        if (priceMatches.length >= 2) {
+          await attachPriceMatchCandidates(draftId, priceMatches);
+        }
       }
     }
 

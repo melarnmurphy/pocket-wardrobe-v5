@@ -211,6 +211,7 @@ export function WardrobeShop({
     createProductUrlDraftAction,
     wardrobeActionState
   );
+  const [productUrlErrorCode, setProductUrlErrorCode] = useState<"dead_url" | null>(null);
   const [receiptDraftState, receiptDraftFormAction] = useActionState(
     createReceiptDraftAction,
     wardrobeActionState
@@ -437,6 +438,12 @@ export function WardrobeShop({
       });
     }
   }, [productUrlDraftState.message, productUrlDraftState.status]);
+
+  useEffect(() => {
+    if (productUrlDraftState.status === "error" && productUrlDraftState.errorCode === "dead_url") {
+      setProductUrlErrorCode("dead_url");
+    }
+  }, [productUrlDraftState.status, productUrlDraftState.errorCode]);
 
   useEffect(() => {
     if (
@@ -1133,10 +1140,20 @@ export function WardrobeShop({
                 <PendingButton idle="Add Item" pending="Adding Item..." />
               </form>
             ) : createSourceMode === "product_url" ? (
-              <ProductUrlDraftComposer
-                action={productUrlDraftFormAction}
-                state={productUrlDraftState}
-              />
+              <>
+                <ProductUrlDraftComposer
+                  action={productUrlDraftFormAction}
+                  state={productUrlDraftState}
+                />
+                {productUrlErrorCode ? (
+                  <UploadFailedDialog
+                    open
+                    errorCode={productUrlErrorCode}
+                    onClose={() => setProductUrlErrorCode(null)}
+                    onRetry={() => setProductUrlErrorCode(null)}
+                  />
+                ) : null}
+              </>
             ) : createSourceMode === "receipt" ? (
               <ReceiptDraftComposer action={receiptDraftFormAction} state={receiptDraftState} />
             ) : null}

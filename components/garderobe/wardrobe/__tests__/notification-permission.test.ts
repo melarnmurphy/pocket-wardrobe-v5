@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach, beforeEach } from "vitest";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import {
   shouldPromptForNotificationPermission,
   markNotificationPermissionPrompted
@@ -93,5 +93,29 @@ describe("notification permission gating", () => {
   it("does not prompt when permission has already been denied", () => {
     setNotificationPermission("denied");
     expect(shouldPromptForNotificationPermission()).toBe(false);
+  });
+
+  it("treats a throwing localStorage read as 'flag not set' and still prompts", () => {
+    // Safari with site data blocked (or a private-browsing edge case) can
+    // throw on property access — the conservative default is to show the
+    // dialog rather than crash.
+    const getItemSpy = vi.spyOn(window.localStorage, "getItem").mockImplementation(() => {
+      throw new Error("SecurityError");
+    });
+
+    expect(() => shouldPromptForNotificationPermission()).not.toThrow();
+    expect(shouldPromptForNotificationPermission()).toBe(true);
+
+    getItemSpy.mockRestore();
+  });
+
+  it("swallows a throwing localStorage write instead of crashing", () => {
+    const setItemSpy = vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
+      throw new Error("SecurityError");
+    });
+
+    expect(() => markNotificationPermissionPrompted()).not.toThrow();
+
+    setItemSpy.mockRestore();
   });
 });

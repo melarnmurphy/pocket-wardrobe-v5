@@ -17,7 +17,14 @@ const PROMPTED_FLAG = "gw.notificationPermissionPrompted";
  */
 export function shouldPromptForNotificationPermission(): boolean {
   if (typeof window === "undefined") return false;
-  if (window.localStorage.getItem(PROMPTED_FLAG) === "1") return false;
+
+  try {
+    if (window.localStorage.getItem(PROMPTED_FLAG) === "1") return false;
+  } catch {
+    // Treat an inaccessible localStorage (e.g. Safari with site data blocked)
+    // as "flag not set" — the conservative default is to show the dialog.
+  }
+
   if (typeof window.Notification === "undefined") return false;
   if (window.Notification.permission !== "default") return false;
 
@@ -31,5 +38,11 @@ export function shouldPromptForNotificationPermission(): boolean {
  */
 export function markNotificationPermissionPrompted(): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(PROMPTED_FLAG, "1");
+
+  try {
+    window.localStorage.setItem(PROMPTED_FLAG, "1");
+  } catch {
+    // Best-effort persistence only; a thrown write just means the dialog
+    // may show again next session, which is safe.
+  }
 }

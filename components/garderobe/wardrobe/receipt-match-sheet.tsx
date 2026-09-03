@@ -6,7 +6,6 @@ type PriceMatchCandidate = { garment_id: string; title: string | null; category:
 
 type ReceiptMatchSheetProps = {
   open: boolean;
-  draftId: string;
   candidates: PriceMatchCandidate[];
   onClose: () => void;
   onResolve: (garmentId: string | null) => void;
@@ -35,7 +34,7 @@ export function ReceiptMatchSheet({
       description="It might be the price for one of these already in your wardrobe. Choose which, or add it as something new."
     >
       <div>
-        {candidates.map((candidate, index) => (
+        {candidates.map((candidate) => (
           <SheetAction
             key={candidate.garment_id}
             last={false}
@@ -45,7 +44,7 @@ export function ReceiptMatchSheet({
           </SheetAction>
         ))}
         <SheetAction last onClick={() => onResolve(null)}>
-          none of these — add as new
+          none of these, add as new
         </SheetAction>
       </div>
       {pending ? <p className="pt-3 text-[11px] text-[var(--stone)]">saving…</p> : null}

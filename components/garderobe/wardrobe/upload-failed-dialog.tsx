@@ -16,7 +16,7 @@ const COPY: Record<
   unsupported_format: {
     title: "that file type won't open",
     description:
-      "Garderobe reads JPEG, PNG and WEBP. A HEIC photo needs converting first, most phones can do this from the share sheet when you save or send it.",
+      "Garderobe reads JPEG, PNG and WEBP. A HEIC photo needs converting first. Most phones can do this from the share sheet when you save or send it.",
     confirmLabel: "choose another photo"
   },
   too_large: {

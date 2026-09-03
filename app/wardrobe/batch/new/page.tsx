@@ -86,7 +86,16 @@ export default function ChoosePhotosPage() {
   }
 
   function openPicker() {
-    if (typeof window !== "undefined" && window.localStorage.getItem("gw.photoLibraryPermissionGranted") === "1") {
+    let alreadyGranted = false;
+    try {
+      alreadyGranted =
+        typeof window !== "undefined" &&
+        window.localStorage.getItem("gw.photoLibraryPermissionGranted") === "1";
+    } catch {
+      alreadyGranted = false;
+    }
+
+    if (alreadyGranted) {
       inputRef.current?.click();
       return;
     }
@@ -199,7 +208,11 @@ export default function ChoosePhotosPage() {
         open={showLibraryPermission}
         onNotNow={() => setShowLibraryPermission(false)}
         onAllow={() => {
-          window.localStorage.setItem("gw.photoLibraryPermissionGranted", "1");
+          try {
+            window.localStorage.setItem("gw.photoLibraryPermissionGranted", "1");
+          } catch {
+            // Best-effort persistence only; the picker still opens for this session.
+          }
           setShowLibraryPermission(false);
           inputRef.current?.click();
         }}

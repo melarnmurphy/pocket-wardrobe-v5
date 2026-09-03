@@ -127,4 +127,38 @@ describe("ChoosePhotosPage - PhotoLibraryPermissionDialog integration", () => {
 
     clickSpy.mockRestore();
   });
+
+  it("falls back to showing the permission dialog when localStorage.getItem throws", () => {
+    const getItemSpy = vi.spyOn(localStorage, "getItem").mockImplementation(() => {
+      throw new Error("SecurityError");
+    });
+
+    render(<ChoosePhotosPage />);
+    const dropzone = screen.getByRole("button", { name: /drop photos/i });
+
+    expect(() => fireEvent.click(dropzone)).not.toThrow();
+    expect(screen.getByText(/garderobe needs your photos/i)).toBeInTheDocument();
+
+    getItemSpy.mockRestore();
+  });
+
+  it("does not crash when localStorage.setItem throws on 'allow access'", () => {
+    const setItemSpy = vi.spyOn(localStorage, "setItem").mockImplementation(() => {
+      throw new Error("SecurityError");
+    });
+    const clickSpy = vi.spyOn(HTMLInputElement.prototype, "click");
+
+    render(<ChoosePhotosPage />);
+    const dropzone = screen.getByRole("button", { name: /drop photos/i });
+    fireEvent.click(dropzone);
+
+    const allowButton = screen.getByText(/allow access/i);
+    expect(() => fireEvent.click(allowButton)).not.toThrow();
+
+    // The picker should still open even though persistence failed.
+    expect(clickSpy).toHaveBeenCalled();
+
+    setItemSpy.mockRestore();
+    clickSpy.mockRestore();
+  });
 });

@@ -15,7 +15,6 @@ describe("ReceiptMatchSheet", () => {
     render(
       <ReceiptMatchSheet
         open
-        draftId="draft-1"
         candidates={candidates}
         onClose={() => {}}
         onResolve={() => {}}
@@ -33,7 +32,6 @@ describe("ReceiptMatchSheet", () => {
     render(
       <ReceiptMatchSheet
         open
-        draftId="draft-1"
         candidates={candidates}
         onClose={() => {}}
         onResolve={onResolve}
@@ -50,7 +48,6 @@ describe("ReceiptMatchSheet", () => {
     render(
       <ReceiptMatchSheet
         open
-        draftId="draft-1"
         candidates={candidates}
         onClose={() => {}}
         onResolve={onResolve}

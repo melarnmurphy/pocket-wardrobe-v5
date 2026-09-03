@@ -348,7 +348,7 @@ export default function DraftReviewList({
                   }}
                   className="mt-3 flex w-full items-center justify-between rounded-[4px] border border-dashed border-[rgba(30,26,23,.3)] bg-[var(--paper)] px-3 py-2.5 text-left text-[12.5px] text-[var(--slate)]"
                 >
-                  this receipt matches {draft.payload.price_match_candidates.length} pieces — resolve
+                  this receipt matches {draft.payload.price_match_candidates.length} pieces, resolve
                 </button>
               ) : null}
               <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -519,7 +519,6 @@ export default function DraftReviewList({
             return (
               <ReceiptMatchSheet
                 open
-                draftId={matchSheetDraftId}
                 candidates={candidates}
                 pending={matchPending}
                 error={matchError}

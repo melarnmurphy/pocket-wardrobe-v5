@@ -248,11 +248,14 @@ describe("createProductUrlDraftAction dead link handling", () => {
     });
     // createProductUrlSource hits Supabase; stub just that export so this test
     // stays hermetic and exercises the fetch_failed branch deterministically.
+    const createProductUrlSourceSpy = vi.fn(async () => ({
+      sourceId: "00000000-0000-0000-0000-0000000000aa"
+    }));
     vi.doMock("@/lib/domain/ingestion/service", async () => {
       const actual = await vi.importActual("@/lib/domain/ingestion/service");
       return {
         ...actual,
-        createProductUrlSource: vi.fn(async () => ({ sourceId: "00000000-0000-0000-0000-0000000000aa" }))
+        createProductUrlSource: createProductUrlSourceSpy
       };
     });
     const { createProductUrlDraftAction } = await import("@/app/wardrobe/actions");
@@ -263,6 +266,9 @@ describe("createProductUrlDraftAction dead link handling", () => {
 
     expect(result.status).toBe("error");
     expect(result.errorCode).toBe("dead_url");
+    // Regression: a dead link must never leave an orphan garment_sources row —
+    // the source is only created once extraction has succeeded.
+    expect(createProductUrlSourceSpy).not.toHaveBeenCalled();
     vi.doUnmock("@/lib/domain/ingestion/extractors");
     vi.doUnmock("@/lib/domain/ingestion/service");
   });
@@ -323,5 +329,68 @@ describe("createReceiptDraftAction price matching", () => {
     createReceiptSourceSpy.mockRestore();
     createManualReviewDraftSpy.mockRestore();
     attachPriceMatchCandidates.mockRestore();
+  });
+
+  it("never offers the price-match resolver for a candidate with no price", async () => {
+    vi.resetModules();
+    const wardrobeService = await import("@/lib/domain/wardrobe/service");
+    const ingestionService = await import("@/lib/domain/ingestion/service");
+
+    const findGarmentPriceMatchCandidatesSpy = vi
+      .spyOn(wardrobeService, "findGarmentPriceMatchCandidates")
+      .mockResolvedValue([
+        { garment_id: "cccccccc-cccc-cccc-cccc-cccccccccccc", title: "Navy blazer", category: "blazer" },
+        { garment_id: "dddddddd-dddd-dddd-dddd-dddddddddddd", title: "Wool blazer", category: "blazer" }
+      ]);
+    const createReceiptSourceSpy = vi
+      .spyOn(ingestionService, "createReceiptSource")
+      .mockResolvedValue({
+        sourceId: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+        storagePath: "user/receipt-uploads/receipt.jpg"
+      });
+    const createManualReviewDraftSpy = vi
+      .spyOn(ingestionService, "createManualReviewDraft")
+      .mockResolvedValue("ffffffff-ffff-ffff-ffff-ffffffffffff");
+    const attachPriceMatchCandidates = vi
+      .spyOn(ingestionService, "attachPriceMatchCandidates")
+      .mockResolvedValue(undefined);
+
+    const { createReceiptDraftAction } = await import("@/app/wardrobe/actions");
+
+    const formData = new FormData();
+    // No price in the receipt text, so the candidate's draft has no purchase
+    // price — the resolver sheet must not be offered for it (there is
+    // nothing for resolveReceiptMatchAction to attach a price to).
+    formData.set(
+      "receipt",
+      new File(["Blazer"], "receipt.pdf", { type: "text/plain" })
+    );
+    formData.set("receipt_text", "Blazer");
+
+    const result = await createReceiptDraftAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("success");
+    expect(findGarmentPriceMatchCandidatesSpy).not.toHaveBeenCalled();
+    expect(attachPriceMatchCandidates).not.toHaveBeenCalled();
+
+    findGarmentPriceMatchCandidatesSpy.mockRestore();
+    createReceiptSourceSpy.mockRestore();
+    createManualReviewDraftSpy.mockRestore();
+    attachPriceMatchCandidates.mockRestore();
+  });
+});
+
+describe("createReceiptDraftAction size cap", () => {
+  it("rejects a file over 20MB even when it is renamed to end in .pdf", async () => {
+    const { createReceiptDraftAction } = await import("@/app/wardrobe/actions");
+    const formData = new FormData();
+    // A PDF-named file skips the format allowlist check, but the size cap
+    // must still apply unconditionally.
+    formData.set("receipt", fileOfType("application/pdf", 21 * 1024 * 1024, "receipt.pdf"));
+
+    const result = await createReceiptDraftAction({ status: "idle", message: null }, formData);
+
+    expect(result.status).toBe("error");
+    expect(result.errorCode).toBe("too_large");
   });
 });
