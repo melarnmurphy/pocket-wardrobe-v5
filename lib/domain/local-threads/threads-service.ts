@@ -730,31 +730,53 @@ export async function closeThreadForCancelledListing(threadId: string): Promise<
   }
 }
 
-/** Account page's "blocked · N people" list — RLS already scopes this to the caller's own rows. */
+/**
+ * Account page's "blocked · N people" list — RLS already scopes this to
+ * the caller's own rows. `blocked_id` and `profiles.user_id` share a
+ * common parent (auth.users) but no direct foreign key, so PostgREST can't
+ * embed this as a single query — two plain queries, joined in code.
+ * profiles_select_via_block (migration 037) is what makes the second
+ * query return anything at all.
+ */
 export async function listBlockedUsers(): Promise<
   Array<{ userId: string; localName: string | null; blockedAt: string }>
 > {
   const user = await getRequiredUser();
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  const { data: blocks, error: blocksError } = await supabase
     .from("user_blocks")
-    .select("blocked_id,created_at,profiles:blocked_id(local_name)")
+    .select("blocked_id,created_at")
     .eq("blocker_id", user.id)
     .order("created_at", { ascending: false });
 
-  if (error) {
-    throw new Error(error.message);
+  if (blocksError) {
+    throw new Error(blocksError.message);
   }
 
-  return (data ?? []).map((row) => {
-    const typed = row as { blocked_id: string; created_at: string; profiles: { local_name: string | null } | null };
-    return {
-      userId: typed.blocked_id,
-      localName: typed.profiles?.local_name ?? null,
-      blockedAt: typed.created_at
-    };
-  });
+  const blockRows = (blocks ?? []) as Array<{ blocked_id: string; created_at: string }>;
+  if (blockRows.length === 0) {
+    return [];
+  }
+
+  const blockedIds = blockRows.map((row) => row.blocked_id);
+  const { data: profiles, error: profilesError } = await supabase
+    .from("profiles")
+    .select("user_id,local_name")
+    .in("user_id", blockedIds);
+
+  if (profilesError) {
+    throw new Error(profilesError.message);
+  }
+
+  const profileRows = (profiles ?? []) as Array<{ user_id: string; local_name: string | null }>;
+  const localNameByUserId = new Map(profileRows.map((row) => [row.user_id, row.local_name]));
+
+  return blockRows.map((row) => ({
+    userId: row.blocked_id,
+    localName: localNameByUserId.get(row.blocked_id) ?? null,
+    blockedAt: row.created_at
+  }));
 }
 
 export async function reportListing(listingId: string, reason: string): Promise<void> {

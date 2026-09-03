@@ -6,7 +6,11 @@ const maybeSingleMock = vi.fn();
 const inMock = vi.fn(() => ({ eq: eqMock }));
 const updateMock = vi.fn(() => ({ eq: eqMock }));
 const selectMock = vi.fn(() => ({ eq: eqMock, in: inMock, order: orderMock, maybeSingle: maybeSingleMock }));
-const fromMock = vi.fn(() => ({ select: selectMock, update: updateMock }));
+const fromMock = vi.fn((table: string) =>
+  table === "profiles" ? { select: profilesSelectMock, update: updateMock } : { select: selectMock, update: updateMock }
+);
+const profilesSelectMock = vi.fn(() => ({ in: profilesInMock }));
+const profilesInMock = vi.fn();
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({ from: fromMock }))
@@ -35,7 +39,11 @@ describe("listBlockedUsers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     orderMock.mockResolvedValue({
-      data: [{ blocked_id: "33333333-3333-3333-3333-333333333333", created_at: "2026-01-01T00:00:00Z", profiles: { local_name: "sam" } }],
+      data: [{ blocked_id: "33333333-3333-3333-3333-333333333333", created_at: "2026-01-01T00:00:00Z" }],
+      error: null
+    });
+    profilesInMock.mockResolvedValue({
+      data: [{ user_id: "33333333-3333-3333-3333-333333333333", local_name: "sam" }],
       error: null
     });
   });
@@ -44,8 +52,32 @@ describe("listBlockedUsers", () => {
     const { listBlockedUsers } = await import("@/lib/domain/local-threads/threads-service");
     const result = await listBlockedUsers();
 
+    expect(fromMock).toHaveBeenCalledWith("user_blocks");
+    expect(fromMock).toHaveBeenCalledWith("profiles");
+    expect(profilesInMock).toHaveBeenCalledWith("user_id", ["33333333-3333-3333-3333-333333333333"]);
     expect(result).toEqual([
       { userId: "33333333-3333-3333-3333-333333333333", localName: "sam", blockedAt: "2026-01-01T00:00:00Z" }
     ]);
+  });
+
+  it("maps a blocked user with no profile row to a null local name", async () => {
+    profilesInMock.mockResolvedValue({ data: [], error: null });
+
+    const { listBlockedUsers } = await import("@/lib/domain/local-threads/threads-service");
+    const result = await listBlockedUsers();
+
+    expect(result).toEqual([
+      { userId: "33333333-3333-3333-3333-333333333333", localName: null, blockedAt: "2026-01-01T00:00:00Z" }
+    ]);
+  });
+
+  it("skips the profiles query when there are no blocked users", async () => {
+    orderMock.mockResolvedValue({ data: [], error: null });
+
+    const { listBlockedUsers } = await import("@/lib/domain/local-threads/threads-service");
+    const result = await listBlockedUsers();
+
+    expect(result).toEqual([]);
+    expect(fromMock).not.toHaveBeenCalledWith("profiles");
   });
 });

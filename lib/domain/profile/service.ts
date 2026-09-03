@@ -137,14 +137,9 @@ export async function completeOnboarding(): Promise<void> {
   }
 }
 
-/**
- * First-listing safety brief — dismissing it is an acknowledgement, not a
- * gate. Unlike completeOnboarding, this deliberately skips
- * getOrCreateProfile(): by the time a user reaches the safety brief, the
- * age check, or a live listing/offer/handover, onboarding has already run
- * and created the row, so there is no lazy-create case left to cover here.
- */
+/** First-listing safety brief — dismissing it is an acknowledgement, not a gate. */
 export async function markSafetyBriefSeen(): Promise<void> {
+  await getOrCreateProfile();
   const user = await getRequiredUser();
   const supabase = await createClient();
 
@@ -158,6 +153,7 @@ export async function markSafetyBriefSeen(): Promise<void> {
 
 /** Age check — "I'm 18 or over". */
 export async function confirmAge(): Promise<void> {
+  await getOrCreateProfile();
   const user = await getRequiredUser();
   const supabase = await createClient();
 
@@ -175,6 +171,7 @@ export async function confirmAge(): Promise<void> {
  * self-service reversal — see LOCAL_THREADS_TRUST_SAFETY_SPEC.md §8.
  */
 export async function declineAge(): Promise<void> {
+  await getOrCreateProfile();
   const user = await getRequiredUser();
   const supabase = await createClient();
 
