@@ -6,6 +6,7 @@ import { useRef, useState, type DragEvent } from "react";
 import { ChevronLeft, ImagePlus, X } from "lucide-react";
 import { PillButton } from "@/components/garderobe";
 import { UploadFailedDialog } from "@/components/garderobe/wardrobe/upload-failed-dialog";
+import { PhotoLibraryPermissionDialog } from "@/components/garderobe/wardrobe/photo-library-permission-dialog";
 import { classifyUploadFile } from "@/lib/domain/ingestion/limits";
 
 type PickedPhoto = { file: File; previewUrl: string };
@@ -19,6 +20,7 @@ export default function ChoosePhotosPage() {
   const [uploadErrorCode, setUploadErrorCode] = useState<
     "unsupported_format" | "too_large" | null
   >(null);
+  const [showLibraryPermission, setShowLibraryPermission] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -83,6 +85,14 @@ export default function ChoosePhotosPage() {
     }
   }
 
+  function openPicker() {
+    if (typeof window !== "undefined" && window.localStorage.getItem("gw.photoLibraryPermissionGranted") === "1") {
+      inputRef.current?.click();
+      return;
+    }
+    setShowLibraryPermission(true);
+  }
+
   function onDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     setIsDragging(false);
@@ -111,7 +121,7 @@ export default function ChoosePhotosPage() {
         }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={onDrop}
-        onClick={() => inputRef.current?.click()}
+        onClick={openPicker}
         role="button"
         tabIndex={0}
         className={[
@@ -184,6 +194,16 @@ export default function ChoosePhotosPage() {
           }}
         />
       ) : null}
+
+      <PhotoLibraryPermissionDialog
+        open={showLibraryPermission}
+        onNotNow={() => setShowLibraryPermission(false)}
+        onAllow={() => {
+          window.localStorage.setItem("gw.photoLibraryPermissionGranted", "1");
+          setShowLibraryPermission(false);
+          inputRef.current?.click();
+        }}
+      />
     </div>
   );
 }
