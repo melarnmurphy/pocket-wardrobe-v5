@@ -4,13 +4,22 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { PillButton } from "@/components/garderobe";
+import { OfferDecisionDialog } from "@/components/garderobe/local-threads/offer-decision-dialog";
+import { HandoverManageSheet } from "@/components/garderobe/local-threads/handover-manage-sheet";
+import { NoShowSheet } from "@/components/garderobe/local-threads/no-show-sheet";
+import { ReportListingSheet } from "@/components/garderobe/local-threads/report-listing-sheet";
+import { BlockUserDialog } from "@/components/garderobe/local-threads/block-user-dialog";
 import {
   blockUserAction,
+  cancelHandoverAction,
   confirmHandoverAction,
   proposeHandoverAction,
   reportListingAction,
+  reportNoShowAction,
   respondToHandoverAction,
-  sendMessageAction
+  respondToOfferAction,
+  sendMessageAction,
+  withdrawOfferAction
 } from "@/app/local/actions";
 import type { Thread, ThreadHandover, ThreadMessage } from "@/lib/domain/local-threads/threads-service";
 
@@ -35,6 +44,11 @@ export function ThreadView({
   const [body, setBody] = useState("");
   const [showHandoverForm, setShowHandoverForm] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
+  const [offerDecision, setOfferDecision] = useState<ThreadMessage | null>(null);
+  const [showHandoverManage, setShowHandoverManage] = useState(false);
+  const [showNoShow, setShowNoShow] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [showBlock, setShowBlock] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -77,22 +91,36 @@ export function ThreadView({
   return (
     <div className="mt-6 flex flex-col gap-4">
       <div className="flex max-h-[360px] flex-col gap-2 overflow-y-auto rounded-[4px] bg-[var(--paper)] p-3">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={[
-              "max-w-[80%] rounded-[14px] px-3 py-2 text-[12.5px]",
-              message.sender_id === viewerId
-                ? "self-end bg-[var(--oxblood)] text-[var(--cream)]"
-                : "self-start bg-[var(--cream)] text-[var(--ink)]"
-            ].join(" ")}
-          >
-            {message.kind === "offer" ? (
-              <span className="font-semibold">offered A${((message.offer_cents ?? 0) / 100).toFixed(0)}</span>
-            ) : null}
-            {message.body ? <p>{message.body}</p> : null}
-          </div>
-        ))}
+        {messages.map((message) => {
+          const isMine = message.sender_id === viewerId;
+          const isPendingOffer = message.kind === "offer" && message.offer_status === "pending";
+          return (
+            <div
+              key={message.id}
+              className={[
+                "max-w-[80%] rounded-[14px] px-3 py-2 text-[12.5px]",
+                isMine ? "self-end bg-[var(--oxblood)] text-[var(--cream)]" : "self-start bg-[var(--cream)] text-[var(--ink)]"
+              ].join(" ")}
+            >
+              {message.kind === "offer" ? (
+                <span className="font-semibold">
+                  offered A${((message.offer_cents ?? 0) / 100).toFixed(0)}
+                  {message.offer_status && message.offer_status !== "pending" ? ` · ${message.offer_status}` : ""}
+                </span>
+              ) : null}
+              {message.body ? <p>{message.body}</p> : null}
+              {isPendingOffer ? (
+                <button
+                  type="button"
+                  className={["mt-1 block text-[10.5px] underline", isMine ? "text-[var(--cream)]" : "text-[var(--stone)]"].join(" ")}
+                  onClick={() => setOfferDecision(message)}
+                >
+                  {isMine ? "withdraw" : "decline"}
+                </button>
+              ) : null}
+            </div>
+          );
+        })}
         <div ref={bottomRef} />
       </div>
 
@@ -126,15 +154,35 @@ export function ThreadView({
             )
           ) : (
             <div>
-              <p className="text-[9px] font-semibold uppercase tracking-[.18em] text-[var(--stone)]">
-                handover · {handover.state}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-[9px] font-semibold uppercase tracking-[.18em] text-[var(--stone)]">
+                  handover · {handover.state}
+                </p>
+                {handover.state === "proposed" || handover.state === "agreed" ? (
+                  <button
+                    type="button"
+                    className="text-[11px] underline text-[var(--stone)]"
+                    onClick={() => setShowHandoverManage(true)}
+                  >
+                    manage
+                  </button>
+                ) : null}
+              </div>
               <p className="pt-2 text-[13px] text-[var(--ink)]">
                 {handover.place_name}, {handover.place_suburb}
               </p>
               <p className="text-[11px] text-[var(--stone)]">
                 {new Date(handover.at).toLocaleString("en-AU")}
               </p>
+              {(handover.state === "proposed" || handover.state === "agreed") && new Date(handover.at) < new Date() ? (
+                <button
+                  type="button"
+                  className="mt-2 text-[11px] underline text-[var(--oxblood)]"
+                  onClick={() => setShowNoShow(true)}
+                >
+                  they didn&apos;t show?
+                </button>
+              ) : null}
 
               {handover.state === "proposed" && handover.proposed_by !== viewerId ? (
                 <div className="mt-3 flex gap-2">
@@ -183,32 +231,85 @@ export function ThreadView({
 
       <section className="border-t border-[rgba(30,26,23,.14)] pt-4">
         <div className="flex gap-4 text-[11px] text-[var(--stone)]">
-          <button
-            type="button"
-            className="underline"
-            onClick={async () => {
-              if (!confirm(`block ${counterpartName}? this closes the thread for both of you.`)) return;
-              const counterpartId = iAmBuyer ? thread.seller_id : thread.buyer_id;
-              await blockUserAction(counterpartId, thread.id);
-              router.refresh();
-            }}
-          >
+          <button type="button" className="underline" onClick={() => setShowBlock(true)}>
             block
           </button>
-          <button
-            type="button"
-            className="underline"
-            onClick={async () => {
-              const reason = prompt("what's wrong with this listing?");
-              if (!reason) return;
-              await reportListingAction(thread.listing_id, reason);
-              alert("reported — thanks for letting us know.");
-            }}
-          >
+          <button type="button" className="underline" onClick={() => setShowReport(true)}>
             report
           </button>
         </div>
       </section>
+
+      {offerDecision ? (
+        <OfferDecisionDialog
+          open
+          variant={offerDecision.sender_id === viewerId ? "withdraw" : "decline"}
+          counterpartName={counterpartName}
+          offerCents={offerDecision.offer_cents ?? 0}
+          onClose={() => setOfferDecision(null)}
+          onConfirm={async () => {
+            if (offerDecision.sender_id === viewerId) {
+              await withdrawOfferAction(offerDecision.id, thread.id);
+            } else {
+              await respondToOfferAction(offerDecision.id, thread.id);
+            }
+            setOfferDecision(null);
+            router.refresh();
+          }}
+        />
+      ) : null}
+      {handover ? (
+        <HandoverManageSheet
+          open={showHandoverManage}
+          placeName={handover.place_name}
+          placeSuburb={handover.place_suburb}
+          at={handover.at}
+          onClose={() => setShowHandoverManage(false)}
+          onReschedule={async () => {
+            await cancelHandoverAction(handover.id, thread.id);
+            setShowHandoverManage(false);
+            setShowHandoverForm(true);
+            router.refresh();
+          }}
+          onCancel={async () => {
+            await cancelHandoverAction(handover.id, thread.id);
+            setShowHandoverManage(false);
+            router.refresh();
+          }}
+        />
+      ) : null}
+      {handover ? (
+        <NoShowSheet
+          open={showNoShow}
+          counterpartName={counterpartName}
+          placeName={handover.place_name}
+          at={handover.at}
+          onClose={() => setShowNoShow(false)}
+          onReport={async () => {
+            await reportNoShowAction(handover.id, thread.id);
+            setShowNoShow(false);
+            router.refresh();
+          }}
+        />
+      ) : null}
+      <ReportListingSheet
+        open={showReport}
+        onClose={() => setShowReport(false)}
+        onSubmit={async (reason) => {
+          await reportListingAction(thread.listing_id, reason);
+        }}
+      />
+      <BlockUserDialog
+        open={showBlock}
+        counterpartName={counterpartName}
+        onClose={() => setShowBlock(false)}
+        onConfirm={async () => {
+          const counterpartId = iAmBuyer ? thread.seller_id : thread.buyer_id;
+          await blockUserAction(counterpartId, thread.id);
+          setShowBlock(false);
+          router.refresh();
+        }}
+      />
     </div>
   );
 }
