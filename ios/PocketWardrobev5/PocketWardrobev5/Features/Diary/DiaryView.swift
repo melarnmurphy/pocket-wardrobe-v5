@@ -6,27 +6,20 @@
 import SwiftUI
 
 struct DiaryView: View {
+    @Environment(WearLogStore.self) private var wearLogStore
 
     // MARK: - State
 
-    @State private var visibleMonth: Date = SampleData.today
+    @State private var visibleMonth: Date = Date()
     @State private var selectedEvent: WearEvent? = nil
     @State private var logDate: IdentifiedDate? = nil
 
     // MARK: - Calendar
 
     private var cal: Calendar {
-        var c = Calendar(identifier: .gregorian)
-        c.timeZone = TimeZone(identifier: "Europe/Amsterdam")!
+        var c = Calendar.current
         c.firstWeekday = 2   // Monday start
         return c
-    }
-
-    private var monthTitle: String {
-        let f = DateFormatter()
-        f.timeZone = TimeZone(identifier: "Europe/Amsterdam")
-        f.dateFormat = "MMMM yyyy"
-        return f.string(from: visibleMonth)
     }
 
     /// Returns a flat array of 42 (6 weeks × 7 days) tagged with whether each is
@@ -55,7 +48,11 @@ struct DiaryView: View {
     }
 
     private func event(for date: Date) -> WearEvent? {
-        SampleData.wearEvents.first { cal.isDate($0.date, inSameDayAs: date) }
+        wearLogStore.events.first { cal.isDate($0.date, inSameDayAs: date) }
+    }
+
+    private var eventsThisMonth: [WearEvent] {
+        wearLogStore.events.filter { cal.isDate($0.date, equalTo: visibleMonth, toGranularity: .month) }
     }
 
     // MARK: - Body
@@ -90,9 +87,13 @@ struct DiaryView: View {
                         .buttonStyle(.plain)
                         .foregroundStyle(PWColor.ink70)
                     }
-                    Text(statsLine)
-                        .caption(size: 13)
-                        .fixedSize(horizontal: false, vertical: true)
+                    if case .error(let message) = wearLogStore.state {
+                        Text(message).caption(size: 13, color: PWColor.oxblood)
+                    } else {
+                        Text(statsLine)
+                            .caption(size: 13)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .padding(.horizontal, PWSpacing.pageGutter)
                 .padding(.top, 24)
@@ -101,7 +102,7 @@ struct DiaryView: View {
                 HStack {
                     Spacer()
                     PWButton(title: "Log today's outfit", style: .primary, icon: "plus") {
-                        logDate = IdentifiedDate(date: SampleData.today)
+                        logDate = IdentifiedDate(date: Date())
                     }
                 }
                 .padding(.horizontal, PWSpacing.pageGutter)
@@ -123,8 +124,14 @@ struct DiaryView: View {
                 .padding(.bottom, 10)
 
                 // Grid
-                monthGrid
-                    .padding(.horizontal, PWSpacing.pageGutter)
+                if wearLogStore.state == .loading && wearLogStore.events.isEmpty {
+                    ProgressView()
+                        .padding(.top, 32)
+                        .frame(maxWidth: .infinity)
+                } else {
+                    monthGrid
+                        .padding(.horizontal, PWSpacing.pageGutter)
+                }
 
                 // Stats strip
                 statsStrip
@@ -134,6 +141,12 @@ struct DiaryView: View {
             }
         }
         .background(PWColor.ivory)
+        .task {
+            await wearLogStore.load()
+        }
+        .refreshable {
+            await wearLogStore.load()
+        }
         .sheet(item: $selectedEvent) { event in
             DayDetailSheet(event: event)
                 .presentationDetents([.large])
@@ -141,6 +154,11 @@ struct DiaryView: View {
         }
         .sheet(item: $logDate) { id in
             LogOutfitSheet(date: id.date)
+        }
+        .onChange(of: logDate) { _, newValue in
+            if newValue == nil {
+                Task { await wearLogStore.load() }
+            }
         }
     }
 
@@ -170,7 +188,7 @@ struct DiaryView: View {
     @ViewBuilder
     private func dayCell(_ cell: CellData) -> some View {
         let event = event(for: cell.date)
-        let isToday = cal.isDateInToday(cell.date) || cal.isDate(cell.date, inSameDayAs: SampleData.today)
+        let isToday = cal.isDateInToday(cell.date)
         let dayNum = cal.component(.day, from: cell.date)
 
         Button {
@@ -182,27 +200,32 @@ struct DiaryView: View {
         } label: {
             ZStack(alignment: .topLeading) {
                 if let event {
-                    // Full-bleed photo
-                    AsyncImage(url: event.photoURL) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image.resizable().aspectRatio(contentMode: .fill)
-                        default:
-                            PWColor.mist
+                    if let photoURL = event.photoURL {
+                        AsyncImage(url: photoURL) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image.resizable().aspectRatio(contentMode: .fill)
+                            default:
+                                PWColor.mist
+                            }
                         }
-                    }
-                    .clipped()
+                        .clipped()
 
-                    // Gradient overlay
-                    LinearGradient(
-                        colors: [Color.black.opacity(0.5), .clear, .clear, Color.black.opacity(0.35)],
-                        startPoint: .top, endPoint: .bottom
-                    )
+                        LinearGradient(
+                            colors: [Color.black.opacity(0.5), .clear, .clear, Color.black.opacity(0.35)],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                    } else {
+                        // No photo storage for diary entries yet — a filled
+                        // tile still honestly signals "logged," unlike the
+                        // empty "+" cell below.
+                        PWColor.mist
+                    }
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(dayNum)")
                             .font(PWFont.mono(size: 11))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(event.photoURL == nil ? PWColor.ink : .white)
                         if event.isFavourite {
                             Image(systemName: "heart.fill")
                                 .font(.system(size: 9))
@@ -247,19 +270,16 @@ struct DiaryView: View {
     // MARK: - Stats strip
 
     private var statsStrip: some View {
-        let worn = SampleData.wearEvents.count
-        let favs = SampleData.wearEvents.filter(\.isFavourite).count
-        let uniquePieces = Set(SampleData.wearEvents.flatMap(\.pieceIDs)).count
-        let avgC = SampleData.wearEvents.map(\.weatherC).reduce(0, +) / max(1, worn)
+        let daysLogged = eventsThisMonth.count
+        let uniquePieces = Set(eventsThisMonth.flatMap(\.pieceIDs)).count
+        let totalLogs = eventsThisMonth.reduce(0) { $0 + $1.pieceIDs.count }
 
         return HStack(spacing: 0) {
-            statCell("\(worn)", "outfits")
+            statCell("\(daysLogged)", "days logged")
             Divider().frame(height: 42).background(PWColor.line)
             statCell("\(uniquePieces)", "pieces")
             Divider().frame(height: 42).background(PWColor.line)
-            statCell("\(favs)", "favourites")
-            Divider().frame(height: 42).background(PWColor.line)
-            statCell("\(avgC)°", "avg weather")
+            statCell("\(totalLogs)", "piece-logs")
         }
         .padding(.vertical, 18)
         .overlay(
@@ -285,16 +305,15 @@ struct DiaryView: View {
     // MARK: - Helpers
 
     private var statsLine: String {
-        let worn = SampleData.wearEvents.count
-        let favs = SampleData.wearEvents.filter(\.isFavourite).count
-        return "\(worn) outfits logged · \(favs) new favourites · avg $4.20 per wear"
+        let daysLogged = eventsThisMonth.count
+        let uniquePieces = Set(eventsThisMonth.flatMap(\.pieceIDs)).count
+        return "\(daysLogged) day\(daysLogged == 1 ? "" : "s") logged this month · \(uniquePieces) piece\(uniquePieces == 1 ? "" : "s") worn"
     }
 
     private enum MonthPart { case month, yearItalic }
 
     private func monthComponent(_ part: MonthPart) -> String {
         let f = DateFormatter()
-        f.timeZone = TimeZone(identifier: "Europe/Amsterdam")
         switch part {
         case .month:      f.dateFormat = "MMMM"; return f.string(from: visibleMonth)
         case .yearItalic: f.dateFormat = "yyyy"; return f.string(from: visibleMonth)
@@ -309,11 +328,12 @@ struct DiaryView: View {
 }
 
 /// Wrap a raw Date in an Identifiable for .sheet(item:) plumbing.
-private struct IdentifiedDate: Identifiable {
+private struct IdentifiedDate: Identifiable, Equatable {
     let id: UUID = UUID()
     let date: Date
 }
 
 #Preview {
     DiaryView()
+        .environment(WearLogStore())
 }

@@ -396,6 +396,70 @@ struct OutfitStoreTests {
     }
 }
 
+@Suite("WearLogStore mapping")
+@MainActor
+struct WearLogStoreTests {
+
+    @Test("groupByDay merges same-day rows into one WearEvent")
+    func groupsSameDay() {
+        let shirtID = UUID()
+        let jeansID = UUID()
+        let rows = [
+            WearEventRow(
+                id: "e1", garmentId: shirtID.uuidString, wornAt: "2026-04-20T09:00:00.000000+00:00",
+                occasion: "Studio day", notes: "Felt great", outfitId: nil,
+                garmentTitle: "Linen shirt", garmentCategory: "top", garmentPreviewUrl: nil
+            ),
+            WearEventRow(
+                id: "e2", garmentId: jeansID.uuidString, wornAt: "2026-04-20T09:00:00.000000+00:00",
+                occasion: nil, notes: nil, outfitId: "outfit-1",
+                garmentTitle: "Blue jeans", garmentCategory: "bottom", garmentPreviewUrl: nil
+            )
+        ]
+        let events = WearLogStore.groupByDay(rows)
+        #expect(events.count == 1)
+        let event = events[0]
+        #expect(Set(event.pieceIDs) == Set([shirtID, jeansID]))
+        #expect(event.title == "Linen shirt, Blue jeans")
+        #expect(event.occasion == "Studio day")
+        #expect(event.note == "Felt great")
+        #expect(event.source == .planner)
+    }
+
+    @Test("groupByDay keeps different days separate and sorts newest first")
+    func groupsDifferentDaysSeparately() {
+        let rows = [
+            WearEventRow(
+                id: "e1", garmentId: UUID().uuidString, wornAt: "2026-04-19T09:00:00.000000+00:00",
+                occasion: nil, notes: nil, outfitId: nil,
+                garmentTitle: nil, garmentCategory: "top", garmentPreviewUrl: nil
+            ),
+            WearEventRow(
+                id: "e2", garmentId: UUID().uuidString, wornAt: "2026-04-20T09:00:00.000000+00:00",
+                occasion: nil, notes: nil, outfitId: nil,
+                garmentTitle: nil, garmentCategory: "top", garmentPreviewUrl: nil
+            )
+        ]
+        let events = WearLogStore.groupByDay(rows)
+        #expect(events.count == 2)
+        #expect(events[0].date > events[1].date)
+        #expect(events[0].source == .pickFromCloset)
+        #expect(events[0].title == "Untitled")
+    }
+
+    @Test("groupByDay skips a row with an unparsable timestamp")
+    func skipsInvalidTimestamp() {
+        let rows = [
+            WearEventRow(
+                id: "e1", garmentId: UUID().uuidString, wornAt: "not-a-date",
+                occasion: nil, notes: nil, outfitId: nil,
+                garmentTitle: nil, garmentCategory: "top", garmentPreviewUrl: nil
+            )
+        ]
+        #expect(WearLogStore.groupByDay(rows).isEmpty)
+    }
+}
+
 @Suite("SavedOutfitsStore mapping")
 @MainActor
 struct SavedOutfitsStoreTests {

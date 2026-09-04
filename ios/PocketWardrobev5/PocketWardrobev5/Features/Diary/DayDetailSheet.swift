@@ -8,16 +8,22 @@ import SwiftUI
 struct DayDetailSheet: View {
     let event: WearEvent
     @Environment(\.dismiss) private var dismiss
+    @Environment(GarmentStore.self) private var garmentStore
 
     private var pieces: [Garment] {
-        event.pieceIDs.compactMap { SampleData.garment($0) }
+        let byID = Dictionary(uniqueKeysWithValues: garmentStore.garments.map { ($0.id, $0) })
+        return event.pieceIDs.compactMap { byID[$0] }
     }
 
     private var dateString: String {
         let f = DateFormatter()
-        f.timeZone = TimeZone(identifier: "Europe/Amsterdam")
         f.dateFormat = "EEEE · MMMM d, yyyy"
         return f.string(from: event.date)
+    }
+
+    private var weatherText: String? {
+        guard let weatherC = event.weatherC, let summary = event.weatherSummary else { return nil }
+        return "\(weatherC)° · \(summary)"
     }
 
     var body: some View {
@@ -25,29 +31,31 @@ struct DayDetailSheet: View {
             VStack(alignment: .leading, spacing: 0) {
                 // Hero
                 ZStack(alignment: .bottomLeading) {
-                    AsyncImage(url: event.photoURL) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image.resizable().aspectRatio(contentMode: .fill)
-                        default: PWColor.mist
+                    if let photoURL = event.photoURL {
+                        AsyncImage(url: photoURL) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image.resizable().aspectRatio(contentMode: .fill)
+                            default: PWColor.mist
+                            }
                         }
-                    }
-                    .frame(height: 460)
-                    .frame(maxWidth: .infinity)
-                    .clipped()
+                        .frame(height: 460)
+                        .frame(maxWidth: .infinity)
+                        .clipped()
 
-                    HStack {
-                        Text("Your photo")
-                            .font(PWFont.body(size: 10, weight: .medium))
-                            .tracking(10 * 0.14)
-                            .textCase(.uppercase)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .foregroundStyle(PWColor.ivory)
-                            .background(.ultraThinMaterial)
-                            .clipShape(RoundedRectangle(cornerRadius: PWRadius.xs))
+                        HStack {
+                            Text("Your photo")
+                                .font(PWFont.body(size: 10, weight: .medium))
+                                .tracking(10 * 0.14)
+                                .textCase(.uppercase)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .foregroundStyle(PWColor.ivory)
+                                .background(.ultraThinMaterial)
+                                .clipShape(RoundedRectangle(cornerRadius: PWRadius.xs))
+                        }
+                        .padding(16)
                     }
-                    .padding(16)
                 }
 
                 VStack(alignment: .leading, spacing: 22) {
@@ -59,38 +67,44 @@ struct DayDetailSheet: View {
 
                     // Tag row
                     FlowLayout(spacing: 8, runSpacing: 8) {
-                        TagChip(text: event.occasion)
+                        if !event.occasion.isEmpty {
+                            TagChip(text: event.occasion)
+                        }
                         if event.isFavourite {
                             TagChip(text: "♥ Favourite", style: .accent)
                         }
-                        TagChip(text: "\(event.weatherC)° · \(event.weatherSummary)")
+                        if let weatherText {
+                            TagChip(text: weatherText)
+                        }
                     }
 
                     // Pieces
-                    VStack(alignment: .leading, spacing: 12) {
-                        EyebrowLabel(text: "Pieces")
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 10) {
-                                ForEach(pieces) { piece in
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        AsyncImage(url: piece.imageURL) { phase in
-                                            switch phase {
-                                            case .success(let image):
-                                                image.resizable().aspectRatio(contentMode: .fill)
-                                            default: PWColor.mist
+                    if !pieces.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            EyebrowLabel(text: "Pieces")
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 10) {
+                                    ForEach(pieces) { piece in
+                                        VStack(alignment: .leading, spacing: 6) {
+                                            AsyncImage(url: piece.imageURL) { phase in
+                                                switch phase {
+                                                case .success(let image):
+                                                    image.resizable().aspectRatio(contentMode: .fill)
+                                                default: PWColor.mist
+                                                }
                                             }
+                                            .frame(width: 90, height: 112)
+                                            .clipShape(RoundedRectangle(cornerRadius: PWRadius.sm))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: PWRadius.sm)
+                                                    .stroke(PWColor.line, lineWidth: 1)
+                                            )
+                                            Text(piece.name)
+                                                .font(PWFont.body(size: 11))
+                                                .foregroundStyle(PWColor.ink60)
+                                                .lineLimit(1)
+                                                .frame(width: 90, alignment: .leading)
                                         }
-                                        .frame(width: 90, height: 112)
-                                        .clipShape(RoundedRectangle(cornerRadius: PWRadius.sm))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: PWRadius.sm)
-                                                .stroke(PWColor.line, lineWidth: 1)
-                                        )
-                                        Text(piece.name)
-                                            .font(PWFont.body(size: 11))
-                                            .foregroundStyle(PWColor.ink60)
-                                            .lineLimit(1)
-                                            .frame(width: 90, alignment: .leading)
                                     }
                                 }
                             }
@@ -111,14 +125,18 @@ struct DayDetailSheet: View {
                     VStack(alignment: .leading, spacing: 0) {
                         EyebrowLabel(text: "Context")
                             .padding(.bottom, 6)
-                        contextRow("Occasion", event.occasion)
-                        contextRow("Weather", "\(event.weatherC)° · \(event.weatherSummary)")
+                        if !event.occasion.isEmpty {
+                            contextRow("Occasion", event.occasion)
+                        }
+                        if let weatherText {
+                            contextRow("Weather", weatherText)
+                        }
                         contextRow("Source", event.source.rawValue, isLast: true)
                     }
 
                     HStack(spacing: 10) {
                         PWButton(title: "Re-wear this", style: .primary)
-                        PWButton(title: "Replace photo", style: .outline)
+                        PWButton(title: "Add a photo", style: .outline)
                     }
                     .padding(.top, 8)
                     .padding(.bottom, 40)
@@ -164,4 +182,5 @@ struct DayDetailSheet: View {
 
 #Preview {
     DayDetailSheet(event: SampleData.wearEvents[7])
+        .environment(GarmentStore())
 }

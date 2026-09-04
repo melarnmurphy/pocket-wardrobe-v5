@@ -5,6 +5,10 @@
 // This is the signal the week planner's laundry-awareness (OutfitStore/
 // generateWeekOfOutfits) hard-excludes on; before this, the only way to
 // produce it was the web wardrobe closet's "Log Wear" form.
+//
+// Also reads GET /api/mobile/wear-events for the Diary calendar: the route
+// returns one row per garment per wear, grouped here into a per-day
+// WearEvent — a day can have several pieces logged in one submission.
 
 import Foundation
 
@@ -19,11 +23,87 @@ private struct LogWearEventsResponse: Decodable {
     let logged: Int
 }
 
+struct WearEventRow: Decodable {
+    let id: String
+    let garmentId: String
+    let wornAt: String
+    let occasion: String?
+    let notes: String?
+    let outfitId: String?
+    let garmentTitle: String?
+    let garmentCategory: String?
+    let garmentPreviewUrl: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case garmentId = "garment_id"
+        case wornAt = "worn_at"
+        case occasion, notes
+        case outfitId = "outfit_id"
+        case garmentTitle = "garment_title"
+        case garmentCategory = "garment_category"
+        case garmentPreviewUrl = "garment_preview_url"
+    }
+}
+
+private struct ListWearEventsResponse: Decodable {
+    let events: [WearEventRow]
+}
+
 @Observable
 @MainActor
 final class WearLogStore {
     var isSaving = false
     var errorMessage: String?
+
+    var events: [WearEvent] = []
+    var state: LoadState = .idle
+
+    func load() async {
+        guard state != .loading else { return }
+        state = .loading
+        do {
+            let response: ListWearEventsResponse = try await MobileAPIClient.get("/api/mobile/wear-events")
+            events = Self.groupByDay(response.events)
+            state = .loaded
+        } catch {
+            state = .error(error.localizedDescription)
+        }
+    }
+
+    /// One WearEvent per calendar day, in the device's current timezone.
+    static func groupByDay(_ rows: [WearEventRow]) -> [WearEvent] {
+        let calendar = Calendar.current
+        var byDay: [Date: [WearEventRow]] = [:]
+        for row in rows {
+            guard let date = SavedOutfitsStore.parseTimestamp(row.wornAt) else { continue }
+            let dayStart = calendar.startOfDay(for: date)
+            byDay[dayStart, default: []].append(row)
+        }
+
+        return byDay.map { day, dayRows in
+            let pieceIDs = dayRows.compactMap { UUID(uuidString: $0.garmentId) }
+            let titles = dayRows.compactMap { $0.garmentTitle?.isEmpty == false ? $0.garmentTitle : nil }
+            let occasion = dayRows.compactMap { $0.occasion?.isEmpty == false ? $0.occasion : nil }.first ?? ""
+            let note = dayRows.compactMap { $0.notes?.isEmpty == false ? $0.notes : nil }.first
+            let hasLinkedOutfit = dayRows.contains { $0.outfitId != nil }
+
+            return WearEvent(
+                id: UUID(),
+                date: day,
+                title: titles.isEmpty ? "Untitled" : titles.joined(separator: ", "),
+                occasion: occasion,
+                photoURL: nil,
+                pieceIDs: pieceIDs,
+                note: note,
+                isFavourite: false,
+                weatherC: nil,
+                weatherSummary: nil,
+                source: hasLinkedOutfit ? .planner : .pickFromCloset
+            )
+        }
+        .sorted { $0.date > $1.date }
+    }
 
     /// Returns true on success. Callers dismiss their sheet on true and
     /// leave errorMessage displayed on false.

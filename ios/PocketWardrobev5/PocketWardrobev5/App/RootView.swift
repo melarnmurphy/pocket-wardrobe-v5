@@ -8,7 +8,7 @@ import SwiftUI
 struct RootView: View {
     @State private var tab: Tab = .wardrobe
 
-    enum Tab: Hashable { case wardrobe, lookbook, trends, planner, rules }
+    enum Tab: Hashable { case wardrobe, lookbook, trends, planner, diary, rules }
 
     var body: some View {
         TabView(selection: $tab) {
@@ -36,6 +36,12 @@ struct RootView: View {
                     Label("Planner", systemImage: "calendar")
                 }
                 .tag(Tab.planner)
+
+            DiaryView()
+                .tabItem {
+                    Label("Diary", systemImage: "book.closed")
+                }
+                .tag(Tab.diary)
 
             RulesView()
                 .tabItem {
