@@ -17,12 +17,11 @@ struct GeneratorSettingsSheet: View {
     @State private var excludedGarmentIDs: [UUID] = []
     @State private var showingExcludePicker = false
 
-    // Not wired to the generator this pass. Underworn-lift is already always
-    // applied inside rankingDelta (lib/domain/outfits/ranking.ts) — there's
-    // no per-call flag to turn it off. Trend weighting only applies to
-    // "trend" mode, which week generation (plan/surprise per day) doesn't
-    // use — a week can't sensibly target one trend signal for every day.
     @State private var liftUnderworn = true
+    // 0-1. Applies the user's top trend match as a scoring boost on every
+    // planned day, regardless of that day's occasion — the generator's
+    // trend boost no longer requires "trend" mode (see generator.ts's
+    // trendWeight param).
     @State private var trendWeight: Double = 0.5
 
     private var activeDayCount: Int {
@@ -79,10 +78,8 @@ struct GeneratorSettingsSheet: View {
                         EyebrowLabel(text: "Ranking preferences")
 
                         prefToggle(title: "Lift underworn pieces",
-                                   caption: "Always on — the generator already boosts pieces you wear less.",
-                                   isOn: .constant(true))
-                            .disabled(true)
-                            .opacity(0.6)
+                                   caption: "Boost pieces with a high cost-per-wear you haven't worn much.",
+                                   isOn: $liftUnderworn)
                         HairlineDivider(color: PWColor.lineSoft)
                         prefToggle(title: "Avoid repeating pieces",
                                    caption: "Don't reuse a piece already picked earlier this week.",
@@ -91,6 +88,25 @@ struct GeneratorSettingsSheet: View {
                         prefToggle(title: "Laundry-aware",
                                    caption: "Skip pieces you've logged as worn recently.",
                                    isOn: $laundryAware)
+                        HairlineDivider(color: PWColor.lineSoft)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Weigh trend signals")
+                                    .font(PWFont.display(size: 15))
+                                    .foregroundStyle(PWColor.ink)
+                                Spacer()
+                                Text(trendWeightLabel)
+                                    .font(PWFont.body(size: 11, weight: .medium))
+                                    .foregroundStyle(PWColor.ink)
+                            }
+                            Text("Lean every planned day toward your top trend match.")
+                                .font(PWFont.body(size: 12))
+                                .foregroundStyle(PWColor.ink60)
+                            Slider(value: $trendWeight, in: 0...1)
+                                .tint(PWColor.ink)
+                        }
+                        .padding(.vertical, 10)
                     }
 
                     HairlineDivider()
@@ -118,7 +134,9 @@ struct GeneratorSettingsSheet: View {
                                     days: weekDays,
                                     avoidRepeat: avoidRepeat,
                                     laundryAware: laundryAware,
-                                    manualExcludeIDs: excludedGarmentIDs
+                                    manualExcludeIDs: excludedGarmentIDs,
+                                    liftUnderworn: liftUnderworn,
+                                    trendWeight: trendWeight
                                 )
                                 dismiss()
                             }
@@ -148,6 +166,15 @@ struct GeneratorSettingsSheet: View {
         }
         .sheet(isPresented: $showingExcludePicker) {
             excludePickerSheet
+        }
+    }
+
+    private var trendWeightLabel: String {
+        switch trendWeight {
+        case 0.0..<0.01:  return "Off"
+        case 0.01..<0.34: return "Low"
+        case 0.34..<0.67: return "Medium"
+        default:          return "High"
         }
     }
 

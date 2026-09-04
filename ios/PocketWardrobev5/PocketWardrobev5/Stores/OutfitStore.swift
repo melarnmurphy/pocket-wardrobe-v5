@@ -85,6 +85,8 @@ private struct GenerateWeekRequest: Encodable {
     let avoid_repeat: Bool
     let laundry_aware: Bool
     let exclude_garment_ids: [String]
+    let lift_underworn: Bool
+    let trend_weight: Double
 }
 
 private struct WeekDayRow: Decodable {
@@ -145,7 +147,9 @@ final class OutfitStore {
         days: [WeekDayPlan],
         avoidRepeat: Bool,
         laundryAware: Bool,
-        manualExcludeIDs: [UUID]
+        manualExcludeIDs: [UUID],
+        liftUnderworn: Bool = true,
+        trendWeight: Double = 0
     ) async {
         guard weekState != .loading else { return }
         let activeDays = days.filter { !$0.occasion.isSkipped }
@@ -162,7 +166,9 @@ final class OutfitStore {
                 },
                 avoid_repeat: avoidRepeat,
                 laundry_aware: laundryAware,
-                exclude_garment_ids: manualExcludeIDs.map { $0.uuidString.lowercased() }
+                exclude_garment_ids: manualExcludeIDs.map { $0.uuidString.lowercased() },
+                lift_underworn: liftUnderworn,
+                trend_weight: trendWeight
             )
             let response: GenerateWeekResponse = try await MobileAPIClient.post(
                 "/api/mobile/outfits/generate-week",
