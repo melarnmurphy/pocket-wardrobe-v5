@@ -2,7 +2,10 @@
 import type { NeglectGarment } from "@/lib/domain/outfits/neglect";
 
 const RECENCY_PENALTY = 0.3;
-const RECENCY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+// Exported for week generation's hard laundry-availability exclusion (not
+// exposed to any client) — the single-outfit path still only soft-penalizes
+// within this same window via recencyPenalty below.
+export const RECENCY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 const WEAR_PRIOR = 0.5;
 const ROTATION_ALPHA = 0.35;

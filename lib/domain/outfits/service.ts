@@ -4,6 +4,7 @@ import { getRequiredUser } from "@/lib/auth";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import { listStyleRules } from "@/lib/domain/style-rules/service";
 import { generateOutfit } from "@/lib/domain/outfits/generator";
+import { RECENCY_WINDOW_MS } from "@/lib/domain/outfits/ranking";
 import type { ServiceContext } from "@/lib/domain/service-context";
 import { z } from "zod";
 import {
@@ -39,7 +40,11 @@ export const listUserTrendMatchesWithSignals = cache(async (ctx?: ServiceContext
 export async function generateOutfitForUser(
   input: GenerateOutfitInput,
   isPro: boolean,
-  ctx?: ServiceContext
+  ctx?: ServiceContext,
+  // Internal-only: week generation feeds forward garments already used on an
+  // earlier day. Not part of the public wire schema (generateOutfitInputSchema)
+  // since it's not a per-call user choice, just week-orchestration state.
+  excludeGarmentIds?: string[]
 ): Promise<GeneratedOutfit> {
   const [garments, styleRules] = await Promise.all([
     listWardrobeGarments(ctx),
@@ -67,7 +72,8 @@ export async function generateOutfitForUser(
     weather,
     occasion,
     mustIncludeGarmentIds:
-      input.mode === "trend" ? input.must_include_garment_ids : undefined
+      input.mode === "trend" ? input.must_include_garment_ids : undefined,
+    excludeGarmentIds
   });
 
   // Pro: replace rule tags with Claude prose (stub — not yet wired)
@@ -76,6 +82,61 @@ export async function generateOutfitForUser(
   }
 
   return result;
+}
+
+export type WeekDayRequest = {
+  date: string; // "YYYY-MM-DD"
+  occasion?: string | null;
+  dress_code?: string | null;
+};
+
+export type WeekDayResult = {
+  date: string;
+  outfit: GeneratedOutfit;
+};
+
+/**
+ * One outfit per requested day, generated sequentially so each day can
+ * exclude the pieces already used earlier in the week (a role whose every
+ * candidate is excluded still falls back to reuse — see generator.ts — so a
+ * small wardrobe never comes up empty). Also hard-excludes anything worn
+ * within RECENCY_WINDOW_MS: the single-outfit generator only soft-penalizes
+ * that same window, but a week plan can afford to just avoid it outright.
+ * Wear data only becomes real once a garment is logged as worn somewhere
+ * (today, that's the web wardrobe closet's "Log Wear" form) — for a garment
+ * never logged worn, last_worn_at is null and it's simply never excluded.
+ */
+export async function generateWeekOfOutfits(
+  days: WeekDayRequest[],
+  isPro: boolean,
+  ctx?: ServiceContext
+): Promise<WeekDayResult[]> {
+  const garments = await listWardrobeGarments(ctx);
+  const now = Date.now();
+
+  const excludeIds = new Set(
+    garments
+      .filter((g) => {
+        if (!g.last_worn_at) return false;
+        const wornAt = Date.parse(g.last_worn_at);
+        return !Number.isNaN(wornAt) && now - wornAt < RECENCY_WINDOW_MS;
+      })
+      .map((g) => g.id as string)
+  );
+
+  const results: WeekDayResult[] = [];
+  for (const day of days) {
+    const input: GenerateOutfitInput =
+      day.occasion || day.dress_code
+        ? { mode: "plan", occasion: day.occasion ?? null, dress_code: day.dress_code ?? null, weather: null }
+        : { mode: "surprise" };
+
+    const outfit = await generateOutfitForUser(input, isPro, ctx, Array.from(excludeIds));
+    for (const g of outfit.garments) excludeIds.add(g.id);
+    results.push({ date: day.date, outfit });
+  }
+
+  return results;
 }
 
 export async function saveOutfit(input: SaveOutfitInput, ctx?: ServiceContext): Promise<string> {

@@ -420,6 +420,11 @@ export type GeneratorInput = {
   weather?: string;
   occasion?: string;
   mustIncludeGarmentIds?: string[];
+  // Week generation feeds forward garments already picked for an earlier day
+  // so the week doesn't repeat outfits. A role whose candidates are ALL
+  // excluded falls back to the unfiltered pool rather than going empty —
+  // e.g. a wardrobe with one pair of shoes still gets shoes every day.
+  excludeGarmentIds?: string[];
   nowMs?: number;
 };
 
@@ -557,12 +562,18 @@ export function generateOutfit(input: GeneratorInput): GeneratedOutfit {
   const selectedGarments: OutfitGarmentPreview[] = [];
   const selectedFullGarments: GarmentListItem[] = [];
   const firedRules: FiredRule[] = [];
+  const excludeIds = new Set(input.excludeGarmentIds ?? []);
 
   for (const [role, candidates] of byRole) {
     if (candidates.length === 0) continue;
 
+    const filtered = excludeIds.size > 0
+      ? candidates.filter((g) => !excludeIds.has(g.id as string))
+      : candidates;
+    const usable = filtered.length > 0 ? filtered : candidates;
+
     // Inclusion uses rulesScore only. RankingScore sorts after optional-role omit.
-    const scored = candidates.map((g) => {
+    const scored = usable.map((g) => {
       const rulesScore = scoreGarment(g, expandedRules, ctx);
       let rankingScore = rulesScore + rankingDelta(g) - recencyPenalty(g.last_worn_at, now);
       if (mode === "trend" && trendSignal) {

@@ -559,3 +559,57 @@ describe("expandRulesWithAttributeInference integration", () => {
     );
   });
 });
+
+describe("generateOutfit excludeGarmentIds", () => {
+  it("picks a different garment for a role when the top-scored one is excluded", () => {
+    const staleDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const garments = [
+      makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1", category: "shirt", last_worn_at: staleDate }),
+      makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2", category: "shirt", last_worn_at: null })
+    ];
+    const withoutExclusion = generateOutfit({ mode: "surprise", garments, styleRules: [], trendSignal: null });
+    const preferredId = withoutExclusion.garments.find((g) => g.role === "top")?.id;
+    expect(preferredId).toBe("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1");
+
+    const withExclusion = generateOutfit({
+      mode: "surprise",
+      garments,
+      styleRules: [],
+      trendSignal: null,
+      excludeGarmentIds: [preferredId as string]
+    });
+    expect(withExclusion.garments.find((g) => g.role === "top")?.id).toBe(
+      "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2"
+    );
+  });
+
+  it("falls back to reuse when excluding would leave a role with nothing", () => {
+    const onlyShirt = makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1", category: "shirt" });
+    const result = generateOutfit({
+      mode: "surprise",
+      garments: [onlyShirt],
+      styleRules: [],
+      trendSignal: null,
+      excludeGarmentIds: ["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"]
+    });
+    expect(result.garments.find((g) => g.role === "top")?.id).toBe(
+      "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"
+    );
+  });
+
+  it("behaves identically to an unset list when excludeGarmentIds is empty", () => {
+    const garments = [
+      makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1", category: "shirt" }),
+      makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2", category: "chinos" })
+    ];
+    const withUndefined = generateOutfit({ mode: "surprise", garments, styleRules: [], trendSignal: null });
+    const withEmpty = generateOutfit({
+      mode: "surprise",
+      garments,
+      styleRules: [],
+      trendSignal: null,
+      excludeGarmentIds: []
+    });
+    expect(withEmpty.garments).toEqual(withUndefined.garments);
+  });
+});
