@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     // isPro is false for this iteration, matching the single-outfit route.
     const week = await generateWeekOfOutfits(parsed.data.days, false, { supabase, userId: user.id });
-    return NextResponse.json({ week });
+    return NextResponse.json({ week: week.days, unavailable_garment_ids: week.unavailableGarmentIds });
   } catch (error) {
     if (error instanceof AuthenticationError) {
       return NextResponse.json({ error: error.message }, { status: 401 });

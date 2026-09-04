@@ -106,24 +106,32 @@ export type WeekDayResult = {
  * (today, that's the web wardrobe closet's "Log Wear" form) — for a garment
  * never logged worn, last_worn_at is null and it's simply never excluded.
  */
+export type WeekPlanResult = {
+  days: WeekDayResult[];
+  // Garments hard-excluded for being recently worn (before any within-week
+  // repeats are added) — the Planner's availability card surfaces these by
+  // id via GarmentStore, rather than the client re-deriving the recency
+  // window itself.
+  unavailableGarmentIds: string[];
+};
+
 export async function generateWeekOfOutfits(
   days: WeekDayRequest[],
   isPro: boolean,
   ctx?: ServiceContext
-): Promise<WeekDayResult[]> {
+): Promise<WeekPlanResult> {
   const garments = await listWardrobeGarments(ctx);
   const now = Date.now();
 
-  const excludeIds = new Set(
-    garments
-      .filter((g) => {
-        if (!g.last_worn_at) return false;
-        const wornAt = Date.parse(g.last_worn_at);
-        return !Number.isNaN(wornAt) && now - wornAt < RECENCY_WINDOW_MS;
-      })
-      .map((g) => g.id as string)
-  );
+  const recentlyWornIds = garments
+    .filter((g) => {
+      if (!g.last_worn_at) return false;
+      const wornAt = Date.parse(g.last_worn_at);
+      return !Number.isNaN(wornAt) && now - wornAt < RECENCY_WINDOW_MS;
+    })
+    .map((g) => g.id as string);
 
+  const excludeIds = new Set(recentlyWornIds);
   const results: WeekDayResult[] = [];
   for (const day of days) {
     const input: GenerateOutfitInput =
@@ -136,7 +144,7 @@ export async function generateWeekOfOutfits(
     results.push({ date: day.date, outfit });
   }
 
-  return results;
+  return { days: results, unavailableGarmentIds: recentlyWornIds };
 }
 
 export async function saveOutfit(input: SaveOutfitInput, ctx?: ServiceContext): Promise<string> {
