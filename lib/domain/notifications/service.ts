@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { getRequiredUser } from "@/lib/auth";
 import {
   NOTIFICATION_KIND_VALUES,
@@ -65,9 +66,17 @@ export async function markAllNotificationsRead(): Promise<void> {
 
 /**
  * Server-to-server write, called from wherever a real trigger happens (so
- * far: a new local-threads message — see
- * lib/domain/local-threads/threads-service.ts's insertMessage). Deliberately
- * not exposed as a user-callable action.
+ * far: a new local-threads message and an offer made/received — see
+ * lib/domain/local-threads/threads-service.ts). Deliberately not exposed as
+ * a user-callable action.
+ *
+ * Uses the service-role client rather than the per-request cookie client:
+ * this writes a row owned by the *recipient*, not the caller, and
+ * app_notifications' RLS only grants select/update on your own rows — there
+ * is deliberately no insert policy for a user to write into someone else's
+ * notifications. Insert failures here used to be swallowed silently
+ * (the result was never checked), so every notification was a no-op against
+ * the live schema; both are fixed together since one masked the other.
  */
 export async function createNotification(params: {
   userId: string;
@@ -77,7 +86,7 @@ export async function createNotification(params: {
   subjectKind?: "piece" | "wishlist" | "listing" | "trend" | "batch" | "thread";
   subjectId?: string;
 }): Promise<void> {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const insert: NotificationInsert = {
     user_id: params.userId,
@@ -88,5 +97,9 @@ export async function createNotification(params: {
     subject_id: params.subjectId ?? null
   };
 
-  await supabase.from("app_notifications").insert(insert as never);
+  const { error } = await supabase.from("app_notifications").insert(insert as never);
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }

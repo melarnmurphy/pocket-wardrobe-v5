@@ -24,6 +24,9 @@ fromMock = vi.fn((table: string) => {
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({ from: fromMock }))
 }));
+vi.mock("@/lib/supabase/service", () => ({
+  createServiceClient: vi.fn(() => ({ from: fromMock }))
+}));
 vi.mock("@/lib/auth", () => ({
   getRequiredUser: vi.fn(async () => ({ id: "11111111-1111-1111-1111-111111111111" }))
 }));

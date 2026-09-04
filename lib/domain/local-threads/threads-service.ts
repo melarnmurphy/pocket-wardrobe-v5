@@ -309,8 +309,8 @@ async function insertMessage(
     const { createNotification } = await import("@/lib/domain/notifications/service");
     await createNotification({
       userId: recipientId,
-      kind: "message",
-      title: "New message",
+      kind: params.kind === "offer" ? "offer" : "message",
+      title: params.kind === "offer" ? "New offer" : "New message",
       body: params.kind === "offer" ? `Offered A$${((params.offerCents ?? 0) / 100).toFixed(0)}` : params.body,
       subjectKind: "thread",
       subjectId: params.threadId
