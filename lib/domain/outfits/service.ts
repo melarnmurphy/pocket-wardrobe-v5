@@ -116,9 +116,9 @@ export async function saveOutfit(input: SaveOutfitInput, ctx?: ServiceContext): 
   return outfit.id;
 }
 
-export const listSavedOutfits = cache(async (): Promise<OutfitWithItems[]> => {
-  const user = await getRequiredUser();
-  const supabase = await createClient();
+export const listSavedOutfits = cache(async (ctx?: ServiceContext): Promise<OutfitWithItems[]> => {
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
 
   const { data, error } = await supabase
     .from("outfits")
