@@ -14,6 +14,7 @@ import { getServerEnv } from "@/lib/env";
 import { createNotification } from "@/lib/domain/notifications/service";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const REMINDER_AFTER_DAYS = 60;
 
@@ -47,24 +48,38 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  let notified = 0;
-
-  for (const garment of (candidates ?? []) as Array<{
+  const garments = (candidates ?? []) as Array<{
     id: string;
     user_id: string;
     title: string | null;
     last_worn_at: string | null;
-  }>) {
-    const { data: recentReminder } = await supabase
+  }>;
+
+  // One dedupe query for all candidates rather than one per garment — a
+  // per-row select here would otherwise turn a wardrobe-wide scan into an
+  // N+1 that scales with garment count, not with how many actually need a
+  // reminder.
+  const alreadyRemindedIds = new Set<string>();
+  const CHUNK_SIZE = 300;
+  for (let i = 0; i < garments.length; i += CHUNK_SIZE) {
+    const chunkIds = garments.slice(i, i + CHUNK_SIZE).map((g) => g.id);
+    const { data: recentReminders } = await supabase
       .from("app_notifications")
-      .select("id")
+      .select("subject_id")
       .eq("kind", "wear reminder")
       .eq("subject_kind", "piece")
-      .eq("subject_id", garment.id)
-      .gte("created_at", cutoff)
-      .limit(1);
+      .in("subject_id", chunkIds)
+      .gte("created_at", cutoff);
 
-    if (recentReminder && recentReminder.length > 0) {
+    for (const row of (recentReminders ?? []) as Array<{ subject_id: string | null }>) {
+      if (row.subject_id) alreadyRemindedIds.add(row.subject_id);
+    }
+  }
+
+  let notified = 0;
+
+  for (const garment of garments) {
+    if (alreadyRemindedIds.has(garment.id)) {
       continue;
     }
 

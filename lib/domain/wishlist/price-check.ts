@@ -1,7 +1,7 @@
 import { promises as dns } from "node:dns";
 import net from "node:net";
 
-const FETCH_TIMEOUT_MS = 8000;
+const FETCH_TIMEOUT_MS = 6000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 export interface FetchedPrice {
