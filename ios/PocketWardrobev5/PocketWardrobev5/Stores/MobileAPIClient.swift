@@ -26,15 +26,34 @@ enum MobileAPIError: Error, LocalizedError {
 
 enum MobileAPIClient {
     static func get<T: Decodable>(_ path: String) async throws -> T {
-        try await send(path: path, method: "GET", body: nil)
+        try await send(path: path, method: "GET", contentType: nil, body: nil)
     }
 
     static func post<Body: Encodable, T: Decodable>(_ path: String, body: Body) async throws -> T {
         let data = try JSONEncoder().encode(body)
-        return try await send(path: path, method: "POST", body: data)
+        return try await send(path: path, method: "POST", contentType: "application/json", body: data)
     }
 
-    private static func send<T: Decodable>(path: String, method: String, body: Data?) async throws -> T {
+    /// Uploads a single photo as multipart/form-data (field name "photo"),
+    /// matching what the /api/mobile/wardrobe/capture route expects.
+    static func uploadPhoto<T: Decodable>(_ path: String, imageData: Data, filename: String, mimeType: String) async throws -> T {
+        let boundary = "PocketWardrobe-\(UUID().uuidString)"
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(imageData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+
+        return try await send(
+            path: path,
+            method: "POST",
+            contentType: "multipart/form-data; boundary=\(boundary)",
+            body: body
+        )
+    }
+
+    private static func send<T: Decodable>(path: String, method: String, contentType: String?, body: Data?) async throws -> T {
         guard let accessToken = AppSupabase.shared.auth.currentSession?.accessToken else {
             throw MobileAPIError.unauthenticated
         }
@@ -45,7 +64,9 @@ enum MobileAPIClient {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let contentType {
+            request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        }
         request.httpBody = body
 
         let (data, response): (Data, URLResponse)

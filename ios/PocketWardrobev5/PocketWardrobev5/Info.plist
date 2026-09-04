@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Pocket Wardrobe uses your camera to photograph a garment so it can add it to your wardrobe.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Fraunces-LightItalic.ttf</string>

@@ -10,6 +10,7 @@ struct WardrobeView: View {
 
     @State private var selectedFilter: Garment.Category? = nil
     @State private var selectedGarment: Garment? = nil
+    @State private var showingCapture = false
 
     private let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -36,6 +37,13 @@ struct WardrobeView: View {
                         Text("Wardrobe.")
                             .display(size: 44)
                         Spacer()
+                        Button {
+                            showingCapture = true
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 28))
+                                .foregroundStyle(PWColor.ink)
+                        }
                     }
                     Text("Every piece, how much you've worn it, and whether it earns its space.")
                         .caption(size: 14)
@@ -112,6 +120,9 @@ struct WardrobeView: View {
             GarmentDetailSheet(garment: garment)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showingCapture) {
+            CaptureView()
         }
     }
 }
