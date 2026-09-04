@@ -425,6 +425,13 @@ export type GeneratorInput = {
   // excluded falls back to the unfiltered pool rather than going empty —
   // e.g. a wardrobe with one pair of shoes still gets shoes every day.
   excludeGarmentIds?: string[];
+  // Toggled from the iOS week-planner's "Lift underworn pieces" preference.
+  // rankingDelta always ran unconditionally before this existed — default
+  // true keeps every other caller's behaviour unchanged.
+  liftUnderworn?: boolean;
+  // 0-1, applies a trend boost scaled by this weight whenever trendSignal is
+  // set, independent of mode — "trend" mode itself always passes 1 (service.ts).
+  trendWeight?: number;
   nowMs?: number;
 };
 
@@ -487,15 +494,20 @@ export function scoreGarment(
 }
 
 /** Apply trend boost: garments matching the trend signal's normalized_attributes get a multiplier. */
-export function applyTrendBoost(score: number, garment: GarmentListItem, signal: UserTrendMatchWithSignal): number {
+export function applyTrendBoost(
+  score: number,
+  garment: GarmentListItem,
+  signal: UserTrendMatchWithSignal,
+  weight = 1
+): number {
   const attrs = signal.trend_signal.normalized_attributes_json as Record<string, unknown>;
   const cat = garment.category.toLowerCase();
   const category = typeof attrs["category"] === "string" ? attrs["category"].toLowerCase() : null;
   const requiredCats = Array.isArray(attrs["required_categories"])
     ? (attrs["required_categories"] as string[]).map(c => c.toLowerCase())
     : null;
-  if (category && cat.includes(category)) return score * (1 + signal.score);
-  if (requiredCats && requiredCats.some(c => cat.includes(c))) return score * (1 + signal.score * 0.5);
+  if (category && cat.includes(category)) return score * (1 + signal.score * weight);
+  if (requiredCats && requiredCats.some(c => cat.includes(c))) return score * (1 + signal.score * 0.5 * weight);
   return score;
 }
 
@@ -542,7 +554,7 @@ function applyMustIncludeGarments(params: {
 
 /** Main entry point: generate an outfit from wardrobe + rules + input. */
 export function generateOutfit(input: GeneratorInput): GeneratedOutfit {
-  const { mode, garments, styleRules, trendSignal, dress_code, weather, occasion } = input;
+  const { garments, styleRules, trendSignal, dress_code, weather, occasion } = input;
   const ctx: ScoringContext = { dress_code, weather, occasion };
 
   const expandedRules = expandRulesWithAttributeInference(styleRules);
@@ -563,6 +575,8 @@ export function generateOutfit(input: GeneratorInput): GeneratedOutfit {
   const selectedFullGarments: GarmentListItem[] = [];
   const firedRules: FiredRule[] = [];
   const excludeIds = new Set(input.excludeGarmentIds ?? []);
+  const liftUnderworn = input.liftUnderworn ?? true;
+  const trendWeight = input.trendWeight ?? 1;
 
   for (const [role, candidates] of byRole) {
     if (candidates.length === 0) continue;
@@ -575,9 +589,9 @@ export function generateOutfit(input: GeneratorInput): GeneratedOutfit {
     // Inclusion uses rulesScore only. RankingScore sorts after optional-role omit.
     const scored = usable.map((g) => {
       const rulesScore = scoreGarment(g, expandedRules, ctx);
-      let rankingScore = rulesScore + rankingDelta(g) - recencyPenalty(g.last_worn_at, now);
-      if (mode === "trend" && trendSignal) {
-        rankingScore = applyTrendBoost(rankingScore, g, trendSignal);
+      let rankingScore = rulesScore + (liftUnderworn ? rankingDelta(g) : 0) - recencyPenalty(g.last_worn_at, now);
+      if (trendSignal) {
+        rankingScore = applyTrendBoost(rankingScore, g, trendSignal, trendWeight);
       }
       return { garment: g, rankingScore, rulesScore };
     });

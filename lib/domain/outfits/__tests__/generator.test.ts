@@ -7,6 +7,7 @@ import {
 } from "../generator";
 import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
 import type { StyleRuleListItem } from "@/lib/domain/style-rules/service";
+import type { UserTrendMatchWithSignal } from "@/lib/domain/trends";
 import { describe, it, expect } from "vitest";
 import { categoryToRole } from "../generator";
 import { expandRulesWithAttributeInference } from "@/lib/domain/style-rules/inference";
@@ -611,5 +612,72 @@ describe("generateOutfit excludeGarmentIds", () => {
       excludeGarmentIds: []
     });
     expect(withEmpty.garments).toEqual(withUndefined.garments);
+  });
+});
+
+describe("generateOutfit liftUnderworn", () => {
+  it("drops the underworn/cost-per-wear boost when liftUnderworn is false", () => {
+    // Neither has last_worn_at, so recencyPenalty is 0 for both either way —
+    // only rankingDelta (wear_count/price) should be able to separate them.
+    const cheapWorn = makeGarment({
+      id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1",
+      category: "blazer",
+      purchase_price: 20,
+      wear_count: 12
+    });
+    const expensiveUnworn = makeGarment({
+      id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2",
+      category: "blazer",
+      purchase_price: 400,
+      wear_count: 0
+    });
+    const garments = [cheapWorn, expensiveUnworn];
+
+    const lifted = generateOutfit({ mode: "plan", garments, styleRules: [], trendSignal: null });
+    expect(lifted.garments.find((g) => g.role === "outerwear")?.id).toBe(expensiveUnworn.id);
+
+    const notLifted = generateOutfit({
+      mode: "plan", garments, styleRules: [], trendSignal: null, liftUnderworn: false
+    });
+    expect(notLifted.garments.find((g) => g.role === "outerwear")?.id).toBe(cheapWorn.id);
+  });
+});
+
+describe("generateOutfit trendWeight", () => {
+  const trendSignal: UserTrendMatchWithSignal = {
+    user_id: "user-1",
+    trend_signal_id: "trend-1",
+    match_type: "exact_match",
+    score: 1,
+    reasoning_json: {},
+    trend_signal: {
+      trend_type: "garment",
+      label: "Blazer moment",
+      normalized_attributes_json: { category: "blazer" },
+      source_count: 1
+    }
+  };
+
+  // Both "blazer" and "cardigan" pass generator.ts's isLayeringGarment check
+  // (so neither gets excluded by the optional-role threshold below), unlike
+  // e.g. "coat" — keeping the only difference between them the trend match.
+  it("applies a trend boost outside trend mode when a weight is given", () => {
+    const cardigan = makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1", category: "cardigan" });
+    const blazer = makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2", category: "blazer" });
+
+    const result = generateOutfit({
+      mode: "surprise", garments: [cardigan, blazer], styleRules: [], trendSignal, trendWeight: 1
+    });
+    expect(result.garments.find((g) => g.role === "outerwear")?.id).toBe(blazer.id);
+  });
+
+  it("ignores the trend signal when trendWeight is 0", () => {
+    const cardigan = makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1", category: "cardigan" });
+    const blazer = makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2", category: "blazer" });
+
+    const result = generateOutfit({
+      mode: "surprise", garments: [cardigan, blazer], styleRules: [], trendSignal, trendWeight: 0
+    });
+    expect(result.garments.find((g) => g.role === "outerwear")?.id).toBe(cardigan.id);
   });
 });

@@ -37,14 +37,24 @@ export const listUserTrendMatchesWithSignals = cache(async (ctx?: ServiceContext
   return z.array(userTrendMatchWithSignalSchema).parse(data ?? []);
 });
 
+export type GenerateOutfitOptions = {
+  // Internal-only: not part of the public wire schema (generateOutfitInputSchema)
+  // since none of these are a single-call user choice — they're either
+  // week-orchestration state (excludeGarmentIds) or apply across a whole
+  // week plan's ranking preferences (the other two).
+  excludeGarmentIds?: string[];
+  liftUnderworn?: boolean; // default true
+  // 0-1. Applies a trend boost even outside "trend" mode, using the user's
+  // top trend match — lets a week's plan/surprise days still lean toward
+  // this week's signals without forcing every day into "trend" mode.
+  trendWeight?: number;
+};
+
 export async function generateOutfitForUser(
   input: GenerateOutfitInput,
   isPro: boolean,
   ctx?: ServiceContext,
-  // Internal-only: week generation feeds forward garments already used on an
-  // earlier day. Not part of the public wire schema (generateOutfitInputSchema)
-  // since it's not a per-call user choice, just week-orchestration state.
-  excludeGarmentIds?: string[]
+  options?: GenerateOutfitOptions
 ): Promise<GeneratedOutfit> {
   const [garments, styleRules] = await Promise.all([
     listWardrobeGarments(ctx),
@@ -55,6 +65,9 @@ export async function generateOutfitForUser(
   if (input.mode === "trend") {
     const matches = await listUserTrendMatchesWithSignals(ctx);
     trendSignal = matches.find(m => m.trend_signal_id === input.trend_signal_id) ?? null;
+  } else if ((options?.trendWeight ?? 0) > 0) {
+    const matches = await listUserTrendMatchesWithSignals(ctx);
+    trendSignal = matches[0] ?? null; // already score-ordered by listUserTrendMatchesWithSignals
   }
 
   const dress_code = input.mode === "plan" ? input.dress_code ?? undefined : undefined;
@@ -73,7 +86,9 @@ export async function generateOutfitForUser(
     occasion,
     mustIncludeGarmentIds:
       input.mode === "trend" ? input.must_include_garment_ids : undefined,
-    excludeGarmentIds
+    excludeGarmentIds: options?.excludeGarmentIds,
+    liftUnderworn: options?.liftUnderworn,
+    trendWeight: input.mode === "trend" ? 1 : options?.trendWeight
   });
 
   // Pro: replace rule tags with Claude prose (stub — not yet wired)
@@ -119,6 +134,8 @@ export type WeekPlanOptions = {
   avoidRepeat?: boolean; // default true — feed each day's picks forward as the next day's exclusion
   laundryAware?: boolean; // default true — hard-exclude anything worn within RECENCY_WINDOW_MS
   manualExcludeGarmentIds?: string[]; // always applied regardless of the two flags above
+  liftUnderworn?: boolean; // default true — see GenerateOutfitOptions
+  trendWeight?: number; // 0-1, default 0 — see GenerateOutfitOptions
 };
 
 export async function generateWeekOfOutfits(
@@ -152,7 +169,11 @@ export async function generateWeekOfOutfits(
         ? { mode: "plan", occasion: day.occasion ?? null, dress_code: day.dress_code ?? null, weather: null }
         : { mode: "surprise" };
 
-    const outfit = await generateOutfitForUser(input, isPro, ctx, Array.from(excludeIds));
+    const outfit = await generateOutfitForUser(input, isPro, ctx, {
+      excludeGarmentIds: Array.from(excludeIds),
+      liftUnderworn: options?.liftUnderworn,
+      trendWeight: options?.trendWeight
+    });
     if (avoidRepeat) {
       for (const g of outfit.garments) excludeIds.add(g.id);
     }

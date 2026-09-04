@@ -19,7 +19,9 @@ const generateWeekInputSchema = z.object({
     .max(7),
   avoid_repeat: z.boolean().optional(),
   laundry_aware: z.boolean().optional(),
-  exclude_garment_ids: z.array(z.string().uuid()).max(50).optional()
+  exclude_garment_ids: z.array(z.string().uuid()).max(50).optional(),
+  lift_underworn: z.boolean().optional(),
+  trend_weight: z.number().min(0).max(1).optional()
 });
 
 export async function POST(request: NextRequest) {
@@ -35,7 +37,9 @@ export async function POST(request: NextRequest) {
     const week = await generateWeekOfOutfits(parsed.data.days, false, { supabase, userId: user.id }, {
       avoidRepeat: parsed.data.avoid_repeat,
       laundryAware: parsed.data.laundry_aware,
-      manualExcludeGarmentIds: parsed.data.exclude_garment_ids
+      manualExcludeGarmentIds: parsed.data.exclude_garment_ids,
+      liftUnderworn: parsed.data.lift_underworn,
+      trendWeight: parsed.data.trend_weight
     });
     return NextResponse.json({ week: week.days, unavailable_garment_ids: week.unavailableGarmentIds });
   } catch (error) {
