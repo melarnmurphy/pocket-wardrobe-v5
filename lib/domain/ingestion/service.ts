@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
+import type { ServiceContext } from "@/lib/domain/service-context";
 import type { PipelineAnalyzeResponse } from "./index";
 import { directUploadAdapter, outfitDecompositionAdapter, type ReviewDraftAdapterPayload, type IngestionAdapterKind } from "./adapters";
 import type { Json, TablesInsert } from "@/types/database";
@@ -15,7 +16,8 @@ export interface CreateDraftsParams {
 }
 
 export async function createDraftsFromPipelineResult(
-  params: CreateDraftsParams
+  params: CreateDraftsParams,
+  ctx?: ServiceContext
 ): Promise<string[]> {
   const { sourceId, storagePath, result } = params;
 
@@ -23,8 +25,8 @@ export async function createDraftsFromPipelineResult(
     return [];
   }
 
-  const user = await getRequiredUser();
-  const supabase = await createClient();
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
   const isOutfitDecomposition = result.garments.length >= 2;
   const fileName = storagePath?.split("/").pop() ?? "photo upload";
   const drafts: Array<{
@@ -367,9 +369,9 @@ export async function createGarmentSource(params: {
   file: File;
   width?: number;
   height?: number;
-}): Promise<{ sourceId: string; storagePath: string }> {
-  const user = await getRequiredUser();
-  const supabase = await createClient();
+}, ctx?: ServiceContext): Promise<{ sourceId: string; storagePath: string }> {
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
 
   const safeFileName = params.file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
   const storagePath = `${user.id}/pipeline-uploads/${Date.now()}-${safeFileName}`;
@@ -513,9 +515,9 @@ export async function createManualReviewDraft(params: {
   metadata?: Record<string, unknown>;
   fieldConfidence?: Partial<Record<string, number>> | null;
   fieldProvenance?: Partial<Record<string, string>> | null;
-}): Promise<string> {
-  const user = await getRequiredUser();
-  const supabase = await createClient();
+}, ctx?: ServiceContext): Promise<string> {
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
 
   const payload: GarmentDraftInsert = {
     user_id: user.id,
@@ -561,7 +563,7 @@ export async function createManualPhotoReviewDraft(params: {
   sourceId: string;
   fileName: string;
   notes?: string | null;
-}): Promise<string> {
+}, ctx?: ServiceContext): Promise<string> {
   const draftPayload = directUploadAdapter.buildDraft({
     fileName: params.fileName,
     notes: params.notes
@@ -586,7 +588,7 @@ export async function createManualPhotoReviewDraft(params: {
     metadata: draftPayload.metadata,
     fieldConfidence: draftPayload.fieldConfidence,
     fieldProvenance: draftPayload.fieldProvenance
-  });
+  }, ctx);
 }
 
 export async function listPendingDrafts(): Promise<PendingDraft[]> {

@@ -554,10 +554,11 @@ export async function countWardrobeGarments(): Promise<number> {
 
 export async function createGarment(
   input: z.input<typeof createGarmentSchema>,
-  options?: { primaryColourFamily?: WardrobeColourFamily | null }
+  options?: { primaryColourFamily?: WardrobeColourFamily | null },
+  ctx?: ServiceContext
 ) {
-  const user = await getRequiredUser();
-  const supabase = await createClient();
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
   const parsedPayload = garmentSchema.parse({
     ...input,
     user_id: user.id

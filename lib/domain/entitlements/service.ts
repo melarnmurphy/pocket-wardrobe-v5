@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
+import type { ServiceContext } from "@/lib/domain/service-context";
 import type { Database } from "@/types/database";
 import {
   entitlementFeatures,
@@ -40,9 +41,9 @@ function buildDefaultEntitlements(userId: string): UserEntitlements {
   };
 }
 
-export const getUserEntitlements = cache(async (): Promise<UserEntitlements> => {
-  const user = await getRequiredUser();
-  const supabase = await createClient();
+export const getUserEntitlements = cache(async (ctx?: ServiceContext): Promise<UserEntitlements> => {
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
   const { data, error } = await supabase
     .from("user_entitlements")
     .select(
@@ -74,8 +75,8 @@ export async function getPlanTier(): Promise<PlanTier> {
   return entitlements.plan_tier;
 }
 
-export async function canUseFeatureLabels(): Promise<boolean> {
-  const entitlements = await getUserEntitlements();
+export async function canUseFeatureLabels(ctx?: ServiceContext): Promise<boolean> {
+  const entitlements = await getUserEntitlements(ctx);
   return isFeatureEnabled(entitlements, entitlementFeatures.featureLabels);
 }
 
@@ -99,8 +100,8 @@ export async function assertPaidPlanAccess(featureName: string): Promise<UserEnt
   return entitlements;
 }
 
-export async function assertFeatureLabelsAccess(): Promise<UserEntitlements> {
-  const entitlements = await getUserEntitlements();
+export async function assertFeatureLabelsAccess(ctx?: ServiceContext): Promise<UserEntitlements> {
+  const entitlements = await getUserEntitlements(ctx);
 
   if (!isFeatureEnabled(entitlements, entitlementFeatures.featureLabels)) {
     throw new FeatureAccessError(
