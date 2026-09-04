@@ -1,8 +1,10 @@
 import OpenAI from "openai";
 import { createHash } from "node:crypto";
+import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import { getAccountProfile } from "@/lib/domain/account/service";
+import type { ServiceContext } from "@/lib/domain/service-context";
 import { computeUserTrendMatches } from "./matching";
 import {
   trendSignalSchema,
@@ -331,8 +333,12 @@ function mergeMatches(base: UserTrendMatch[], upgrades: UserTrendMatch[]): UserT
   return Array.from(byKey.values());
 }
 
-export async function getUserTrendMatches(userId: string): Promise<UserTrendMatch[]> {
-  const supabase = await createClient();
+export async function getUserTrendMatches(
+  userId: string,
+  ctx?: ServiceContext,
+  user?: User
+): Promise<UserTrendMatch[]> {
+  const supabase = ctx ? ctx.supabase : await createClient();
 
   // Staleness gate: max(created_at) across user's existing matches
   const { data: latestMatch } = await supabase
@@ -360,9 +366,9 @@ export async function getUserTrendMatches(userId: string): Promise<UserTrendMatc
 
   const [signals, garments, compatibleColourFamilies, profile] = await Promise.all([
     getTrendSignals(),
-    listWardrobeGarments(),
+    listWardrobeGarments(ctx),
     getCompatibleColourFamilies(supabase),
-    getAccountProfile()
+    getAccountProfile(user)
   ]);
 
   const matches = computeUserTrendMatches({
@@ -376,17 +382,18 @@ export async function getUserTrendMatches(userId: string): Promise<UserTrendMatc
   const semanticUpgrades = await getSemanticUpgrades(supabase, userId, garments, matchesWithUser);
   const finalMatches = mergeMatches(matchesWithUser, semanticUpgrades);
 
-  await upsertUserTrendMatches(userId, finalMatches);
+  await upsertUserTrendMatches(userId, finalMatches, ctx);
 
   return z.array(userTrendMatchSchema).parse(finalMatches);
 }
 
 export async function upsertUserTrendMatches(
   userId: string,
-  matches: UserTrendMatch[]
+  matches: UserTrendMatch[],
+  ctx?: ServiceContext
 ): Promise<void> {
   if (matches.length === 0) return;
-  const supabase = await createClient();
+  const supabase = ctx ? ctx.supabase : await createClient();
 
   const inserts: UserTrendMatchInsert[] = matches.map((m) => ({
     user_id: userId,

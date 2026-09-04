@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { z } from "zod";
+import type { User } from "@supabase/supabase-js";
 import { getRequiredUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -38,8 +39,10 @@ function getEnumFromMetadata<T extends string>(metadata: unknown, key: string, v
   return typeof value === "string" && (values as readonly string[]).includes(value) ? (value as T) : null;
 }
 
-export const getAccountProfile = cache(async (): Promise<AccountProfile> => {
-  const user = await getRequiredUser();
+// providedUser lets a mobile route pass its bearer-token-derived user (which
+// getRequiredUser, being cookie-only, cannot see) instead of re-deriving one.
+export const getAccountProfile = cache(async (providedUser?: User): Promise<AccountProfile> => {
+  const user = providedUser ?? (await getRequiredUser());
   return accountProfileSchema.parse({
     email: user.email ?? null,
     display_name: getDisplayNameFromMetadata(user.user_metadata),
