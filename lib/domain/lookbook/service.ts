@@ -2,6 +2,7 @@ import { cache } from "react";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
+import type { ServiceContext } from "@/lib/domain/service-context";
 import {
   createLookbookEntrySchema,
   createLookbookItemSchema,
@@ -48,9 +49,9 @@ export type LookbookListItem = z.infer<typeof lookbookListItemSchema> & {
 };
 export type WardrobeLookupItem = z.infer<typeof wardrobeLookupSchema>;
 
-export const listLookbookEntries = cache(async (): Promise<LookbookListItem[]> => {
-  const user = await getRequiredUser();
-  const supabase = await createClient();
+export const listLookbookEntries = cache(async (ctx?: ServiceContext): Promise<LookbookListItem[]> => {
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
 
   const { data, error } = await supabase
     .from("lookbook_entries")

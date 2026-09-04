@@ -8,9 +8,11 @@ import SwiftUI
 struct LookbookEntrySheet: View {
     let entry: LookbookEntry
     @Environment(\.dismiss) private var dismiss
+    @Environment(GarmentStore.self) private var garmentStore
 
     private var ownedPieces: [Garment] {
-        entry.ownedPieceIDs.compactMap { SampleData.garment($0) }
+        let byID = Dictionary(uniqueKeysWithValues: garmentStore.garments.map { ($0.id, $0) })
+        return entry.ownedPieceIDs.compactMap { byID[$0] }
     }
 
     var body: some View {
@@ -181,4 +183,5 @@ struct LookbookEntrySheet: View {
 
 #Preview {
     LookbookEntrySheet(entry: SampleData.lookbookEntries[0])
+        .environment(GarmentStore())
 }
