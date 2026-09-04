@@ -115,23 +115,36 @@ export type WeekPlanResult = {
   unavailableGarmentIds: string[];
 };
 
+export type WeekPlanOptions = {
+  avoidRepeat?: boolean; // default true — feed each day's picks forward as the next day's exclusion
+  laundryAware?: boolean; // default true — hard-exclude anything worn within RECENCY_WINDOW_MS
+  manualExcludeGarmentIds?: string[]; // always applied regardless of the two flags above
+};
+
 export async function generateWeekOfOutfits(
   days: WeekDayRequest[],
   isPro: boolean,
-  ctx?: ServiceContext
+  ctx?: ServiceContext,
+  options?: WeekPlanOptions
 ): Promise<WeekPlanResult> {
+  const avoidRepeat = options?.avoidRepeat ?? true;
+  const laundryAware = options?.laundryAware ?? true;
+  const manualExcludeIds = options?.manualExcludeGarmentIds ?? [];
+
   const garments = await listWardrobeGarments(ctx);
   const now = Date.now();
 
-  const recentlyWornIds = garments
-    .filter((g) => {
-      if (!g.last_worn_at) return false;
-      const wornAt = Date.parse(g.last_worn_at);
-      return !Number.isNaN(wornAt) && now - wornAt < RECENCY_WINDOW_MS;
-    })
-    .map((g) => g.id as string);
+  const recentlyWornIds = laundryAware
+    ? garments
+        .filter((g) => {
+          if (!g.last_worn_at) return false;
+          const wornAt = Date.parse(g.last_worn_at);
+          return !Number.isNaN(wornAt) && now - wornAt < RECENCY_WINDOW_MS;
+        })
+        .map((g) => g.id as string)
+    : [];
 
-  const excludeIds = new Set(recentlyWornIds);
+  const excludeIds = new Set([...recentlyWornIds, ...manualExcludeIds]);
   const results: WeekDayResult[] = [];
   for (const day of days) {
     const input: GenerateOutfitInput =
@@ -140,7 +153,9 @@ export async function generateWeekOfOutfits(
         : { mode: "surprise" };
 
     const outfit = await generateOutfitForUser(input, isPro, ctx, Array.from(excludeIds));
-    for (const g of outfit.garments) excludeIds.add(g.id);
+    if (avoidRepeat) {
+      for (const g of outfit.garments) excludeIds.add(g.id);
+    }
     results.push({ date: day.date, outfit });
   }
 

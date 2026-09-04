@@ -16,7 +16,10 @@ const generateWeekInputSchema = z.object({
       })
     )
     .min(1)
-    .max(7)
+    .max(7),
+  avoid_repeat: z.boolean().optional(),
+  laundry_aware: z.boolean().optional(),
+  exclude_garment_ids: z.array(z.string().uuid()).max(50).optional()
 });
 
 export async function POST(request: NextRequest) {
@@ -29,7 +32,11 @@ export async function POST(request: NextRequest) {
     }
 
     // isPro is false for this iteration, matching the single-outfit route.
-    const week = await generateWeekOfOutfits(parsed.data.days, false, { supabase, userId: user.id });
+    const week = await generateWeekOfOutfits(parsed.data.days, false, { supabase, userId: user.id }, {
+      avoidRepeat: parsed.data.avoid_repeat,
+      laundryAware: parsed.data.laundry_aware,
+      manualExcludeGarmentIds: parsed.data.exclude_garment_ids
+    });
     return NextResponse.json({ week: week.days, unavailable_garment_ids: week.unavailableGarmentIds });
   } catch (error) {
     if (error instanceof AuthenticationError) {
