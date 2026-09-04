@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
 import { createWearEventSchema, wearEventSchema } from "@/lib/domain/wear-events";
 import { getFeatureImagePath } from "@/lib/domain/wardrobe/service";
+import type { ServiceContext } from "@/lib/domain/service-context";
 import type { Database, TablesInsert } from "@/types/database";
 
 type WearEventRow = Database["public"]["Tables"]["wear_events"]["Row"];
@@ -40,9 +41,9 @@ const updateWearEventSchema = z.object({
  * counts, cost per wear, least-worn sort and the calendar all agree,
  * because they all read wear_events" (BUILD_ORDER phase 5).
  */
-export async function logWearEvent(input: z.input<typeof createWearEventSchema>) {
-  const user = await getRequiredUser();
-  const supabase = await createClient();
+export async function logWearEvent(input: z.input<typeof createWearEventSchema>, ctx?: ServiceContext) {
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
   const payload: WearEventInsert = wearEventSchema.parse({
     ...input,
     user_id: user.id
