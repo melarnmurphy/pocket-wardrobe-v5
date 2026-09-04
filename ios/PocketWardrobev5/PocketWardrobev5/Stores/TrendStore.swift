@@ -10,7 +10,7 @@
 
 import Foundation
 
-private struct TrendSignalRow: Decodable {
+struct TrendSignalRow: Decodable {
     let id: String
     let trendType: String
     let label: String
@@ -29,7 +29,7 @@ private struct TrendSignalRow: Decodable {
     }
 }
 
-private struct TrendMatchReasoning: Decodable {
+struct TrendMatchReasoning: Decodable {
     let matchReason: String?
     let matchedGarmentIds: [String]?
 
@@ -39,7 +39,7 @@ private struct TrendMatchReasoning: Decodable {
     }
 }
 
-private struct UserTrendMatchRow: Decodable {
+struct UserTrendMatchRow: Decodable {
     let matchType: String
     let reasoningJSON: TrendMatchReasoning?
     let trendSignal: TrendSignalRow
@@ -73,7 +73,7 @@ final class TrendStore {
         }
     }
 
-    private static func map(_ row: UserTrendMatchRow) -> TrendSignal? {
+    static func map(_ row: UserTrendMatchRow) -> TrendSignal? {
         guard let id = UUID(uuidString: row.trendSignal.id) else { return nil }
 
         let reason = row.reasoningJSON?.matchReason
@@ -84,7 +84,7 @@ final class TrendStore {
             category: category(for: row.trendSignal.trendType),
             title: row.trendSignal.label,
             summary: row.trendSignal.canonicalLabel ?? row.trendSignal.label,
-            detail: reason ?? "\(row.trendSignal.sourceCount) source\(row.trendSignal.sourceCount == 1 ? "" : "s") are tracking this signal.",
+            detail: reason ?? "\(row.trendSignal.sourceCount) source\(row.trendSignal.sourceCount == 1 ? " is" : "s are") tracking this signal.",
             swatches: [],
             sourcesCount: row.trendSignal.sourceCount,
             sourceKinds: [],
@@ -98,7 +98,7 @@ final class TrendStore {
         )
     }
 
-    private static func category(for trendType: String) -> TrendSignal.Category {
+    static func category(for trendType: String) -> TrendSignal.Category {
         switch trendType {
         case "colour":     return .colour
         case "garment":    return .garment
@@ -109,14 +109,14 @@ final class TrendStore {
         }
     }
 
-    private static func confidence(for score: Double?) -> TrendSignal.Confidence {
+    static func confidence(for score: Double?) -> TrendSignal.Confidence {
         guard let score else { return .medium }
         if score >= 0.75 { return .high }
         if score >= 0.4 { return .medium }
         return .low
     }
 
-    private static func matchKind(for matchType: String) -> MatchKind {
+    static func matchKind(for matchType: String) -> MatchKind {
         switch matchType {
         case "exact_match":     return .exact
         case "adjacent_match":  return .adjacent

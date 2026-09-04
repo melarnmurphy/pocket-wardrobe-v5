@@ -12,7 +12,7 @@
 
 import Foundation
 
-private struct LookbookItemRow: Decodable {
+struct LookbookItemRow: Decodable {
     let garmentId: String?
     let desiredItemJSON: [String: AnyDecodableValue]?
 
@@ -22,7 +22,7 @@ private struct LookbookItemRow: Decodable {
     }
 }
 
-private struct LookbookEntryRow: Decodable {
+struct LookbookEntryRow: Decodable {
     let id: String
     let title: String?
     let description: String?
@@ -47,7 +47,7 @@ private struct LookbookResponse: Decodable {
 
 /// Decodes any JSON value just far enough to pull a couple of best-effort
 /// string fields out of desired_item_json, which has no fixed schema.
-private struct AnyDecodableValue: Decodable {
+struct AnyDecodableValue: Decodable {
     let stringValue: String?
 
     init(from decoder: Decoder) throws {
@@ -78,7 +78,7 @@ final class LookbookStore {
         }
     }
 
-    private static func mapEntry(_ row: LookbookEntryRow) -> LookbookEntry? {
+    static func mapEntry(_ row: LookbookEntryRow) -> LookbookEntry? {
         guard let id = UUID(uuidString: row.id) else { return nil }
 
         let ownedPieceIDs = row.items.compactMap { $0.garmentId.flatMap(UUID.init(uuidString:)) }
@@ -107,7 +107,7 @@ final class LookbookStore {
         )
     }
 
-    private static func deriveBoards(from entries: [LookbookEntry]) -> [LookbookBoard] {
+    static func deriveBoards(from entries: [LookbookEntry]) -> [LookbookBoard] {
         let grouped = Dictionary(grouping: entries, by: \.board)
         let largest = grouped.max { $0.value.count < $1.value.count }?.key
 

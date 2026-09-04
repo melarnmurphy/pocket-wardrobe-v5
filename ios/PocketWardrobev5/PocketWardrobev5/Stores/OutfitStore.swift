@@ -20,7 +20,7 @@
 
 import Foundation
 
-private struct GenerateOutfitRequest: Encodable {
+struct GenerateOutfitRequest: Encodable {
     let mode: String
     let dress_code: String?
     let trend_signal_id: String?
@@ -36,20 +36,20 @@ private struct GenerateOutfitRequest: Encodable {
     }
 }
 
-private struct GarmentPreviewRow: Decodable {
+struct GarmentPreviewRow: Decodable {
     let id: String
     let title: String?
     let category: String
     let role: String
 }
 
-private struct InsightRow: Decodable {
+struct InsightRow: Decodable {
     let key: String
     let title: String
     let body: String
 }
 
-private struct GeneratedOutfitRow: Decodable {
+struct GeneratedOutfitRow: Decodable {
     let garments: [GarmentPreviewRow]
     let insights: [InsightRow]
 }
@@ -126,7 +126,7 @@ final class OutfitStore {
         return Self.map(response.outfit, variant: variant, usedRealTrendMatch: request.mode == "trend")
     }
 
-    private static func map(_ row: GeneratedOutfitRow, variant: Outfit.Variant, usedRealTrendMatch: Bool) -> Outfit {
+    static func map(_ row: GeneratedOutfitRow, variant: Outfit.Variant, usedRealTrendMatch: Bool) -> Outfit {
         let pieces: [Outfit.Piece] = row.garments.enumerated().compactMap { index, g in
             guard let id = UUID(uuidString: g.id) else { return nil }
             return Outfit.Piece(id: id, role: role(for: g.role), isAnchor: index == 0)
@@ -149,7 +149,7 @@ final class OutfitStore {
         )
     }
 
-    private static func role(for apiRole: String) -> Outfit.Piece.Role {
+    static func role(for apiRole: String) -> Outfit.Piece.Role {
         switch apiRole {
         case "top":        return .top
         case "bottom":     return .bottom
@@ -161,7 +161,7 @@ final class OutfitStore {
         }
     }
 
-    private func apiRole(for role: Outfit.Piece.Role) -> String {
+    func apiRole(for role: Outfit.Piece.Role) -> String {
         switch role {
         case .anchor:  return "top"       // Piece.role never decodes to .anchor; isAnchor is separate
         case .top:     return "top"
@@ -174,7 +174,7 @@ final class OutfitStore {
         }
     }
 
-    private static func symbol(for insightKey: String) -> String {
+    static func symbol(for insightKey: String) -> String {
         switch insightKey {
         case "palette":  return "paintpalette"
         case "layering": return "square.stack"

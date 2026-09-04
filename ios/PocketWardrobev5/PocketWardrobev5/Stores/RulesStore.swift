@@ -1,7 +1,7 @@
 // Stores/RulesStore.swift
 import Foundation
 
-private struct StyleRuleRow: Decodable {
+struct StyleRuleRow: Decodable {
     let id: String
     let subjectValue: String
     let predicate: String
@@ -46,7 +46,7 @@ final class RulesStore {
     // aren't in style_rules — they're presentational. Usage is a known gap
     // (nothing tracks it yet, web or mobile); viz is derived here from the
     // predicate so cards still render something sensible.
-    private static func map(_ row: StyleRuleRow) -> StyleRule? {
+    static func map(_ row: StyleRuleRow) -> StyleRule? {
         guard let id = UUID(uuidString: row.id),
               let predicate = StyleRule.Predicate(rawValue: row.predicate) else { return nil }
 

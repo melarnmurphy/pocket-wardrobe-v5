@@ -10,7 +10,7 @@
 import Foundation
 import Supabase
 
-private struct WeatherContextRow: Decodable {
+struct WeatherContextRow: Decodable {
     let currentTemperatureC: Double?
     let tempMinC: Double?
     let tempMaxC: Double?
@@ -75,7 +75,7 @@ final class WeatherStore {
         return rows.first?.suburb
     }
 
-    private static func map(_ row: WeatherContextRow) -> LocalWeather {
+    static func map(_ row: WeatherContextRow) -> LocalWeather {
         let celsius = Int((row.currentTemperatureC ?? 0).rounded())
         let low = Int((row.tempMinC ?? row.currentTemperatureC ?? 0).rounded())
         let high = Int((row.tempMaxC ?? row.currentTemperatureC ?? 0).rounded())
@@ -96,7 +96,7 @@ final class WeatherStore {
 
     /// WMO weather-interpretation codes (used by Open-Meteo, this app's
     /// weather providers) mapped to the closest SF Symbol.
-    private static func symbol(forWMOCode code: Int?) -> String {
+    static func symbol(forWMOCode code: Int?) -> String {
         guard let code else { return "cloud" }
         switch code {
         case 0:            return "sun.max"
