@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient as createClient } from "@/lib/supabase/service";
 import { getServerEnv } from "@/lib/env";
+import { createNotification } from "@/lib/domain/notifications/service";
 
 export const dynamic = "force-dynamic";
 
@@ -60,9 +61,46 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: coolingError.message }, { status: 500 });
   }
 
+  const expiredIds = [...(toFlat ?? []), ...(toCooling ?? [])].map((row) => (row as { id: string }).id);
+  let notified = 0;
+
+  if (expiredIds.length > 0) {
+    const { data: follows } = await supabase
+      .from("trend_follows")
+      .select("user_id,trend_signal_id")
+      .in("trend_signal_id", expiredIds);
+
+    if (follows && follows.length > 0) {
+      const { data: signals } = await supabase
+        .from("trend_signals")
+        .select("id,canonical_label,label")
+        .in("id", expiredIds);
+
+      const labelById = new Map(
+        (signals ?? []).map((s) => {
+          const signal = s as { id: string; canonical_label: string | null; label: string };
+          return [signal.id, signal.canonical_label || signal.label];
+        })
+      );
+
+      for (const follow of follows as Array<{ user_id: string; trend_signal_id: string }>) {
+        await createNotification({
+          userId: follow.user_id,
+          kind: "trend expiry",
+          title: "A trend you followed is fading",
+          body: `${labelById.get(follow.trend_signal_id) ?? "A trend"} is winding down.`,
+          subjectKind: "trend",
+          subjectId: follow.trend_signal_id
+        });
+        notified += 1;
+      }
+    }
+  }
+
   return NextResponse.json({
     movedToFlat: toFlat?.length ?? 0,
-    movedToCooling: toCooling?.length ?? 0
+    movedToCooling: toCooling?.length ?? 0,
+    notified
   });
 }
 

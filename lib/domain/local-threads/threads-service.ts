@@ -5,6 +5,7 @@ import { getRequiredUser } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getOrCreateProfile } from "@/lib/domain/profile/service";
 import { getGarmentById } from "@/lib/domain/wardrobe/service";
+import { classifyUploadFile } from "@/lib/domain/ingestion/limits";
 import { createLocalListingInputSchema, type CreateLocalListingInput } from "@/lib/domain/local-threads";
 import type { TablesInsert, TablesUpdate } from "@/types/database";
 
@@ -14,7 +15,51 @@ type HandoverInsert = TablesInsert<"handovers">;
 type HandoverUpdate = TablesUpdate<"handovers">;
 type LocalListingInsert = TablesInsert<"local_listings">;
 
-/** 16c / w2c, list it locally, photos pre-picked from the piece's own images. */
+/**
+ * A photo of the piece actually worn/styled, uploaded fresh for a listing
+ * rather than reused from the garment's own catalogue images (see the
+ * comment on createLocalListing below). Stored in the same bucket and
+ * per-user prefix as garment photos so the existing storage RLS policies
+ * cover it, under a "local-listing" sub-path so it never collides with a
+ * garment's own image paths.
+ */
+export async function addLocalListingPhoto(params: { garmentId: string; file: File }): Promise<string> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const garmentId = z.string().uuid().parse(params.garmentId);
+
+  const garment = await getGarmentById(garmentId);
+  if (!garment || garment.user_id !== user.id) {
+    throw new Error("Piece not found.");
+  }
+
+  const classification = classifyUploadFile(params.file);
+  if (classification === "unsupported_format") {
+    throw new Error("That file type won't open. Garderobe reads JPEG, PNG and WEBP.");
+  }
+  if (classification === "too_large") {
+    throw new Error("That photo's too large. Photos over 20MB won't upload.");
+  }
+
+  const safeFileName = params.file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+  const storagePath = `${user.id}/local-listing/${garmentId}/${Date.now()}-${safeFileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("garment-originals")
+    .upload(storagePath, params.file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: params.file.type || undefined
+    });
+
+  if (uploadError) {
+    throw new Error(uploadError.message);
+  }
+
+  return storagePath;
+}
+
+/** 16c / w2c, list it locally. Photos default to the piece's own images when none were uploaded via addLocalListingPhoto. */
 export async function createLocalListing(input: CreateLocalListingInput): Promise<string> {
   const user = await getRequiredUser();
   await checkRateLimit("local-listing-create", 10, 3600);
@@ -34,10 +79,8 @@ export async function createLocalListing(input: CreateLocalListingInput): Promis
     throw new Error("Set your suburb in your account before listing locally.");
   }
 
-  // Photos default to the piece's own images, cutout first. This repo has
-  // no separate "look photo" capture (5a/5b) to pull lookbook photos from,
-  // so photo_uris is the piece's garment_images only, not yet the fuller
-  // "lookbook photos the piece appears in" DATA_MODEL describes.
+  // Photos default to the piece's own images, cutout first, when the seller
+  // didn't upload any via addLocalListingPhoto.
   const photoUris =
     parsed.photo_uris.length > 0
       ? parsed.photo_uris

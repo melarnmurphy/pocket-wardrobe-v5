@@ -9,6 +9,9 @@ import {
   getTrendSignals,
   getTrendStories,
   assembleStoryMatches,
+  followTrend,
+  unfollowTrend,
+  isTrendFollowed,
   type TrendStoryWithMatches
 } from "@/lib/domain/trends/service";
 import type { UserTrendMatch, UserTrendMatchWithSignal, TrendSignalWithColour } from "@/lib/domain/trends/index";
@@ -113,4 +116,36 @@ export async function loadTrendsPageData(): Promise<TrendsPageData> {
   );
 
   return { trendMatches, storyMatches, garmentPreviews, unlockScores };
+}
+
+export async function followTrendAction(
+  trendSignalId: string
+): Promise<{ status: "success" } | { status: "error"; message: string }> {
+  try {
+    await followTrend(trendSignalId);
+    return { status: "success" };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to follow this trend."
+    };
+  }
+}
+
+export async function unfollowTrendAction(
+  trendSignalId: string
+): Promise<{ status: "success" } | { status: "error"; message: string }> {
+  try {
+    await unfollowTrend(trendSignalId);
+    return { status: "success" };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to unfollow this trend."
+    };
+  }
+}
+
+export async function getTrendFollowStateAction(trendSignalId: string): Promise<boolean> {
+  return isTrendFollowed(trendSignalId);
 }

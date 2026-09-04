@@ -36,6 +36,14 @@
     {
       "path": "/api/cron/trend-expiry",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/wear-reminder",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/price-check",
+      "schedule": "0 4 * * *"
     }
   ]
 }

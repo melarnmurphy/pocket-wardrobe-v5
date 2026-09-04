@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
-import { loadTrendsPageData } from "@/app/trends/actions";
+import { loadTrendsPageData, getTrendFollowStateAction } from "@/app/trends/actions";
+import { FollowTrendButton } from "./follow-trend-button";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import { listStyleRules } from "@/lib/domain/style-rules/service";
 import { unlockCountForCandidate } from "@/lib/domain/outfits/unlock";
@@ -33,10 +34,11 @@ export default async function TrendDetailPage({ params }: { params: Promise<{ id
     }
 
     const { signal, match } = entry;
-    const [garments, styleRules, entitlements] = await Promise.all([
+    const [garments, styleRules, entitlements, isFollowed] = await Promise.all([
       listWardrobeGarments(),
       listStyleRules(),
-      getUserEntitlements()
+      getUserEntitlements(),
+      getTrendFollowStateAction(signal.id ?? id)
     ]);
 
     const attrs = (signal.normalized_attributes_json ?? {}) as Record<string, unknown>;
@@ -75,6 +77,8 @@ export default async function TrendDetailPage({ params }: { params: Promise<{ id
           ) : null}
           {signal.region ? <Chip variant="available">{signal.region}</Chip> : null}
         </div>
+
+        <FollowTrendButton trendSignalId={signal.id ?? id} initiallyFollowed={isFollowed} />
 
         <PaywallGate
           unlocked={hasPaidPlan(entitlements)}

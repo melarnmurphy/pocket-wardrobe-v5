@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { createHash } from "node:crypto";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { getRequiredUser } from "@/lib/auth";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import { getAccountProfile } from "@/lib/domain/account/service";
 import type { ServiceContext } from "@/lib/domain/service-context";
@@ -411,6 +412,60 @@ export async function upsertUserTrendMatches(
     });
 
   if (error) throw new Error(`Failed to upsert trend matches: ${error.message}`);
+}
+
+/**
+ * A deliberate "notify me about this one" signal, distinct from
+ * user_trend_matches (a computed, recomputable match score) — see
+ * app/api/cron/trend-expiry/route.ts, which reads this table to know who to
+ * notify when a followed trend cools or goes flat.
+ */
+export async function followTrend(trendSignalId: string): Promise<void> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(trendSignalId);
+
+  const { error } = await supabase
+    .from("trend_follows")
+    .upsert({ user_id: user.id, trend_signal_id: parsedId } as never, {
+      onConflict: "user_id,trend_signal_id",
+      ignoreDuplicates: true
+    });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function unfollowTrend(trendSignalId: string): Promise<void> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(trendSignalId);
+
+  const { error } = await supabase
+    .from("trend_follows")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("trend_signal_id", parsedId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function isTrendFollowed(trendSignalId: string): Promise<boolean> {
+  const user = await getRequiredUser();
+  const supabase = await createClient();
+  const parsedId = z.string().uuid().parse(trendSignalId);
+
+  const { data } = await supabase
+    .from("trend_follows")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("trend_signal_id", parsedId)
+    .maybeSingle();
+
+  return data !== null;
 }
 
 export async function getTrendStories(): Promise<TrendStory[]> {

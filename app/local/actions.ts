@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { confirmAge, declineAge, markSafetyBriefSeen, updateRadiusKm } from "@/lib/domain/profile/service";
 import {
+  addLocalListingPhoto,
   blockUser,
   cancelHandover,
   closeThreadForCancelledListing,
@@ -37,6 +38,21 @@ export async function createLocalListingAction(
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Unable to list this piece."
+    };
+  }
+}
+
+export async function addLocalListingPhotoAction(
+  garmentId: string,
+  file: File
+): Promise<{ status: "success"; path: string } | { status: "error"; message: string }> {
+  try {
+    const path = await addLocalListingPhoto({ garmentId, file });
+    return { status: "success", path };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to upload that photo."
     };
   }
 }

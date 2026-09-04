@@ -2013,6 +2013,35 @@ export type Database = {
           },
         ]
       }
+      trend_follows: {
+        Row: {
+          created_at: string
+          id: string
+          trend_signal_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          trend_signal_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          trend_signal_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trend_follows_trend_signal_id_fkey"
+            columns: ["trend_signal_id"]
+            isOneToOne: false
+            referencedRelation: "trend_signals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wear_events: {
         Row: {
           created_at: string
