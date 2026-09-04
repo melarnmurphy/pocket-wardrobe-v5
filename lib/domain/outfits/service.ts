@@ -78,9 +78,9 @@ export async function generateOutfitForUser(
   return result;
 }
 
-export async function saveOutfit(input: SaveOutfitInput): Promise<string> {
-  const user = await getRequiredUser();
-  const supabase = await createClient();
+export async function saveOutfit(input: SaveOutfitInput, ctx?: ServiceContext): Promise<string> {
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
 
   const outfitInsert: OutfitInsert = {
     user_id: user.id,

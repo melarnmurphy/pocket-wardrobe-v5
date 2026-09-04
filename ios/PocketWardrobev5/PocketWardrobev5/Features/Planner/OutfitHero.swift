@@ -7,6 +7,7 @@ import SwiftUI
 
 struct OutfitHero: View {
     let outfit: Outfit
+    var onSave: () -> Void = {}
     var onRegenerate: () -> Void = {}
 
     @Environment(GarmentStore.self) private var garmentStore
@@ -79,7 +80,9 @@ struct OutfitHero: View {
                 VStack(spacing: 10) {
                     PWButton(title: "Wear this today", style: .primary)
                     HStack(spacing: 10) {
-                        PWButton(title: "Save outfit", style: .outline)
+                        PWButton(title: "Save outfit", style: .outline) {
+                        onSave()
+                    }
                         PWButton(title: "Regenerate", style: .outline, icon: "arrow.clockwise") {
                             onRegenerate()
                         }

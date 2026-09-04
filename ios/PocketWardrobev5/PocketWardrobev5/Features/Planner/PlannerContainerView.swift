@@ -89,4 +89,5 @@ struct PlannerContainerView: View {
     PlannerContainerView()
         .environment(OutfitStore())
         .environment(GarmentStore())
+        .environment(TrendStore())
 }

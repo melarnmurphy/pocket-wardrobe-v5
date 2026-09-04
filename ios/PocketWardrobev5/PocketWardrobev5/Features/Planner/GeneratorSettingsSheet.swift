@@ -8,6 +8,7 @@ import SwiftUI
 struct GeneratorSettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(OutfitStore.self) private var outfitStore
+    @Environment(TrendStore.self) private var trendStore
 
     @State private var week: String = "This week · Apr 20 – 26"
     @State private var location: String = "Amsterdam, NL"
@@ -129,7 +130,7 @@ struct GeneratorSettingsSheet: View {
                     VStack(spacing: 10) {
                         PWButton(title: "Generate 5 outfits", style: .primary) {
                             Task {
-                                await outfitStore.generateSurprise()
+                                await outfitStore.generateAll(topTrendSignalID: trendStore.signals.first?.id)
                                 dismiss()
                             }
                         }
@@ -242,4 +243,5 @@ struct GeneratorSettingsSheet: View {
 #Preview {
     GeneratorSettingsSheet()
         .environment(OutfitStore())
+        .environment(TrendStore())
 }
