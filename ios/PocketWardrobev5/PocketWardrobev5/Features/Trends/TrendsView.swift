@@ -42,7 +42,11 @@ struct TrendsView: View {
     }
 
     private var filtered: [TrendSignal] {
-        trendStore.signals.filter { activeCategory.matches($0) && !$0.isSignalOfWeek }
+        trendStore.signals.filter { activeCategory.matches($0) && !$0.isSignalOfWeek && $0.matchKind != .missing }
+    }
+
+    private var unmatched: [TrendSignal] {
+        trendStore.signals.filter { activeCategory.matches($0) && $0.matchKind == .missing }
     }
 
     var body: some View {
@@ -120,26 +124,29 @@ struct TrendsView: View {
                     .padding(.horizontal, PWSpacing.pageGutter)
                     .padding(.top, 20)
 
-                    // Signals without a wardrobe match yet aren't served by
-                    // /api/mobile/trends (it only returns rows that already
-                    // have a user_trend_matches record) — this section stays
-                    // on SampleData until that query exists.
-                    VStack(alignment: .leading, spacing: 6) {
-                        EyebrowLabel(text: "Signals without matches in your wardrobe")
-                        Text("Noticing, not pushing.")
-                            .font(PWFont.display(size: 22))
-                            .foregroundStyle(PWColor.ink)
-                    }
-                    .padding(.horizontal, PWSpacing.pageGutter)
-                    .padding(.top, 48)
-
-                    VStack(spacing: 10) {
-                        ForEach(SampleData.unmatchedSignals) { unmatched in
-                            unmatchedCard(unmatched)
+                    // A "missing_piece" match is still a real user_trend_matches
+                    // row (from /api/mobile/trends) — it just means the signal
+                    // engine found no piece of yours that satisfies it. Shown
+                    // here rather than in the main list above, matching the
+                    // "noticing, not pushing" framing.
+                    if !unmatched.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            EyebrowLabel(text: "Signals without matches in your wardrobe")
+                            Text("Noticing, not pushing.")
+                                .font(PWFont.display(size: 22))
+                                .foregroundStyle(PWColor.ink)
                         }
+                        .padding(.horizontal, PWSpacing.pageGutter)
+                        .padding(.top, 48)
+
+                        VStack(spacing: 10) {
+                            ForEach(unmatched) { signal in
+                                unmatchedCard(signal)
+                            }
+                        }
+                        .padding(.horizontal, PWSpacing.pageGutter)
+                        .padding(.top, 16)
                     }
-                    .padding(.horizontal, PWSpacing.pageGutter)
-                    .padding(.top, 16)
                 }
 
                 Spacer(minLength: 56)
@@ -231,14 +238,14 @@ struct TrendsView: View {
 
     // MARK: - Unmatched
 
-    private func unmatchedCard(_ unmatched: UnmatchedSignal) -> some View {
+    private func unmatchedCard(_ signal: TrendSignal) -> some View {
         HStack(alignment: .top, spacing: 14) {
             VStack(alignment: .leading, spacing: 6) {
-                EyebrowLabel(text: unmatched.category.rawValue)
-                Text(unmatched.title)
+                EyebrowLabel(text: signal.category.rawValue)
+                Text(signal.title)
                     .font(PWFont.display(size: 17))
                     .foregroundStyle(PWColor.ink)
-                Text("\(unmatched.sourcesCount) sources · \(unmatched.confidence.label)")
+                Text("\(signal.sourcesCount) sources · \(signal.confidence.label)")
                     .font(PWFont.body(size: 11))
                     .foregroundStyle(PWColor.ink60)
             }
@@ -246,7 +253,7 @@ struct TrendsView: View {
             HStack(spacing: 2) {
                 ForEach(0..<3) { i in
                     Capsule()
-                        .fill(i < unmatched.confidence.bars ? PWColor.ink70 : PWColor.line)
+                        .fill(i < signal.confidence.bars ? PWColor.ink70 : PWColor.line)
                         .frame(width: 3, height: 7 + CGFloat(i) * 2)
                 }
             }
@@ -259,6 +266,7 @@ struct TrendsView: View {
                 .stroke(PWColor.line, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: PWRadius.sm))
+        .onTapGesture { selectedSignal = signal }
     }
 }
 

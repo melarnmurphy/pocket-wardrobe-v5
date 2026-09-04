@@ -57,12 +57,3 @@ struct TrendSignal: Identifiable, Hashable {
         let name: String           // "Ivory"
     }
 }
-
-/// "Noticing, not pushing" — unmatched signals shown in the secondary grid.
-struct UnmatchedSignal: Identifiable, Hashable {
-    let id: UUID
-    let category: TrendSignal.Category
-    let title: String
-    let sourcesCount: Int
-    let confidence: TrendSignal.Confidence
-}

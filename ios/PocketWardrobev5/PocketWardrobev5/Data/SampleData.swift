@@ -514,13 +514,6 @@ enum SampleData {
             isSignalOfWeek: false),
     ]
 
-    static let unmatchedSignals: [UnmatchedSignal] = [
-        UnmatchedSignal(id: UUID(), category: .pattern, title: "Faded tonal stripe", sourcesCount: 4, confidence: .low),
-        UnmatchedSignal(id: UUID(), category: .silhouette, title: "Utility workwear", sourcesCount: 5, confidence: .medium),
-        UnmatchedSignal(id: UUID(), category: .aesthetic, title: "Quiet luxury, cont'd", sourcesCount: 12, confidence: .high),
-        UnmatchedSignal(id: UUID(), category: .garment, title: "Buttery leather bomber", sourcesCount: 6, confidence: .medium),
-    ]
-
     // MARK: - Planner
 
     static let weekPlan: [DayPlan] = [
