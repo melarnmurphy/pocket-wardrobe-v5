@@ -7,10 +7,14 @@ import SwiftUI
 
 struct OutfitHero: View {
     let outfit: Outfit
+    var onRegenerate: () -> Void = {}
+
+    @Environment(GarmentStore.self) private var garmentStore
 
     private var pieces: [(Outfit.Piece, Garment)] {
-        outfit.pieces.compactMap { p in
-            guard let g = SampleData.garment(p.id) else { return nil }
+        let byID = Dictionary(uniqueKeysWithValues: garmentStore.garments.map { ($0.id, $0) })
+        return outfit.pieces.compactMap { p in
+            guard let g = byID[p.id] else { return nil }
             return (p, g)
         }
     }
@@ -76,7 +80,9 @@ struct OutfitHero: View {
                     PWButton(title: "Wear this today", style: .primary)
                     HStack(spacing: 10) {
                         PWButton(title: "Save outfit", style: .outline)
-                        PWButton(title: "Regenerate", style: .outline, icon: "arrow.clockwise")
+                        PWButton(title: "Regenerate", style: .outline, icon: "arrow.clockwise") {
+                            onRegenerate()
+                        }
                     }
                 }
             }

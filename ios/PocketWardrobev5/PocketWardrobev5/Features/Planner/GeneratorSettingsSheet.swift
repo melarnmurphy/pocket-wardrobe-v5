@@ -7,6 +7,7 @@ import SwiftUI
 
 struct GeneratorSettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(OutfitStore.self) private var outfitStore
 
     @State private var week: String = "This week · Apr 20 – 26"
     @State private var location: String = "Amsterdam, NL"
@@ -118,8 +119,20 @@ struct GeneratorSettingsSheet: View {
                     }
 
                     // Actions
+                    //
+                    // The fields above (per-day occasion, ranking prefs, excludes)
+                    // aren't wired to the generator yet — it only supports a single
+                    // "surprise" outfit today, not a batched per-day/week generation
+                    // with these preferences applied. This button calls the real
+                    // generator now rather than pretending the settings above do
+                    // anything; wiring them is future work once the API supports it.
                     VStack(spacing: 10) {
-                        PWButton(title: "Generate 5 outfits", style: .primary) { dismiss() }
+                        PWButton(title: "Generate 5 outfits", style: .primary) {
+                            Task {
+                                await outfitStore.generateSurprise()
+                                dismiss()
+                            }
+                        }
                         PWButton(title: "Cancel", style: .ghost) { dismiss() }
                     }
                     .padding(.top, 12)
@@ -228,4 +241,5 @@ struct GeneratorSettingsSheet: View {
 
 #Preview {
     GeneratorSettingsSheet()
+        .environment(OutfitStore())
 }

@@ -6,6 +6,8 @@
 import SwiftUI
 
 struct TrendsView: View {
+    @Environment(TrendStore.self) private var trendStore
+
     @State private var activeCategory: Category = .all
     @State private var selectedSignal: TrendSignal? = nil
 
@@ -36,11 +38,11 @@ struct TrendsView: View {
     }
 
     private var featured: TrendSignal? {
-        SampleData.trendSignals.first(where: \.isSignalOfWeek)
+        trendStore.signals.first(where: \.isSignalOfWeek)
     }
 
     private var filtered: [TrendSignal] {
-        SampleData.trendSignals.filter { activeCategory.matches($0) && !$0.isSignalOfWeek }
+        trendStore.signals.filter { activeCategory.matches($0) && !$0.isSignalOfWeek }
     }
 
     var body: some View {
@@ -56,80 +58,100 @@ struct TrendsView: View {
                     )
                     .font(PWFont.display(size: 44))
 
-                    Text("47 normalized signals · 18 match your wardrobe · 6 flagged as missing pieces")
+                    Text("\(trendStore.signals.count) matched signals · \(trendStore.signals.filter { $0.matchKind == .missing }.count) flagged as missing pieces")
                         .caption(size: 14)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, PWSpacing.pageGutter)
                 .padding(.top, 24)
 
-                // Category chips — edge-to-edge
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(Category.allCases, id: \.self) { cat in
-                            FilterChip(label: cat.label,
-                                       count: cat == .all ? SampleData.trendSignals.count :
-                                                            SampleData.trendSignals.filter { cat.matches($0) }.count,
-                                       isActive: activeCategory == cat) {
-                                withAnimation(.easeInOut(duration: 0.15)) { activeCategory = cat }
+                if case .error(let message) = trendStore.state {
+                    Text(message)
+                        .caption(size: 13, color: PWColor.oxblood)
+                        .padding(.horizontal, PWSpacing.pageGutter)
+                        .padding(.top, 24)
+                } else if trendStore.state == .loading && trendStore.signals.isEmpty {
+                    ProgressView()
+                        .padding(.top, 64)
+                        .frame(maxWidth: .infinity)
+                } else {
+                    // Category chips — edge-to-edge
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(Category.allCases, id: \.self) { cat in
+                                FilterChip(label: cat.label,
+                                           count: cat == .all ? trendStore.signals.count :
+                                                                trendStore.signals.filter { cat.matches($0) }.count,
+                                           isActive: activeCategory == cat) {
+                                    withAnimation(.easeInOut(duration: 0.15)) { activeCategory = cat }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, PWSpacing.pageGutter)
+                    }
+                    .padding(.top, 24)
+
+                    // Signal of the week
+                    if let f = featured, activeCategory == .all || activeCategory.matches(f) {
+                        featuredCard(f)
+                            .padding(.horizontal, PWSpacing.pageGutter)
+                            .padding(.top, 32)
+                            .onTapGesture { selectedSignal = f }
+                    }
+
+                    // Section heading
+                    VStack(alignment: .leading, spacing: 6) {
+                        EyebrowLabel(text: "This week · \(filtered.count) signals")
+                        Text("Matches in your wardrobe.")
+                            .font(PWFont.display(size: 24))
+                            .foregroundStyle(PWColor.ink)
+                    }
+                    .padding(.horizontal, PWSpacing.pageGutter)
+                    .padding(.top, 40)
+
+                    // Cards
+                    VStack(spacing: 14) {
+                        ForEach(filtered) { signal in
+                            TrendCardView(signal: signal) {
+                                selectedSignal = signal
                             }
                         }
                     }
                     .padding(.horizontal, PWSpacing.pageGutter)
-                }
-                .padding(.top, 24)
+                    .padding(.top, 20)
 
-                // Signal of the week
-                if let f = featured, activeCategory == .all || activeCategory.matches(f) {
-                    featuredCard(f)
-                        .padding(.horizontal, PWSpacing.pageGutter)
-                        .padding(.top, 32)
-                        .onTapGesture { selectedSignal = f }
-                }
+                    // Signals without a wardrobe match yet aren't served by
+                    // /api/mobile/trends (it only returns rows that already
+                    // have a user_trend_matches record) — this section stays
+                    // on SampleData until that query exists.
+                    VStack(alignment: .leading, spacing: 6) {
+                        EyebrowLabel(text: "Signals without matches in your wardrobe")
+                        Text("Noticing, not pushing.")
+                            .font(PWFont.display(size: 22))
+                            .foregroundStyle(PWColor.ink)
+                    }
+                    .padding(.horizontal, PWSpacing.pageGutter)
+                    .padding(.top, 48)
 
-                // Section heading
-                VStack(alignment: .leading, spacing: 6) {
-                    EyebrowLabel(text: "This week · \(filtered.count) signals")
-                    Text("Matches in your wardrobe.")
-                        .font(PWFont.display(size: 24))
-                        .foregroundStyle(PWColor.ink)
-                }
-                .padding(.horizontal, PWSpacing.pageGutter)
-                .padding(.top, 40)
-
-                // Cards
-                VStack(spacing: 14) {
-                    ForEach(filtered) { signal in
-                        TrendCardView(signal: signal) {
-                            selectedSignal = signal
+                    VStack(spacing: 10) {
+                        ForEach(SampleData.unmatchedSignals) { unmatched in
+                            unmatchedCard(unmatched)
                         }
                     }
+                    .padding(.horizontal, PWSpacing.pageGutter)
+                    .padding(.top, 16)
                 }
-                .padding(.horizontal, PWSpacing.pageGutter)
-                .padding(.top, 20)
-
-                // Not-a-match yet
-                VStack(alignment: .leading, spacing: 6) {
-                    EyebrowLabel(text: "Signals without matches in your wardrobe")
-                    Text("Noticing, not pushing.")
-                        .font(PWFont.display(size: 22))
-                        .foregroundStyle(PWColor.ink)
-                }
-                .padding(.horizontal, PWSpacing.pageGutter)
-                .padding(.top, 48)
-
-                VStack(spacing: 10) {
-                    ForEach(SampleData.unmatchedSignals) { unmatched in
-                        unmatchedCard(unmatched)
-                    }
-                }
-                .padding(.horizontal, PWSpacing.pageGutter)
-                .padding(.top, 16)
 
                 Spacer(minLength: 56)
             }
         }
         .background(PWColor.ivory)
+        .task {
+            await trendStore.load()
+        }
+        .refreshable {
+            await trendStore.load()
+        }
         .sheet(item: $selectedSignal) { signal in
             TrendDetailSheet(signal: signal)
                 .presentationDetents([.large])
@@ -167,15 +189,12 @@ struct TrendsView: View {
             VStack(alignment: .leading, spacing: 18) {
                 HStack(spacing: 10) {
                     EyebrowLabel(text: "Signal of the week")
-                    MatchBadge(kind: .exact)
+                    MatchBadge(kind: signal.matchKind)
                 }
 
-                (
-                    Text("Soft white neutrals, ").foregroundColor(PWColor.ink) +
-                    Text("deep olive, ").foregroundColor(PWColor.ink) +
-                    Text("relaxed tailoring.").italic().foregroundColor(PWColor.ink)
-                )
-                .font(PWFont.display(size: 30))
+                Text(signal.title)
+                    .font(PWFont.display(size: 30))
+                    .foregroundColor(PWColor.ink)
 
                 Text(signal.summary)
                     .font(PWFont.body(size: 13))
@@ -183,7 +202,7 @@ struct TrendsView: View {
                     .lineSpacing(3)
 
                 HStack(spacing: 24) {
-                    metric("Confidence", "High")
+                    metric("Confidence", signal.confidence.label)
                     metric("Sources", "\(signal.sourcesCount)")
                     metric("Your pieces", "\(signal.matchCount)")
                 }
@@ -245,4 +264,5 @@ struct TrendsView: View {
 
 #Preview {
     TrendsView()
+        .environment(TrendStore())
 }

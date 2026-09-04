@@ -8,9 +8,11 @@ import SwiftUI
 struct TrendDetailSheet: View {
     let signal: TrendSignal
     @Environment(\.dismiss) private var dismiss
+    @Environment(GarmentStore.self) private var garmentStore
 
     private var matchedPieces: [Garment] {
-        signal.matchedPieceIDs.compactMap { SampleData.garment($0) }
+        let byID = Dictionary(uniqueKeysWithValues: garmentStore.garments.map { ($0.id, $0) })
+        return signal.matchedPieceIDs.compactMap { byID[$0] }
     }
 
     var body: some View {
@@ -190,4 +192,5 @@ struct TrendDetailSheet: View {
 
 #Preview {
     TrendDetailSheet(signal: SampleData.trendSignals[0])
+        .environment(GarmentStore())
 }

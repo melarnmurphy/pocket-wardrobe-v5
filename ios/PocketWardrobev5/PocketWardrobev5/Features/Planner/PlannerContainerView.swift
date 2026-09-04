@@ -87,4 +87,6 @@ struct PlannerContainerView: View {
 
 #Preview {
     PlannerContainerView()
+        .environment(OutfitStore())
+        .environment(GarmentStore())
 }

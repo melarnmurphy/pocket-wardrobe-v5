@@ -6,13 +6,20 @@
 import SwiftUI
 
 struct PlannerView: View {
+    @Environment(OutfitStore.self) private var outfitStore
+
     @State private var selectedDate: Date = SampleData.today
     @State private var activeVariant: Outfit.Variant = .safe
     @State private var showingGenerator: Bool = false
 
+    // outfitStore.current holds the real, single generated outfit (mode
+    // "surprise") — falls back to the SampleData mockup until the user
+    // generates one. See OutfitStore's header comment for why there's no
+    // real Safe/Elevated/Trend-forward variant set yet.
     private var currentOutfit: Outfit {
-        SampleData.tuesdayOutfits.first(where: { $0.variant == activeVariant })
-            ?? SampleData.tuesdayOutfits[0]
+        if let generated = outfitStore.current { return generated }
+        let sampleMatch: Outfit? = SampleData.tuesdayOutfits.first(where: { $0.variant == activeVariant })
+        return sampleMatch ?? SampleData.tuesdayOutfits[0]
     }
 
     var body: some View {
@@ -42,7 +49,7 @@ struct PlannerView: View {
                         showingGenerator = true
                     }
                     PWButton(title: "Generate the week", style: .primary) {
-                        showingGenerator = true
+                        Task { await outfitStore.generateSurprise() }
                     }
                 }
                 .padding(.horizontal, PWSpacing.pageGutter)
@@ -58,9 +65,19 @@ struct PlannerView: View {
                     .padding(.top, 28)
 
                 // Outfit hero
-                OutfitHero(outfit: currentOutfit)
-                    .padding(.horizontal, PWSpacing.pageGutter)
-                    .padding(.top, 20)
+                if case .error(let message) = outfitStore.state {
+                    Text(message)
+                        .caption(size: 13, color: PWColor.oxblood)
+                        .padding(.horizontal, PWSpacing.pageGutter)
+                        .padding(.top, 20)
+                }
+                OutfitHero(outfit: currentOutfit) {
+                    Task { await outfitStore.generateSurprise() }
+                }
+                .padding(.horizontal, PWSpacing.pageGutter)
+                .padding(.top, 20)
+                .opacity(outfitStore.state == .loading ? 0.5 : 1)
+                .disabled(outfitStore.state == .loading)
 
                 // Context cards
                 VStack(spacing: 16) {
@@ -395,4 +412,6 @@ struct PlannerView: View {
 
 #Preview {
     PlannerView()
+        .environment(OutfitStore())
+        .environment(GarmentStore())
 }

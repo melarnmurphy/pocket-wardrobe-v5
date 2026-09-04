@@ -4,6 +4,7 @@ import Foundation
 enum Config {
     static let supabaseURL: String     = value(for: "SUPABASE_URL")
     static let supabaseAnonKey: String = value(for: "SUPABASE_ANON_KEY")
+    static let apiBaseURL: String      = value(for: "API_BASE_URL")
 
     private static func value(for key: String) -> String {
         guard

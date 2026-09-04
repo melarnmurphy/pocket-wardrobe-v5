@@ -6,6 +6,8 @@
 import SwiftUI
 
 struct WardrobeView: View {
+    @Environment(GarmentStore.self) private var garmentStore
+
     @State private var selectedFilter: Garment.Category? = nil
     @State private var selectedGarment: Garment? = nil
 
@@ -14,11 +16,13 @@ struct WardrobeView: View {
         GridItem(.flexible(), spacing: 12),
     ]
 
+    private var garments: [Garment] { garmentStore.garments }
+
     private var filteredGarments: [Garment] {
         if let selectedFilter {
-            return SampleData.garments.filter { $0.category == selectedFilter }
+            return garments.filter { $0.category == selectedFilter }
         }
-        return SampleData.garments
+        return garments
     }
 
     var body: some View {
@@ -27,7 +31,7 @@ struct WardrobeView: View {
 
                 // Head
                 VStack(alignment: .leading, spacing: 10) {
-                    EyebrowLabel(text: "12 pieces · curated")
+                    EyebrowLabel(text: "\(garments.count) piece\(garments.count == 1 ? "" : "s") · curated")
                     HStack(alignment: .firstTextBaseline) {
                         Text("Wardrobe.")
                             .display(size: 44)
@@ -43,12 +47,12 @@ struct WardrobeView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         FilterChip(
-                            label: "All", count: SampleData.garments.count,
+                            label: "All", count: garments.count,
                             isActive: selectedFilter == nil
                         ) { selectedFilter = nil }
 
                         ForEach(Garment.Category.allCases, id: \.self) { cat in
-                            let count = SampleData.garments.filter { $0.category == cat }.count
+                            let count = garments.filter { $0.category == cat }.count
                             if count > 0 {
                                 FilterChip(
                                     label: cat.rawValue, count: count,
@@ -65,23 +69,45 @@ struct WardrobeView: View {
                 HairlineDivider()
                     .padding(.top, 8)
 
-                // Grid
-                LazyVGrid(columns: columns, spacing: 28) {
-                    ForEach(filteredGarments) { garment in
-                        Button {
-                            selectedGarment = garment
-                        } label: {
-                            GarmentCard(garment: garment)
+                if case .error(let message) = garmentStore.state {
+                    Text(message)
+                        .caption(size: 13, color: PWColor.oxblood)
+                        .padding(.horizontal, PWSpacing.pageGutter)
+                        .padding(.top, 24)
+                } else if garmentStore.state == .loading && garments.isEmpty {
+                    ProgressView()
+                        .padding(.top, 64)
+                        .frame(maxWidth: .infinity)
+                } else if garments.isEmpty {
+                    Text("No pieces yet. Add your first garment to get started.")
+                        .caption(size: 14)
+                        .padding(.horizontal, PWSpacing.pageGutter)
+                        .padding(.top, 24)
+                } else {
+                    // Grid
+                    LazyVGrid(columns: columns, spacing: 28) {
+                        ForEach(filteredGarments) { garment in
+                            Button {
+                                selectedGarment = garment
+                            } label: {
+                                GarmentCard(garment: garment)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
+                    .padding(.horizontal, PWSpacing.pageGutter)
+                    .padding(.top, 28)
+                    .padding(.bottom, 48)
                 }
-                .padding(.horizontal, PWSpacing.pageGutter)
-                .padding(.top, 28)
-                .padding(.bottom, 48)
             }
         }
         .background(PWColor.ivory)
+        .task {
+            await garmentStore.load()
+        }
+        .refreshable {
+            await garmentStore.load()
+        }
         .sheet(item: $selectedGarment) { garment in
             GarmentDetailSheet(garment: garment)
                 .presentationDetents([.large])
@@ -92,4 +118,5 @@ struct WardrobeView: View {
 
 #Preview {
     WardrobeView()
+        .environment(GarmentStore())
 }

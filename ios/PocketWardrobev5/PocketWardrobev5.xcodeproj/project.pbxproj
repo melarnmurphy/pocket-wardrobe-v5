@@ -60,11 +60,19 @@
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
+/* Begin PBXBuildFile section */
+		0593C060A5E37759F0EE5F01 /* Supabase in Frameworks */ = {
+			isa = PBXBuildFile;
+			productRef = E3C6C76EF4B2F5C86A60E3CC /* Supabase */;
+		};
+/* End PBXBuildFile section */
+
 /* Begin PBXFrameworksBuildPhase section */
 		E800C7ED2F988985001AC270 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0593C060A5E37759F0EE5F01 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -125,6 +133,7 @@
 			);
 			name = PocketWardrobev5;
 			packageProductDependencies = (
+				E3C6C76EF4B2F5C86A60E3CC /* Supabase */,
 			);
 			productName = PocketWardrobev5;
 			productReference = E800C7F02F988985001AC270 /* PocketWardrobev5.app */;
@@ -605,6 +614,14 @@
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E3C6C76EF4B2F5C86A60E3CC /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E834665A2FA1C50600BD67E3 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E800C7E82F988985001AC270 /* Project object */;
 }

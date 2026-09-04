@@ -6,8 +6,12 @@
 import SwiftUI
 
 struct RulesView: View {
+    @Environment(RulesStore.self) private var rulesStore
+
     @State private var selectedRule: StyleRule? = nil
     @State private var activeFilter: Filter = .all
+
+    private var rules: [StyleRule] { rulesStore.rules }
 
     enum Filter: Hashable, CaseIterable {
         case all, pairings, occasion, layering, avoid, seasonality, yours
@@ -38,7 +42,7 @@ struct RulesView: View {
     }
 
     private var filteredRules: [StyleRule] {
-        SampleData.rules.filter { activeFilter.matches($0) }
+        rules.filter { activeFilter.matches($0) }
     }
 
     private var groupedRules: [(StyleRule.Predicate, [StyleRule])] {
@@ -63,46 +67,63 @@ struct RulesView: View {
                     )
                     .font(PWFont.display(size: 44))
 
-                    Text("The grammar that decides how pieces combine. 72 baked in from editorial canon; 12 are yours. Toggle anything off and it stops firing.")
+                    Text("The grammar that decides how pieces combine. \(rules.filter { $0.scope == .canon }.count) baked in from editorial canon; \(rules.filter { $0.scope == .yours }.count) are yours. Toggle anything off and it stops firing.")
                         .caption(size: 14)
                 }
                 .padding(.horizontal, PWSpacing.pageGutter)
                 .padding(.top, 24)
 
-                // Stats strip
-                statsStrip
-                    .padding(.horizontal, PWSpacing.pageGutter)
+                if case .error(let message) = rulesStore.state {
+                    Text(message)
+                        .caption(size: 13, color: PWColor.oxblood)
+                        .padding(.horizontal, PWSpacing.pageGutter)
+                        .padding(.top, 24)
+                } else if rulesStore.state == .loading && rules.isEmpty {
+                    ProgressView()
+                        .padding(.top, 64)
+                        .frame(maxWidth: .infinity)
+                } else {
+                    // Stats strip
+                    statsStrip
+                        .padding(.horizontal, PWSpacing.pageGutter)
+                        .padding(.top, 24)
+
+                    // Filter chips
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(Filter.allCases, id: \.self) { f in
+                                let count: Int? = f == .all
+                                    ? rules.count
+                                    : rules.filter { f.matches($0) }.count
+                                FilterChip(
+                                    label: f.label, count: count, isActive: activeFilter == f
+                                ) { withAnimation(.easeInOut(duration: 0.15)) { activeFilter = f } }
+                            }
+                        }
+                        .padding(.horizontal, PWSpacing.pageGutter)
+                    }
                     .padding(.top, 24)
 
-                // Filter chips
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(Filter.allCases, id: \.self) { f in
-                            let count: Int? = f == .all
-                                ? SampleData.rules.count
-                                : SampleData.rules.filter { f.matches($0) }.count
-                            FilterChip(
-                                label: f.label, count: count, isActive: activeFilter == f
-                            ) { withAnimation(.easeInOut(duration: 0.15)) { activeFilter = f } }
-                        }
+                    // Sections
+                    ForEach(groupedRules, id: \.0) { pair in
+                        let predicate = pair.0
+                        let rules = pair.1
+                        section(title: predicate.sectionTitle,
+                                eyebrow: "Predicate · \(predicate.rawValue)",
+                                rules: rules)
                     }
-                    .padding(.horizontal, PWSpacing.pageGutter)
-                }
-                .padding(.top, 24)
-
-                // Sections
-                ForEach(groupedRules, id: \.0) { pair in
-                    let predicate = pair.0
-                    let rules = pair.1
-                    section(title: predicate.sectionTitle,
-                            eyebrow: "Predicate · \(predicate.rawValue)",
-                            rules: rules)
                 }
 
                 Spacer(minLength: 48)
             }
         }
         .background(PWColor.ivory)
+        .task {
+            await rulesStore.load()
+        }
+        .refreshable {
+            await rulesStore.load()
+        }
         .sheet(item: $selectedRule) { rule in
             RuleDetailSheet(rule: rule)
                 .presentationDetents([.large])
@@ -113,10 +134,10 @@ struct RulesView: View {
     // MARK: - Stats strip
 
     private var statsStrip: some View {
-        let total = SampleData.rules.count
-        let yours = SampleData.rules.filter { $0.scope == .yours }.count
-        let canon = SampleData.rules.filter { $0.scope == .canon }.count
-        let inactive = SampleData.rules.filter { !$0.isActive }.count
+        let total = rules.count
+        let yours = rules.filter { $0.scope == .yours }.count
+        let canon = rules.filter { $0.scope == .canon }.count
+        let inactive = rules.filter { !$0.isActive }.count
 
         return HStack(spacing: 0) {
             stat("\(total)", "total")
@@ -177,4 +198,5 @@ struct RulesView: View {
 
 #Preview {
     RulesView()
+        .environment(RulesStore())
 }

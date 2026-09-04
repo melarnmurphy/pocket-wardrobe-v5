@@ -4,9 +4,25 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct PocketWardrobeApp: App {
+    @State private var authStore = AuthStore()
+    @State private var garmentStore = GarmentStore()
+    @State private var rulesStore = RulesStore()
+    @State private var trendStore = TrendStore()
+    @State private var outfitStore = OutfitStore()
+
+    let modelContainer: ModelContainer = {
+        let schema = Schema([CDGarment.self, CDOutfit.self, CDTrendSignal.self])
+        do {
+            return try ModelContainer(for: schema)
+        } catch {
+            fatalError("Could not create SwiftData ModelContainer: \(error)")
+        }
+    }()
+
     init() {
         // Ivory tab bar, hairline line, ink-tinted selection — match the editorial palette.
         styleTabBar()
@@ -14,8 +30,17 @@ struct PocketWardrobeApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            AppGateView()
+                .environment(authStore)
+                .environment(garmentStore)
+                .environment(rulesStore)
+                .environment(trendStore)
+                .environment(outfitStore)
+                .modelContainer(modelContainer)
                 .tint(PWColor.ink)
+                .task {
+                    garmentStore.setContext(modelContainer.mainContext)
+                }
         }
     }
 
