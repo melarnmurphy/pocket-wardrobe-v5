@@ -84,7 +84,26 @@ export async function completeBatch(batchId: string, errorMessage?: string) {
     error_message: errorMessage ?? null
   };
 
+  const { data: job } = await supabase
+    .from("processing_jobs")
+    .select("user_id, done_count")
+    .eq("id", batchId)
+    .maybeSingle();
+
   await supabase.from("processing_jobs").update(update as never).eq("id", batchId);
+
+  if (!errorMessage && job) {
+    const { user_id: userId, done_count: doneCount } = job as { user_id: string; done_count: number };
+    const { createNotification } = await import("@/lib/domain/notifications/service");
+    await createNotification({
+      userId,
+      kind: "batch finished",
+      title: "Batch finished",
+      body: `${doneCount} photo${doneCount === 1 ? "" : "s"} processed.`,
+      subjectKind: "batch",
+      subjectId: batchId
+    });
+  }
 }
 
 export async function getPhotoBatch(batchId: string): Promise<PhotoBatch | null> {

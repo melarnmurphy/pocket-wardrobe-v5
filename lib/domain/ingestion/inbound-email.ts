@@ -109,6 +109,18 @@ export async function createForwardedEmailSourceAndDrafts(params: {
     } as never)
     .eq("id", sourceId);
 
+  if (draftIds.length > 0) {
+    const { createNotification } = await import("@/lib/domain/notifications/service");
+    await createNotification({
+      userId: params.userId,
+      kind: "receipt read",
+      title: "Receipt read",
+      body: `Found ${draftIds.length} item${draftIds.length === 1 ? "" : "s"} in "${params.subject || "forwarded order email"}".`,
+      subjectKind: "batch",
+      subjectId: sourceId
+    });
+  }
+
   return { sourceId, draftIds };
 }
 

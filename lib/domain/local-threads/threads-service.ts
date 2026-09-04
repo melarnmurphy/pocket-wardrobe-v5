@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { getRequiredUser } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getOrCreateProfile } from "@/lib/domain/profile/service";
@@ -499,7 +500,7 @@ export async function confirmHandover(
 
   const { data: handover, error: handoverError } = await supabase
     .from("handovers")
-    .select("id,thread_id")
+    .select("id,thread_id,state")
     .eq("id", parsedId)
     .maybeSingle();
 
@@ -509,7 +510,7 @@ export async function confirmHandover(
 
   const { data: thread } = await supabase
     .from("threads")
-    .select("buyer_id,seller_id")
+    .select("buyer_id,seller_id,listing_id")
     .eq("id", (handover as { thread_id: string }).thread_id)
     .maybeSingle();
 
@@ -517,7 +518,7 @@ export async function confirmHandover(
     throw new Error("Thread not found.");
   }
 
-  const parsedThread = thread as { buyer_id: string; seller_id: string };
+  const parsedThread = thread as { buyer_id: string; seller_id: string; listing_id: string };
   const update: HandoverUpdate = {};
   if (user.id === parsedThread.buyer_id) update.buyer_confirmed = true;
   if (user.id === parsedThread.seller_id) update.seller_confirmed = true;
@@ -528,7 +529,47 @@ export async function confirmHandover(
     throw new Error(error.message);
   }
 
+  const wasAlreadyCompleted = (handover as { state: string }).state === "completed";
   await supabase.rpc("complete_handover" as never, { p_handover_id: parsedId } as never);
+
+  if (!wasAlreadyCompleted) {
+    const { data: completedHandover } = await supabase
+      .from("handovers")
+      .select("state")
+      .eq("id", parsedId)
+      .maybeSingle();
+
+    if ((completedHandover as { state: string } | null)?.state === "completed") {
+      // Service client: the listing is no longer 'live' and the garment
+      // belongs to the seller, so whichever party's session made this the
+      // completing confirmation may not have RLS visibility into either row.
+      const serviceClient = createServiceClient();
+      const { data: listing } = await serviceClient
+        .from("local_listings")
+        .select("piece_id")
+        .eq("id", parsedThread.listing_id)
+        .maybeSingle();
+
+      const { data: piece } = listing
+        ? await serviceClient
+            .from("garments")
+            .select("title")
+            .eq("id", (listing as { piece_id: string }).piece_id)
+            .maybeSingle()
+        : { data: null };
+
+      const pieceTitle = (piece as { title: string | null } | null)?.title ?? "Your item";
+      const { createNotification } = await import("@/lib/domain/notifications/service");
+      await createNotification({
+        userId: parsedThread.seller_id,
+        kind: "sold",
+        title: "Item sold",
+        body: `${pieceTitle} sold locally.`,
+        subjectKind: "listing",
+        subjectId: parsedThread.listing_id
+      });
+    }
+  }
 }
 
 export async function blockUser(userId: string): Promise<void> {
