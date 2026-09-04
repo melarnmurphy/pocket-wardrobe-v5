@@ -381,6 +381,57 @@ struct OutfitStoreTests {
     }
 }
 
+@Suite("SavedOutfitsStore mapping")
+@MainActor
+struct SavedOutfitsStoreTests {
+
+    @Test("map builds a SavedOutfit, falling back to honest defaults")
+    func mapRow() {
+        let outfitID = UUID()
+        let garmentID = UUID()
+        let row = SavedOutfitRow(
+            id: outfitID.uuidString, title: "The tonal blazer", occasion: "Workwear",
+            items: [SavedOutfitItemRow(garmentId: garmentID.uuidString)],
+            timesWorn: 3, lastWornAt: "2026-04-20T09:15:30.123456+00:00"
+        )
+        let saved = SavedOutfitsStore.map(row)
+        #expect(saved?.id == outfitID)
+        #expect(saved?.kind == "Workwear")
+        #expect(saved?.title == "The tonal blazer")
+        #expect(saved?.timesWorn == 3)
+        #expect(saved?.pieceIDs == [garmentID])
+        #expect(saved?.lastWorn != nil)
+    }
+
+    @Test("map defaults an empty title and a nil last-worn honestly")
+    func mapRowWithMissingFields() {
+        let row = SavedOutfitRow(
+            id: UUID().uuidString, title: "", occasion: nil,
+            items: [], timesWorn: 0, lastWornAt: nil
+        )
+        let saved = SavedOutfitsStore.map(row)
+        #expect(saved?.title == "Untitled outfit")
+        #expect(saved?.kind == "Outfit")
+        #expect(saved?.lastWorn == nil)
+        #expect(saved?.pieceIDs == [])
+    }
+
+    @Test("map returns nil for an unparsable outfit id")
+    func mapRejectsInvalidID() {
+        let row = SavedOutfitRow(
+            id: "not-a-uuid", title: nil, occasion: nil, items: [], timesWorn: 0, lastWornAt: nil
+        )
+        #expect(SavedOutfitsStore.map(row) == nil)
+    }
+
+    @Test("parseTimestamp accepts both fractional and whole-second Postgres timestamps")
+    func timestampParsing() {
+        #expect(SavedOutfitsStore.parseTimestamp("2026-04-20T09:15:30.123456+00:00") != nil)
+        #expect(SavedOutfitsStore.parseTimestamp("2026-04-20T09:15:30+00:00") != nil)
+        #expect(SavedOutfitsStore.parseTimestamp("not-a-date") == nil)
+    }
+}
+
 @Suite("RulesStore mapping")
 @MainActor
 struct RulesStoreTests {

@@ -9,6 +9,8 @@ struct PlannerView: View {
     @Environment(OutfitStore.self) private var outfitStore
     @Environment(TrendStore.self) private var trendStore
     @Environment(WeatherStore.self) private var weatherStore
+    @Environment(SavedOutfitsStore.self) private var savedOutfitsStore
+    @Environment(GarmentStore.self) private var garmentStore
 
     @State private var selectedDate: Date = SampleData.today
     @State private var activeVariant: Outfit.Variant = .safe
@@ -380,28 +382,42 @@ struct PlannerView: View {
 
     // MARK: - Saved outfits
 
+    @ViewBuilder
     private var savedSection: some View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 6) {
-                EyebrowLabel(text: "Saved · 42 outfits · 9 this month")
+                EyebrowLabel(text: "Saved · \(savedOutfitsStore.outfits.count) outfits")
                 Text("Outfits you love.")
                     .font(PWFont.display(size: 24))
                     .foregroundStyle(PWColor.ink)
             }
 
-            LazyVGrid(columns: [
-                GridItem(.flexible(), spacing: 14),
-                GridItem(.flexible(), spacing: 14)
-            ], spacing: 14) {
-                ForEach(SampleData.savedOutfits) { saved in
-                    savedCard(saved)
+            if case .error(let message) = savedOutfitsStore.state {
+                Text(message).caption(size: 13, color: PWColor.oxblood)
+            } else if savedOutfitsStore.state == .loading && savedOutfitsStore.outfits.isEmpty {
+                ProgressView().frame(maxWidth: .infinity).padding(.vertical, 24)
+            } else if savedOutfitsStore.outfits.isEmpty {
+                Text("Outfits you save from the planner show up here.")
+                    .caption(size: 13)
+            } else {
+                LazyVGrid(columns: [
+                    GridItem(.flexible(), spacing: 14),
+                    GridItem(.flexible(), spacing: 14)
+                ], spacing: 14) {
+                    ForEach(savedOutfitsStore.outfits) { saved in
+                        savedCard(saved)
+                    }
                 }
             }
+        }
+        .task {
+            await savedOutfitsStore.load()
         }
     }
 
     private func savedCard(_ saved: SavedOutfit) -> some View {
-        let pieces = saved.pieceIDs.compactMap { SampleData.garment($0) }
+        let byID = Dictionary(uniqueKeysWithValues: garmentStore.garments.map { ($0.id, $0) })
+        let pieces = saved.pieceIDs.compactMap { byID[$0] }
         return VStack(alignment: .leading, spacing: 0) {
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2)], spacing: 2) {
                 ForEach(pieces.prefix(4)) { piece in
@@ -424,7 +440,7 @@ struct PlannerView: View {
                     .font(PWFont.display(size: 16))
                     .foregroundStyle(PWColor.ink)
                     .lineLimit(1)
-                Text("Last worn \(shortDate(saved.lastWorn))")
+                Text(saved.lastWorn.map { "Last worn \(shortDate($0))" } ?? "Not yet worn")
                     .font(PWFont.body(size: 11))
                     .foregroundStyle(PWColor.ink60)
             }

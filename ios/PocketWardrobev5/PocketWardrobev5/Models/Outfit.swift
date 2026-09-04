@@ -86,7 +86,7 @@ struct SavedOutfit: Identifiable, Hashable {
     let kind: String               // "Workwear", "Evening"
     let title: String              // "The tonal blazer"
     let timesWorn: Int
-    let lastWorn: Date
+    let lastWorn: Date?            // nil until a wear_events row links to this outfit
     let pieceIDs: [UUID]
 }
 

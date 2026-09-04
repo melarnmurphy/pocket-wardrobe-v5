@@ -32,4 +32,5 @@ struct AppGateView: View {
         .environment(OutfitStore())
         .environment(WeatherStore())
         .environment(LookbookStore())
+        .environment(SavedOutfitsStore())
 }
