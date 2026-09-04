@@ -8,6 +8,7 @@ import SwiftUI
 struct PlannerView: View {
     @Environment(OutfitStore.self) private var outfitStore
     @Environment(TrendStore.self) private var trendStore
+    @Environment(WeatherStore.self) private var weatherStore
 
     @State private var selectedDate: Date = SampleData.today
     @State private var activeVariant: Outfit.Variant = .safe
@@ -109,6 +110,9 @@ struct PlannerView: View {
             }
         }
         .background(PWColor.ivory)
+        .task {
+            await weatherStore.load()
+        }
         .sheet(isPresented: $showingGenerator) {
             GeneratorSettingsSheet()
                 .presentationDetents([.large])
@@ -147,10 +151,28 @@ struct PlannerView: View {
 
     // MARK: - Weather card
 
+    @ViewBuilder
     private var weatherCard: some View {
-        let w = currentOutfit.weather
-        return VStack(alignment: .leading, spacing: 14) {
-            EyebrowLabel(text: "Tuesday · Amsterdam")
+        if case .error(let message) = weatherStore.state {
+            VStack(alignment: .leading, spacing: 8) {
+                EyebrowLabel(text: "Weather")
+                Text(message).caption(size: 13)
+            }
+            .padding(22)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(PWColor.paper)
+            .overlay(RoundedRectangle(cornerRadius: PWRadius.md).stroke(PWColor.line, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: PWRadius.md))
+        } else if let local = weatherStore.weather {
+            weatherCardContent(location: local.locationLabel, w: local.weather)
+        } else {
+            weatherCardContent(location: "your area", w: currentOutfit.weather)
+        }
+    }
+
+    private func weatherCardContent(location: String, w: Outfit.Weather) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            EyebrowLabel(text: location)
 
             HStack(alignment: .center, spacing: 18) {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
@@ -426,4 +448,5 @@ struct PlannerView: View {
         .environment(OutfitStore())
         .environment(GarmentStore())
         .environment(TrendStore())
+        .environment(WeatherStore())
 }

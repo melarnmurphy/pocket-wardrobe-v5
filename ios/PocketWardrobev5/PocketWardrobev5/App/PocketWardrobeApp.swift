@@ -13,6 +13,7 @@ struct PocketWardrobeApp: App {
     @State private var rulesStore = RulesStore()
     @State private var trendStore = TrendStore()
     @State private var outfitStore = OutfitStore()
+    @State private var weatherStore = WeatherStore()
 
     let modelContainer: ModelContainer = {
         let schema = Schema([CDGarment.self, CDOutfit.self, CDTrendSignal.self])
@@ -36,6 +37,7 @@ struct PocketWardrobeApp: App {
                 .environment(rulesStore)
                 .environment(trendStore)
                 .environment(outfitStore)
+                .environment(weatherStore)
                 .modelContainer(modelContainer)
                 .tint(PWColor.ink)
                 .task {
