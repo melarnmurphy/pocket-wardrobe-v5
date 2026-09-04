@@ -67,6 +67,40 @@ struct Outfit: Identifiable, Hashable {
     }
 }
 
+/// One day's plan in the "Generate the week" sheet — the editable input,
+/// distinct from DayPlan below (the WeekStrip's read-only display model).
+struct WeekDayPlan: Identifiable, Hashable {
+    let id = UUID()
+    var date: Date
+    var occasion: OccasionPreset
+}
+
+/// A fixed catalogue rather than freeform text, so each occasion maps to a
+/// real dress_code the generator's style rules actually filter/boost
+/// against (see lib/domain/style-rules/knowledge/formality.ts) — "skip"
+/// means this day is left out of the week's generate request entirely.
+enum OccasionPreset: String, CaseIterable, Hashable {
+    case workwear        = "Workwear — studio"
+    case clientMeeting   = "Client meeting"
+    case clientLunch     = "Client lunch"
+    case eveningEvent    = "Evening event"
+    case weekendCasual   = "Weekend casual"
+    case travel          = "Travel"
+    case skip            = "None · skip"
+
+    var dressCode: String? {
+        switch self {
+        case .workwear, .clientMeeting:  return "business_casual"
+        case .clientLunch:               return "smart_casual"
+        case .eveningEvent:              return "formal"
+        case .weekendCasual, .travel:    return "casual"
+        case .skip:                      return nil
+        }
+    }
+
+    var isSkipped: Bool { self == .skip }
+}
+
 /// One day in the week strip at the top of the Planner.
 struct DayPlan: Identifiable, Hashable {
     let id = UUID()
@@ -88,12 +122,4 @@ struct SavedOutfit: Identifiable, Hashable {
     let timesWorn: Int
     let lastWorn: Date?            // nil until a wear_events row links to this outfit
     let pieceIDs: [UUID]
-}
-
-/// A one-line alternative shown in the Planner right column.
-struct OutfitAlternative: Identifiable, Hashable {
-    let id = UUID()
-    let title: String              // "Knit & denim"
-    let caption: String            // "Softer, more casual · 4 pieces"
-    let thumbnailURLs: [URL]       // up to 4 previews
 }

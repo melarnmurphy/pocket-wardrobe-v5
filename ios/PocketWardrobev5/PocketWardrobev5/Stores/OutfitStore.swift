@@ -13,10 +13,12 @@
 // This reuses the exact rules engine the web app calls — no new generation
 // logic, just three different, real inputs to it.
 //
-// Still on SampleData (a later, larger design pass, not a wiring gap): the
-// batched weekly generation, per-day occasion preferences, weather/occasion
-// narrative, laundry-aware ranking, "alternatives," and the saved-outfits
-// gallery read.
+// generateWeek calls POST /api/mobile/outfits/generate-week for the batched
+// weekly planner: one outfit per requested day, with real avoid-repeat
+// (each day excludes garments already picked earlier in the week) and real
+// laundry-awareness (hard-excludes anything logged worn recently — that
+// data only becomes real once a garment is logged worn somewhere, today
+// that's the web wardrobe closet's "Log Wear" form).
 
 import Foundation
 
@@ -72,12 +74,45 @@ private struct SaveOutfitResponse: Decodable {
     let outfit_id: String
 }
 
+private struct WeekDayInput: Encodable {
+    let date: String
+    let occasion: String?
+    let dress_code: String?
+}
+
+private struct GenerateWeekRequest: Encodable {
+    let days: [WeekDayInput]
+    let avoid_repeat: Bool
+    let laundry_aware: Bool
+    let exclude_garment_ids: [String]
+}
+
+private struct WeekDayRow: Decodable {
+    let date: String
+    let outfit: GeneratedOutfitRow
+}
+
+private struct GenerateWeekResponse: Decodable {
+    let week: [WeekDayRow]
+    let unavailableGarmentIds: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case week
+        case unavailableGarmentIds = "unavailable_garment_ids"
+    }
+}
+
 @Observable
 @MainActor
 final class OutfitStore {
     var outfits: [Outfit.Variant: Outfit] = [:]
     var state: LoadState = .idle
     var saveError: String?
+
+    /// Keyed by dateKey(_:) — one outfit per planned day of the week.
+    var weekOutfits: [String: Outfit] = [:]
+    var unavailableGarmentIDs: Set<UUID> = []
+    var weekState: LoadState = .idle
 
     /// Generates all three variants in parallel. Pass the id of the user's
     /// top TrendStore match (if any) so Trend-forward can use it; without
@@ -103,6 +138,58 @@ final class OutfitStore {
         }
     }
 
+    /// Generates one outfit per non-skipped day in `days`. `manualExcludeIDs`
+    /// (e.g. a piece packed for a trip) is always applied regardless of the
+    /// two toggles, since it's an explicit user choice, not a heuristic.
+    func generateWeek(
+        days: [WeekDayPlan],
+        avoidRepeat: Bool,
+        laundryAware: Bool,
+        manualExcludeIDs: [UUID]
+    ) async {
+        guard weekState != .loading else { return }
+        let activeDays = days.filter { !$0.occasion.isSkipped }
+        guard !activeDays.isEmpty else {
+            weekState = .error("Select at least one day to plan.")
+            return
+        }
+
+        weekState = .loading
+        do {
+            let body = GenerateWeekRequest(
+                days: activeDays.map {
+                    WeekDayInput(date: Self.dateKey($0.date), occasion: $0.occasion.rawValue, dress_code: $0.occasion.dressCode)
+                },
+                avoid_repeat: avoidRepeat,
+                laundry_aware: laundryAware,
+                exclude_garment_ids: manualExcludeIDs.map { $0.uuidString.lowercased() }
+            )
+            let response: GenerateWeekResponse = try await MobileAPIClient.post(
+                "/api/mobile/outfits/generate-week",
+                body: body
+            )
+            let occasionByDate = Dictionary(uniqueKeysWithValues: activeDays.map { (Self.dateKey($0.date), $0.occasion.rawValue) })
+            for day in response.week {
+                weekOutfits[day.date] = Self.map(
+                    day.outfit, variant: .safe, usedRealTrendMatch: false,
+                    occasion: occasionByDate[day.date] ?? ""
+                )
+            }
+            unavailableGarmentIDs = Set(response.unavailableGarmentIds.compactMap(UUID.init(uuidString:)))
+            weekState = .loaded
+        } catch {
+            weekState = .error(error.localizedDescription)
+        }
+    }
+
+    /// The calendar-day key used both for request dates and weekOutfits lookups.
+    static func dateKey(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.calendar = Calendar(identifier: .gregorian)
+        return formatter.string(from: date)
+    }
+
     func save(_ outfit: Outfit) async {
         saveError = nil
         do {
@@ -126,7 +213,7 @@ final class OutfitStore {
         return Self.map(response.outfit, variant: variant, usedRealTrendMatch: request.mode == "trend")
     }
 
-    static func map(_ row: GeneratedOutfitRow, variant: Outfit.Variant, usedRealTrendMatch: Bool) -> Outfit {
+    static func map(_ row: GeneratedOutfitRow, variant: Outfit.Variant, usedRealTrendMatch: Bool, occasion: String = "") -> Outfit {
         let pieces: [Outfit.Piece] = row.garments.enumerated().compactMap { index, g in
             guard let id = UUID(uuidString: g.id) else { return nil }
             return Outfit.Piece(id: id, role: role(for: g.role), isAnchor: index == 0)
@@ -141,7 +228,7 @@ final class OutfitStore {
             date: Date(),
             variant: variant,
             title: row.garments.compactMap(\.title).joined(separator: ", "),
-            occasion: "",
+            occasion: occasion,
             pieces: pieces,
             signalsMatched: usedRealTrendMatch ? 1 : 0,
             reasons: reasons,

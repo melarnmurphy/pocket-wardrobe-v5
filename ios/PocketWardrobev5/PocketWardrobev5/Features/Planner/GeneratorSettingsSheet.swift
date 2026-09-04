@@ -8,26 +8,31 @@ import SwiftUI
 struct GeneratorSettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(OutfitStore.self) private var outfitStore
-    @Environment(TrendStore.self) private var trendStore
+    @Environment(GarmentStore.self) private var garmentStore
 
-    @State private var week: String = "This week · Apr 20 – 26"
-    @State private var location: String = "Amsterdam, NL"
-    @State private var occasions: [String: String] = [
-        "Mon": "Workwear — studio",
-        "Tue": "Workwear — studio",
-        "Wed": "Client lunch",
-        "Thu": "Workwear — studio",
-        "Fri": "Evening event",
-        "Sat": "None · skip",
-        "Sun": "None · skip",
-    ]
-    @State private var liftUnderworn = true
+    @State private var weekOffset: Int = 0 // 0 = this week, 1 = next week
+    @State private var weekDays: [WeekDayPlan] = []
     @State private var avoidRepeat = true
     @State private var laundryAware = true
+    @State private var excludedGarmentIDs: [UUID] = []
+    @State private var showingExcludePicker = false
+
+    // Not wired to the generator this pass. Underworn-lift is already always
+    // applied inside rankingDelta (lib/domain/outfits/ranking.ts) — there's
+    // no per-call flag to turn it off. Trend weighting only applies to
+    // "trend" mode, which week generation (plan/surprise per day) doesn't
+    // use — a week can't sensibly target one trend signal for every day.
+    @State private var liftUnderworn = true
     @State private var trendWeight: Double = 0.5
 
-    private let days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    private let dates = ["Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24", "Apr 25", "Apr 26"]
+    private var activeDayCount: Int {
+        weekDays.filter { !$0.occasion.isSkipped }.count
+    }
+
+    private var excludedGarments: [Garment] {
+        let byID = Dictionary(uniqueKeysWithValues: garmentStore.garments.map { ($0.id, $0) })
+        return excludedGarmentIDs.compactMap { byID[$0] }
+    }
 
     var body: some View {
         NavigationStack {
@@ -39,19 +44,18 @@ struct GeneratorSettingsSheet: View {
                         Text("Generate outfits.")
                             .font(PWFont.display(size: 28))
                             .foregroundStyle(PWColor.ink)
-                        Text("We'll generate a safe, elevated, and trend-forward option for each planned day. You can still swap and regenerate any look.")
+                        Text("One outfit per planned day, generated in order so the week doesn't repeat a piece you've already worn that week — or recently.")
                             .font(PWFont.body(size: 13))
                             .foregroundStyle(PWColor.ink70)
                             .lineSpacing(3)
                     }
 
-                    // Week + Location
-                    HStack(spacing: 14) {
-                        pickerField(label: "Week", value: $week,
-                                    options: ["This week · Apr 20 – 26", "Next week · Apr 27 – May 3"])
-                        pickerField(label: "Location", value: $location,
-                                    options: ["Amsterdam, NL", "London, UK", "Paris, FR"])
+                    Picker("Week", selection: $weekOffset) {
+                        Text("This week").tag(0)
+                        Text("Next week").tag(1)
                     }
+                    .pickerStyle(.segmented)
+                    .onChange(of: weekOffset) { _, _ in rebuildWeekDays() }
 
                     HairlineDivider()
 
@@ -59,9 +63,9 @@ struct GeneratorSettingsSheet: View {
                     VStack(alignment: .leading, spacing: 10) {
                         EyebrowLabel(text: "Occasion per day")
                         VStack(spacing: 0) {
-                            ForEach(Array(days.enumerated()), id: \.offset) { idx, day in
-                                dayRow(day: day, date: dates[idx])
-                                if idx < days.count - 1 {
+                            ForEach(Array(weekDays.enumerated()), id: \.element.id) { idx, day in
+                                dayRow(day: day, index: idx)
+                                if idx < weekDays.count - 1 {
                                     HairlineDivider(color: PWColor.lineSoft)
                                 }
                             }
@@ -75,35 +79,17 @@ struct GeneratorSettingsSheet: View {
                         EyebrowLabel(text: "Ranking preferences")
 
                         prefToggle(title: "Lift underworn pieces",
-                                   caption: "9 pieces in your wardrobe have been worn fewer than 3 times.",
-                                   isOn: $liftUnderworn)
+                                   caption: "Always on — the generator already boosts pieces you wear less.",
+                                   isOn: .constant(true))
+                            .disabled(true)
+                            .opacity(0.6)
                         HairlineDivider(color: PWColor.lineSoft)
                         prefToggle(title: "Avoid repeating pieces",
-                                   caption: "Don't show any single piece twice in a row.",
+                                   caption: "Don't reuse a piece already picked earlier this week.",
                                    isOn: $avoidRepeat)
                         HairlineDivider(color: PWColor.lineSoft)
-
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text("Weigh trend signals")
-                                    .font(PWFont.display(size: 15))
-                                    .foregroundStyle(PWColor.ink)
-                                Spacer()
-                                Text(trendWeightLabel)
-                                    .font(PWFont.body(size: 11, weight: .medium))
-                                    .foregroundStyle(PWColor.ink)
-                            }
-                            Text("Boost looks aligned with this week's top signals.")
-                                .font(PWFont.body(size: 12))
-                                .foregroundStyle(PWColor.ink60)
-                            Slider(value: $trendWeight, in: 0...1)
-                                .tint(PWColor.ink)
-                        }
-                        .padding(.vertical, 10)
-
-                        HairlineDivider(color: PWColor.lineSoft)
                         prefToggle(title: "Laundry-aware",
-                                   caption: "Skip pieces marked unavailable or in laundry.",
+                                   caption: "Skip pieces you've logged as worn recently.",
                                    isOn: $laundryAware)
                     }
 
@@ -113,27 +99,31 @@ struct GeneratorSettingsSheet: View {
                     VStack(alignment: .leading, spacing: 10) {
                         EyebrowLabel(text: "Exclude these pieces")
                         HStack(spacing: 8) {
-                            TagChip(text: "Burberry trench × ", style: .solid)
-                            TagChip(text: "Black slip × ", style: .solid)
+                            ForEach(excludedGarments) { garment in
+                                TagChip(text: "\(garment.name) ×", style: .solid)
+                                    .onTapGesture {
+                                        excludedGarmentIDs.removeAll { $0 == garment.id }
+                                    }
+                            }
                             TagChip(text: "+ Add", style: .plain)
+                                .onTapGesture { showingExcludePicker = true }
                         }
                     }
 
                     // Actions
-                    //
-                    // The fields above (per-day occasion, ranking prefs, excludes)
-                    // aren't wired to the generator yet — it only supports a single
-                    // "surprise" outfit today, not a batched per-day/week generation
-                    // with these preferences applied. This button calls the real
-                    // generator now rather than pretending the settings above do
-                    // anything; wiring them is future work once the API supports it.
                     VStack(spacing: 10) {
-                        PWButton(title: "Generate 5 outfits", style: .primary) {
+                        PWButton(title: "Generate \(activeDayCount) outfit\(activeDayCount == 1 ? "" : "s")", style: .primary) {
                             Task {
-                                await outfitStore.generateAll(topTrendSignalID: trendStore.signals.first?.id)
+                                await outfitStore.generateWeek(
+                                    days: weekDays,
+                                    avoidRepeat: avoidRepeat,
+                                    laundryAware: laundryAware,
+                                    manualExcludeIDs: excludedGarmentIDs
+                                )
                                 dismiss()
                             }
                         }
+                        .disabled(activeDayCount == 0)
                         PWButton(title: "Cancel", style: .ghost) { dismiss() }
                     }
                     .padding(.top, 12)
@@ -153,64 +143,45 @@ struct GeneratorSettingsSheet: View {
                 }
             }
         }
+        .task {
+            if weekDays.isEmpty { rebuildWeekDays() }
+        }
+        .sheet(isPresented: $showingExcludePicker) {
+            excludePickerSheet
+        }
     }
 
-    private var trendWeightLabel: String {
-        switch trendWeight {
-        case 0.0..<0.34:  return "Low"
-        case 0.34..<0.67: return "Medium"
-        default:          return "High"
+    private func rebuildWeekDays() {
+        let calendar = Calendar.current
+        let base = calendar.date(byAdding: .day, value: weekOffset * 7, to: Date()) ?? Date()
+        weekDays = (0..<7).compactMap { offset -> WeekDayPlan? in
+            guard let date = calendar.date(byAdding: .day, value: offset, to: base) else { return nil }
+            let weekday = calendar.component(.weekday, from: date) // 1 = Sunday
+            let isWeekend = weekday == 1 || weekday == 7
+            return WeekDayPlan(date: date, occasion: isWeekend ? .weekendCasual : .workwear)
         }
     }
 
     // MARK: - Small sub-views
 
-    private func pickerField(label: String, value: Binding<String>, options: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            EyebrowLabel(text: label)
-            Menu {
-                ForEach(options, id: \.self) { opt in
-                    Button(opt) { value.wrappedValue = opt }
-                }
-            } label: {
-                HStack {
-                    Text(value.wrappedValue)
-                        .font(PWFont.body(size: 13))
-                        .foregroundStyle(PWColor.ink)
-                    Spacer()
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(PWColor.ink40)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(PWColor.ivory)
-                .overlay(RoundedRectangle(cornerRadius: PWRadius.xs).stroke(PWColor.line, lineWidth: 1))
-                .clipShape(RoundedRectangle(cornerRadius: PWRadius.xs))
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func dayRow(day: String, date: String) -> some View {
+    private func dayRow(day: WeekDayPlan, index: Int) -> some View {
         HStack {
-            Text(day.uppercased())
+            Text(weekdayLabel(day.date))
                 .font(PWFont.body(size: 10, weight: .medium))
                 .tracking(10 * 0.18)
                 .foregroundStyle(PWColor.ink60)
                 .frame(width: 36, alignment: .leading)
-            Text(date)
+            Text(dayLabel(day.date))
                 .font(PWFont.display(size: 15))
                 .foregroundStyle(PWColor.ink)
             Spacer()
             Menu {
-                ForEach(["Workwear — studio", "Client meeting", "Client lunch", "Evening event",
-                         "Weekend casual", "Travel", "None · skip"], id: \.self) { opt in
-                    Button(opt) { occasions[day] = opt }
+                ForEach(OccasionPreset.allCases, id: \.self) { opt in
+                    Button(opt.rawValue) { weekDays[index].occasion = opt }
                 }
             } label: {
                 HStack(spacing: 4) {
-                    Text(occasions[day] ?? "")
+                    Text(day.occasion.rawValue)
                         .font(PWFont.body(size: 12))
                         .foregroundStyle(PWColor.ink70)
                     Image(systemName: "chevron.down")
@@ -220,6 +191,18 @@ struct GeneratorSettingsSheet: View {
             }
         }
         .padding(.vertical, 12)
+    }
+
+    private func weekdayLabel(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "EEE"
+        return f.string(from: date).uppercased()
+    }
+
+    private func dayLabel(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d"
+        return f.string(from: date)
     }
 
     private func prefToggle(title: String, caption: String, isOn: Binding<Bool>) -> some View {
@@ -238,10 +221,37 @@ struct GeneratorSettingsSheet: View {
         }
         .padding(.vertical, 10)
     }
+
+    private var excludePickerSheet: some View {
+        NavigationStack {
+            List(garmentStore.garments) { garment in
+                Button {
+                    if !excludedGarmentIDs.contains(garment.id) {
+                        excludedGarmentIDs.append(garment.id)
+                    }
+                    showingExcludePicker = false
+                } label: {
+                    HStack {
+                        Text(garment.name).foregroundStyle(PWColor.ink)
+                        Spacer()
+                        if excludedGarmentIDs.contains(garment.id) {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Exclude a piece")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { showingExcludePicker = false }
+                }
+            }
+        }
+    }
 }
 
 #Preview {
     GeneratorSettingsSheet()
         .environment(OutfitStore())
-        .environment(TrendStore())
+        .environment(GarmentStore())
 }

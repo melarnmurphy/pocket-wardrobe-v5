@@ -379,6 +379,21 @@ struct OutfitStoreTests {
         #expect(outfit.pieces.isEmpty)
         #expect(outfit.title == "")
     }
+
+    @Test("map defaults occasion to empty, but carries a passed-in occasion through")
+    func mapOccasionPassthrough() {
+        let row = GeneratedOutfitRow(garments: [], insights: [])
+        #expect(OutfitStore.map(row, variant: .safe, usedRealTrendMatch: false).occasion == "")
+        #expect(OutfitStore.map(row, variant: .safe, usedRealTrendMatch: false, occasion: "Client lunch").occasion == "Client lunch")
+    }
+
+    @Test("dateKey formats as yyyy-MM-dd")
+    func dateKeyFormatting() {
+        var components = DateComponents()
+        components.year = 2026; components.month = 4; components.day = 20
+        let date = Calendar(identifier: .gregorian).date(from: components)!
+        #expect(OutfitStore.dateKey(date) == "2026-04-20")
+    }
 }
 
 @Suite("SavedOutfitsStore mapping")

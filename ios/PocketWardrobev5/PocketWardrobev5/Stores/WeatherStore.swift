@@ -46,6 +46,39 @@ final class WeatherStore {
     var weather: LocalWeather?
     var state: LoadState = .idle
 
+    /// Per-day forecast for the WeekStrip, keyed by OutfitStore.dateKey(_:).
+    /// Real forecast, not invented — /api/mobile/weather already supports a
+    /// weather_date lookup (lib/domain/weather/service.ts's forecast_days),
+    /// this just calls it once per date instead of once for "now".
+    var weekWeather: [String: Outfit.Weather] = [:]
+
+    func loadWeek(dates: [Date]) async {
+        guard let suburb = try? await fetchSuburb(), !suburb.isEmpty else { return }
+        let encodedLocation = suburb.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? suburb
+
+        let result = await withTaskGroup(of: (String, Outfit.Weather?).self) { group -> [String: Outfit.Weather] in
+            for date in dates {
+                let key = OutfitStore.dateKey(date)
+                group.addTask { @MainActor in
+                    do {
+                        let response: WeatherResponse = try await MobileAPIClient.get(
+                            "/api/mobile/weather?location=\(encodedLocation)&weather_date=\(key)"
+                        )
+                        return (key, Self.map(response.weatherContext).weather)
+                    } catch {
+                        return (key, nil)
+                    }
+                }
+            }
+            var merged: [String: Outfit.Weather] = [:]
+            for await (key, weather) in group {
+                if let weather { merged[key] = weather }
+            }
+            return merged
+        }
+        weekWeather = result
+    }
+
     func load() async {
         guard state != .loading else { return }
         state = .loading
