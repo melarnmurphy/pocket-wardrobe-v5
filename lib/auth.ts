@@ -24,7 +24,7 @@ type SupabaseClaims = {
 // user_metadata, app_metadata) from verified JWT claims, so callers don't need
 // to change. created_at is reconstructed from the token's issued-at claim; no
 // caller currently reads it.
-function userFromClaims(claims: SupabaseClaims): User {
+export function userFromClaims(claims: SupabaseClaims): User {
   return {
     id: claims.sub,
     aud: Array.isArray(claims.aud) ? claims.aud[0] ?? "" : claims.aud ?? "",

@@ -2,6 +2,7 @@ import { cache } from "react";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
+import type { ServiceContext } from "@/lib/domain/service-context";
 import { styleRuleSchema } from "@/lib/domain/style-rules";
 import {
   resolveStyleRuleValue,
@@ -94,9 +95,9 @@ async function normalizeStyleRuleInput(
   return { payload, normalizedFields };
 }
 
-export const listStyleRules = cache(async (): Promise<StyleRuleListItem[]> => {
-  const user = await getRequiredUser();
-  const supabase = await createClient();
+export const listStyleRules = cache(async (ctx?: ServiceContext): Promise<StyleRuleListItem[]> => {
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
 
   const { data, error } = await supabase
     .from("style_rules")

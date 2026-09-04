@@ -2,6 +2,7 @@ import { cache } from "react";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
+import type { ServiceContext } from "@/lib/domain/service-context";
 import {
   availabilitySchema,
   createGarmentSchema,
@@ -497,9 +498,9 @@ async function hydrateGarmentListRows(
   });
 }
 
-export const listWardrobeGarments = cache(async (): Promise<GarmentListItem[]> => {
-  const user = await getRequiredUser();
-  const supabase = await createClient();
+export const listWardrobeGarments = cache(async (ctx?: ServiceContext): Promise<GarmentListItem[]> => {
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
 
   // Fetch the garments and all of their child rows (images, colour links + the
   // joined colour, 3d assets, recent wears) in a single embedded request. The

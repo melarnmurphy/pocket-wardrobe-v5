@@ -4,6 +4,7 @@ import { getRequiredUser } from "@/lib/auth";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import { listStyleRules } from "@/lib/domain/style-rules/service";
 import { generateOutfit } from "@/lib/domain/outfits/generator";
+import type { ServiceContext } from "@/lib/domain/service-context";
 import { z } from "zod";
 import {
   outfitWithItemsSchema,
@@ -23,9 +24,9 @@ import type { TablesInsert } from "@/types/database";
 type OutfitInsert = TablesInsert<"outfits">;
 type OutfitItemInsert = TablesInsert<"outfit_items">;
 
-export const listUserTrendMatchesWithSignals = cache(async (): Promise<UserTrendMatchWithSignal[]> => {
-  const user = await getRequiredUser();
-  const supabase = await createClient();
+export const listUserTrendMatchesWithSignals = cache(async (ctx?: ServiceContext): Promise<UserTrendMatchWithSignal[]> => {
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
   const { data, error } = await supabase
     .from("user_trend_matches")
     .select("*, trend_signal:trend_signals(*)")
@@ -37,16 +38,17 @@ export const listUserTrendMatchesWithSignals = cache(async (): Promise<UserTrend
 
 export async function generateOutfitForUser(
   input: GenerateOutfitInput,
-  isPro: boolean
+  isPro: boolean,
+  ctx?: ServiceContext
 ): Promise<GeneratedOutfit> {
   const [garments, styleRules] = await Promise.all([
-    listWardrobeGarments(),
-    listStyleRules()
+    listWardrobeGarments(ctx),
+    listStyleRules(ctx)
   ]);
 
   let trendSignal: UserTrendMatchWithSignal | null = null;
   if (input.mode === "trend") {
-    const matches = await listUserTrendMatchesWithSignals();
+    const matches = await listUserTrendMatchesWithSignals(ctx);
     trendSignal = matches.find(m => m.trend_signal_id === input.trend_signal_id) ?? null;
   }
 
