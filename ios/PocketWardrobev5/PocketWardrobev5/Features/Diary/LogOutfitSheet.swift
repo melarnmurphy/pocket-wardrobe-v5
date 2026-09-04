@@ -2,7 +2,11 @@
 //  LogOutfitSheet.swift
 //  Pocket Wardrobe — "what you wore today" capture.
 //
-//  Stubbed: presents the UI, doesn't actually save or push a PhotoPicker yet.
+//  Persists real wear_events (one per selected piece) via WearLogStore.
+//  The photo drop zone, source picker and favourite switch stay UI-only —
+//  wear_events has no photo/favourite column, and building that storage is
+//  a separate feature. Occasion and "how'd it feel" map to wear_events'
+//  real occasion/notes columns.
 //
 
 import SwiftUI
@@ -10,17 +14,24 @@ import SwiftUI
 struct LogOutfitSheet: View {
     let date: Date
     @Environment(\.dismiss) private var dismiss
+    @Environment(WearLogStore.self) private var wearLogStore
+    @Environment(GarmentStore.self) private var garmentStore
 
     @State private var source: Source = .camera
     @State private var occasion: String = ""
     @State private var feeling: String = ""
     @State private var favourite: Bool = false
+    @State private var selectedGarmentIDs: Set<UUID> = []
+    @State private var showingGarmentPicker = false
 
     enum Source: Hashable { case camera, photoLibrary, closet }
 
+    private var selectedGarments: [Garment] {
+        garmentStore.garments.filter { selectedGarmentIDs.contains($0.id) }
+    }
+
     private var dateString: String {
         let f = DateFormatter()
-        f.timeZone = TimeZone(identifier: "Europe/Amsterdam")
         f.dateFormat = "EEEE, MMMM d"
         return f.string(from: date)
     }
@@ -47,6 +58,35 @@ struct LogOutfitSheet: View {
                             sourceOption(.camera,        icon: "camera",         title: "Take a photo",   sub: "Open camera now")
                             sourceOption(.photoLibrary,  icon: "photo.on.rectangle", title: "From photo library", sub: "Pick a shot you already have")
                             sourceOption(.closet,        icon: "tray",           title: "From your closet", sub: "Pick pieces, no photo")
+                        }
+                    }
+                    .padding(.top, 28)
+
+                    // Pieces worn — the real, required input: this is what
+                    // actually becomes a wear_events row per garment.
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            EyebrowLabel(text: "Pieces worn · \(selectedGarments.count)")
+                            Spacer()
+                            Text("Add")
+                                .font(PWFont.body(size: 11, weight: .medium))
+                                .underline()
+                                .foregroundStyle(PWColor.ink70)
+                                .onTapGesture { showingGarmentPicker = true }
+                        }
+                        if selectedGarments.isEmpty {
+                            Text("Pick at least one piece to log this as worn.")
+                                .font(PWFont.body(size: 12))
+                                .foregroundStyle(PWColor.ink60)
+                        } else {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(selectedGarments) { garment in
+                                        TagChip(text: "\(garment.name) ×", style: .solid)
+                                            .onTapGesture { selectedGarmentIDs.remove(garment.id) }
+                                    }
+                                }
+                            }
                         }
                     }
                     .padding(.top, 28)
@@ -87,9 +127,30 @@ struct LogOutfitSheet: View {
                     )
                     .padding(.top, 24)
 
+                    if let errorMessage = wearLogStore.errorMessage {
+                        Text(errorMessage)
+                            .font(PWFont.body(size: 12))
+                            .foregroundStyle(PWColor.oxblood)
+                            .padding(.top, 12)
+                    }
+
                     // Save
                     HStack(spacing: 10) {
-                        PWButton(title: "Save to diary", style: .primary) { dismiss() }
+                        PWButton(title: "Save to diary", style: .primary) {
+                            Task {
+                                let saved = await wearLogStore.logWear(
+                                    garmentIDs: Array(selectedGarmentIDs),
+                                    date: date,
+                                    occasion: occasion,
+                                    notes: feeling
+                                )
+                                if saved {
+                                    await garmentStore.load()
+                                    dismiss()
+                                }
+                            }
+                        }
+                        .disabled(selectedGarmentIDs.isEmpty || wearLogStore.isSaving)
                         PWButton(title: "Cancel", style: .ghost) { dismiss() }
                     }
                     .padding(.top, 28)
@@ -105,6 +166,37 @@ struct LogOutfitSheet: View {
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(PWColor.ink)
                     }
+                }
+            }
+        }
+        .sheet(isPresented: $showingGarmentPicker) {
+            garmentPickerSheet
+        }
+    }
+
+    private var garmentPickerSheet: some View {
+        NavigationStack {
+            List(garmentStore.garments) { garment in
+                Button {
+                    if selectedGarmentIDs.contains(garment.id) {
+                        selectedGarmentIDs.remove(garment.id)
+                    } else {
+                        selectedGarmentIDs.insert(garment.id)
+                    }
+                } label: {
+                    HStack {
+                        Text(garment.name).foregroundStyle(PWColor.ink)
+                        Spacer()
+                        if selectedGarmentIDs.contains(garment.id) {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Pieces worn")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { showingGarmentPicker = false }
                 }
             }
         }
@@ -178,4 +270,6 @@ struct EditorialTextFieldStyle: TextFieldStyle {
 
 #Preview {
     LogOutfitSheet(date: SampleData.today)
+        .environment(WearLogStore())
+        .environment(GarmentStore())
 }
