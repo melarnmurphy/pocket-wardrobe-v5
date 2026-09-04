@@ -209,9 +209,9 @@ export async function listWearEventsByDate(limit = 500): Promise<Map<string, Wea
   return byDate;
 }
 
-export async function listRecentWearEvents(limit = 10): Promise<RecentWearEvent[]> {
-  const user = await getRequiredUser();
-  const supabase = await createClient();
+export async function listRecentWearEvents(limit = 10, ctx?: ServiceContext): Promise<RecentWearEvent[]> {
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
 
   const { data, error } = await supabase
     .from("wear_events")

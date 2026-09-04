@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { AuthenticationError } from "@/lib/auth";
 import { getRequiredMobileUser } from "@/lib/auth-mobile";
-import { logWearEvent } from "@/lib/domain/wear-events/service";
+import { logWearEvent, listRecentWearEvents } from "@/lib/domain/wear-events/service";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +12,26 @@ const logWearEventsInputSchema = z.object({
   occasion: z.string().trim().max(120).nullable().optional(),
   notes: z.string().trim().max(2000).nullable().optional()
 });
+
+// The Diary calendar reads this to fill its month grid — one row per
+// garment per wear, which the client groups into a per-day entry itself
+// (a day can have several pieces logged in one submission).
+export async function GET(request: NextRequest) {
+  try {
+    const { user, supabase } = await getRequiredMobileUser(request);
+    const limit = Number(request.nextUrl.searchParams.get("limit") ?? "500");
+    const events = await listRecentWearEvents(limit, { supabase, userId: user.id });
+    return NextResponse.json({ events });
+  } catch (error) {
+    if (error instanceof AuthenticationError) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to load wear history" },
+      { status: 500 }
+    );
+  }
+}
 
 // The Diary's "what you wore" log has no single-outfit concept the way the
 // Planner does (it's a multi-piece pick, not necessarily a saved outfit), so
