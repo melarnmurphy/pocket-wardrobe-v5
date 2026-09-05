@@ -3,13 +3,16 @@
 //  Pocket Wardrobe — "what you wore today" capture.
 //
 //  Persists real wear_events (one per selected piece) via WearLogStore.
-//  The photo drop zone, source picker and favourite switch stay UI-only —
-//  wear_events has no photo/favourite column, and building that storage is
-//  a separate feature. Occasion and "how'd it feel" map to wear_events'
-//  real occasion/notes columns.
+//  The photo drop zone now captures and uploads a real photo (camera via
+//  CameraPicker, or an existing shot via PhotosPicker) — it lands on
+//  wear_events.photo_storage_path for every piece logged in this
+//  submission. The favourite switch stays UI-only: wear_events has no
+//  favourite column, and that's a separate feature. Occasion and "how'd it
+//  feel" map to wear_events' real occasion/notes columns.
 //
 
 import SwiftUI
+import PhotosUI
 
 struct LogOutfitSheet: View {
     let date: Date
@@ -23,6 +26,10 @@ struct LogOutfitSheet: View {
     @State private var favourite: Bool = false
     @State private var selectedGarmentIDs: Set<UUID> = []
     @State private var showingGarmentPicker = false
+    @State private var showingCamera = false
+    @State private var showingPhotoPicker = false
+    @State private var photoPickerItem: PhotosPickerItem?
+    @State private var capturedImage: UIImage?
 
     enum Source: Hashable { case camera, photoLibrary, closet }
 
@@ -56,7 +63,7 @@ struct LogOutfitSheet: View {
                         EyebrowLabel(text: "Source")
                         VStack(spacing: 10) {
                             sourceOption(.camera,        icon: "camera",         title: "Take a photo",   sub: "Open camera now")
-                            sourceOption(.photoLibrary,  icon: "photo.on.rectangle", title: "From photo library", sub: "Pick a shot you already have")
+                            photoLibrarySourceOption
                             sourceOption(.closet,        icon: "tray",           title: "From your closet", sub: "Pick pieces, no photo")
                         }
                     }
@@ -142,7 +149,8 @@ struct LogOutfitSheet: View {
                                     garmentIDs: Array(selectedGarmentIDs),
                                     date: date,
                                     occasion: occasion,
-                                    notes: feeling
+                                    notes: feeling,
+                                    photoData: capturedImage?.jpegData(compressionQuality: 0.85)
                                 )
                                 if saved {
                                     await garmentStore.load()
@@ -171,6 +179,22 @@ struct LogOutfitSheet: View {
         }
         .sheet(isPresented: $showingGarmentPicker) {
             garmentPickerSheet
+        }
+        .fullScreenCover(isPresented: $showingCamera) {
+            CameraPicker { image in
+                capturedImage = image
+            }
+            .ignoresSafeArea()
+        }
+        .onChange(of: photoPickerItem) { _, newItem in
+            guard let newItem else { return }
+            Task {
+                if let data = try? await newItem.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    capturedImage = image
+                }
+                photoPickerItem = nil
+            }
         }
     }
 
@@ -211,48 +235,97 @@ struct LogOutfitSheet: View {
                         .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
                         .foregroundStyle(PWColor.ink40)
                 )
-            VStack(spacing: 10) {
-                Image(systemName: "camera.fill")
-                    .font(.system(size: 28, weight: .light))
-                    .foregroundStyle(PWColor.ink60)
-                Text("Photo of you in it").display(size: 18)
-                Text("Tap to add. A mirror selfie is fine.")
-                    .font(PWFont.body(size: 12))
-                    .foregroundStyle(PWColor.ink60)
+
+            if let capturedImage {
+                Image(uiImage: capturedImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(height: 220)
+                    .clipShape(RoundedRectangle(cornerRadius: PWRadius.md))
+            } else {
+                VStack(spacing: 10) {
+                    Image(systemName: "camera.fill")
+                        .font(.system(size: 28, weight: .light))
+                        .foregroundStyle(PWColor.ink60)
+                    Text("Photo of you in it").display(size: 18)
+                    Text("Tap to add. A mirror selfie is fine.")
+                        .font(PWFont.body(size: 12))
+                        .foregroundStyle(PWColor.ink60)
+                }
             }
         }
         .frame(height: 220)
+        .clipShape(RoundedRectangle(cornerRadius: PWRadius.md))
+        .overlay(alignment: .topTrailing) {
+            if capturedImage != nil {
+                Button {
+                    capturedImage = nil
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundStyle(PWColor.ivory, PWColor.ink.opacity(0.7))
+                }
+                .padding(10)
+            }
+        }
+        .onTapGesture {
+            guard capturedImage == nil else { return }
+            if source == .photoLibrary {
+                showingPhotoPicker = true
+            } else if source != .closet {
+                showingCamera = true
+            }
+        }
+        .photosPicker(isPresented: $showingPhotoPicker, selection: $photoPickerItem, matching: .images)
+    }
+
+    private var photoLibrarySourceOption: some View {
+        let isSelected = source == .photoLibrary
+        return Button {
+            source = .photoLibrary
+            showingPhotoPicker = true
+        } label: {
+            sourceOptionLabel(icon: "photo.on.rectangle", title: "From photo library", sub: "Pick a shot you already have", isSelected: isSelected)
+        }
+        .buttonStyle(.plain)
     }
 
     private func sourceOption(_ value: Source, icon: String, title: String, sub: String) -> some View {
         let isSelected = source == value
         return Button {
             source = value
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: .regular))
-                    .frame(width: 36, height: 36)
-                    .foregroundStyle(isSelected ? PWColor.ivory : PWColor.ink)
-                    .background(isSelected ? PWColor.ink : PWColor.paper)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(isSelected ? PWColor.ink : PWColor.line, lineWidth: 1))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(PWFont.display(size: 16)).foregroundStyle(PWColor.ink)
-                    Text(sub).font(PWFont.body(size: 11)).foregroundStyle(PWColor.ink60)
-                }
-                Spacer()
-                Image(systemName: isSelected ? "circle.inset.filled" : "circle")
-                    .font(.system(size: 18, weight: .regular))
-                    .foregroundStyle(isSelected ? PWColor.ink : PWColor.ink40)
+            if value == .camera {
+                showingCamera = true
             }
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: PWRadius.sm)
-                    .stroke(isSelected ? PWColor.ink : PWColor.line, lineWidth: 1)
-            )
+        } label: {
+            sourceOptionLabel(icon: icon, title: title, sub: sub, isSelected: isSelected)
         }
         .buttonStyle(.plain)
+    }
+
+    private func sourceOptionLabel(icon: String, title: String, sub: String, isSelected: Bool) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .regular))
+                .frame(width: 36, height: 36)
+                .foregroundStyle(isSelected ? PWColor.ivory : PWColor.ink)
+                .background(isSelected ? PWColor.ink : PWColor.paper)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(isSelected ? PWColor.ink : PWColor.line, lineWidth: 1))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(PWFont.display(size: 16)).foregroundStyle(PWColor.ink)
+                Text(sub).font(PWFont.body(size: 11)).foregroundStyle(PWColor.ink60)
+            }
+            Spacer()
+            Image(systemName: isSelected ? "circle.inset.filled" : "circle")
+                .font(.system(size: 18, weight: .regular))
+                .foregroundStyle(isSelected ? PWColor.ink : PWColor.ink40)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: PWRadius.sm)
+                .stroke(isSelected ? PWColor.ink : PWColor.line, lineWidth: 1)
+        )
     }
 }
 

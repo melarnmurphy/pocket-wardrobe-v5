@@ -37,13 +37,40 @@ enum MobileAPIClient {
     /// Uploads a single photo as multipart/form-data (field name "photo"),
     /// matching what the /api/mobile/wardrobe/capture route expects.
     static func uploadPhoto<T: Decodable>(_ path: String, imageData: Data, filename: String, mimeType: String) async throws -> T {
+        try await uploadMultipart(path, fields: [:], imageData: imageData, filename: filename, mimeType: mimeType)
+    }
+
+    /// Same multipart upload as `uploadPhoto`, plus plain string form fields
+    /// alongside the "photo" file part — for routes like
+    /// /api/mobile/wear-events that take both a photo and other fields
+    /// (garment_ids, worn_at, occasion, notes) in one submission. The photo
+    /// is optional here: pass nil imageData to send fields only.
+    static func uploadMultipart<T: Decodable>(
+        _ path: String,
+        fields: [String: String],
+        imageData: Data?,
+        filename: String = "photo.jpg",
+        mimeType: String = "image/jpeg"
+    ) async throws -> T {
         let boundary = "PocketWardrobe-\(UUID().uuidString)"
         var body = Data()
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
-        body.append(imageData)
-        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+
+        for (name, value) in fields {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".data(using: .utf8)!)
+            body.append(value.data(using: .utf8)!)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+
+        if let imageData {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+            body.append(imageData)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
 
         return try await send(
             path: path,

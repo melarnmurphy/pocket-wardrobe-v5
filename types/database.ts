@@ -2050,6 +2050,7 @@ export type Database = {
           notes: string | null
           occasion: string | null
           outfit_id: string | null
+          photo_storage_path: string | null
           user_id: string
           worn_at: string
         }
@@ -2060,6 +2061,7 @@ export type Database = {
           notes?: string | null
           occasion?: string | null
           outfit_id?: string | null
+          photo_storage_path?: string | null
           user_id: string
           worn_at?: string
         }
@@ -2070,6 +2072,7 @@ export type Database = {
           notes?: string | null
           occasion?: string | null
           outfit_id?: string | null
+          photo_storage_path?: string | null
           user_id?: string
           worn_at?: string
         }

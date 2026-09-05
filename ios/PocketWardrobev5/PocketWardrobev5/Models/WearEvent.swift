@@ -12,9 +12,11 @@ struct WearEvent: Identifiable, Hashable {
     let date: Date
     let title: String              // "Workwear, the tonal one"
     let occasion: String           // "Workwear · studio"
-    // wear_events has no photo/weather columns — real entries always have
-    // these nil rather than a fabricated value. Diary logging has no photo
-    // storage yet either (see LogOutfitSheet), so this stays nil in practice.
+    // wear_events has no weather columns — real entries always have those
+    // nil rather than a fabricated value. photoURL is real: it comes from
+    // wear_events.photo_storage_path (LogOutfitSheet's capture flow),
+    // resolved server-side to a signed URL, and is nil only for entries
+    // logged without a photo.
     let photoURL: URL?
     let pieceIDs: [UUID]            // references into Garment seed
     let note: String?

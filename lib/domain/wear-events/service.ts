@@ -22,7 +22,8 @@ const recentWearEventListSchema = recentWearEventSchema.extend({
   garment_title: z.string().nullable().optional(),
   garment_brand: z.string().nullable().optional(),
   garment_category: z.string().nullable().optional(),
-  garment_preview_url: z.string().nullable().optional()
+  garment_preview_url: z.string().nullable().optional(),
+  photo_url: z.string().nullable().optional()
 });
 
 export type RecentWearEvent = z.infer<typeof recentWearEventListSchema>;
@@ -52,7 +53,7 @@ export async function logWearEvent(input: z.input<typeof createWearEventSchema>,
   const { data, error } = await supabase
     .from("wear_events")
     .insert(payload as never)
-    .select("id,user_id,garment_id,worn_at,occasion,notes,outfit_id,created_at")
+    .select("id,user_id,garment_id,worn_at,occasion,notes,outfit_id,photo_storage_path,created_at")
     .single();
 
   if (error) {
@@ -60,6 +61,39 @@ export async function logWearEvent(input: z.input<typeof createWearEventSchema>,
   }
 
   return recentWearEventSchema.parse(data);
+}
+
+/**
+ * Uploads one "what you wore" selfie to the wear-event-photos bucket and
+ * returns its storage path. One photo per submission (LogOutfitSheet),
+ * stamped onto every wear_events row that submission creates — same
+ * approach as createGarmentSource's upload in lib/domain/ingestion/service.ts,
+ * just against a bucket scoped to this kind of photo rather than garment
+ * originals.
+ */
+export async function uploadWearEventPhoto(
+  params: { file: File },
+  ctx?: ServiceContext
+): Promise<string> {
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
+
+  const safeFileName = params.file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+  const storagePath = `${user.id}/wear-events/${Date.now()}-${safeFileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("wear-event-photos")
+    .upload(storagePath, params.file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: params.file.type || undefined
+    });
+
+  if (uploadError) {
+    throw new Error(uploadError.message);
+  }
+
+  return storagePath;
 }
 
 /**
@@ -215,7 +249,7 @@ export async function listRecentWearEvents(limit = 10, ctx?: ServiceContext): Pr
 
   const { data, error } = await supabase
     .from("wear_events")
-    .select("id,user_id,garment_id,worn_at,occasion,notes,outfit_id,created_at")
+    .select("id,user_id,garment_id,worn_at,occasion,notes,outfit_id,photo_storage_path,created_at")
     .eq("user_id", user.id)
     .order("worn_at", { ascending: false })
     .limit(limit);
@@ -298,6 +332,31 @@ export async function listRecentWearEvents(limit = 10, ctx?: ServiceContext): Pr
     }
   }
 
+  const wearEventPhotoUrlByPath = new Map<string, string | null>();
+  const wearEventPhotoPaths = Array.from(
+    new Set(
+      parsedEvents
+        .map((event) => event.photo_storage_path)
+        .filter((path): path is string => Boolean(path))
+    )
+  );
+
+  if (wearEventPhotoPaths.length) {
+    const { data: signedPhotoUrls, error: signedPhotoUrlsError } = await supabase.storage
+      .from("wear-event-photos")
+      .createSignedUrls(wearEventPhotoPaths, 60 * 60);
+
+    if (signedPhotoUrlsError) {
+      throw new Error(signedPhotoUrlsError.message);
+    }
+
+    for (const signedUrl of signedPhotoUrls) {
+      if (signedUrl.path) {
+        wearEventPhotoUrlByPath.set(signedUrl.path, signedUrl.signedUrl ?? null);
+      }
+    }
+  }
+
   return parsedEvents.map((event) =>
     recentWearEventListSchema.parse({
       ...event,
@@ -307,7 +366,10 @@ export async function listRecentWearEvents(limit = 10, ctx?: ServiceContext): Pr
       garment_preview_url: (() => {
         const path = featureImagePathByGarment.get(event.garment_id);
         return path ? previewUrlsByPath.get(path) ?? null : null;
-      })()
+      })(),
+      photo_url: event.photo_storage_path
+        ? wearEventPhotoUrlByPath.get(event.photo_storage_path) ?? null
+        : null
     })
   );
 }

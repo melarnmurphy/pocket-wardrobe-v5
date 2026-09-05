@@ -27,7 +27,8 @@ export const wearEventSchema = z.object({
   worn_at: optionalTimestampInputSchema,
   occasion: z.string().trim().max(120).nullable().optional(),
   notes: z.string().trim().max(2000).nullable().optional(),
-  outfit_id: z.string().uuid().nullable().optional()
+  outfit_id: z.string().uuid().nullable().optional(),
+  photo_storage_path: z.string().trim().max(500).nullable().optional()
 });
 
 export const createWearEventSchema = wearEventSchema.omit({

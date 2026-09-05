@@ -19,6 +19,8 @@ private struct LogWearEventsRequest: Encodable {
     let notes: String?
 }
 
+private let logWearEventsJSONEncoder = JSONEncoder()
+
 private struct LogWearEventsResponse: Decodable {
     let logged: Int
 }
@@ -33,6 +35,31 @@ struct WearEventRow: Decodable {
     let garmentTitle: String?
     let garmentCategory: String?
     let garmentPreviewUrl: String?
+    let photoUrl: String?
+
+    init(
+        id: String,
+        garmentId: String,
+        wornAt: String,
+        occasion: String?,
+        notes: String?,
+        outfitId: String?,
+        garmentTitle: String?,
+        garmentCategory: String?,
+        garmentPreviewUrl: String?,
+        photoUrl: String? = nil
+    ) {
+        self.id = id
+        self.garmentId = garmentId
+        self.wornAt = wornAt
+        self.occasion = occasion
+        self.notes = notes
+        self.outfitId = outfitId
+        self.garmentTitle = garmentTitle
+        self.garmentCategory = garmentCategory
+        self.garmentPreviewUrl = garmentPreviewUrl
+        self.photoUrl = photoUrl
+    }
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -43,6 +70,7 @@ struct WearEventRow: Decodable {
         case garmentTitle = "garment_title"
         case garmentCategory = "garment_category"
         case garmentPreviewUrl = "garment_preview_url"
+        case photoUrl = "photo_url"
     }
 }
 
@@ -87,13 +115,17 @@ final class WearLogStore {
             let occasion = dayRows.compactMap { $0.occasion?.isEmpty == false ? $0.occasion : nil }.first ?? ""
             let note = dayRows.compactMap { $0.notes?.isEmpty == false ? $0.notes : nil }.first
             let hasLinkedOutfit = dayRows.contains { $0.outfitId != nil }
+            // Every row in a day's submission shares the same photo (one
+            // selfie per LogOutfitSheet save), so the first non-nil URL is
+            // the day's photo.
+            let photoURLString = dayRows.compactMap { $0.photoUrl?.isEmpty == false ? $0.photoUrl : nil }.first
 
             return WearEvent(
                 id: UUID(),
                 date: day,
                 title: titles.isEmpty ? "Untitled" : titles.joined(separator: ", "),
                 occasion: occasion,
-                photoURL: nil,
+                photoURL: photoURLString.flatMap(URL.init(string:)),
                 pieceIDs: pieceIDs,
                 note: note,
                 isFavourite: false,
@@ -106,9 +138,11 @@ final class WearLogStore {
     }
 
     /// Returns true on success. Callers dismiss their sheet on true and
-    /// leave errorMessage displayed on false.
+    /// leave errorMessage displayed on false. `photoData`, when present, is
+    /// the one "photo of you in it" LogOutfitSheet's drop zone captured —
+    /// it lands on every wear_events row this submission creates.
     @discardableResult
-    func logWear(garmentIDs: [UUID], date: Date, occasion: String, notes: String) async -> Bool {
+    func logWear(garmentIDs: [UUID], date: Date, occasion: String, notes: String, photoData: Data? = nil) async -> Bool {
         guard !garmentIDs.isEmpty else {
             errorMessage = "Select at least one piece."
             return false
@@ -117,15 +151,41 @@ final class WearLogStore {
         errorMessage = nil
         defer { isSaving = false }
 
+        let formatter = ISO8601DateFormatter()
+        let garmentIdStrings = garmentIDs.map { $0.uuidString.lowercased() }
+        let trimmedOccasion = occasion.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+
         do {
-            let formatter = ISO8601DateFormatter()
-            let body = LogWearEventsRequest(
-                garment_ids: garmentIDs.map { $0.uuidString.lowercased() },
-                worn_at: formatter.string(from: date),
-                occasion: occasion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : occasion,
-                notes: notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes
-            )
-            let _: LogWearEventsResponse = try await MobileAPIClient.post("/api/mobile/wear-events", body: body)
+            if let photoData {
+                guard let garmentIdsJSON = try? logWearEventsJSONEncoder.encode(garmentIdStrings),
+                      let garmentIdsField = String(data: garmentIdsJSON, encoding: .utf8) else {
+                    errorMessage = "Could not prepare the pieces to log."
+                    return false
+                }
+                var fields: [String: String] = [
+                    "garment_ids": garmentIdsField,
+                    "worn_at": formatter.string(from: date)
+                ]
+                if !trimmedOccasion.isEmpty { fields["occasion"] = trimmedOccasion }
+                if !trimmedNotes.isEmpty { fields["notes"] = trimmedNotes }
+
+                let _: LogWearEventsResponse = try await MobileAPIClient.uploadMultipart(
+                    "/api/mobile/wear-events",
+                    fields: fields,
+                    imageData: photoData,
+                    filename: "wear-event.jpg",
+                    mimeType: "image/jpeg"
+                )
+            } else {
+                let body = LogWearEventsRequest(
+                    garment_ids: garmentIdStrings,
+                    worn_at: formatter.string(from: date),
+                    occasion: trimmedOccasion.isEmpty ? nil : trimmedOccasion,
+                    notes: trimmedNotes.isEmpty ? nil : trimmedNotes
+                )
+                let _: LogWearEventsResponse = try await MobileAPIClient.post("/api/mobile/wear-events", body: body)
+            }
             return true
         } catch {
             errorMessage = error.localizedDescription

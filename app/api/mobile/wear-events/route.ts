@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { AuthenticationError } from "@/lib/auth";
 import { getRequiredMobileUser } from "@/lib/auth-mobile";
-import { logWearEvent, listRecentWearEvents } from "@/lib/domain/wear-events/service";
+import {
+  logWearEvent,
+  listRecentWearEvents,
+  uploadWearEventPhoto
+} from "@/lib/domain/wear-events/service";
 
 export const dynamic = "force-dynamic";
 
@@ -38,24 +42,71 @@ export async function GET(request: NextRequest) {
 // this logs one wear_events row per selected garment rather than requiring
 // an outfit_id — garments.wear_count/last_worn_at/cost_per_wear all update
 // via the existing sync_garment_wear_stats_from_events() trigger regardless.
+// Multipart carries the same fields as the JSON body plus one optional
+// "photo" file (LogOutfitSheet's drop zone) — a single mirror selfie
+// shared across every piece logged in this submission, matching the
+// existing "one wear_events row per garment, same occasion/notes" shape.
+const logWearEventsMultipartFieldsSchema = z.object({
+  garment_ids: z.array(z.string().uuid()).min(1).max(20),
+  worn_at: z.string().trim().min(1).optional(),
+  occasion: z.string().trim().max(120).nullable().optional(),
+  notes: z.string().trim().max(2000).nullable().optional()
+});
+
 export async function POST(request: NextRequest) {
   try {
     const { user, supabase } = await getRequiredMobileUser(request);
-    const rawInput = await request.json();
-    const parsed = logWearEventsInputSchema.safeParse(rawInput);
-    if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.message }, { status: 400 });
+    const ctx = { supabase, userId: user.id };
+    const contentType = request.headers.get("content-type") ?? "";
+
+    let fields: z.infer<typeof logWearEventsMultipartFieldsSchema>;
+    let photoFile: File | null = null;
+
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await request.formData();
+      const rawGarmentIds = formData.get("garment_ids");
+      let garmentIds: unknown;
+      try {
+        garmentIds = typeof rawGarmentIds === "string" ? JSON.parse(rawGarmentIds) : rawGarmentIds;
+      } catch {
+        return NextResponse.json({ error: "garment_ids must be a JSON array." }, { status: 400 });
+      }
+
+      const parsedFields = logWearEventsMultipartFieldsSchema.safeParse({
+        garment_ids: garmentIds,
+        worn_at: formData.get("worn_at") ?? undefined,
+        occasion: formData.get("occasion") ?? undefined,
+        notes: formData.get("notes") ?? undefined
+      });
+      if (!parsedFields.success) {
+        return NextResponse.json({ error: parsedFields.error.message }, { status: 400 });
+      }
+      fields = parsedFields.data;
+
+      const rawPhoto = formData.get("photo");
+      if (rawPhoto instanceof File && rawPhoto.size > 0) {
+        photoFile = rawPhoto;
+      }
+    } else {
+      const rawInput = await request.json();
+      const parsed = logWearEventsInputSchema.safeParse(rawInput);
+      if (!parsed.success) {
+        return NextResponse.json({ error: parsed.error.message }, { status: 400 });
+      }
+      fields = parsed.data;
     }
 
-    const ctx = { supabase, userId: user.id };
+    const photoStoragePath = photoFile ? await uploadWearEventPhoto({ file: photoFile }, ctx) : null;
+
     const logged = await Promise.all(
-      parsed.data.garment_ids.map((garment_id) =>
+      fields.garment_ids.map((garment_id) =>
         logWearEvent(
           {
             garment_id,
-            worn_at: parsed.data.worn_at,
-            occasion: parsed.data.occasion,
-            notes: parsed.data.notes
+            worn_at: fields.worn_at,
+            occasion: fields.occasion,
+            notes: fields.notes,
+            photo_storage_path: photoStoragePath
           },
           ctx
         )
