@@ -2,6 +2,7 @@ import { cache } from "react";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getRequiredUser } from "@/lib/auth";
+import type { ServiceContext } from "@/lib/domain/service-context";
 import {
   localPrivacySchema,
   profileSchema,
@@ -23,9 +24,9 @@ const PROFILE_SELECT =
   "user_id,local_name,suburb,tops_size,bottoms_size,shoes_size,tops_size_system,bottoms_size_system,shoes_size_system,height_cm,one_size_either_way,show_suburb,show_wear_count,suburb_lat,suburb_lng,radius_km,onboarding_completed_at,local_safety_brief_seen_at,age_confirmed_at,age_declined_at,created_at,updated_at";
 
 /** No signup trigger creates this row, it's created lazily on first read. */
-export const getOrCreateProfile = cache(async (): Promise<Profile> => {
-  const user = await getRequiredUser();
-  const supabase = await createClient();
+export const getOrCreateProfile = cache(async (ctx?: ServiceContext): Promise<Profile> => {
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
 
   const { data: existing, error: fetchError } = await supabase
     .from("profiles")
@@ -55,10 +56,10 @@ export const getOrCreateProfile = cache(async (): Promise<Profile> => {
   return profileSchema.parse(created);
 });
 
-export async function updateProfile(input: UpdateProfileInput): Promise<Profile> {
-  await getOrCreateProfile();
-  const user = await getRequiredUser();
-  const supabase = await createClient();
+export async function updateProfile(input: UpdateProfileInput, ctx?: ServiceContext): Promise<Profile> {
+  await getOrCreateProfile(ctx);
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
   const parsed = updateProfileSchema.parse(input);
   const centroid = resolveSuburbCentroid(parsed.suburb);
 
@@ -124,10 +125,10 @@ export async function updateLocalPrivacy(input: LocalPrivacyInput): Promise<Prof
 }
 
 /** 6a/w4a-c, marks onboarding done so /onboarding stops intercepting sign-in. */
-export async function completeOnboarding(): Promise<void> {
-  await getOrCreateProfile();
-  const user = await getRequiredUser();
-  const supabase = await createClient();
+export async function completeOnboarding(ctx?: ServiceContext): Promise<void> {
+  await getOrCreateProfile(ctx);
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
 
   const update: ProfileUpdate = { onboarding_completed_at: new Date().toISOString() };
   const { error } = await supabase.from("profiles").update(update as never).eq("user_id", user.id);

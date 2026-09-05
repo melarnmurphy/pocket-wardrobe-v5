@@ -5,6 +5,7 @@ import { getRequiredUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { listMyThreads, withdrawLocalListing } from "@/lib/domain/local-threads/threads-service";
+import type { ServiceContext } from "@/lib/domain/service-context";
 
 const accountProfileSchema = z.object({
   email: z.string().email().nullable(),
@@ -53,37 +54,77 @@ export const getAccountProfile = cache(async (providedUser?: User): Promise<Acco
   });
 });
 
-export async function updateAccountProfile(input: {
+type UpdateAccountProfileInput = {
   display_name: string | null;
   preferred_location: string | null;
   region?: "AU" | "NZ";
   temperature_unit?: "C" | "F";
   currency_unit?: "AUD" | "NZD";
-}) {
+};
+
+function applyAccountProfileInput(
+  metadata: Record<string, unknown>,
+  input: UpdateAccountProfileInput
+): Record<string, unknown> {
+  const next = { ...metadata };
+
+  if (input.display_name) {
+    next.display_name = input.display_name;
+  } else {
+    delete next.display_name;
+  }
+
+  if (input.preferred_location) {
+    next.preferred_location = input.preferred_location;
+  } else {
+    delete next.preferred_location;
+  }
+
+  if (input.region) next.region = input.region;
+  if (input.temperature_unit) next.temperature_unit = input.temperature_unit;
+  if (input.currency_unit) next.currency_unit = input.currency_unit;
+
+  return next;
+}
+
+export async function updateAccountProfile(
+  input: UpdateAccountProfileInput,
+  ctx?: ServiceContext
+): Promise<AccountProfile> {
+  // A mobile request's Supabase client carries only a bearer access token
+  // (lib/supabase/mobile.ts, persistSession: false, no session ever set),
+  // so supabase.auth.updateUser() — which needs an active session — throws
+  // "Auth session missing!" on it. The service-role client can update a
+  // specific user's metadata by id instead, no session required, same
+  // pattern already used by closeUserAccount below.
+  if (ctx) {
+    const serviceClient = createServiceClient();
+    const { data, error: getError } = await serviceClient.auth.admin.getUserById(ctx.userId);
+    if (getError || !data?.user) {
+      throw new Error(getError?.message ?? "User not found.");
+    }
+
+    const existingMetadata =
+      data.user.user_metadata && typeof data.user.user_metadata === "object"
+        ? (data.user.user_metadata as Record<string, unknown>)
+        : {};
+    const nextMetadata = applyAccountProfileInput(existingMetadata, input);
+
+    const { error } = await serviceClient.auth.admin.updateUserById(ctx.userId, { user_metadata: nextMetadata });
+    if (error) throw new Error(error.message);
+
+    return getAccountProfile({ ...data.user, user_metadata: nextMetadata });
+  }
+
   const user = await getRequiredUser();
   const supabase = await createClient();
   const existingMetadata =
     user.user_metadata && typeof user.user_metadata === "object"
-      ? { ...(user.user_metadata as Record<string, unknown>) }
+      ? (user.user_metadata as Record<string, unknown>)
       : {};
+  const nextMetadata = applyAccountProfileInput(existingMetadata, input);
 
-  if (input.display_name) {
-    existingMetadata.display_name = input.display_name;
-  } else {
-    delete existingMetadata.display_name;
-  }
-
-  if (input.preferred_location) {
-    existingMetadata.preferred_location = input.preferred_location;
-  } else {
-    delete existingMetadata.preferred_location;
-  }
-
-  if (input.region) existingMetadata.region = input.region;
-  if (input.temperature_unit) existingMetadata.temperature_unit = input.temperature_unit;
-  if (input.currency_unit) existingMetadata.currency_unit = input.currency_unit;
-
-  const { error } = await supabase.auth.updateUser({ data: existingMetadata });
+  const { error } = await supabase.auth.updateUser({ data: nextMetadata });
   if (error) throw new Error(error.message);
 
   return getAccountProfile();
