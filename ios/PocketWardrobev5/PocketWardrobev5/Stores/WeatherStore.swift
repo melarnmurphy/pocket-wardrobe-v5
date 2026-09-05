@@ -1,14 +1,17 @@
 // Stores/WeatherStore.swift
 //
-// Reads the user's stored suburb (profiles.suburb, set during onboarding —
-// see supabase/migrations/028_profiles.sql) directly from Supabase, then
-// calls GET /api/mobile/weather with it as the location query. No
-// CoreLocation integration needed for this pass since the profile already
-// has a location; if a user hasn't set one, this surfaces that rather than
-// guessing a location.
+// Calls GET /api/mobile/weather with a location string the caller supplies
+// (AccountStore.profile.preferredLocation) — this store used to query
+// `profiles.suburb` directly, which is a real but different field: the web
+// app resolves weather from user_metadata.preferred_location (lib/domain/
+// outfits/page.tsx, lib/domain/trends/service.ts), while profiles.suburb is
+// the local-marketplace pickup location, unrelated and unsynced. Reading
+// profiles.suburb here meant a location set on web had zero effect on iOS
+// weather. No CoreLocation integration needed for this pass since the
+// account already has a location once AppGateView's LocationSetupView runs;
+// if it's somehow still empty, this surfaces that rather than guessing one.
 
 import Foundation
-import Supabase
 
 struct WeatherContextRow: Decodable {
     let currentTemperatureC: Double?
@@ -52,9 +55,9 @@ final class WeatherStore {
     /// this just calls it once per date instead of once for "now".
     var weekWeather: [String: Outfit.Weather] = [:]
 
-    func loadWeek(dates: [Date]) async {
-        guard let suburb = try? await fetchSuburb(), !suburb.isEmpty else { return }
-        let encodedLocation = suburb.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? suburb
+    func loadWeek(dates: [Date], location: String?) async {
+        guard let location, !location.isEmpty else { return }
+        let encodedLocation = location.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? location
 
         let result = await withTaskGroup(of: (String, Outfit.Weather?).self) { group -> [String: Outfit.Weather] in
             for date in dates {
@@ -79,33 +82,21 @@ final class WeatherStore {
         weekWeather = result
     }
 
-    func load() async {
+    func load(location: String?) async {
         guard state != .loading else { return }
         state = .loading
+        guard let location, !location.isEmpty else {
+            state = .error("Add your location in Settings to see local weather.")
+            return
+        }
         do {
-            guard let suburb = try await fetchSuburb(), !suburb.isEmpty else {
-                state = .error("Add your suburb in account settings to see local weather.")
-                return
-            }
-            let encodedLocation = suburb.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? suburb
+            let encodedLocation = location.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? location
             let response: WeatherResponse = try await MobileAPIClient.get("/api/mobile/weather?location=\(encodedLocation)")
             weather = Self.map(response.weatherContext)
             state = .loaded
         } catch {
             state = .error(error.localizedDescription)
         }
-    }
-
-    private func fetchSuburb() async throws -> String? {
-        struct Row: Decodable { let suburb: String? }
-        guard let userId = AppSupabase.shared.auth.currentSession?.user.id else { return nil }
-        let rows: [Row] = try await AppSupabase.shared
-            .from("profiles")
-            .select("suburb")
-            .eq("user_id", value: userId.uuidString)
-            .execute()
-            .value
-        return rows.first?.suburb
     }
 
     static func map(_ row: WeatherContextRow) -> LocalWeather {

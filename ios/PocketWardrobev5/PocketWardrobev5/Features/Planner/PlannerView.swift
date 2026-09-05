@@ -11,6 +11,7 @@ struct PlannerView: View {
     @Environment(WeatherStore.self) private var weatherStore
     @Environment(SavedOutfitsStore.self) private var savedOutfitsStore
     @Environment(GarmentStore.self) private var garmentStore
+    @Environment(AccountStore.self) private var accountStore
 
     @State private var selectedDate: Date = Date()
     @State private var activeVariant: Outfit.Variant = .safe
@@ -107,8 +108,8 @@ struct PlannerView: View {
         }
         .background(PWColor.ivory)
         .task {
-            await weatherStore.load()
-            await weatherStore.loadWeek(dates: weekDates)
+            await weatherStore.load(location: accountStore.profile?.preferredLocation)
+            await weatherStore.loadWeek(dates: weekDates, location: accountStore.profile?.preferredLocation)
         }
         .sheet(isPresented: $showingGenerator) {
             GeneratorSettingsSheet()
@@ -507,4 +508,5 @@ struct PlannerView: View {
         .environment(TrendStore())
         .environment(WeatherStore())
         .environment(SavedOutfitsStore())
+        .environment(AccountStore())
 }

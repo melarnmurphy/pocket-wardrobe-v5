@@ -42,7 +42,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+// POST rather than PATCH: every other mobile-mutating route in this app
+// (outfits/save, outfits/generate-week, wear-events) uses POST, so the iOS
+// MobileAPIClient only implements GET/POST — matching that instead of
+// adding a one-off HTTP verb to the client for this single endpoint.
+export async function POST(request: NextRequest) {
   try {
     const { user, supabase } = await getRequiredMobileUser(request);
     const rawInput = await request.json();
