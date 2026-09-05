@@ -7,6 +7,7 @@ import SwiftUI
 
 struct AppGateView: View {
     @Environment(AuthStore.self) private var authStore
+    @Environment(AccountStore.self) private var accountStore
 
     var body: some View {
         Group {
@@ -15,9 +16,18 @@ struct AppGateView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(PWColor.ivory)
             } else if authStore.isSignedIn {
-                RootView()
+                if accountStore.needsLocationSetup {
+                    LocationSetupView()
+                } else {
+                    RootView()
+                }
             } else {
                 SignInView()
+            }
+        }
+        .task(id: authStore.isSignedIn) {
+            if authStore.isSignedIn {
+                await accountStore.load()
             }
         }
     }
@@ -34,4 +44,6 @@ struct AppGateView: View {
         .environment(LookbookStore())
         .environment(SavedOutfitsStore())
         .environment(WearLogStore())
+        .environment(AccountStore())
+        .environment(NotificationsStore())
 }

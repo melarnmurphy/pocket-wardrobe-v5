@@ -571,3 +571,48 @@ struct RulesStoreTests {
         #expect(RulesStore.map(invalidID) == nil)
     }
 }
+
+@Suite("NotificationsStore mapping")
+@MainActor
+struct NotificationsStoreTests {
+
+    @Test("map builds a NotificationEntry, carrying kind/subject/read state through")
+    func mapRow() {
+        let notificationID = UUID()
+        let subjectID = UUID()
+        let row = NotificationRow(
+            id: notificationID.uuidString, kind: .priceDrop, title: "Price drop",
+            body: "The wool coat you're watching dropped 20%.",
+            subjectKind: "listing", subjectId: subjectID.uuidString,
+            createdAt: "2026-04-20T09:15:30.123456+00:00", readAt: nil
+        )
+        let entry = NotificationsStore.map(row)
+        #expect(entry?.id == notificationID)
+        #expect(entry?.kind == .priceDrop)
+        #expect(entry?.title == "Price drop")
+        #expect(entry?.subjectId == subjectID)
+        #expect(entry?.isRead == false)
+        #expect(entry?.createdAt != nil)
+    }
+
+    @Test("map treats a non-nil read_at as read")
+    func mapReadRow() {
+        let row = NotificationRow(
+            id: UUID().uuidString, kind: .message, title: "New message",
+            body: "You have a new message.", subjectKind: "thread", subjectId: nil,
+            createdAt: "2026-04-20T09:15:30+00:00", readAt: "2026-04-21T09:15:30+00:00"
+        )
+        let entry = NotificationsStore.map(row)
+        #expect(entry?.isRead == true)
+        #expect(entry?.subjectId == nil)
+    }
+
+    @Test("map returns nil for an unparsable notification id")
+    func mapRejectsInvalidID() {
+        let row = NotificationRow(
+            id: "not-a-uuid", kind: .sold, title: "Sold", body: "Sold.",
+            subjectKind: nil, subjectId: nil, createdAt: "2026-04-20T09:15:30+00:00", readAt: nil
+        )
+        #expect(NotificationsStore.map(row) == nil)
+    }
+}

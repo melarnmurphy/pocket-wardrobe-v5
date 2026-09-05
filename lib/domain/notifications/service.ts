@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getRequiredUser } from "@/lib/auth";
+import type { ServiceContext } from "@/lib/domain/service-context";
 import {
   NOTIFICATION_KIND_VALUES,
   notificationSchema,
@@ -15,9 +16,9 @@ type NotificationInsert = TablesInsert<"app_notifications">;
 
 const SELECT = "id,kind,title,body,subject_kind,subject_id,created_at,read_at";
 
-export async function listNotifications(limit = 20): Promise<AppNotification[]> {
-  const user = await getRequiredUser();
-  const supabase = await createClient();
+export async function listNotifications(limit = 20, ctx?: ServiceContext): Promise<AppNotification[]> {
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
 
   const { data, error } = await supabase
     .from("app_notifications")
@@ -33,9 +34,31 @@ export async function listNotifications(limit = 20): Promise<AppNotification[]> 
   return z.array(notificationSchema).parse(data ?? []);
 }
 
-export async function markNotificationRead(notificationId: string): Promise<void> {
-  const user = await getRequiredUser();
-  const supabase = await createClient();
+/**
+ * Read-only count alongside listNotifications, so a caller (the mobile
+ * inbox route) can report an unread badge without pulling every row's
+ * read_at client-side.
+ */
+export async function countUnreadNotifications(ctx?: ServiceContext): Promise<number> {
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
+
+  const { count, error } = await supabase
+    .from("app_notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .is("read_at", null);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return count ?? 0;
+}
+
+export async function markNotificationRead(notificationId: string, ctx?: ServiceContext): Promise<void> {
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
   const parsedId = z.string().uuid().parse(notificationId);
 
   const { error } = await supabase
@@ -49,9 +72,9 @@ export async function markNotificationRead(notificationId: string): Promise<void
   }
 }
 
-export async function markAllNotificationsRead(): Promise<void> {
-  const user = await getRequiredUser();
-  const supabase = await createClient();
+export async function markAllNotificationsRead(ctx?: ServiceContext): Promise<void> {
+  const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+  const supabase = ctx ? ctx.supabase : await createClient();
 
   const { error } = await supabase
     .from("app_notifications")

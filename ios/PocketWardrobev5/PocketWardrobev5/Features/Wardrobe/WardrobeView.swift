@@ -7,10 +7,13 @@ import SwiftUI
 
 struct WardrobeView: View {
     @Environment(GarmentStore.self) private var garmentStore
+    @Environment(NotificationsStore.self) private var notificationsStore
 
     @State private var selectedFilter: Garment.Category? = nil
     @State private var selectedGarment: Garment? = nil
     @State private var showingCapture = false
+    @State private var showingSettings = false
+    @State private var showingNotifications = false
 
     private let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -37,6 +40,28 @@ struct WardrobeView: View {
                         Text("Wardrobe.")
                             .display(size: 44)
                         Spacer()
+                        Button {
+                            showingSettings = true
+                        } label: {
+                            Image(systemName: "gearshape")
+                                .font(.system(size: 22))
+                                .foregroundStyle(PWColor.ink70)
+                        }
+                        Button {
+                            showingNotifications = true
+                        } label: {
+                            Image(systemName: notificationsStore.unreadCount > 0 ? "bell.badge.fill" : "bell")
+                                .font(.system(size: 20))
+                                .foregroundStyle(PWColor.ink70)
+                                .overlay(alignment: .topTrailing) {
+                                    if notificationsStore.unreadCount > 0 {
+                                        Circle()
+                                            .fill(PWColor.oxblood)
+                                            .frame(width: 8, height: 8)
+                                            .offset(x: 3, y: -2)
+                                    }
+                                }
+                        }
                         Button {
                             showingCapture = true
                         } label: {
@@ -124,10 +149,17 @@ struct WardrobeView: View {
         .sheet(isPresented: $showingCapture) {
             CaptureView()
         }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
+        }
+        .sheet(isPresented: $showingNotifications) {
+            NotificationsView()
+        }
     }
 }
 
 #Preview {
     WardrobeView()
         .environment(GarmentStore())
+        .environment(NotificationsStore())
 }
