@@ -4,6 +4,8 @@ import { createServiceClient as createClient } from "@/lib/supabase/service";
 import { processExtractionJob } from "@/lib/domain/trends/extraction";
 
 export const dynamic = "force-dynamic";
+// Each extraction is an LLM call; a full batch can exceed the default 10s.
+export const maxDuration = 60;
 
 const BATCH_SIZE = 5;
 
@@ -47,4 +49,9 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ ok: true, processed: results.length, results });
+}
+
+// GET alias — Vercel's cron uses GET by default.
+export async function GET(request: NextRequest) {
+  return POST(request);
 }
