@@ -1,0 +1,58 @@
+{
+  "identifier" : "8B6E0F3E-3E36-4B0B-9C77-6C7B0B0E1A11",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "0",
+    "_developerTeamID" : "0",
+    "_lastSynchronizedDate" : 0
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21538997",
+      "localizations" : [
+
+      ],
+      "name" : "Pocket Wardrobe Plans",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "69.00",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6738400001",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Feature labels, receipt scanning, product-URL ingestion, and outfit decomposition.",
+              "displayName" : "Plus (Annual)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.melandwes.pocketwardrobe.plus.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Plus Annual",
+          "subscriptionGroupID" : "21538997",
+          "taxCategory" : "eBooksMagazinesNewspapers",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

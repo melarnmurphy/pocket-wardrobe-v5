@@ -46,4 +46,5 @@ struct AppGateView: View {
         .environment(WearLogStore())
         .environment(AccountStore())
         .environment(NotificationsStore())
+        .environment(BillingStore())
 }

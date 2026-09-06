@@ -4,11 +4,14 @@
 //
 
 import SwiftUI
+import StoreKit
+import Supabase
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AccountStore.self) private var accountStore
     @Environment(AuthStore.self) private var authStore
+    @Environment(BillingStore.self) private var billingStore
 
     @State private var displayName: String = ""
     @State private var preferredLocation: String = ""
@@ -151,12 +154,54 @@ struct SettingsView: View {
                     }
                     Spacer()
                 }
-                Text(plan.isPaid
-                     ? "Manage your subscription from the web account page."
-                     : "Free plan. Upgrade from the web account page.")
+
+                if plan.isPaid {
+                    Text("Manage or cancel from Settings › Apple Account › Subscriptions on this device.")
+                        .font(PWFont.body(size: 12))
+                        .foregroundStyle(PWColor.ink60)
+                } else {
+                    planUpgradeSection
+                }
+
+                if let billingError = billingStore.errorMessage {
+                    Text(billingError).font(PWFont.body(size: 12)).foregroundStyle(PWColor.oxblood)
+                }
+
+                Button("Restore purchases") {
+                    Task {
+                        await billingStore.restore()
+                        await accountStore.load()
+                    }
+                }
+                .font(PWFont.body(size: 12, weight: .medium))
+                .foregroundStyle(PWColor.ink70)
+                .padding(.top, 4)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var planUpgradeSection: some View {
+        if let product = billingStore.product {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Upgrade to Plus — \(product.displayPrice)/year for feature labels, receipt scanning, and more.")
                     .font(PWFont.body(size: 12))
                     .foregroundStyle(PWColor.ink60)
+                PWButton(title: "Upgrade to Plus", style: .primary) {
+                    guard let userID = authStore.session?.user.id else { return }
+                    Task {
+                        await billingStore.purchase(userID: userID)
+                        await accountStore.load()
+                    }
+                }
+                .disabled(billingStore.isPurchasing)
             }
+        } else if billingStore.isLoadingProduct {
+            ProgressView()
+        } else {
+            Text("Plus plan isn't available right now.")
+                .font(PWFont.body(size: 12))
+                .foregroundStyle(PWColor.ink60)
         }
     }
 
@@ -194,4 +239,5 @@ struct SettingsView: View {
     SettingsView()
         .environment(AccountStore())
         .environment(AuthStore())
+        .environment(BillingStore())
 }
