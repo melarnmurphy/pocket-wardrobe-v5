@@ -1,6 +1,6 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getOptionalUser } from "@/lib/auth";
-import { getOrCreateProfile } from "@/lib/domain/profile/service";
 
 export type SidebarCounts = {
   wardrobe: number;
@@ -21,17 +21,17 @@ const EMPTY_COUNTS: SidebarCounts = {
 };
 
 /**
- * The sidebar renders on every page, so this is count-only queries
- * (head: true — no rows fetched) rather than reusing the full list
- * functions each screen already has, which would be wasteful chrome.
+ * Count-only queries for app chrome. Nearby radius matching is a haversine
+ * scan (`nearby_listings`) and must not run on every page — it blocked reloads
+ * of wardrobe/today/etc. The nearby screen still uses the RPC itself.
  */
-export async function getSidebarCounts(): Promise<SidebarCounts> {
+export const getSidebarCounts = cache(async (): Promise<SidebarCounts> => {
   const user = await getOptionalUser();
   if (!user) return EMPTY_COUNTS;
 
   const supabase = await createClient();
 
-  const [wardrobe, looks, wishlist, letGo, threads, profile] = await Promise.all([
+  const [wardrobe, looks, wishlist, letGo, threads] = await Promise.all([
     supabase
       .from("garments")
       .select("id", { count: "exact", head: true })
@@ -55,32 +55,15 @@ export async function getSidebarCounts(): Promise<SidebarCounts> {
     supabase
       .from("threads")
       .select("id", { count: "exact", head: true })
-      .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`),
-    getOrCreateProfile().catch(() => null)
+      .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
   ]);
-
-  let nearbyCount = 0;
-  if (profile?.suburb_lat !== null && profile?.suburb_lat !== undefined) {
-    const { count } = await supabase.rpc(
-      "nearby_listings" as never,
-      {
-        viewer_lat: profile.suburb_lat,
-        viewer_lng: profile.suburb_lng,
-        radius_km: profile.radius_km,
-        max_price_cents: null,
-        sort_key: "closest"
-      } as never,
-      { count: "exact", head: true } as never
-    );
-    nearbyCount = count ?? 0;
-  }
 
   return {
     wardrobe: wardrobe.count ?? 0,
     looks: looks.count ?? 0,
     wishlist: wishlist.count ?? 0,
     letGo: letGo.count ?? 0,
-    nearby: nearbyCount,
+    nearby: 0,
     handovers: threads.count ?? 0
   };
-}
+});

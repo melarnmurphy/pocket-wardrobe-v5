@@ -19,7 +19,7 @@ export function AuthRequiredCard({
         <p className="mt-4 text-sm leading-6 text-[var(--muted)]">{description}</p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
-            href={`/auth/sign-in?next=${encodeURIComponent(next)}`}
+          href={`/sign-in?next=${encodeURIComponent(next)}`}
             className="pw-button-primary"
           >
             Sign In

@@ -78,4 +78,77 @@ describe("WardrobeShop product-url dead-link handling", () => {
       expect(screen.queryByText(/couldn't open that link/i)).not.toBeInTheDocument()
     );
   });
+
+  it("renders the wardrobe grid heading instead of the old editorial slogan", () => {
+    render(
+      <WardrobeShop
+        garments={[]}
+        planTier="free"
+        canUseFeatureLabels={false}
+        premiumUpgradeUrl={null}
+        billingCheckoutEnabled={false}
+        premiumFeatures={[]}
+        createGarmentAction={noopAction}
+        createPhotoDraftAction={noopAction}
+        createProductUrlDraftAction={noopAction}
+        createReceiptDraftAction={noopAction}
+        addGarment3dAssetAction={noopAction}
+        addGarmentImageAction={noopAction}
+        deleteGarmentAction={noopAction}
+        setGarmentFeatureImageAction={noopAction}
+        toggleGarmentFavouriteAction={noopAction}
+        logWearAction={noopAction}
+        updateGarmentAction={noopAction}
+        recentlyDeletedGarments={[]}
+        collections={[]}
+        restoreGarmentAction={noopAction}
+        bulkDeleteGarmentsAction={noopAction}
+        createCollectionAction={noopAction}
+        renameCollectionAction={noopAction}
+        deleteCollectionAction={noopAction}
+        archiveGarmentAction={noopAction}
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: "wardrobe" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "wearable now" })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/search 0 pieces/i)).toBeInTheDocument();
+    expect(screen.queryByText(/dress from a system/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/all occasions/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /add piece/i })).not.toBeInTheDocument();
+  });
+
+  it("renders a collection filter without throwing", () => {
+    render(
+      <WardrobeShop
+        garments={[]}
+        planTier="free"
+        canUseFeatureLabels={false}
+        premiumUpgradeUrl={null}
+        billingCheckoutEnabled={false}
+        premiumFeatures={[]}
+        createGarmentAction={noopAction}
+        createPhotoDraftAction={noopAction}
+        createProductUrlDraftAction={noopAction}
+        createReceiptDraftAction={noopAction}
+        addGarment3dAssetAction={noopAction}
+        addGarmentImageAction={noopAction}
+        deleteGarmentAction={noopAction}
+        setGarmentFeatureImageAction={noopAction}
+        toggleGarmentFavouriteAction={noopAction}
+        logWearAction={noopAction}
+        updateGarmentAction={noopAction}
+        recentlyDeletedGarments={[]}
+        collections={[{ id: "col-1", name: "weekend", kind: "capsule", garmentIds: [] }]}
+        restoreGarmentAction={noopAction}
+        bulkDeleteGarmentsAction={noopAction}
+        createCollectionAction={noopAction}
+        renameCollectionAction={noopAction}
+        deleteCollectionAction={noopAction}
+        archiveGarmentAction={noopAction}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "+ collection" })).toBeInTheDocument();
+  });
 });

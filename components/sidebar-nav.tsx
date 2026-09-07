@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import type { SidebarCounts } from "@/lib/domain/sidebar/service";
 
 const PRIMARY_ITEMS = [
-  { label: "today", href: "/wardrobe", countKey: null },
+  { label: "today", href: "/today", countKey: null },
   { label: "wardrobe", href: "/wardrobe", countKey: "wardrobe" },
   { label: "looks", href: "/outfits", countKey: "looks" },
   { label: "calendar", href: "/calendar", countKey: null },
@@ -19,9 +19,16 @@ const LOCAL_ITEMS = [
   { label: "handovers", href: "/local/threads", countKey: "handovers" }
 ] as const;
 
-function isActive(pathname: string, href: string) {
-  if (href === "/wardrobe") return pathname === "/wardrobe";
-  return pathname.startsWith(href);
+function isActive(pathname: string, href: string, label: string) {
+  if (label === "today") return pathname === "/today";
+  if (label === "wardrobe") {
+    if (pathname.startsWith("/wardrobe/let-go")) return false;
+    return pathname === "/wardrobe" || pathname.startsWith("/wardrobe/");
+  }
+  if (label === "looks") {
+    return pathname.startsWith("/outfits") || pathname.startsWith("/lookbook");
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 function Row({
@@ -36,7 +43,7 @@ function Row({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const active = isActive(pathname, href);
+  const active = isActive(pathname, href, label);
 
   return (
     <Link

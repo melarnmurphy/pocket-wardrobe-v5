@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Pencil } from "lucide-react";
 import {
   type ReactNode,
   useActionState,
@@ -42,6 +41,7 @@ import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
 import { garmentInCollection } from "@/lib/domain/wardrobe/collections-filter";
 import { AVAILABILITY_VALUES } from "@/lib/domain/wardrobe";
 import { compareNeglected } from "@/lib/domain/outfits/neglect";
+import { Chip, CutoutTile } from "@/components/garderobe";
 
 const seasonOptions = ["spring", "summer", "autumn", "winter"] as const;
 
@@ -178,7 +178,6 @@ export function WardrobeShop({
   >(initialCreateState?.sourceMode ?? null);
   const [createMobileStep, setCreateMobileStep] = useState<1 | 2>(1);
   const [isCreateDetailsOpen, setIsCreateDetailsOpen] = useState(false);
-  const [isFilterBarCondensed, setIsFilterBarCondensed] = useState(false);
   const [isRecentlyDeletedOpen, setIsRecentlyDeletedOpen] = useState(false);
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -207,8 +206,9 @@ export function WardrobeShop({
   const [colourFilter, setColourFilter] = useState(
     initialBrowseState?.colourFilter ?? "all"
   );
-  const [availabilityFilter, setAvailabilityFilter] = useState("all");
   const [collectionFilter, setCollectionFilter] = useState("all");
+  const [availabilityFilter, setAvailabilityFilter] = useState("wearable");
+  const [fabricFilter, setFabricFilter] = useState("all");
   const [favouritesOnly, setFavouritesOnly] = useState(
     initialBrowseState?.favouritesOnly ?? false
   );
@@ -241,11 +241,9 @@ export function WardrobeShop({
       Array.from(new Set(garments.map((garment) => garment.category).filter(Boolean))).sort(),
     [garments]
   );
-  const occasions = useMemo(
+  const fabrics = useMemo(
     () =>
-      Array.from(
-        new Set(garments.map((garment) => garment.formality_level).filter(Boolean))
-      ).sort(),
+      Array.from(new Set(garments.map((garment) => garment.material).filter(Boolean))).sort() as string[],
     [garments]
   );
   const hasActiveFilters =
@@ -254,10 +252,10 @@ export function WardrobeShop({
     typeFilter !== "all" ||
     seasonFilter !== "all" ||
     colourFilter !== "all" ||
-    availabilityFilter !== "all" ||
+    fabricFilter !== "all" ||
+    availabilityFilter !== "wearable" ||
     collectionFilter !== "all" ||
-    favouritesOnly ||
-    sortBy !== "newest";
+    favouritesOnly;
 
   const resetFilters = () => {
     setQuery("");
@@ -265,10 +263,10 @@ export function WardrobeShop({
     setTypeFilter("all");
     setSeasonFilter("all");
     setColourFilter("all");
-    setAvailabilityFilter("all");
+    setFabricFilter("all");
+    setAvailabilityFilter("wearable");
     setCollectionFilter("all");
     setFavouritesOnly(false);
-    setSortBy("newest");
   };
 
   const filteredGarments = useMemo(() => {
@@ -310,7 +308,15 @@ export function WardrobeShop({
           return false;
         }
 
-        if (availabilityFilter !== "all" && garment.availability !== availabilityFilter) {
+        if (fabricFilter !== "all" && garment.material !== fabricFilter) {
+          return false;
+        }
+
+        if (availabilityFilter === "wearable") {
+          const isWearable =
+            (garment.availability ?? "wearable") === "wearable" && !garment.seasonally_stored_at;
+          if (!isWearable) return false;
+        } else if (availabilityFilter !== "all" && garment.availability !== availabilityFilter) {
           return false;
         }
 
@@ -335,6 +341,8 @@ export function WardrobeShop({
             return (displayCostPerWear(left) ?? Number.MAX_SAFE_INTEGER) - (displayCostPerWear(right) ?? Number.MAX_SAFE_INTEGER);
           case "favourites":
             return (right.favourite_score ?? 0) - (left.favourite_score ?? 0);
+          case "least_worn":
+            return left.wear_count - right.wear_count || new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
           case "most_worn":
             return right.wear_count - left.wear_count;
           case "neglected":
@@ -353,6 +361,7 @@ export function WardrobeShop({
     garments,
     occasionFilter,
     colourFilter,
+    fabricFilter,
     availabilityFilter,
     collectionFilter,
     collections,
@@ -360,6 +369,21 @@ export function WardrobeShop({
     sortBy,
     typeFilter
   ]);
+
+  const availabilitySummary = useMemo(() => {
+    const wash = garments.filter((garment) => garment.availability === "in the wash").length;
+    const tailor = garments.filter((garment) => garment.availability === "at the tailor").length;
+    const stored = garments.filter((garment) => Boolean(garment.seasonally_stored_at)).length;
+    const wearable = garments.filter(
+      (garment) =>
+        (garment.availability ?? "wearable") === "wearable" && !garment.seasonally_stored_at
+    ).length;
+    const parts = [`${wearable} wearable now`];
+    if (wash) parts.push(`${wash} in the wash`);
+    if (tailor) parts.push(`${tailor} at the cleaner`);
+    if (stored) parts.push(`${stored} out of rotation`);
+    return parts.join(" · ");
+  }, [garments]);
 
   const selectedGarment = useMemo(
     () => garments.find((garment) => garment.id === selectedGarmentId) ?? null,
@@ -488,17 +512,6 @@ export function WardrobeShop({
   }, [selectedGarmentId, garments]);
 
   useEffect(() => {
-    const updateCondensedState = () => {
-      setIsFilterBarCondensed(window.scrollY > 120);
-    };
-
-    updateCondensedState();
-    window.addEventListener("scroll", updateCondensedState, { passive: true });
-
-    return () => window.removeEventListener("scroll", updateCondensedState);
-  }, []);
-
-  useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
     const effectiveSelectedGarmentId = selectedGarmentId;
     const effectiveCreateOpen = isCreateOpen && !effectiveSelectedGarmentId;
@@ -589,308 +602,165 @@ export function WardrobeShop({
     setCreatePreviewImageUrl(null);
   };
 
-  const swatchClass = (active: boolean, tone?: "favourite") =>
-    [
-      "inline-flex flex-none items-center gap-2 rounded-[100px] border px-3.5 py-2 text-sm font-medium transition-colors active:scale-[.98]",
-      active
-        ? tone === "favourite"
-          ? "border-[rgba(109,42,36,.5)] bg-[rgba(109,42,36,.12)] text-[var(--oxblood-dark,var(--oxblood))]"
-          : "border-[var(--ink)] text-[var(--ink)]"
-        : "border-[rgba(30,26,23,.14)] text-[var(--stone)] hover:border-[rgba(30,26,23,.28)]"
-    ].join(" ");
+  const sortLabel =
+    sortBy === "least_worn"
+      ? "least worn"
+      : sortBy === "most_worn"
+        ? "most worn"
+        : sortBy === "cost_asc" || sortBy === "cost_desc"
+          ? "cost per wear"
+          : sortBy === "favourites"
+            ? "favourites"
+            : sortBy === "neglected"
+              ? "neglected"
+              : "newest";
 
   return (
     <>
-      <section className="space-y-5">
+      <section>
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="space-y-3">
-            <h1 className="max-w-[9ch] text-[clamp(2.5rem,6vw,5.6rem)] font-light leading-[0.98] tracking-[-0.01em]">
-              Dress from a system, not from memory.
-            </h1>
-            <div className="flex flex-wrap gap-2 text-sm text-[var(--stone)]">
-              <span>{garments.length} items</span>
-              <span className="text-[rgba(109,42,36,.32)]">/</span>
-              <span>
-                {garments.filter((garment) => garment.favourite_score && garment.favourite_score > 0)
-                  .length} favourites
-              </span>
-              <span className="text-[rgba(109,42,36,.32)]">/</span>
-              <span>{garments.reduce((total, garment) => total + garment.wear_count, 0)} wears tracked</span>
-              <span className="text-[rgba(109,42,36,.32)]">/</span>
-              <Link href="/wardrobe/let-go" className="underline">
-                let-go list
-              </Link>
-              <span className="text-[rgba(109,42,36,.32)]">/</span>
-              <Link href="/wardrobe/batch/new" className="underline">
-                choose photos
-              </Link>
-              <span className="text-[rgba(109,42,36,.32)]">/</span>
-              <Link href="/wardrobe/review" className="underline">
-                review drafts
-              </Link>
-              <span className="text-[rgba(109,42,36,.32)]">/</span>
-              <Link href="/wardrobe/sources" className="underline">
-                sources
-              </Link>
-              <span className="text-[rgba(109,42,36,.32)]">/</span>
-              <Link href="/wishlist" className="underline">
-                wishlist
-              </Link>
-              <span className="text-[rgba(109,42,36,.32)]">/</span>
-              <Link href="/wardrobe/scan" className="underline">
-                scan it
-              </Link>
-            </div>
+          <div>
+            <h1 className="text-[32px] font-light leading-none text-[var(--ink)]">wardrobe</h1>
+            <p className="pt-2.5 text-[12.5px] text-[var(--stone)]">{availabilitySummary}</p>
           </div>
-          <button
-            type="button"
-            onClick={openCreateComposer}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-[100px] bg-[var(--oxblood)] px-5 py-3 text-sm font-semibold text-[var(--cream)] transition-colors hover:bg-[var(--oxblood-dark,var(--oxblood))] sm:w-auto"
-          >
-            <PlusIcon />
-            Add Item
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <label className="flex h-9 w-[min(100%,260px)] items-center rounded-[100px] border border-[rgba(30,26,23,.11)] bg-[var(--paper-warm)] px-[15px] text-[12.5px] text-[var(--stone)]">
+              <input
+                suppressHydrationWarning
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-[var(--stone)]"
+                placeholder={`search ${garments.length} pieces`}
+                aria-label="search pieces"
+              />
+            </label>
+            <ChipFilter
+              label={`sort · ${sortLabel}`}
+              value={sortBy}
+              onChange={setSortBy}
+              allValue="newest"
+              appearance="control"
+              options={[
+                { value: "newest", label: "newest" },
+                { value: "least_worn", label: "least worn" },
+                { value: "most_worn", label: "most worn" },
+                { value: "cost_asc", label: "cost per wear" },
+                { value: "neglected", label: "neglected" },
+                { value: "favourites", label: "favourites" }
+              ]}
+            />
+          </div>
         </div>
 
         <div
-          className={`sticky top-2 z-20 rounded-[8px] border border-[rgba(30,26,23,.14)] bg-[var(--cream)] transition-all duration-300 sm:top-4 ${
-            isFilterBarCondensed ? "p-3" : "p-4 md:p-5"
-          }`}
+          className="mt-5 flex flex-wrap items-center gap-2 border-y py-3.5"
+          style={{ borderColor: "rgba(30,26,23,.11)" }}
         >
-          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-[0.32em] text-[var(--muted)]">
-                Refine View
-              </p>
-              {!isFilterBarCondensed ? (
-                <p className="mt-2 max-w-xl text-sm text-[var(--muted)]">
-                  Search by brand or garment, then narrow by occasion, season, colour, or sort
-                  order.
-                </p>
-              ) : null}
-            </div>
-            <div className="flex items-center gap-1.5">
-              <p className="text-sm tabular-nums text-[var(--muted)]">
-                <span className="font-semibold text-[var(--foreground)]">
-                  {filteredGarments.length}
-                </span>
-                {" / "}
-                {garments.length}
-                <span className="ml-1.5 hidden sm:inline">shown</span>
-              </p>
-              {hasActiveFilters ? (
-                <button
-                  type="button"
-                  onClick={resetFilters}
-                  className="inline-flex items-center gap-1.5 rounded-[100px] px-2.5 py-1.5 text-xs font-semibold text-[var(--stone)] transition-colors hover:bg-[rgba(30,26,23,.05)] hover:text-[var(--ink)]"
-                >
-                  <ResetIcon />
-                  Reset
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => setIsRecentlyDeletedOpen(true)}
-                className="text-xs uppercase tracking-[0.2em] text-[var(--muted)] underline"
-              >
-                Recently deleted
-              </button>
-              {!isSelectMode ? (
-                <button
-                  type="button"
-                  onClick={enterSelectMode}
-                  className="text-xs uppercase tracking-[0.2em] text-[var(--muted)] underline"
-                >
-                  Select
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => setIsSortSheetOpen(true)}
-                className="text-xs uppercase tracking-[0.2em] text-[var(--muted)] underline sm:hidden"
-              >
-                Sort
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2.5">
-              <label
-                className={`flex min-h-[2.85rem] min-w-[15rem] flex-[2_1_15rem] items-center gap-2.5 rounded-[10px] border bg-[var(--cream)]/60 px-3.5 transition-colors focus-within:border-[var(--ink)] sm:min-w-[17rem] ${
-                  query.trim() ? "border-[var(--ink)]" : "border-[rgba(30,26,23,.14)]"
-                }`}
-              >
-                <span className={query.trim() ? "flex text-[var(--ink)]" : "flex text-[var(--stone)]"}>
-                  <SearchIcon />
-                </span>
-                <input
-                  suppressHydrationWarning
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--stone)]"
-                  placeholder="Search brand, type, occasion"
-                />
-                {query.trim() ? (
-                  <button
-                    type="button"
-                    onClick={() => setQuery("")}
-                    className="flex h-6 w-6 flex-none items-center justify-center rounded-full text-[var(--stone)] transition-colors hover:bg-[rgba(30,26,23,.06)] hover:text-[var(--ink)]"
-                    aria-label="Clear search"
-                  >
-                    <CloseIcon />
-                  </button>
-                ) : null}
-              </label>
-
-              <FilterSelect
-                icon={<OccasionIcon />}
-                label="Occasion"
-                value={occasionFilter}
-                onChange={setOccasionFilter}
-                options={[
-                  { value: "all", label: "All occasions" },
-                  ...occasions.map((occasion) => ({
-                    value: occasion as string,
-                    label: occasionLabel(occasion as string)
-                  }))
-                ]}
-              />
-
-              <FilterSelect
-                icon={<HangerIcon />}
-                label="Type"
-                value={typeFilter}
-                onChange={setTypeFilter}
-                options={[
-                  { value: "all", label: "All types" },
-                  ...categories.map((category) => ({
-                    value: category,
-                    label: categoryLabel(category)
-                  }))
-                ]}
-              />
-
-              <FilterSelect
-                icon={<SunIcon />}
-                label="Season"
-                value={seasonFilter}
-                onChange={setSeasonFilter}
-                options={[
-                  { value: "all", label: "Any season" },
-                  ...seasonOptions.map((season) => ({
-                    value: season,
-                    label: categoryLabel(season)
-                  }))
-                ]}
-              />
-
-              <FilterSelect
-                icon={<SunIcon />}
-                label="Availability"
-                value={availabilityFilter}
-                onChange={setAvailabilityFilter}
-                options={[
-                  { value: "all", label: "Any availability" },
-                  ...AVAILABILITY_VALUES.map((value) => ({ value, label: value }))
-                ]}
-              />
-
-              <div className="hidden sm:block">
-                <FilterSelect
-                  icon={<SortIcon />}
-                  label="Sort"
-                  value={sortBy}
-                  onChange={setSortBy}
-                  options={[
-                    { value: "newest", label: "Newest first" },
-                    { value: "neglected", label: "Neglected value" },
-                    { value: "cost_desc", label: "Cost per wear: high to low" },
-                    { value: "cost_asc", label: "Cost per wear: low to high" },
-                    { value: "favourites", label: "Favourites first" },
-                    { value: "most_worn", label: "Most worn" },
-                    { value: "price_desc", label: "Price: high to low" }
-                  ]}
-                />
-              </div>
-          </div>
-
-          <div className="-mx-1 mt-3 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex min-w-max items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setFavouritesOnly((current) => !current)}
-                aria-pressed={favouritesOnly}
-                className={swatchClass(favouritesOnly, "favourite")}
-              >
-                <StarIcon filled={favouritesOnly} />
-                Favourites
-              </button>
-              <span className="mx-1 h-5 w-px shrink-0 bg-[rgba(30,26,23,.14)]" aria-hidden="true" />
-              {canonicalWardrobeColours.map((colour) => {
-                const active = colourFilter === colour.family;
-                return (
-                  <button
-                    key={colour.family}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() =>
-                      setColourFilter((current) =>
-                        current === colour.family ? "all" : colour.family
-                      )
-                    }
-                    className={swatchClass(active)}
-                  >
-                    <span
-                      className="h-[.85rem] w-[.85rem] flex-none rounded-full outline outline-[.5px] outline-[rgba(30,26,23,.18)] outline-offset-[-.5px]"
-                      style={{ backgroundColor: colour.hex }}
-                    />
-                    {categoryLabel(colour.family)}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {collections.length > 0 ? (
-            <div className="-mx-1 mt-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <div className="flex min-w-max items-center gap-2">
-                {collections.map((collection) => {
-                  const active = collectionFilter === collection.id;
-                  return (
-                    <span key={collection.id} className="inline-flex items-center gap-1">
-                      <button
-                        type="button"
-                        aria-pressed={active}
-                        onClick={() =>
-                          setCollectionFilter((current) =>
-                            current === collection.id ? "all" : collection.id
-                          )
-                        }
-                        className={swatchClass(active)}
-                      >
-                        {collection.name}
-                      </button>
-                      {active ? (
-                        <button
-                          type="button"
-                          aria-label={`manage ${collection.name}`}
-                          onClick={() => setManagingCollection({ id: collection.id, name: collection.name })}
-                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[var(--stone)]"
-                        >
-                          <Pencil size={12} strokeWidth={1.5} />
-                        </button>
-                      ) : null}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
+          <Chip
+            type="button"
+            variant={availabilityFilter === "wearable" ? "selected" : "available"}
+            className={
+              availabilityFilter === "wearable"
+                ? "border-0 bg-[var(--oxblood)] text-[var(--cream)]"
+                : ""
+            }
+            onClick={() =>
+              setAvailabilityFilter((current) => (current === "wearable" ? "all" : "wearable"))
+            }
+          >
+            wearable now
+          </Chip>
+          {favouritesOnly ? (
+            <Chip type="button" variant="applied" onClick={() => setFavouritesOnly(false)}>
+              favourites ×
+            </Chip>
           ) : null}
+          <ChipFilter
+            label="type"
+            value={typeFilter}
+            onChange={setTypeFilter}
+            options={[
+              { value: "all", label: "any type" },
+              ...categories.map((category) => ({
+                value: category,
+                label: categoryLabel(category)
+              }))
+            ]}
+          />
+          <ChipFilter
+            label="colour"
+            value={colourFilter}
+            onChange={setColourFilter}
+            options={[
+              { value: "all", label: "any colour" },
+              ...canonicalWardrobeColours.map((colour) => ({
+                value: colour.family,
+                label: colour.family
+              }))
+            ]}
+          />
+          <ChipFilter
+            label="season"
+            value={seasonFilter}
+            onChange={setSeasonFilter}
+            options={[
+              { value: "all", label: "any season" },
+              ...seasonOptions.map((season) => ({ value: season, label: season }))
+            ]}
+          />
+          <ChipFilter
+            label="fabric"
+            value={fabricFilter}
+            onChange={setFabricFilter}
+            options={[
+              { value: "all", label: "any fabric" },
+              ...fabrics.map((fabric) => ({ value: fabric, label: fabric }))
+            ]}
+          />
+          <Chip
+            type="button"
+            variant={sortBy === "cost_asc" || sortBy === "cost_desc" ? "applied" : "add"}
+            onClick={() =>
+              setSortBy((current) => (current === "cost_asc" ? "newest" : "cost_asc"))
+            }
+          >
+            {sortBy === "cost_asc" || sortBy === "cost_desc" ? "per wear ×" : "+ per wear"}
+          </Chip>
+          {collections.length ? (
+            <ChipFilter
+              label="collection"
+              value={collectionFilter}
+              onChange={setCollectionFilter}
+              options={[
+                { value: "all", label: "any collection" },
+                ...collections.map((collection) => ({
+                  value: collection.id,
+                  label: collection.name
+                }))
+              ]}
+            />
+          ) : null}
+          <div className="flex flex-1 items-center justify-end gap-3 text-[12px] text-[var(--stone)]">
+            <span>showing {filteredGarments.length}</span>
+            {hasActiveFilters ? (
+              <button type="button" onClick={resetFilters} className="text-[var(--slate)]">
+                reset
+              </button>
+            ) : null}
+            <button type="button" onClick={() => setIsRecentlyDeletedOpen(true)}>
+              recently deleted
+            </button>
+            {!isSelectMode ? (
+              <button type="button" onClick={enterSelectMode}>
+                select
+              </button>
+            ) : null}
+          </div>
         </div>
 
         {createState.message ? (
           <p
-            className={`rounded-[8px] border px-4 py-3 text-sm ${
+            className={`mt-4 rounded-[8px] border px-4 py-3 text-sm ${
               createState.status === "error" || createState.status === "partial"
                 ? "border-red-200 bg-red-50 text-red-700"
                 : "border-[rgba(30,26,23,.14)] bg-[var(--cream)] text-[var(--stone)]"
@@ -900,60 +770,40 @@ export function WardrobeShop({
           </p>
         ) : null}
 
-        {filteredGarments.length ? (
-          <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4 xl:gap-5">
-            {filteredGarments.map((garment) => (
-              <GarmentCard
-                key={garment.id}
-                garment={garment}
-                onOpen={() =>
-                  isSelectMode
-                    ? toggleSelected(garment.id as string)
-                    : router.push(`/wardrobe/${garment.id}`)
-                }
-                deleteGarmentAction={deleteGarmentAction}
-                toggleGarmentFavouriteAction={toggleGarmentFavouriteAction}
-                archiveGarmentAction={archiveGarmentAction}
-                isSelectMode={isSelectMode}
-                isSelected={selectedIds.has(garment.id as string)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-[8px] border border-dashed border-[rgba(30,26,23,.18)] bg-[var(--cream)]/80 px-6 py-12 text-center">
-            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.32em] text-[var(--stone)]">
-              Wardrobe Start
-            </p>
-            <p className="mt-4 text-3xl font-semibold tracking-[-0.07em]">
-              {garments.length === 0
-                ? "Your wardrobe starts with the first piece"
-                : "No items match these filters"}
-            </p>
-            <p className="mx-auto mt-3 max-w-xl text-sm text-[var(--stone)]">
-              {garments.length === 0
-                ? "Add your first item to begin tracking wears, favourites, and outfit potential."
-                : "Adjust the filter bar or add a new wardrobe item."}
-            </p>
-            {garments.length === 0 ? (
-              <button
-                type="button"
-                onClick={openCreateComposer}
-                className="mx-auto mt-8 inline-flex w-full max-w-[20rem] items-center justify-center gap-3 rounded-[8px] border border-[rgba(30,26,23,.14)] bg-[var(--cream)] px-6 py-5 text-left text-[var(--ink)] transition-colors hover:border-[rgba(30,26,23,.28)]"
-              >
-                <span className="flex h-12 w-12 items-center justify-center rounded-[8px] bg-[var(--oxblood)] text-[var(--cream)]">
-                  <svg
-                    viewBox="0 0 20 20"
-                    className="h-6 w-6 fill-none stroke-current stroke-[1.8]"
-                    aria-hidden="true"
-                  >
-                    <path d="M10 4v12M4 10h12" />
-                  </svg>
-                </span>
-                <span className="text-base font-semibold">Add Item</span>
-              </button>
-            ) : null}
-          </div>
-        )}
+        <div className="mt-[22px] grid grid-cols-2 gap-[18px] sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+          {filteredGarments.map((garment) => (
+            <GarmentCard
+              key={garment.id}
+              garment={garment}
+              onOpen={() =>
+                isSelectMode
+                  ? toggleSelected(garment.id as string)
+                  : router.push(`/wardrobe/${garment.id}`)
+              }
+              deleteGarmentAction={deleteGarmentAction}
+              toggleGarmentFavouriteAction={toggleGarmentFavouriteAction}
+              archiveGarmentAction={archiveGarmentAction}
+              isSelectMode={isSelectMode}
+              isSelected={selectedIds.has(garment.id as string)}
+            />
+          ))}
+          {!isSelectMode ? (
+            <Link
+              href="/wardrobe/batch/new"
+              className="flex aspect-[.78] flex-col items-center justify-center gap-2 rounded-[4px] border border-dashed border-[rgba(30,26,23,.24)] text-center"
+            >
+              <span className="text-[24px] font-light leading-none text-[var(--stone)]">+</span>
+              <span className="px-3 text-[7.5px] font-semibold uppercase leading-[1.7] tracking-[.16em] text-[var(--stone)]">
+                drop photos here
+                <br />
+                or paste a cut-out
+              </span>
+            </Link>
+          ) : null}
+        </div>
+        {garments.length > 0 && filteredGarments.length === 0 ? (
+          <p className="pt-6 text-[12.5px] text-[var(--stone)]">nothing matches these filters.</p>
+        ) : null}
       </section>
 
       {isCreateOpen ? (
@@ -1377,8 +1227,16 @@ function GarmentCard({
     }
   }, [favouriteState.status, serverFavourite]);
 
+  const unavailable =
+    (garment.availability && garment.availability !== "wearable") ||
+    Boolean(garment.seasonally_stored_at);
+  const centredCutout =
+    garment.category === "shoes" ||
+    garment.category === "bags" ||
+    garment.category === "accessories";
+
   return (
-    <article className="group relative overflow-hidden rounded-[8px] border border-[rgba(30,26,23,.14)] bg-[var(--cream)] transition-colors duration-200 hover:border-[rgba(30,26,23,.28)]">
+    <article className="group relative">
       {isSelectMode ? (
         <div className="absolute left-2 top-2 z-10 sm:left-3 sm:top-3">
           <span
@@ -1421,81 +1279,49 @@ function GarmentCard({
       <button
         type="button"
         onClick={onOpen}
-        className="block w-full text-left transition duration-200"
+        className="block w-full text-left"
       >
-        <div className="relative aspect-[3/4] overflow-hidden bg-[var(--paper)] sm:aspect-[4/5]">
-          {garment.preview_url ? (
-            <img
-              src={garment.preview_url}
+        <div className="relative">
+          {unavailable ? (
+            <span className="absolute left-2.5 top-2.5 z-10 rounded-[100px] bg-[var(--ink)] px-2.5 py-[5px] text-[7.5px] font-semibold uppercase tracking-[.14em] text-[var(--cream)]">
+              {garment.seasonally_stored_at
+                ? "stored"
+                : garment.availability ?? "unavailable"}
+            </span>
+          ) : null}
+          <div className={unavailable ? "opacity-45" : undefined}>
+            <CutoutTile
+              src={garment.preview_url ?? null}
               alt={garment.title || garment.category}
-              loading="lazy"
-              decoding="async"
-              className="h-full w-full object-cover"
+              centre={centredCutout}
+              sizes="(min-width: 1280px) 14vw, (min-width: 768px) 22vw, 46vw"
             />
-          ) : (
-            <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-              <img
-                src="/illustrations/chatting.svg"
-                alt=""
-                aria-hidden="true"
-                className="h-24 w-24 object-contain opacity-80"
-              />
-              <p className="mt-4 text-sm font-semibold uppercase tracking-[0.15em] text-[var(--muted)]">
-                Add Image
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-2.5 p-3 sm:space-y-3 sm:p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)] sm:text-[11px] sm:tracking-[0.24em]">
-                {categoryLabel(garment.category)}
-              </p>
-              <h3 className="mt-1 line-clamp-2 text-base font-semibold leading-5 tracking-[-0.03em] sm:text-lg sm:leading-6">
-                {garment.title || garment.category}
-              </h3>
-              <p className="mt-1 line-clamp-2 text-xs text-[var(--muted)] sm:text-sm">
-                {[garment.brand, garment.category, garment.subcategory]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
-            </div>
-            <div className="flex shrink-0 flex-col items-end gap-2">
-              <p className="rounded-full bg-[var(--oxblood)] px-2.5 py-1 text-right text-xs font-semibold text-[var(--cream)] sm:px-3 sm:py-1.5 sm:text-sm">
-                {costPerWear != null
-                  ? `${garment.purchase_currency || ""} ${formatCurrencyValue(costPerWear)}/wear`
-                  : "Cost per wear n/a"}
-              </p>
-              <span className="rounded-full border border-[rgba(30,26,23,.2)] bg-[var(--cream)]/88 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--muted)] sm:text-[11px]">
-                {garment.wear_count} wear{garment.wear_count === 1 ? "" : "s"}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-1.5 text-[11px] uppercase tracking-[0.12em] text-[var(--muted)] sm:gap-2 sm:text-xs sm:tracking-[0.15em]">
-            {garment.primary_colour_family ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(30,26,23,.2)] bg-[var(--cream)]/80 px-2 py-1 sm:gap-2 sm:px-2.5">
-                <span
-                  className="h-2 w-2 rounded-full border border-black/10 sm:h-2.5 sm:w-2.5"
-                  style={{ backgroundColor: garment.primary_colour_hex || "#d7c1a1" }}
-                />
-                {categoryLabel(garment.primary_colour_family)}
-              </span>
-            ) : null}
-            {optimisticFavourite ? (
-              <span className="rounded-full bg-[var(--blush)] px-2 py-1 text-[var(--blush-ink)] sm:px-2.5">
-                Favourite
-              </span>
-            ) : null}
-            {garment.wear_count === 0 && garment.purchase_price != null ? (
-              <span className="inline-flex items-center rounded-full border border-[rgba(30,26,23,.2)] bg-[var(--cream)] px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-[var(--slate)] sm:px-2.5">
-                Unworn · {garment.purchase_currency || ""} {formatCurrencyValue(garment.purchase_price)}
-              </span>
-            ) : null}
           </div>
         </div>
+        <h3
+          className={`pt-[9px] text-[12.5px] leading-[1.3] ${
+            unavailable ? "text-[var(--stone)]" : "text-[var(--ink)]"
+          }`}
+        >
+          {(garment.title || garment.category).toLowerCase()}
+        </h3>
+        <p
+          className={`pt-[5px] text-[11px] ${
+            unavailable ? "text-[var(--oxblood)]" : "text-[var(--stone)]"
+          }`}
+        >
+          {unavailable
+            ? garment.availability === "in the wash"
+              ? "in the wash"
+              : garment.seasonally_stored_at
+                ? "out of rotation"
+                : garment.availability
+            : `${garment.wear_count} wear${garment.wear_count === 1 ? "" : "s"}${
+                costPerWear != null
+                  ? ` · ${currencyPrefix(garment.purchase_currency)}${formatCurrencyValue(costPerWear)}`
+                  : ""
+              }`}
+        </p>
       </button>
 
       <Dialog
@@ -1538,6 +1364,14 @@ function GarmentCard({
 function formatCurrencyValue(value: number) {
   const rounded = Math.round(value * 100) / 100;
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
+}
+
+function currencyPrefix(code: string | null | undefined) {
+  if (!code || code === "AUD") return "A$";
+  if (code === "USD") return "US$";
+  if (code === "GBP") return "£";
+  if (code === "EUR") return "€";
+  return `${code} `;
 }
 
 function QuickIconForm({
@@ -1857,6 +1691,8 @@ function GarmentDetailDialog({
                                 <img
                                   src={image.preview_url}
                                   alt={`${garment.title || garment.category} ${image.image_type}`}
+                                  loading="lazy"
+                                  decoding="async"
                                   className="h-full w-full object-cover"
                                 />
                               ) : (
@@ -2513,6 +2349,95 @@ function DocumentIcon() {
       <path d="M8.5 13h7" />
       <path d="M8.5 16.5h5" />
     </svg>
+  );
+}
+
+function ChipFilter({
+  label,
+  value,
+  onChange,
+  options,
+  allValue = "all",
+  appearance = "add"
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<{ value: string; label: string }>;
+  allValue?: string;
+  appearance?: "add" | "control";
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const applied = value !== allValue;
+  const selected = options.find((option) => option.value === value);
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const triggerLabel =
+    appearance === "control"
+      ? label
+      : applied
+        ? `${selected?.label ?? label} ×`
+        : `+ ${label}`;
+
+  return (
+    <div ref={rootRef} className="relative">
+      <Chip
+        type="button"
+        variant={appearance === "control" ? "available" : applied ? "applied" : "add"}
+        className={appearance === "control" ? "h-9 px-[15px] text-[12.5px] font-normal" : ""}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        {triggerLabel}
+      </Chip>
+      {open ? (
+        <div
+          role="listbox"
+          aria-label={label}
+          className="absolute left-0 top-[calc(100%+.4rem)] z-40 max-h-64 min-w-[10rem] overflow-y-auto rounded-[10px] border border-[rgba(30,26,23,.14)] bg-[var(--cream)] p-1 shadow-[0_18px_40px_rgba(30,26,23,.14)]"
+        >
+          {options.map((option) => {
+            const isSelected = option.value === value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                className={`flex w-full items-center justify-between gap-3 rounded-[7px] px-3 py-2 text-left text-[12.5px] hover:bg-[rgba(30,26,23,.05)] ${
+                  isSelected ? "text-[var(--ink)]" : "text-[var(--stone)]"
+                }`}
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -3661,14 +3586,6 @@ function SearchIcon() {
     <svg viewBox="0 0 20 20" className="h-4 w-4 fill-none stroke-current stroke-[1.8]">
       <circle cx="8.5" cy="8.5" r="5.5" />
       <path d="M12.5 12.5L17 17" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg viewBox="0 0 20 20" className="h-4 w-4 fill-none stroke-current stroke-[1.8]">
-      <path d="M10 4v12M4 10h12" />
     </svg>
   );
 }

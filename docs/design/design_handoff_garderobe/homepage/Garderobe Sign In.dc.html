@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet"><style>body{margin:0;background:#faf7f2;font-family:Karla,system-ui,sans-serif}a{color:#6d2a24}a:hover{color:#43170f}
+@keyframes gRise{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+@keyframes gMast{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+@keyframes gLift{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}</style></helmet>
+
+<div style="display:grid;grid-template-columns:minmax(0,0.82fr) minmax(0,1fr);min-height:100vh;background:#faf7f2">
+
+<div style="position:relative;overflow:hidden;background:linear-gradient(180deg,#8d9f84 0 74vh,#eee8df 78vh 100%)">
+<div style="position:absolute;inset:0;pointer-events:none;z-index:4;opacity:.5;background:repeating-linear-gradient(48deg,rgba(30,26,23,.055) 0 1px,transparent 1px 2.5px),repeating-linear-gradient(132deg,rgba(255,255,255,.06) 0 1px,transparent 1px 2.5px),repeating-linear-gradient(0deg,rgba(30,26,23,.035) 0 1px,transparent 1px 3px)"></div>
+<div style="position:absolute;inset:0;pointer-events:none;z-index:4;background:radial-gradient(130% 110% at 50% 40%,rgba(255,255,255,.1) 0%,rgba(30,26,23,.07) 100%)"></div>
+<div style="position:sticky;top:0;height:100vh;overflow:hidden">
+
+<div style="position:absolute;top:22px;left:0;right:0;text-align:center;z-index:1;padding:0 24px 0 24px">
+<div style="font:700 clamp(40px,6.2vw,88px)/.82 'Bodoni Moda',Georgia,serif;letter-spacing:-.045em;color:#faf7f2;animation:gMast 1.1s cubic-bezier(.2,.7,.2,1) both">garderobe</div>
+</div>
+<img src="images/cover-green-blazer.png" alt="figure in a green blazer" style="position:absolute;left:0;top:7%;width:100%;height:93%;object-fit:cover;object-position:50% 12%;z-index:0;animation:gLift 11s ease-in-out infinite">
+</div></div>
+
+<div style="display:flex;flex-direction:column;padding:26px clamp(24px,4vw,64px) 56px">
+<div style="display:flex;align-items:center;gap:18px;font:600 10.5px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#1e1a17">
+<a href="#" style="color:#1e1a17;text-decoration:none">how it works</a>
+<a href="#" style="color:#1e1a17;text-decoration:none">pricing</a>
+<a href="#" style="margin-left:auto;color:#6b6459;text-decoration:none">back home</a>
+</div>
+
+<div style="display:flex;align-items:flex-end;gap:28px;padding:52px 0 0;border-bottom:1px solid rgba(30,26,23,.18)">
+<button type="button" onClick="{{ pickSignIn }}" style="{{ tabSignIn }}">Sign in</button>
+<button type="button" onClick="{{ pickCreate }}" style="{{ tabCreate }}">Create account</button>
+</div>
+
+
+<div style="display:flex;align-items:center;gap:20px;padding:38px 0 18px;border-bottom:1px solid rgba(30,26,23,.18)">
+<span style="font:400 30px/1 'Bodoni Moda',Georgia,serif;color:#d9532b;flex:none;width:44px">01</span>
+<span style="font:600 10.5px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#1e1a17;flex:1">{{ label1 }}</span>
+</div>
+<div style="padding:22px 0 0;max-width:520px">
+<sc-if value="{{ isCreate }}" hint-placeholder-val="{{ false }}">
+<label style="display:block;font:600 10px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#6b6459">your name</label>
+<input type="text" placeholder="Mel Murphy" style="width:100%;box-sizing:border-box;margin:10px 0 26px;padding:12px 2px;border:0;border-bottom:1.5px solid rgba(30,26,23,.35);background:transparent;font:400 19px/1.4 Karla,sans-serif;color:#1e1a17;outline:none" style-focus="border-bottom-color:#1f6b3f">
+<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;padding-bottom:26px">
+<div>
+<label style="display:block;font:600 10px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#6b6459">date of birth</label>
+<input type="date" style="width:100%;box-sizing:border-box;margin-top:10px;padding:12px 2px;border:0;border-bottom:1.5px solid rgba(30,26,23,.35);background:transparent;font:400 19px/1.4 Karla,sans-serif;color:#1e1a17;outline:none" style-focus="border-bottom-color:#1f6b3f">
+</div>
+<div>
+<label style="display:block;font:600 10px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#6b6459">location</label>
+<input type="text" placeholder="Adelaide, SA" style="width:100%;box-sizing:border-box;margin-top:10px;padding:12px 2px;border:0;border-bottom:1.5px solid rgba(30,26,23,.35);background:transparent;font:400 19px/1.4 Karla,sans-serif;color:#1e1a17;outline:none" style-focus="border-bottom-color:#1f6b3f">
+</div>
+</div>
+</sc-if>
+<label style="display:block;font:600 10px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#6b6459">email</label>
+<input type="email" placeholder="you@example.com" style="width:100%;box-sizing:border-box;margin-top:10px;padding:12px 2px;border:0;border-bottom:1.5px solid rgba(30,26,23,.35);background:transparent;font:400 19px/1.4 Karla,sans-serif;color:#1e1a17;outline:none" style-focus="border-bottom-color:#1f6b3f">
+<label style="display:block;padding-top:26px;font:600 10px/1 Karla,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#6b6459">password</label>
+<input type="password" placeholder="••••••••" style="width:100%;box-sizing:border-box;margin-top:10px;padding:12px 2px;border:0;border-bottom:1.5px solid rgba(30,26,23,.35);background:transparent;font:400 19px/1.4 Karla,sans-serif;color:#1e1a17;outline:none" style-focus="border-bottom-color:#1f6b3f">
+<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-top:28px">
+<button type="button" style="font:600 11.5px/1 Karla,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#faf7f2;background:#1f6b3f;padding:18px 26px;border:0;border-radius:100px;cursor:pointer">{{ primaryCta }}</button>
+<sc-if value="{{ isSignIn }}" hint-placeholder-val="{{ true }}"><a href="#" style="font:400 15px/1 Karla,sans-serif;color:#6d2a24">Forgot your password?</a></sc-if>
+<sc-if value="{{ isCreate }}" hint-placeholder-val="{{ false }}"><span style="font:400 14px/1.4 Karla,sans-serif;color:#6b6459;max-width:26ch">By creating an account you agree to our <a href="#">terms</a>.</span></sc-if>
+</div>
+</div>
+
+<sc-if value="{{ isSignIn }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;align-items:center;gap:20px;padding:52px 0 18px;border-bottom:1px solid rgba(30,26,23,.18)">
+<span style="font:400 30px/1 'Bodoni Moda',Georgia,serif;color:#d9532b;flex:none;width:44px">02</span>
+<span style="font:600 10.5px/1 Karla,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#1e1a17;flex:1">magic link</span>
+</div>
+<div style="padding:22px 0 0;max-width:520px">
+<p style="margin:0;font:400 18px/1.5 Karla,sans-serif;color:#3a332c;max-width:42ch;text-wrap:pretty">Use a magic link if you would rather not login with a password.</p>
+<input type="email" placeholder="you@example.com" style="width:100%;box-sizing:border-box;margin-top:20px;padding:12px 2px;border:0;border-bottom:1.5px solid rgba(30,26,23,.35);background:transparent;font:400 19px/1.4 Karla,sans-serif;color:#1e1a17;outline:none" style-focus="border-bottom-color:#1f6b3f">
+<div style="padding-top:26px">
+<button type="button" style="font:600 11.5px/1 Karla,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#14472b;background:transparent;border:1.5px solid #14472b;padding:16.5px 24px;border-radius:100px;cursor:pointer">Send magic link</button>
+</div>
+</div>
+</sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:1000}}">
+class Component extends DCLogic {
+  state = { tab: 'signin' };
+  tabStyle(on) {
+    return "font:400 27px/1.1 'Bodoni Moda',Georgia,serif;letter-spacing:-.01em;padding:0 0 14px;margin-bottom:-1px;background:transparent;border:0;border-radius:0;cursor:pointer;"
+      + (on ? 'color:#1e1a17;border-bottom:2.5px solid #d9532b'
+            : 'color:#9a9287;border-bottom:2.5px solid transparent');
+  }
+  renderVals() {
+    const signin = this.state.tab === 'signin';
+    return {
+      isSignIn: signin,
+      isCreate: !signin,
+      tabSignIn: this.tabStyle(signin),
+      tabCreate: this.tabStyle(!signin),
+      pickSignIn: () => this.setState({ tab: 'signin' }),
+      pickCreate: () => this.setState({ tab: 'create' }),
+      label1: signin ? 'email and password' : 'create your account',
+      primaryCta: signin ? 'Sign in' : 'Create account'
+    };
+  }
+}
+</script>
+</body>
+</html>

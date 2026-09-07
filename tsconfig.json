@@ -16,6 +16,19 @@
     "plugins": [{ "name": "next" }],
     "baseUrl": ".",
     "paths": {
+      "@/app/account/*": ["./app/(app)/account/*"],
+      "@/app/admin/*": ["./app/(app)/admin/*"],
+      "@/app/auth/*": ["./app/(app)/auth/*"],
+      "@/app/calendar/*": ["./app/(app)/calendar/*"],
+      "@/app/local/*": ["./app/(app)/local/*"],
+      "@/app/lookbook/*": ["./app/(app)/lookbook/*"],
+      "@/app/onboarding/*": ["./app/(app)/onboarding/*"],
+      "@/app/outfits/*": ["./app/(app)/outfits/*"],
+      "@/app/style-rules/*": ["./app/(app)/style-rules/*"],
+      "@/app/today/*": ["./app/(app)/today/*"],
+      "@/app/trends/*": ["./app/(app)/trends/*"],
+      "@/app/wardrobe/*": ["./app/(app)/wardrobe/*"],
+      "@/app/wishlist/*": ["./app/(app)/wishlist/*"],
       "@/*": ["./*"]
     }
   },

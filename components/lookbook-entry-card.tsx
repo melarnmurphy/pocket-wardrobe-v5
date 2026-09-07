@@ -121,6 +121,8 @@ export function LookbookEntryCard({
           <img
             src={entry.preview_url}
             alt={entry.title || "Lookbook reference image"}
+            loading="lazy"
+            decoding="async"
             className="aspect-[4/5] w-full object-cover"
           />
         </div>

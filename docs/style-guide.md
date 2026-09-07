@@ -83,6 +83,22 @@ labels, which are uppercase.
 - Display: **Karla** (weights 300–700; 300 and 400 carry almost everything).
 - Monospace: **IBM Plex Mono** 400/500, for URLs and spec values only.
 
+### Marketing homepage
+
+The unauthenticated `/` route is a print cover, not the atelier ledger. It keeps Karla
+for body, nav, CTAs and the cover headline, then uses:
+
+| role | spec |
+| --- | --- |
+| masthead (blue cover) | **Bodoni Moda** 700, paper, tight tracking |
+| masthead (sage colourway) | **Abril Fatface** 400, paper |
+| contents numerals and row labels | **Bodoni Moda** 400, orange numerals / ink labels |
+
+Cover tokens live beside the product palette in `app/globals.css` (`--cover-blue`,
+`--cover-sage`, `--green-head`, `--green-body`, `--orange`). They are for that route
+only — oxblood on cream remains the in-app system. Do not mix violet or Space Grotesk
+back in.
+
 ## Motion
 
 Four keyframes only, nothing else animates: no parallax, no springs, no playful bounce.

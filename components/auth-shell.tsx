@@ -51,7 +51,7 @@ export async function AuthShell() {
                 displayName={profile?.display_name ?? null}
               />
             ) : (
-              <Link href="/auth/sign-in?next=%2Fwardrobe" className="pw-button-primary px-4 py-2 text-sm">
+              <Link href="/sign-in?next=%2Fwardrobe" className="pw-button-primary px-4 py-2 text-sm">
                 Sign In
               </Link>
             )}

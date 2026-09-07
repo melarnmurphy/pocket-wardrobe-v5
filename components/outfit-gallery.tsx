@@ -109,6 +109,8 @@ function SavedOutfitCard({ outfit }: { outfit: OutfitWithItems }) {
                 <img
                   src={item.garment.preview_url}
                   alt={item.garment.title ?? item.garment.category}
+                  loading="lazy"
+                  decoding="async"
                   className="h-full w-full object-cover"
                 />
               ) : (

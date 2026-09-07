@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { shouldShowInlinePasswordError, shouldShowTopBannerError } from "@/lib/domain/auth/error-display";
+import { shouldShowInlinePasswordError, shouldShowMagicLinkError, shouldShowTopBannerError } from "@/lib/domain/auth/error-display";
 
 describe("shouldShowInlinePasswordError", () => {
   it("shows the inline error when the password form raised it", () => {
@@ -15,9 +15,19 @@ describe("shouldShowInlinePasswordError", () => {
   });
 });
 
+describe("shouldShowMagicLinkError", () => {
+  it("shows the magic-link form error when that form raised it", () => {
+    expect(shouldShowMagicLinkError({ error: "Too many attempts.", errorSource: "magic-link" })).toBe(true);
+  });
+
+  it("does not show the magic-link form error for a password error", () => {
+    expect(shouldShowMagicLinkError({ error: "Wrong password.", errorSource: "password" })).toBe(false);
+  });
+});
+
 describe("shouldShowTopBannerError", () => {
-  it("shows the top banner for a magic-link error", () => {
-    expect(shouldShowTopBannerError({ error: "Too many attempts.", errorSource: "magic-link" })).toBe(true);
+  it("does not show the top banner for a magic-link error", () => {
+    expect(shouldShowTopBannerError({ error: "Too many attempts.", errorSource: "magic-link" })).toBe(false);
   });
 
   it("shows the top banner for an untagged error (defensive default)", () => {

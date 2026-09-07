@@ -22,6 +22,7 @@ import {
 import { z } from "zod";
 import type { TablesInsert } from "@/types/database";
 import { getServerEnv } from "@/lib/env";
+import { chunkIds } from "./query-chunks";
 
 type UserTrendMatchInsert = TablesInsert<"user_trend_matches">;
 
@@ -100,16 +101,21 @@ export async function getTrendSignals(): Promise<TrendSignalWithColour[]> {
   const metricsBySignalId = new Map<string, z.infer<typeof trendSignalMetricSchema>[]>();
 
   if (colourSignalIds.length > 0) {
-    const { data: colours, error: colourError } = await supabase
-      .from("trend_colours")
-      .select(
-        "id,trend_signal_id,colour_id,source_name,source_label,source_url,canonical_hex,canonical_rgb,canonical_lab,canonical_lch,family,undertone,saturation_band,lightness_band,importance_score,observed_at,created_at"
-      )
-      .in("trend_signal_id", colourSignalIds);
+    const colourResults = await Promise.all(
+      chunkIds(colourSignalIds).map(async (ids) => {
+        const { data, error: colourError } = await supabase
+          .from("trend_colours")
+          .select(
+            "id,trend_signal_id,colour_id,source_name,source_label,source_url,canonical_hex,canonical_rgb,canonical_lab,canonical_lch,family,undertone,saturation_band,lightness_band,importance_score,observed_at,created_at"
+          )
+          .in("trend_signal_id", ids);
 
-    if (colourError) throw new Error(colourError.message);
+        if (colourError) throw new Error(colourError.message);
+        return data ?? [];
+      })
+    );
 
-    for (const c of z.array(trendColourSchema).parse(colours ?? [])) {
+    for (const c of z.array(trendColourSchema).parse(colourResults.flat())) {
       colourById.set(c.trend_signal_id, c);
     }
   }
@@ -120,21 +126,22 @@ export async function getTrendSignals(): Promise<TrendSignalWithColour[]> {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 30);
 
-    const { data: sourceLinks, error: sourceError } = await supabase
-      .from("trend_signal_sources")
-      .select(
-        "trend_signal_id, trend_source:trend_sources(id,source_name,source_type,source_url,title,publish_date,author,region,season,raw_text_excerpt,ingestion_timestamp)"
-      )
-      .in("trend_signal_id", signalIds);
+    const sourceResults = await Promise.all(
+      chunkIds(signalIds).map(async (ids) => {
+        const { data, error: sourceError } = await supabase
+          .from("trend_signal_sources")
+          .select(
+            "trend_signal_id, trend_source:trend_sources(id,source_name,source_type,source_url,title,publish_date,author,region,season,raw_text_excerpt,ingestion_timestamp)"
+          )
+          .in("trend_signal_id", ids);
 
-    if (sourceError) {
-      throw new Error(sourceError.message);
-    }
+        if (sourceError) throw new Error(sourceError.message);
+        return (data ?? []) as Array<{ trend_signal_id: string; trend_source: unknown }>;
+      })
+    );
+    const sourceLinks = sourceResults.flat();
 
-    for (const row of (sourceLinks ?? []) as Array<{
-      trend_signal_id: string;
-      trend_source: unknown;
-    }>) {
+    for (const row of sourceLinks) {
       const parsedSource = trendSourceSchema.safeParse(row.trend_source);
       if (!parsedSource.success) {
         continue;
@@ -145,38 +152,44 @@ export async function getTrendSignals(): Promise<TrendSignalWithColour[]> {
       sourcesBySignalId.set(row.trend_signal_id, existingSources);
     }
 
-    const { data: entities, error: entityError } = await supabase
-      .from("trend_entities")
-      .select(
-        "id,trend_signal_id,entity_type,label,normalized_label,brand,source_count,first_seen_at,last_seen_at,metadata_json,created_at"
-      )
-      .in("trend_signal_id", signalIds)
-      .order("source_count", { ascending: false });
+    const entityResults = await Promise.all(
+      chunkIds(signalIds).map(async (ids) => {
+        const { data, error: entityError } = await supabase
+          .from("trend_entities")
+          .select(
+            "id,trend_signal_id,entity_type,label,normalized_label,brand,source_count,first_seen_at,last_seen_at,metadata_json,created_at"
+          )
+          .in("trend_signal_id", ids)
+          .order("source_count", { ascending: false });
 
-    if (entityError) {
-      throw new Error(entityError.message);
-    }
+        if (entityError) throw new Error(entityError.message);
+        return data ?? [];
+      })
+    );
 
-    for (const entity of z.array(trendEntitySchema).parse(entities ?? [])) {
+    for (const entity of z.array(trendEntitySchema).parse(entityResults.flat())) {
       const existingEntities = entitiesBySignalId.get(entity.trend_signal_id) ?? [];
       existingEntities.push(entity);
       entitiesBySignalId.set(entity.trend_signal_id, existingEntities);
     }
 
-    const { data: metrics, error: metricError } = await supabase
-      .from("trend_signal_metrics")
-      .select(
-        "id,trend_signal_id,metric_date,search_interest,search_velocity,editorial_mentions,editorial_source_count,commerce_signal,retailer_count,resale_signal,runway_signal,entity_count,composite_score,confidence,status,created_at"
-      )
-      .in("trend_signal_id", signalIds)
-      .gte("metric_date", cutoff.toISOString().slice(0, 10))
-      .order("metric_date", { ascending: true });
+    const metricResults = await Promise.all(
+      chunkIds(signalIds).map(async (ids) => {
+        const { data, error: metricError } = await supabase
+          .from("trend_signal_metrics")
+          .select(
+            "id,trend_signal_id,metric_date,search_interest,search_velocity,editorial_mentions,editorial_source_count,commerce_signal,retailer_count,resale_signal,runway_signal,entity_count,composite_score,confidence,status,created_at"
+          )
+          .in("trend_signal_id", ids)
+          .gte("metric_date", cutoff.toISOString().slice(0, 10))
+          .order("metric_date", { ascending: true });
 
-    if (metricError) {
-      throw new Error(metricError.message);
-    }
+        if (metricError) throw new Error(metricError.message);
+        return data ?? [];
+      })
+    );
 
-    for (const metric of z.array(trendSignalMetricSchema).parse(metrics ?? [])) {
+    for (const metric of z.array(trendSignalMetricSchema).parse(metricResults.flat())) {
       const existingMetrics = metricsBySignalId.get(metric.trend_signal_id) ?? [];
       existingMetrics.push(metric);
       metricsBySignalId.set(metric.trend_signal_id, existingMetrics);

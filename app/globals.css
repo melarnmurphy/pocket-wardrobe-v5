@@ -11,6 +11,8 @@
   --butter-ink: #3d1f10;
   --butter-mid: #5c3a16;
   --ink: #1e1a17;
+  --ink-soft: #3a332c;
+  --ink-mute: #6b6459;
   --cream: #faf7f2;
   --paper: #f2ece3;
   --paper-warm: #f3eee6;
@@ -20,6 +22,15 @@
   --sage: #4f6350;
   --night: #141210;
   --night-raised: #2a2522;
+
+  /* Marketing cover — HOMEPAGE.md. Do not remap --paper/--cream; the app already uses those. */
+  --cover-blue: #7fbee2;
+  --cover-sage: #8d9f84;
+  --green-head: #1f6b3f;
+  --green-body: #14472b;
+  --green-head-alt: #2f4030;
+  --green-body-alt: #1e2b1f;
+  --orange: #d9532b;
 
   /* Semantic aliases used throughout the app shell */
   --paper-tile: var(--paper);
@@ -983,6 +994,9 @@
 }
 
 
+/* App-shell pages need clearance above the viewport edge. Marketing
+ * homepages override this with padding-bottom: 0 on .page — do not
+ * raise specificity here or the marketing footer will grow a phantom gap. */
 main {
   padding-bottom: 3rem;
 }

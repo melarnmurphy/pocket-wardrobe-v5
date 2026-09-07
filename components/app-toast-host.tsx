@@ -2,7 +2,7 @@
 
 import { AlertTriangle, Check, Info } from "lucide-react";
 import { useEffect, useState } from "react";
-import { PillToast } from "@/components/garderobe";
+import { PillToast } from "@/components/garderobe/toast";
 import { dismissAppToast, type AppToastDetail } from "@/lib/ui/app-toast";
 
 type ToastItem = AppToastDetail & {

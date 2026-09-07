@@ -5,10 +5,17 @@ type CutoutTileProps = {
   alt: string;
   centre?: boolean; // shoes and bags centre instead of sitting flush to the bottom
   className?: string;
+  sizes?: string;
 };
 
 /** The cut-out tile primitive: aspect-ratio .78, garment flush to the bottom of the tile. */
-export function CutoutTile({ src, alt, centre = false, className = "" }: CutoutTileProps) {
+export function CutoutTile({
+  src,
+  alt,
+  centre = false,
+  className = "",
+  sizes = "200px"
+}: CutoutTileProps) {
   return (
     <div
       className={[
@@ -21,8 +28,9 @@ export function CutoutTile({ src, alt, centre = false, className = "" }: CutoutT
           src={src}
           alt={alt}
           fill
+          unoptimized
           className={centre ? "object-contain" : "object-contain object-bottom"}
-          sizes="200px"
+          sizes={sizes}
         />
       ) : (
         <div

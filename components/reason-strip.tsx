@@ -3,7 +3,7 @@ import type { GeneratedOutfit } from "@/lib/domain/outfits";
 
 export type ReasonChip = { label: string };
 
-const MAX_RULE_DESCRIPTION_LENGTH = 48;
+const MAX_RULE_DESCRIPTION_LENGTH = 90;
 const MAX_CHIPS = 3;
 
 function truncateLabel(label: string, maxLength: number): string {
@@ -46,7 +46,8 @@ export function ReasonStrip({ chips }: { chips: ReasonChip[] }) {
         "span",
         {
           key: chip.label,
-          className: "pw-chip normal-case tracking-normal"
+          className:
+            "pw-chip max-w-full whitespace-normal break-words normal-case tracking-normal"
         },
         chip.label
       )

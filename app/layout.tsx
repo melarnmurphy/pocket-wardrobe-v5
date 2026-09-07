@@ -1,26 +1,40 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Karla } from "next/font/google";
+import { Abril_Fatface, Bodoni_Moda, IBM_Plex_Mono, Karla } from "next/font/google";
 import "./globals.css";
-import { AppToastHost } from "@/components/app-toast-host";
-import { AtelierChrome } from "@/components/atelier-chrome";
-import { AtelierShell } from "@/components/atelier-shell";
 
 const bodyFont = Karla({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-body"
+  weight: ["400", "500", "600"],
+  variable: "--font-body",
+  display: "swap"
 });
 
 const displayFont = Karla({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-display"
+  weight: ["400", "500", "600"],
+  variable: "--font-display",
+  display: "swap"
+});
+
+const bodoniFont = Bodoni_Moda({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-bodoni",
+  display: "swap"
+});
+
+const abrilFont = Abril_Fatface({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-abril",
+  display: "swap"
 });
 
 const monoFont = IBM_Plex_Mono({
   subsets: ["latin"],
   weight: ["400", "500"],
-  variable: "--font-mono"
+  variable: "--font-mono",
+  display: "swap"
 });
 
 export const metadata: Metadata = {
@@ -35,11 +49,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable}`}>
-        <AtelierChrome raw={children}>
-          <AtelierShell>{children}</AtelierShell>
-        </AtelierChrome>
-        <AppToastHost />
+      <body
+        className={`${bodyFont.variable} ${displayFont.variable} ${bodoniFont.variable} ${abrilFont.variable} ${monoFont.variable}`}
+      >
+        {children}
       </body>
     </html>
   );

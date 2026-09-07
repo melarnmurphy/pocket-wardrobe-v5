@@ -6,6 +6,7 @@ const projectRoot = dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
   typedRoutes: true,
+  allowedDevOrigins: ["127.0.0.1", "localhost", "192.168.0.24"],
   outputFileTracingRoot: projectRoot,
   // lib/domain/billing/apple.ts reads Apple's root CA cert via a dynamic
   // path.join(process.cwd(), ...) call, which Vercel's automatic file

@@ -9,3 +9,11 @@ export function mapSignInPasswordError(message: string): string {
   }
   return message;
 }
+
+/** Supabase OTP rejects some addresses (role accounts, example.com, etc.) with a 500-looking message. */
+export function mapMagicLinkError(message: string): string {
+  if (/email address .+ is invalid/i.test(message)) {
+    return "That email address isn't accepted. Check the spelling and try again.";
+  }
+  return message;
+}

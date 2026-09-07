@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 const CLOSET_TABS: ReadonlyArray<{ id: string; label: string; href: Route }> = [
   { id: "items", label: "Wardrobe", href: "/wardrobe" },
@@ -17,15 +17,14 @@ export function ClosetTabs() {
   const pathnameActive = closetActiveId(pathname);
   const [optimisticActive, setOptimisticActive] = useState<string | null>(null);
   const active = optimisticActive ?? pathnameActive;
-  const hrefs = useMemo(() => CLOSET_TABS.map((tab) => tab.href), []);
 
   useEffect(() => {
     setOptimisticActive(null);
   }, [pathname]);
 
-  useEffect(() => {
-    hrefs.forEach((href) => router.prefetch(href));
-  }, [hrefs, router]);
+  if (pathnameActive === "items") {
+    return null;
+  }
 
   return (
     <div className="closet-tabs">
