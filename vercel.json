@@ -51,7 +51,7 @@
     },
     {
       "path": "/api/cron/photo-processing",
-      "schedule": "* * * * *"
+      "schedule": "30 0 * * *"
     }
   ]
 }
