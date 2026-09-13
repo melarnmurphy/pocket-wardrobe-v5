@@ -15,6 +15,7 @@ const mockGarmentSourcesEq1 = vi.fn().mockReturnValue({ eq: mockGarmentSourcesEq
 const mockGarmentSourcesUpdate = vi.fn().mockReturnValue({ eq: mockGarmentSourcesEq1 });
 
 const mockGarmentImagesInsert = vi.fn().mockResolvedValue({ error: null });
+const mockRpc = vi.fn().mockResolvedValue({ data: "new-garment-uuid", error: null });
 
 const mockFrom = vi.fn((table: string) => {
   if (table === "garment_drafts") {
@@ -37,7 +38,7 @@ const mockFrom = vi.fn((table: string) => {
 });
 
 vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn().mockResolvedValue({ from: mockFrom }),
+  createClient: vi.fn().mockResolvedValue({ from: mockFrom, rpc: mockRpc }),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -48,10 +49,10 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
-// ---- createGarment mock — returns a garment with an id -------------------
-const mockCreateGarment = vi.fn().mockResolvedValue({ id: "new-garment-uuid" });
+// ---- transactional acceptance mock ----------------------------------------
+const mockAcceptGarmentDraftTransaction = vi.fn().mockResolvedValue("new-garment-uuid");
 vi.mock("@/lib/domain/wardrobe/service", () => ({
-  createGarment: mockCreateGarment,
+  acceptGarmentDraftTransaction: mockAcceptGarmentDraftTransaction,
 }));
 
 // ---- Pending draft row -------------------------------------------------------
@@ -80,7 +81,8 @@ describe("acceptDraftAction", () => {
     mockUpdate.mockReturnValue({ eq: mockUpdateEq1 });
     mockUpdateEq1.mockReturnValue({ eq: mockUpdateEq2 });
     mockUpdateEq2.mockResolvedValue({ error: null });
-    mockCreateGarment.mockResolvedValue({ id: "new-garment-uuid" });
+    mockAcceptGarmentDraftTransaction.mockResolvedValue("new-garment-uuid");
+    mockRpc.mockResolvedValue({ data: "new-garment-uuid", error: null });
   });
 
   it("creates a garment from draft payload and marks draft confirmed", async () => {
@@ -92,21 +94,18 @@ describe("acceptDraftAction", () => {
       expect(result.garmentId).toBe("new-garment-uuid");
     }
 
-    expect(mockCreateGarment).toHaveBeenCalledWith(
+    expect(mockAcceptGarmentDraftTransaction).toHaveBeenCalledWith(
       expect.objectContaining({
         category: "shirt/blouse",
         title: "blue cotton shirt",
         brand: "Test Brand",
         retailer: "Test Retailer",
-        purchase_price: 149,
-        purchase_currency: "AUD",
-      }),
-      expect.objectContaining({ primaryColourFamily: "blue" })
+        purchasePrice: 149,
+        purchaseCurrency: "AUD",
+        colourFamily: "blue"
+      })
     );
 
-    expect(mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "confirmed" })
-    );
   });
 
   it("passes null primaryColourFamily for non-canonical colours like 'navy'", async () => {
@@ -121,9 +120,11 @@ describe("acceptDraftAction", () => {
     const { acceptDraftAction } = await import("@/app/wardrobe/review/actions");
     await acceptDraftAction("22222222-2222-4222-8222-222222222222");
 
-    expect(mockCreateGarment).toHaveBeenCalledWith(
+    expect(mockAcceptGarmentDraftTransaction).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ primaryColourFamily: null })
+    );
+    expect(mockAcceptGarmentDraftTransaction.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ colourFamily: null })
     );
   });
 
@@ -137,7 +138,7 @@ describe("acceptDraftAction", () => {
     const result = await acceptDraftAction("22222222-2222-4222-8222-222222222222");
 
     expect(result.status).toBe("success");
-    expect(mockCreateGarment).not.toHaveBeenCalled();
+    expect(mockAcceptGarmentDraftTransaction).not.toHaveBeenCalled();
   });
 
   it("returns error when draft not found", async () => {
@@ -166,15 +167,14 @@ describe("acceptDraftAction", () => {
       purchase_currency: "AUD",
     });
 
-    expect(mockCreateGarment).toHaveBeenCalledWith(
+    expect(mockAcceptGarmentDraftTransaction).toHaveBeenCalledWith(
       expect.objectContaining({
         title: "Edited blue cotton shirt",
         brand: "Edited Brand",
         retailer: "Farfetch",
-        purchase_price: 219,
-        purchase_currency: "AUD",
-      }),
-      expect.anything()
+        purchasePrice: 219,
+        purchaseCurrency: "AUD",
+      })
     );
   });
 
@@ -182,8 +182,8 @@ describe("acceptDraftAction", () => {
     const { acceptDraftAction } = await import("@/app/wardrobe/review/actions");
     await acceptDraftAction("22222222-2222-4222-8222-222222222222");
 
-    expect(mockGarmentSourcesUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ garment_id: "new-garment-uuid" })
+    expect(mockAcceptGarmentDraftTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceId: "src-uuid-1" })
     );
   });
 });

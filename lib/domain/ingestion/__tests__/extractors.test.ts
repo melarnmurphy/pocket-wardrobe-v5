@@ -1,4 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+// Product extraction tests mock the network fetch; keep the SSRF guard focused
+// in its own unit tests instead of making these parser tests depend on DNS.
+vi.mock("@/lib/security/safe-remote-url", () => ({
+  assertSafeRemoteUrl: vi.fn(async (url: string) => new URL(url)),
+  readResponseTextWithLimit: vi.fn(async (response: Response) => response.text())
+}));
+
 import {
   extractProductMetadataFromUrl,
   parseReceiptDraftCandidates

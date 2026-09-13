@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import {
@@ -108,9 +108,10 @@ export function StyleRuleTemplateForm({
   }, [state.message, state.status]);
 
   const activeTemplate = RULE_TEMPLATES.find((t) => t.id === activeId) ?? null;
-  const activeValues: [string, string] = activeId
-    ? (blankValues[activeId] ?? ["", ""])
-    : ["", ""];
+  const activeValues: [string, string] = useMemo(
+    () => (activeId ? (blankValues[activeId] ?? ["", ""]) : ["", ""]),
+    [activeId, blankValues]
+  );
 
   function setBlankValue(templateId: string, index: 0 | 1, value: string) {
     setBlankValues((prev) => {

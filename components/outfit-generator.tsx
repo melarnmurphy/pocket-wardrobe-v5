@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
 import type { StyleRuleListItem } from "@/lib/domain/style-rules/service";
 import type { UserTrendMatchWithSignal } from "@/lib/domain/trends";
@@ -549,7 +550,7 @@ function SwapChip({ garment, onSwap }: SwapChipProps) {
       <div className="flex items-center gap-0 border border-[var(--line)] rounded-xl bg-white overflow-hidden">
         <div className="w-11 h-11 bg-[var(--surface)] flex-shrink-0">
           {garment.preview_url && (
-            <img src={garment.preview_url} alt={garment.title ?? garment.category} className="w-full h-full object-cover" />
+            <Image src={garment.preview_url} alt={garment.title ?? garment.category} width={88} height={88} unoptimized className="w-full h-full object-cover" />
           )}
         </div>
         <div className="px-2.5">
@@ -584,9 +585,12 @@ function SwapChip({ garment, onSwap }: SwapChipProps) {
               >
                 <div className="w-8 h-8 rounded bg-[var(--surface)] flex-shrink-0 overflow-hidden">
                   {c.preview_url && (
-                    <img
+                    <Image
                       src={c.preview_url}
                       alt={c.title ?? c.category}
+                      width={64}
+                      height={64}
+                      unoptimized
                       className="w-full h-full object-cover"
                     />
                   )}

@@ -484,7 +484,6 @@ export async function isTrendFollowed(trendSignalId: string): Promise<boolean> {
 export async function getTrendStories(): Promise<TrendStory[]> {
   const supabase = await createClient();
   // trend_stories is not yet in generated Supabase types; cast to bypass
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("trend_stories")
     .select(

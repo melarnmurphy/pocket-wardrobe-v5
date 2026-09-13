@@ -9,6 +9,7 @@ import {
   updateUserStyleRule,
   type StyleRuleSaveResult
 } from "@/lib/domain/style-rules/service";
+import { userFacingError } from "@/lib/ui/user-facing-error";
 
 const nullableText = (max: number) =>
   z.preprocess(
@@ -39,11 +40,7 @@ function toActionErrorMessage(error: unknown, fallback: string) {
     return error.issues[0]?.message ?? fallback;
   }
 
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return fallback;
+  return userFacingError(error, fallback);
 }
 
 function buildSaveMessage(

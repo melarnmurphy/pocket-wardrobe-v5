@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useCallback, useEffect, useRef, useState } from "react";
 import type { Route } from "next";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useFormStatus } from "react-dom";
@@ -34,6 +34,20 @@ export function LookbookEntryForm({
   const [state, formAction] = useActionState(action, formActionState);
   const isActive = searchParams.get("create") === "1";
 
+  const setComposerFocus = useCallback((nextActive: boolean | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (nextActive) {
+      params.set("create", "1");
+      params.delete("entry");
+    } else {
+      params.delete("create");
+    }
+
+    const query = params.toString();
+    router.replace((query ? `${pathname}?${query}` : pathname) as Route, { scroll: false });
+  }, [pathname, router, searchParams]);
+
   useEffect(() => {
     if (isActive) {
       setStylingNotesOpen(true);
@@ -55,21 +69,7 @@ export function LookbookEntryForm({
       });
       setComposerFocus(null);
     }
-  }, [state.message, state.status]);
-
-  function setComposerFocus(nextActive: boolean | null) {
-    const params = new URLSearchParams(searchParams.toString());
-
-    if (nextActive) {
-      params.set("create", "1");
-      params.delete("entry");
-    } else {
-      params.delete("create");
-    }
-
-    const query = params.toString();
-    router.replace((query ? `${pathname}?${query}` : pathname) as Route, { scroll: false });
-  }
+  }, [setComposerFocus, state.message, state.status]);
 
   return (
     <form

@@ -62,11 +62,12 @@ export default function HomePage() {
           <div className={styles.mastWrap}>
             <h1 className={styles.mast}>garderobe</h1>
           </div>
-          <img
+          <Image
             src="/marketing/figure-blue-red-spheres.webp"
             alt="figure in black tailoring on a blue ground"
             width={1122}
             height={1402}
+            priority
             fetchPriority="high"
             decoding="async"
             className={styles.figure}

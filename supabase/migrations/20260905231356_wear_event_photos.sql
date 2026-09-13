@@ -1,0 +1,2 @@
+-- Reconciliation marker for the remote migration with this version.
+-- Its schema change is represented by 042_wear_event_photos.sql.

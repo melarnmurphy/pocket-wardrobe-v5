@@ -8,6 +8,7 @@ import { createManualPhotoReviewDraft } from "@/lib/domain/ingestion/service";
 import { callPipelineService } from "@/lib/domain/ingestion/client";
 import { canUseFeatureLabels } from "@/lib/domain/entitlements/service";
 import { redirect } from "next/navigation";
+import { userFacingError } from "@/lib/ui/user-facing-error";
 
 export type UploadActionResult =
   | { status: "success" }
@@ -56,8 +57,7 @@ export async function uploadAndAnalyseAction(
   } catch (error) {
     return {
       status: "error",
-      message:
-        error instanceof Error ? error.message : "Upload and analysis failed.",
+      message: userFacingError(error, "we couldn't analyse that photo. try again."),
     };
   }
 

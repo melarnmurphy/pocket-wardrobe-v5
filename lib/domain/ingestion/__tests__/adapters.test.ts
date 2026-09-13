@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   directUploadAdapter,
+  inferOutfitItemRole,
   outfitDecompositionAdapter,
   parseProductPrice,
   productUrlAdapter,
@@ -194,6 +195,14 @@ describe("receiptAdapter", () => {
 });
 
 describe("outfitDecompositionAdapter", () => {
+  it("maps detector vocabulary to canonical outfit roles", () => {
+    expect(inferOutfitItemRole("jacket", "bourbon wool jacket")).toBe("outerwear");
+    expect(inferOutfitItemRole("skirt", "bourbon mini skirt")).toBe("bottom");
+    expect(inferOutfitItemRole("boots", "black knee-high boots")).toBe("shoes");
+    expect(inferOutfitItemRole("handbag", "black leather bag")).toBe("bag");
+    expect(inferOutfitItemRole("earrings", "gold hoops")).toBe("jewellery");
+  });
+
   it("scaffolds an outfit-derived review draft without creating a garment", () => {
     const draft = outfitDecompositionAdapter.buildDraft({
       fileName: "full-look.jpg",
@@ -239,5 +248,7 @@ describe("outfitDecompositionAdapter", () => {
     expect(draft.fieldProvenance?.colour).toBe("ai_vision");
     expect(draft.fieldConfidence?.brand).toBeUndefined();
     expect(draft.metadata.detector_model).toBe("self-hosted-fashion-v1");
+    expect(draft.role).toBe("outerwear");
+    expect(draft.metadata.outfit_role).toBe("outerwear");
   });
 });

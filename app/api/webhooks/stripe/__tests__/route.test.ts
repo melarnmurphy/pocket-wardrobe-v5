@@ -20,6 +20,14 @@ vi.mock("@/lib/domain/billing/service", () => ({
   syncUserEntitlementsFromBillingEvent
 }));
 
+const billingRpc = vi.fn(async (name: string) => ({
+  data: name === "claim_billing_webhook_event" ? true : null,
+  error: null
+}));
+vi.mock("@/lib/supabase/service", () => ({
+  createServiceClient: vi.fn(() => ({ rpc: billingRpc }))
+}));
+
 function postRequest(body: string, signature = "sig_test") {
   return new NextRequest("https://fashionapp5.vercel.app/api/webhooks/stripe", {
     method: "POST",

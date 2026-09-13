@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { userFacingError } from "@/lib/ui/user-facing-error";
 import { z } from "zod";
 import { getRequiredUser, AuthenticationError } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -82,12 +83,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
     if (error instanceof FeatureAccessError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+      return NextResponse.json(
+        { error: userFacingError(error, "we couldn't read that photo. try again or fill in the details yourself.") },
+        { status: error.statusCode }
+      );
     }
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid request." }, { status: 400 });
     }
-    const message = error instanceof Error ? error.message : "Unknown error";
+    const message = userFacingError(error, "we couldn't read that photo. try again or fill in the details yourself.");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

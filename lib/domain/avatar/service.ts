@@ -184,7 +184,7 @@ export async function uploadAvatarPhoto(file: File): Promise<AvatarProfile> {
  */
 export async function generateAvatarFromReferencePhotos(files: File[]): Promise<AvatarProfile> {
   await assertPaidPlanAccess("Digital twin avatar generation");
-  await checkRateLimit("avatar-generate", 5, 3600);
+  await checkRateLimit("avatar-generate", 5, 3600, { failClosed: true });
 
   const user = await getRequiredUser();
   const env = getServerEnv();

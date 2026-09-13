@@ -7,7 +7,7 @@ import { ChevronLeft, ImagePlus, X } from "lucide-react";
 import { PillButton } from "@/components/garderobe";
 import { UploadFailedDialog } from "@/components/garderobe/wardrobe/upload-failed-dialog";
 import { PhotoLibraryPermissionDialog } from "@/components/garderobe/wardrobe/photo-library-permission-dialog";
-import { classifyUploadFile } from "@/lib/domain/ingestion/limits";
+import { classifyUploadFile } from "@/lib/domain/ingestion/limits.shared";
 
 type PickedPhoto = { file: File; previewUrl: string };
 

@@ -12,6 +12,8 @@ import { AuthRequiredCard } from "@/components/auth-required-card";
 import { OwnedTrendCard } from "@/components/owned-trend-card";
 import { TodayOutfitCard } from "@/components/today-outfit-card";
 import { ClosetUnlockSection } from "@/app/wardrobe/(closet)/closet-unlock-section";
+import { WardrobeSnapshot } from "@/components/wardrobe-snapshot";
+import { WardrobeInsights } from "@/components/wardrobe-insights";
 
 export const metadata = {
   title: "Today — Garderobe"
@@ -25,6 +27,8 @@ export default async function TodayPage() {
       listUserTrendMatchesWithSignals(),
       listSavedOutfits()
     ]);
+    // Server-rendered snapshot boundary; this is intentionally evaluated once per request.
+    // eslint-disable-next-line react-hooks/purity
     const nowMs = Date.now();
     const weekAgo = nowMs - 7 * 24 * 60 * 60 * 1000;
     const recentOutfitGarmentIds = savedOutfits.flatMap((outfit) => {
@@ -55,6 +59,8 @@ export default async function TodayPage() {
         </h1>
         <div className="mt-[22px] flex max-w-3xl flex-col gap-4 border-t pt-[22px]" style={{ borderColor: "rgba(30,26,23,.11)" }}>
           <TodayOutfitCard outfit={todayOutfit} />
+          <WardrobeSnapshot garments={garments} />
+          <WardrobeInsights garments={garments} />
           {ownedTrend ? <OwnedTrendCard match={ownedTrend} /> : null}
           <Suspense fallback={null}>
             <ClosetUnlockSection />

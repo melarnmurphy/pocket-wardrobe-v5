@@ -85,6 +85,7 @@ struct CaptureView: View {
                     .tracking(11 * 0.14)
                     .foregroundStyle(PWColor.ink70)
             }
+            .accessibilityIdentifier("capture.choose-library")
             .padding(.top, 4)
             Spacer()
             Spacer()
@@ -180,6 +181,7 @@ private struct DraftReviewCard: View {
             HStack(spacing: 10) {
                 PWButton(title: "Discard", style: .ghost, action: onDiscard)
                 PWButton(title: "Add to wardrobe", style: .primary, action: onConfirm)
+                    .accessibilityIdentifier("capture.confirm")
             }
         }
         .padding(18)

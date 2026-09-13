@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
 import {
   sendPasswordResetAction,
   signInWithMagicLinkAction,
@@ -99,7 +100,9 @@ export default function SignInForm({
             <Field label="email" name="email" type="email" placeholder="you@example.com" defaultValue={email} required />
             <Field label="password" name="password" type="password" placeholder="••••••••" minLength={8} required />
             <div className={styles.authActionRow}>
-              <button className={styles.authPrimary} type="submit">Create account</button>
+              <AuthSubmitButton className={styles.authPrimary} pendingLabel="Creating account…">
+                Create account
+              </AuthSubmitButton>
               <span className={styles.authTerms}>By creating an account you agree to our <a href="#terms">terms</a>.</span>
             </div>
           </form>
@@ -111,7 +114,9 @@ export default function SignInForm({
               <Field label="password" name="password" type="password" placeholder="••••••••" required />
               {errorSource === "password" && error ? <p className={styles.authInlineError}>{error}</p> : null}
               <div className={styles.authActionRow}>
-                <button className={styles.authPrimary} type="submit">Sign in</button>
+                <AuthSubmitButton className={styles.authPrimary} pendingLabel="Signing in…">
+                  Sign in
+                </AuthSubmitButton>
                 <a href={resetHref} className={styles.authForgot}>Forgot your password?</a>
               </div>
             </form>
@@ -120,7 +125,9 @@ export default function SignInForm({
               <form action={sendPasswordResetAction} className={styles.authResetForm}>
                 <input type="hidden" name="next" value={next} />
                 <Field label="email" name="email" type="email" placeholder="you@example.com" defaultValue={email} required />
-                <button className={styles.authOutline} type="submit">Email password reset link</button>
+                <AuthSubmitButton className={styles.authOutline} pendingLabel="Sending…">
+                  Email password reset link
+                </AuthSubmitButton>
               </form>
             ) : null}
 
@@ -131,7 +138,9 @@ export default function SignInForm({
                 <input type="hidden" name="next" value={next} />
                 <Field label="email" name="email" type="email" placeholder="you@example.com" defaultValue={email} required />
                 {errorSource === "magic-link" && error ? <p className={styles.authInlineError}>{error}</p> : null}
-                <button className={styles.authOutline} type="submit">Send magic link</button>
+                <AuthSubmitButton className={styles.authOutline} pendingLabel="Sending…">
+                  Send magic link
+                </AuthSubmitButton>
               </form>
             </div>
           </>
@@ -143,4 +152,27 @@ export default function SignInForm({
 
 function Field({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return <label className={styles.authField}><span>{label}</span><input {...props} /></label>;
+}
+
+function AuthSubmitButton({
+  children,
+  pendingLabel,
+  className
+}: {
+  children: React.ReactNode;
+  pendingLabel: string;
+  className: string;
+}) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button className={className} type="submit" disabled={pending} aria-busy={pending}>
+      {pending ? (
+        <span className="inline-flex items-center gap-2">
+          <span aria-hidden="true" className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          {pendingLabel}
+        </span>
+      ) : children}
+    </button>
+  );
 }

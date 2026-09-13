@@ -50,6 +50,7 @@ export function ThreadView({
   const [showNoShow, setShowNoShow] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showBlock, setShowBlock] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(thread.state === "blocked");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -80,10 +81,13 @@ export function ThreadView({
   async function send(offerCents?: number) {
     if (!body.trim() && offerCents === undefined) return;
     setIsBusy(true);
-    await sendMessageAction(thread.id, offerCents !== undefined ? { offerCents, body } : { body });
-    setBody("");
+    const result = await sendMessageAction(thread.id, offerCents !== undefined ? { offerCents, body } : { body });
+    if (result.status === "error") {
+      showAppToast({ message: result.message, tone: "error" });
+    } else {
+      setBody("");
+    }
     setIsBusy(false);
-    router.refresh();
   }
 
   const iAmBuyer = viewerId === thread.buyer_id;
@@ -137,7 +141,7 @@ export function ThreadView({
         </PillButton>
       </div>
 
-      {thread.state !== "blocked" ? (
+      {!isBlocked ? (
         <section className="border-t border-[rgba(30,26,23,.14)] pt-4">
           {!handover ? (
             showHandoverForm ? (
@@ -200,8 +204,8 @@ export function ThreadView({
                     fullWidth={false}
                     variant="secondary"
                     onClick={async () => {
-                      await respondToHandoverAction(handover.id, thread.id, "decline");
-                      router.refresh();
+                      const result = await respondToHandoverAction(handover.id, thread.id, "decline");
+                      if (result.status === "success") setHandover(null);
                     }}
                   >
                     decline
@@ -214,7 +218,17 @@ export function ThreadView({
                   handoverId={handover.id}
                   threadId={thread.id}
                   alreadyConfirmed={myConfirmed}
-                  onConfirmed={() => router.refresh()}
+                  onConfirmed={() => {
+                    setHandover((current) => {
+                      if (!current) return current;
+                      const next = {
+                        ...current,
+                        ...(iAmBuyer ? { buyer_confirmed: true } : { seller_confirmed: true })
+                      };
+                      if (next.buyer_confirmed && next.seller_confirmed) setIsBlocked(true);
+                      return next;
+                    });
+                  }}
                 />
               ) : null}
 
@@ -264,7 +278,6 @@ export function ThreadView({
               )
             );
             setOfferDecision(null);
-            router.refresh();
           }}
         />
       ) : null}
@@ -284,7 +297,6 @@ export function ThreadView({
             setHandover(null);
             setShowHandoverManage(false);
             setShowHandoverForm(true);
-            router.refresh();
           }}
           onCancel={async () => {
             const result = await cancelHandoverAction(handover.id, thread.id);
@@ -294,7 +306,6 @@ export function ThreadView({
             }
             setHandover(null);
             setShowHandoverManage(false);
-            router.refresh();
           }}
         />
       ) : null}
@@ -313,7 +324,6 @@ export function ThreadView({
             }
             setHandover((prev) => (prev ? { ...prev, state: "missed" } : prev));
             setShowNoShow(false);
-            router.refresh();
           }}
         />
       ) : null}
@@ -339,7 +349,7 @@ export function ThreadView({
             return;
           }
           setShowBlock(false);
-          router.refresh();
+          setIsBlocked(true);
         }}
       />
     </div>

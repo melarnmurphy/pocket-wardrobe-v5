@@ -2,13 +2,46 @@
 
 import { useState, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { acceptDraftAction, rejectDraftAction, resolveReceiptMatchAction } from "./actions";
+import Link from "next/link";
+import Image from "next/image";
+import { acceptDraftAction, rejectDraftAction, resolveReceiptMatchAction, saveImportedOutfitAction } from "./actions";
 import type { PendingDraft } from "@/lib/domain/ingestion/service";
 import { ReceiptMatchSheet } from "@/components/garderobe/wardrobe/receipt-match-sheet";
 
 interface Props {
   drafts: PendingDraft[];
   initialLatestBatchOnly?: boolean;
+}
+
+type DraftEdit = {
+  title: string;
+  category: string;
+  colour: string;
+  brand: string;
+  material: string;
+  style: string;
+  notes: string;
+  retailer: string;
+  purchase_price: string;
+  purchase_currency: string;
+};
+
+function buildDraftEdit(draft: PendingDraft): DraftEdit {
+  return {
+    title: draft.payload.title || draft.payload.tag || "",
+    category: draft.payload.category || "",
+    colour: draft.payload.colour || "",
+    brand: draft.payload.brand || "",
+    material: draft.payload.material || "",
+    style: draft.payload.style || "",
+    notes: draft.payload.notes || "",
+    retailer: draft.payload.retailer || "",
+    purchase_price:
+      typeof draft.payload.purchase_price === "number"
+        ? String(draft.payload.purchase_price)
+        : "",
+    purchase_currency: draft.payload.purchase_currency || ""
+  };
 }
 
 export default function DraftReviewList({
@@ -25,37 +58,11 @@ export default function DraftReviewList({
   const [matchSheetDraftId, setMatchSheetDraftId] = useState<string | null>(null);
   const [matchPending, setMatchPending] = useState(false);
   const [matchError, setMatchError] = useState<string | null>(null);
-  const [edits, setEdits] = useState<Record<string, {
-    title: string;
-    category: string;
-    colour: string;
-    brand: string;
-    material: string;
-    style: string;
-    notes: string;
-    retailer: string;
-    purchase_price: string;
-    purchase_currency: string;
-  }>>(
+  const [acceptedBySource, setAcceptedBySource] = useState<Record<string, string[]>>({});
+  const [savedOutfitMessage, setSavedOutfitMessage] = useState<string | null>(null);
+  const [edits, setEdits] = useState<Record<string, DraftEdit>>(
     Object.fromEntries(
-      drafts.map((draft) => [
-        draft.id,
-        {
-          title: draft.payload.title || draft.payload.tag || "",
-          category: draft.payload.category || "",
-          colour: draft.payload.colour || "",
-          brand: draft.payload.brand || "",
-          material: draft.payload.material || "",
-          style: draft.payload.style || "",
-          notes: draft.payload.notes || "",
-          retailer: draft.payload.retailer || "",
-          purchase_price:
-            typeof draft.payload.purchase_price === "number"
-              ? String(draft.payload.purchase_price)
-              : "",
-          purchase_currency: draft.payload.purchase_currency || ""
-        }
-      ])
+      drafts.map((draft) => [draft.id, buildDraftEdit(draft)])
     )
   );
 
@@ -77,10 +84,10 @@ export default function DraftReviewList({
 
   // Redirect to wardrobe when all drafts have been actioned
   useEffect(() => {
-    if (drafts.length > 0 && actionedIds.size === drafts.length) {
+    if (drafts.length > 0 && actionedIds.size === drafts.length && !savedOutfitMessage) {
       router.push("/wardrobe");
     }
-  }, [actionedIds, drafts.length, router]);
+  }, [actionedIds, drafts.length, router, savedOutfitMessage]);
 
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -103,22 +110,54 @@ export default function DraftReviewList({
 
   function handleAccept(draftId: string) {
     setPendingId(draftId);
+    const draft = drafts.find((item) => item.id === draftId);
+    const draftEdit = draft ? edits[draftId] ?? buildDraftEdit(draft) : null;
+    if (!draftEdit) {
+      setPendingId(null);
+      setErrors((prev) => ({ ...prev, [draftId]: "This draft is no longer available. Refresh and try again." }));
+      return;
+    }
     acceptDraftAction({
       draftId,
-      ...edits[draftId],
+      ...draftEdit,
       purchase_price:
-        edits[draftId].purchase_price.trim().length > 0
-          ? Number(edits[draftId].purchase_price)
+        draftEdit.purchase_price.trim().length > 0
+          ? Number(draftEdit.purchase_price)
           : undefined,
       purchase_currency:
-        edits[draftId].purchase_currency.trim().length > 0
-          ? edits[draftId].purchase_currency.trim().toUpperCase()
+        draftEdit.purchase_currency.trim().length > 0
+          ? draftEdit.purchase_currency.trim().toUpperCase()
           : undefined
-    }).then((result) => {
+    }).then(async (result) => {
       setPendingId(null);
       if (result.status === "error") {
         setErrors((prev) => ({ ...prev, [draftId]: result.message }));
       } else {
+        const sourceDrafts = drafts.filter(
+          (draft) =>
+            draft.sourceId === drafts.find((item) => item.id === draftId)?.sourceId &&
+            draft.payload.source_type === "outfit_decomposition"
+        );
+        const sourceId = drafts.find((draft) => draft.id === draftId)?.sourceId;
+        const acceptedIds = sourceId ? [...(acceptedBySource[sourceId] ?? []), ...(result.garmentId ? [result.garmentId] : [])] : [];
+        if (sourceId && sourceDrafts.length >= 2 && acceptedIds.length === sourceDrafts.length) {
+          const outfitResult = await saveImportedOutfitAction({
+            garmentIds: acceptedIds,
+            sourceId,
+            title: "Imported outfit look"
+          });
+          if (outfitResult.status === "success") {
+            setSavedOutfitMessage(`Look saved · ${outfitResult.firedRuleCount} rule pairings`);
+          } else {
+            setErrors((prev) => ({ ...prev, [draftId]: outfitResult.message }));
+          }
+        }
+        if (sourceId) {
+          setAcceptedBySource((prev) => ({
+            ...prev,
+            [sourceId]: acceptedIds
+          }));
+        }
         markActioned(draftId);
       }
     });
@@ -139,16 +178,33 @@ export default function DraftReviewList({
   if (remaining.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <p className="text-[var(--muted)]">No pending drafts.</p>
-        <a href="/wardrobe" className="mt-4 text-sm text-[var(--accent)] underline">
-          Upload a photo to get started
-        </a>
+        {savedOutfitMessage ? (
+          <>
+            <p className="text-sm text-[var(--foreground)]">{savedOutfitMessage}</p>
+            <Link href="/outfits" className="mt-4 text-sm text-[var(--accent)] underline">
+              View imported outfit
+            </Link>
+          </>
+        ) : (
+          <>
+            <p className="text-[var(--muted)]">No pending drafts.</p>
+            <Link href="/wardrobe" className="mt-4 text-sm text-[var(--accent)] underline">
+              Upload a photo to get started
+            </Link>
+          </>
+        )}
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-5">
+      {savedOutfitMessage ? (
+        <Link href="/outfits" className="pw-panel-soft flex items-center justify-between px-4 py-3 text-sm text-[var(--foreground)]">
+          <span>{savedOutfitMessage}</span>
+          <span className="text-xs uppercase tracking-[0.16em] text-[var(--accent-strong)]">View outfits →</span>
+        </Link>
+      ) : null}
       {groupedDrafts.length > 1 ? (
         <div className="pw-panel-soft flex items-center justify-between gap-3 px-4 py-3">
           <div>
@@ -190,7 +246,7 @@ export default function DraftReviewList({
           {group.drafts.map((draft) => {
         const isLowConfidence = draft.payload.confidence < 0.6;
         const error = errors[draft.id];
-        const draftEdit = edits[draft.id];
+        const draftEdit = edits[draft.id] ?? buildDraftEdit(draft);
         const isWeakExtraction =
           draft.payload.extraction_source === "filename fallback" ||
           draft.payload.extraction_source === "URL fallback";
@@ -255,6 +311,11 @@ export default function DraftReviewList({
                 ) : null}
               </div>
               <div className="mb-2 flex flex-wrap gap-1.5">
+                {draft.payload.source_type === "outfit_decomposition" && draft.payload.role ? (
+                  <span className="rounded-full border border-[rgba(123,92,240,0.2)] bg-[rgba(123,92,240,0.08)] px-2.5 py-0.5 text-[11px] font-medium capitalize text-[var(--accent-strong)]">
+                    outfit role: {draft.payload.role}
+                  </span>
+                ) : null}
                 {(
                   [
                     ["category", draft.payload.category],
@@ -743,9 +804,12 @@ function DraftPreviewImage({
 
   if (!bbox || !dimensions) {
     return (
-      <img
+      <Image
         src={src}
         alt={alt}
+        width={800}
+        height={800}
+        unoptimized
         className="h-full w-full object-cover"
         onLoad={(event) => {
           const target = event.currentTarget;
@@ -774,9 +838,12 @@ function DraftPreviewImage({
   );
 
   return (
-    <img
+    <Image
       src={src}
       alt={alt}
+      width={800}
+      height={800}
+      unoptimized
       className="max-w-none"
       style={{
         width: scaledWidth,

@@ -1,6 +1,7 @@
 "use client";
 
 import type { KeyboardEvent, ReactNode } from "react";
+import Image from "next/image";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
@@ -210,6 +211,8 @@ export function OutfitPlanner({
         day.locationQuery.trim() === normalizedPreferredLocation
     );
 
+    // The helper is declared later in this component and is stable for this request.
+    // eslint-disable-next-line react-hooks/immutability
     void fetchLocalWeatherBatch(
       new URLSearchParams({
         location: normalizedPreferredLocation,
@@ -778,9 +781,12 @@ function PlannedOutfitCard({
           >
             <div className="h-14 w-14 shrink-0 overflow-hidden rounded-[6px] bg-[rgba(17,17,17,0.04)] md:h-16 md:w-16">
               {garment.preview_url ? (
-                <img
+                <Image
                   src={garment.preview_url}
                   alt={garment.title ?? garment.category}
+                  width={128}
+                  height={128}
+                  unoptimized
                   className="h-full w-full object-cover"
                 />
               ) : null}
@@ -1017,9 +1023,12 @@ function WeatherPlannerGrid({
                                 className="h-14 w-14 overflow-hidden rounded-[6px] border border-[rgba(17,17,17,0.06)] bg-[rgba(17,17,17,0.04)]"
                               >
                                 {garment.preview_url ? (
-                                  <img
+                                  <Image
                                     src={garment.preview_url}
                                     alt={garment.title ?? garment.category}
+                                    width={112}
+                                    height={112}
+                                    unoptimized
                                     className="h-full w-full object-cover"
                                   />
                                 ) : (
@@ -1198,9 +1207,12 @@ function CalendarCellOutfitPreview({
 
     return (
       <div className="h-[70px] overflow-hidden rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-[rgba(255,255,255,0.8)]">
-        <img
+        <Image
           src={garment.preview_url ?? ""}
           alt={garment.title ?? garment.category}
+          width={240}
+          height={160}
+          unoptimized
           className="h-full w-full object-cover"
         />
       </div>
@@ -1214,9 +1226,12 @@ function CalendarCellOutfitPreview({
           key={garment.id}
           className="overflow-hidden rounded-[7px] border border-[rgba(17,17,17,0.08)] bg-[rgba(255,255,255,0.82)]"
         >
-          <img
+          <Image
             src={garment.preview_url ?? ""}
             alt={garment.title ?? garment.category}
+            width={240}
+            height={160}
+            unoptimized
             className="h-full w-full object-cover"
           />
         </div>
@@ -1478,9 +1493,12 @@ function PlannerAddLookDialog({
                     </div>
                     <div className="mt-3 h-32 overflow-hidden rounded-[10px] bg-[rgba(17,17,17,0.04)]">
                       {garment.preview_url ? (
-                        <img
+                        <Image
                           src={garment.preview_url}
                           alt={garment.title ?? garment.category}
+                          width={320}
+                          height={160}
+                          unoptimized
                           className="h-full w-full object-cover"
                         />
                       ) : (

@@ -3,16 +3,11 @@ import { ChevronLeft } from "lucide-react";
 import { listWishlist } from "@/lib/domain/wishlist/service";
 import { AuthenticationError } from "@/lib/auth";
 import { AuthRequiredCard } from "@/components/auth-required-card";
-import { Chip, CutoutTile } from "@/components/garderobe";
+import { Chip } from "@/components/garderobe";
 import { AddWishlistForm } from "./add-wishlist-form";
-import { RemoveWishlistButton } from "./remove-wishlist-button";
+import { WishlistList } from "./wishlist-list";
 
 type SortKey = "unlocks" | "priceDrop" | "saved";
-
-function formatMoney(cents: number | null) {
-  if (cents === null) return "add later";
-  return `A$${(cents / 100).toFixed(0)}`;
-}
 
 /** 15a / w3a — the things you want, ranked by how many looks each unlocks. */
 export default async function WishlistPage({
@@ -43,9 +38,7 @@ export default async function WishlistPage({
           wardrobe
         </Link>
 
-        <h1 className="pt-4 text-[34px] font-light leading-[1.05] text-[var(--ink)]">
-          {items.length} thing{items.length === 1 ? "" : "s"}
-        </h1>
+        <WishlistList items={sorted} />
         <p className="pt-2 text-[12.5px] leading-[1.5] text-[var(--slate)]">
           you want, ranked by how many looks each would unlock
         </p>
@@ -59,62 +52,6 @@ export default async function WishlistPage({
             </Link>
           ))}
         </div>
-
-        {sorted.length ? (
-          <div className="mt-6 rounded-[4px] bg-[var(--cream)] px-[14px]">
-            {sorted.map((item, index) => {
-              const barWidth = Math.min(100, (item.unlockCount / Math.max(1, sorted[0]?.unlockCount ?? 1)) * 100);
-              const isTop = index < 2;
-              return (
-                <div
-                  key={item.id}
-                  className={[
-                    "flex items-center gap-[13px] py-[14px]",
-                    index === sorted.length - 1 ? "" : "border-b border-[rgba(30,26,23,.11)]"
-                  ].join(" ")}
-                >
-                  <div className="w-[60px] shrink-0">
-                    <CutoutTile src={item.image_path} alt={item.title ?? "wishlist item"} />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="text-[14.5px] text-[var(--ink)]">{item.title}</span>
-                      <span className="text-[14px] text-[var(--ink)]">{formatMoney(item.price_cents)}</span>
-                    </div>
-                    {item.ownedSimilarCount > 0 ? (
-                      <span className="mt-1 inline-block rounded-[100px] bg-[rgba(30,26,23,.07)] px-2 py-0.5 text-[10px] text-[var(--stone)]">
-                        you own {item.ownedSimilarCount} like this
-                      </span>
-                    ) : (
-                      <>
-                        <div className="mt-1.5 h-[3px] w-[70px] overflow-hidden rounded-[2px] bg-[rgba(30,26,23,.12)]">
-                          <div
-                            className="h-full rounded-[2px]"
-                            style={{
-                              width: `${barWidth}%`,
-                              background: isTop ? "var(--oxblood)" : "var(--stone)"
-                            }}
-                          />
-                        </div>
-                        <span
-                          className="text-[10.5px] font-medium"
-                          style={{ color: isTop ? "var(--oxblood)" : "var(--stone)" }}
-                        >
-                          unlocks {item.unlockCount} look{item.unlockCount === 1 ? "" : "s"}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  <RemoveWishlistButton entryId={item.id} />
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="mt-8 rounded-[4px] border border-dashed border-[rgba(30,26,23,.3)] px-6 py-10 text-center">
-            <p className="text-[12.5px] text-[var(--stone)]">Nothing here yet. Paste a link below.</p>
-          </div>
-        )}
 
         <section className="mt-8 border-t border-[rgba(30,26,23,.14)] pt-6">
           <p className="pb-3 text-[9px] font-semibold uppercase tracking-[.18em] text-[var(--stone)]">

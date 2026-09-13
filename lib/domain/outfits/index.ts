@@ -117,6 +117,7 @@ export const saveOutfitInputSchema = z.object({
   weather_context_json: z.record(z.string(), z.unknown()).default({}),
   explanation: z.string().trim().max(4000).nullable().optional(),
   explanation_json: z.record(z.string(), z.unknown()).default({}),
+  source_type: z.enum(["generated", "manual", "imported", "planner"]).default("generated"),
   garments: z.array(z.object({
     garment_id: z.string().uuid(),
     role: z.enum(OUTFIT_ITEM_ROLES)

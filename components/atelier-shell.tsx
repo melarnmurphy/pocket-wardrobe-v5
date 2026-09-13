@@ -69,7 +69,7 @@ export async function AtelierShell({ children }: { children: React.ReactNode }) 
   return (
     <div className="flex min-h-screen flex-col md:flex-row" style={{ background: "var(--cream)" }}>
       <aside
-        className="hidden w-[232px] flex-none border-r md:flex"
+        className="hidden w-[232px] flex-none border-r md:sticky md:top-0 md:flex md:h-screen md:max-h-screen md:self-start"
         style={{ borderColor: "rgba(30,26,23,.14)" }}
       >
         <Suspense fallback={<SidebarFallback />}>
@@ -121,7 +121,7 @@ async function SignedInSidebar({ user }: { user: User }) {
   const localName = profile?.display_name?.trim().toLowerCase() || user.email || "";
 
   return (
-    <div className="flex h-full flex-col py-6" style={{ background: "var(--paper-warm)" }}>
+    <div className="flex h-full min-h-0 flex-col py-6" style={{ background: "var(--paper-warm)" }}>
       <div className="flex items-center justify-between px-[22px]">
         <Link href="/wardrobe" className="flex items-center gap-2.5" aria-label="Garderobe">
           <GarderobeMark />
@@ -133,11 +133,11 @@ async function SignedInSidebar({ user }: { user: User }) {
         </div>
       </div>
 
-      <SidebarNav counts={counts} />
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <SidebarNav counts={counts} />
+      </div>
 
-      <div className="flex-1" />
-
-      <div className="px-[22px] pb-[18px]">
+      <div className="shrink-0 px-[22px] pb-[18px]">
         <Link
           href={"/wardrobe?create=1" as never}
           className="flex h-11 items-center justify-center rounded-[100px] bg-[var(--oxblood)] text-[9px] font-semibold uppercase tracking-[.2em] text-[var(--cream)]"
@@ -146,7 +146,7 @@ async function SignedInSidebar({ user }: { user: User }) {
         </Link>
       </div>
 
-      <div className="flex items-center gap-2.5 px-[22px]">
+      <div className="flex shrink-0 items-center gap-2.5 px-[22px]">
         <div
           className="h-7 w-7 shrink-0 rounded-full"
           style={{ background: "repeating-linear-gradient(135deg,#ded6c8 0 5px,#d0c7b6 5px 10px)" }}

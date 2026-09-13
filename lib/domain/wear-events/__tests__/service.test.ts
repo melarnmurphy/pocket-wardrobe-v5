@@ -76,7 +76,7 @@ describe("incrementWearCount", () => {
     vi.clearAllMocks();
 
     getRequiredUser.mockResolvedValue({ id: "11111111-1111-4111-8111-111111111111" });
-    insert.mockResolvedValue({ error: null });
+    (insert as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({ error: null });
     garmentSelectSingle.mockResolvedValue({
       data: { wear_count: 3, last_worn_at: "2026-03-26T00:00:00.000Z", cost_per_wear: 130 },
       error: null
@@ -93,7 +93,8 @@ describe("incrementWearCount", () => {
     });
 
     expect(insert).toHaveBeenCalledTimes(1);
-    const rows = insert.mock.calls[0][0] as Array<{ worn_at: string }>;
+    const calls = (insert as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    const rows = calls[0]?.[0] as Array<{ worn_at: string }>;
     expect(rows).toHaveLength(3);
     expect(new Set(rows.map((row) => row.worn_at)).size).toBe(3);
   });

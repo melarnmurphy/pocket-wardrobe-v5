@@ -31,6 +31,7 @@ struct LocationSetupView: View {
             TextField("Suburb, city, or postcode", text: $location)
                 .textFieldStyle(EditorialTextFieldStyle())
                 .textInputAutocapitalization(.words)
+                .accessibilityIdentifier("account.location")
 
             if let error = accountStore.saveError {
                 Text(error).font(PWFont.body(size: 12)).foregroundStyle(PWColor.oxblood)
@@ -40,6 +41,7 @@ struct LocationSetupView: View {
                 Task { await save() }
             }
             .disabled(location.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
+            .accessibilityIdentifier("account.location.continue")
 
             Spacer()
             Spacer()

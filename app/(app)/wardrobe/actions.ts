@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { userFacingError } from "@/lib/ui/user-facing-error";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getServerEnv } from "@/lib/env";
@@ -350,7 +351,7 @@ export async function createGarmentAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to add item."
+      message: userFacingError(error, "we couldn't add that piece. try again.")
     };
   }
 }
@@ -427,11 +428,13 @@ export async function createPhotoDraftAction(
       imageUrl: signedUrlData.signedUrl
     });
 
-    const draftIds = await createDraftsFromPipelineResult({
-      sourceId,
-      storagePath,
-      result
-    });
+    const draftIds = result.garments.length > 0
+      ? await createDraftsFromPipelineResult({ sourceId, storagePath, result })
+      : [await createManualPhotoReviewDraft({
+          sourceId,
+          fileName: file.name,
+          notes: "The image was uploaded, but automatic detection found no garment. Review this piece manually."
+        })];
 
     revalidatePath("/wardrobe/review");
 
@@ -440,14 +443,12 @@ export async function createPhotoDraftAction(
       draftIds,
       nextPath: "/wardrobe/review",
       message:
-        draftIds.length > 0
-          ? `${draftIds.length} draft${draftIds.length === 1 ? "" : "s"} ready to review.`
-          : "No garments detected from that image."
+        `${draftIds.length} draft${draftIds.length === 1 ? "" : "s"} ready to review.`
     };
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Could not analyse photo."
+      message: userFacingError(error, "we couldn't read that photo. try again or fill in the details yourself.")
     };
   }
 }
@@ -533,7 +534,7 @@ export async function createProductUrlDraftAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Could not add item from product link."
+      message: userFacingError(error, "we couldn't read that product page. check the link and try again.")
     };
   }
 }
@@ -677,7 +678,7 @@ export async function createReceiptDraftAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Could not create receipt draft."
+      message: userFacingError(error, "we couldn't read that receipt. try a clearer photo or paste the line items.")
     };
   }
 }
@@ -731,7 +732,7 @@ export async function addGarmentImageAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to attach image."
+      message: userFacingError(error, "we couldn't attach that photo. try again.")
     };
   }
 }
@@ -786,7 +787,7 @@ export async function addGarment3dAssetAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to save 3D asset."
+      message: userFacingError(error, "we couldn't save that 3D asset. check the file and try again.")
     };
   }
 }
@@ -885,7 +886,7 @@ export async function updateGarmentAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to update item."
+      message: userFacingError(error, "we couldn't update that piece. try again.")
     };
   }
 }
@@ -925,7 +926,7 @@ export async function logWearAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to save wear event."
+      message: userFacingError(error, "we couldn't log that wear. try again.")
     };
   }
 }
@@ -959,7 +960,7 @@ export async function deleteGarmentAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to delete item."
+      message: userFacingError(error, "we couldn't remove that piece. try again.")
     };
   }
 }
@@ -984,7 +985,7 @@ export async function restoreGarmentAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to restore item."
+      message: userFacingError(error, "we couldn't restore that piece. try again.")
     };
   }
 }
@@ -1020,7 +1021,7 @@ export async function bulkDeleteGarmentsAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to delete items."
+      message: userFacingError(error, "we couldn't remove those pieces. try again.")
     };
   }
 }
@@ -1053,7 +1054,7 @@ export async function mergeGarmentsAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to merge these pieces."
+      message: userFacingError(error, "we couldn't merge those pieces. nothing was changed.")
     };
   }
 }
@@ -1082,7 +1083,7 @@ export async function updateWearEventAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to update that wear."
+      message: userFacingError(error, "we couldn't update that wear. try again.")
     };
   }
 }
@@ -1103,7 +1104,7 @@ export async function deleteWearEventAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to remove that wear."
+      message: userFacingError(error, "we couldn't remove that wear. try again.")
     };
   }
 }
@@ -1125,7 +1126,7 @@ export async function createCollectionAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to create the collection."
+      message: userFacingError(error, "we couldn't create that collection. try again.")
     };
   }
 }
@@ -1147,7 +1148,7 @@ export async function renameCollectionAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to rename the collection."
+      message: userFacingError(error, "we couldn't rename that collection. try again.")
     };
   }
 }
@@ -1168,7 +1169,7 @@ export async function deleteCollectionAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to delete the collection."
+      message: userFacingError(error, "we couldn't delete that collection. try again.")
     };
   }
 }
@@ -1195,7 +1196,7 @@ export async function setAvailabilityAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to update availability."
+      message: userFacingError(error, "we couldn't update availability. try again.")
     };
   }
 }
@@ -1225,7 +1226,7 @@ export async function setSeasonalStorageAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to update seasonal storage."
+      message: userFacingError(error, "we couldn't update seasonal storage. try again.")
     };
   }
 }
@@ -1258,7 +1259,7 @@ export async function addToLetGoAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to add to the let-go list."
+      message: userFacingError(error, "we couldn't add that piece to let go. try again.")
     };
   }
 }
@@ -1285,7 +1286,7 @@ export async function removeFromLetGoAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to update the let-go list."
+      message: userFacingError(error, "we couldn't update the let-go list. try again.")
     };
   }
 }
@@ -1313,7 +1314,7 @@ export async function archiveGarmentAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to let this piece go."
+      message: userFacingError(error, "we couldn't let that piece go. try again.")
     };
   }
 }
@@ -1352,7 +1353,7 @@ export async function setPriceManuallyAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to save the price."
+      message: userFacingError(error, "we couldn't save that price. try again.")
     };
   }
 }
@@ -1381,7 +1382,7 @@ export async function setGarmentFeatureImageAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Could not update feature image."
+      message: userFacingError(error, "we couldn't update the piece photo. try again.")
     };
   }
 }
@@ -1406,7 +1407,7 @@ export async function toggleGarmentFavouriteAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to update favourite."
+      message: userFacingError(error, "we couldn't update your favourite. try again.")
     };
   }
 }
@@ -1453,7 +1454,7 @@ export async function analyzePipelineAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Pipeline analysis failed."
+      message: userFacingError(error, "we couldn't read that photo. try again or fill in the details yourself.")
     };
   }
 }

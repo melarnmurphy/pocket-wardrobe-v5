@@ -1,8 +1,10 @@
 import {
   applyHardFilters,
   collectColourFiredRules,
+  collectCategoryPairFiredRules,
   scoreGarment,
   generateOutfit,
+  evaluateOutfitComposition,
   type GeneratorInput
 } from "../generator";
 import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
@@ -55,6 +57,87 @@ describe("categoryToRole", () => {
   });
   it("maps unknown category to other", () => {
     expect(categoryToRole("mystery item")).toBe("other");
+  });
+});
+
+describe("evaluateOutfitComposition", () => {
+  it("checks fixed imported pieces through the same pairing rules as generation", () => {
+    const top = makeGarment({
+      id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1",
+      category: "turtleneck",
+      primary_colour_family: "black"
+    });
+    const jacket = makeGarment({
+      id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2",
+      category: "jacket",
+      primary_colour_family: "brown"
+    });
+    const skirt = makeGarment({
+      id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3",
+      category: "skirt",
+      primary_colour_family: "brown"
+    });
+    const boots = makeGarment({
+      id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4",
+      category: "boots",
+      primary_colour_family: "black"
+    });
+
+    const result = evaluateOutfitComposition({
+      garments: [top, jacket, skirt, boots],
+      styleRules: [
+        makeRule({
+          subject_type: "category",
+          predicate: "layerable_with",
+          subject_value: "jacket",
+          object_value: "turtleneck",
+          explanation: "A jacket layers cleanly over a turtleneck"
+        }),
+        makeRule({
+          subject_type: "colour_family",
+          object_type: "colour_family",
+          predicate: "pairs_with",
+          subject_value: "black",
+          object_value: "brown",
+          explanation: "Black and brown create a grounded neutral palette"
+        })
+      ]
+    });
+
+    expect(result.garments.map((garment) => garment.id)).toEqual(
+      expect.arrayContaining([top.id, jacket.id, skirt.id, boots.id])
+    );
+    expect(result.firedRules.map((rule) => rule.description)).toEqual(
+      expect.arrayContaining([
+        "A jacket layers cleanly over a turtleneck",
+        "Black and brown create a grounded neutral palette"
+      ])
+    );
+  });
+
+  it("evaluates the six separate pieces from the imported bourbon look", () => {
+    const garments = [
+      makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1", title: "Black cutout turtleneck", category: "turtleneck", primary_colour_family: "black", material: "cotton" }),
+      makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2", title: "Bourbon wool zip jacket", category: "jacket", primary_colour_family: "brown", material: "wool" }),
+      makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3", title: "Bourbon wool mini skirt", category: "skirt", primary_colour_family: "brown", material: "wool" }),
+      makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4", title: "Black knee-high boots", category: "boots", primary_colour_family: "black", material: "leather" }),
+      makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa5", title: "Black handbag", category: "handbag", primary_colour_family: "black", material: "leather" }),
+      makeGarment({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6", title: "Gold hoop earrings", category: "earrings", primary_colour_family: "gold" })
+    ];
+    const rules = [
+      makeRule({ subject_type: "category", predicate: "layerable_with", subject_value: "jacket", object_value: "turtleneck", explanation: "A jacket layers over a fitted turtleneck" }),
+      makeRule({ subject_type: "category", object_type: "category", predicate: "pairs_with", subject_value: "skirt", object_value: "boots", explanation: "A mini skirt pairs with knee-high boots" }),
+      makeRule({ subject_type: "colour_family", object_type: "colour_family", predicate: "pairs_with", subject_value: "black", object_value: "brown", explanation: "Black and bourbon brown create a grounded palette" })
+    ];
+
+    const result = evaluateOutfitComposition({ garments, styleRules: rules });
+    expect(result.garments).toHaveLength(garments.length);
+    expect(result.firedRules.map((rule) => rule.description)).toEqual(expect.arrayContaining([
+      "A jacket layers over a fitted turtleneck",
+      "A mini skirt pairs with knee-high boots",
+      "Black and bourbon brown create a grounded palette"
+    ]));
+    expect(collectCategoryPairFiredRules(garments, rules)).toHaveLength(1);
   });
 });
 

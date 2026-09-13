@@ -39,11 +39,29 @@ export type ReviewDraftAdapterPayload = {
   embedding?: number[] | null;
   fieldConfidence?: Partial<Record<DraftFieldName, number>>;
   fieldProvenance?: Partial<Record<DraftFieldName, string>>;
+  role?: "top" | "bottom" | "dress" | "outerwear" | "shoes" | "accessory" | "bag" | "jewellery" | "other";
 };
 
 export interface IngestionAdapter<TInput, TOutput = ReviewDraftAdapterPayload> {
   kind: IngestionAdapterKind;
   buildDraft(input: TInput): TOutput;
+}
+
+export type OutfitItemRole = NonNullable<ReviewDraftAdapterPayload["role"]>;
+
+/** Maps detector vocabulary to the canonical outfit_items role vocabulary. */
+export function inferOutfitItemRole(category: string, tag = ""): OutfitItemRole {
+  const value = `${category} ${tag}`.toLowerCase();
+
+  if (/jewell|earring|necklace|ring|bracelet|watch/.test(value)) return "jewellery";
+  if (/bag|handbag|tote|purse|clutch|crossbody/.test(value)) return "bag";
+  if (/shoe|boot|heel|sandal|loafer|sneaker|flat|pump/.test(value)) return "shoes";
+  if (/coat|jacket|blazer|cardigan|outerwear|trench|vest/.test(value)) return "outerwear";
+  if (/dress|jumpsuit|playsuit|romper/.test(value)) return "dress";
+  if (/skirt|trouser|pant|jean|short|bottom/.test(value)) return "bottom";
+  if (/top|shirt|tee|tank|blouse|sweater|knit|hoodie|jumper|cami|bodysuit/.test(value)) return "top";
+
+  return "other";
 }
 
 export function parseProductPrice(value: string | null | undefined): number | null {
@@ -325,13 +343,14 @@ export const outfitDecompositionAdapter: IngestionAdapter<{
     tag: string;
     embedding: number[];
   } | null;
-  role?: string | null;
+  role?: OutfitItemRole | null;
   notes?: string | null;
 }> = {
   kind: "outfit_decomposition",
   buildDraft(input) {
     if (input.detected) {
       const c = input.detected.confidence;
+      const role = input.role ?? inferOutfitItemRole(input.detected.category, input.detected.tag);
       return {
         sourceType: "outfit_decomposition",
         title: input.detected.tag,
@@ -349,11 +368,13 @@ export const outfitDecompositionAdapter: IngestionAdapter<{
         extractionSource: "image analysis",
         bbox: input.detected.bbox,
         tag: input.detected.tag,
+        role,
         embedding: input.detected.embedding,
         metadata: {
           original_filename: input.fileName,
           extraction_source: "image analysis",
-          detector_model: PIPELINE_MODEL_ID
+          detector_model: PIPELINE_MODEL_ID,
+          outfit_role: role
         },
         fieldConfidence: { title: c, category: c, colour: c, material: c, style: c },
         fieldProvenance: {

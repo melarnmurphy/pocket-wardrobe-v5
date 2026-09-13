@@ -23,6 +23,7 @@ import {
   withdrawOffer
 } from "@/lib/domain/local-threads/threads-service";
 import type { CreateLocalListingInput } from "@/lib/domain/local-threads";
+import { userFacingError } from "@/lib/ui/user-facing-error";
 
 type ActionResult = { status: "success" } | { status: "error"; message: string };
 
@@ -37,7 +38,7 @@ export async function createLocalListingAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to list this piece."
+      message: userFacingError(error, "we couldn't list this piece. try again.")
     };
   }
 }
@@ -52,7 +53,7 @@ export async function addLocalListingPhotoAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to upload that photo."
+      message: userFacingError(error, "we couldn't upload that photo. try again.")
     };
   }
 }
@@ -65,7 +66,7 @@ export async function withdrawLocalListingAction(listingId: string): Promise<Act
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to withdraw the listing."
+      message: userFacingError(error, "we couldn't withdraw that listing. try again.")
     };
   }
 }
@@ -90,7 +91,7 @@ export async function sendMessageAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to send that."
+      message: userFacingError(error, "we couldn't send that message. try again.")
     };
   }
 }
@@ -106,7 +107,7 @@ export async function proposeHandoverAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to propose a handover."
+      message: userFacingError(error, "we couldn't propose that handover. try again.")
     };
   }
 }
@@ -123,7 +124,7 @@ export async function respondToHandoverAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to respond."
+      message: userFacingError(error, "we couldn't record that response. try again.")
     };
   }
 }
@@ -141,7 +142,7 @@ export async function confirmHandoverAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to confirm the handover."
+      message: userFacingError(error, "we couldn't confirm that handover. try again.")
     };
   }
 }
@@ -155,7 +156,7 @@ export async function blockUserAction(userId: string, threadId?: string): Promis
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to block this user."
+      message: userFacingError(error, "we couldn't block that person. try again.")
     };
   }
 }
@@ -168,7 +169,7 @@ export async function unblockUserAction(userId: string): Promise<ActionResult> {
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to unblock this user."
+      message: userFacingError(error, "we couldn't unblock that person. try again.")
     };
   }
 }
@@ -180,7 +181,7 @@ export async function reportListingAction(listingId: string, reason: string): Pr
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to send the report."
+      message: userFacingError(error, "we couldn't send that report. try again.")
     };
   }
 }
@@ -193,7 +194,7 @@ export async function respondToOfferAction(messageId: string, threadId: string):
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to decline that offer."
+      message: userFacingError(error, "we couldn't decline that offer. try again.")
     };
   }
 }
@@ -206,7 +207,7 @@ export async function withdrawOfferAction(messageId: string, threadId: string): 
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to withdraw that offer."
+      message: userFacingError(error, "we couldn't withdraw that offer. try again.")
     };
   }
 }
@@ -219,7 +220,7 @@ export async function cancelHandoverAction(handoverId: string, threadId: string)
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to cancel the handover."
+      message: userFacingError(error, "we couldn't cancel that handover. try again.")
     };
   }
 }
@@ -232,7 +233,7 @@ export async function reportNoShowAction(handoverId: string, threadId: string): 
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to record that."
+      message: userFacingError(error, "we couldn't record that. try again.")
     };
   }
 }
@@ -249,7 +250,7 @@ export async function cancelListingAction(listingId: string, threadIdToClose?: s
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to cancel the listing."
+      message: userFacingError(error, "we couldn't cancel that listing. try again.")
     };
   }
 }
@@ -282,7 +283,7 @@ export async function updateRadiusAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to save the radius."
+      message: userFacingError(error, "we couldn't save your search radius. try again.")
     };
   }
 }

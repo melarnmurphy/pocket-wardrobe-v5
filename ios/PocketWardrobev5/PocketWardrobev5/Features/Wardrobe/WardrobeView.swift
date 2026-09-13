@@ -69,6 +69,7 @@ struct WardrobeView: View {
                                 .font(.system(size: 28))
                                 .foregroundStyle(PWColor.ink)
                         }
+                        .accessibilityIdentifier("wardrobe.add")
                     }
                     Text("Every piece, how much you've worn it, and whether it earns its space.")
                         .caption(size: 14)

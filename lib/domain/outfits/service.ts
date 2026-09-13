@@ -196,7 +196,7 @@ export async function saveOutfit(input: SaveOutfitInput, ctx?: ServiceContext): 
     weather_context_json: input.weather_context_json as unknown as OutfitInsert["weather_context_json"],
     explanation: input.explanation ?? null,
     explanation_json: input.explanation_json as unknown as OutfitInsert["explanation_json"],
-    source_type: "generated"
+    source_type: input.source_type ?? "generated"
   };
 
   const { data: outfit, error: outfitError } = await supabase

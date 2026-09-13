@@ -287,6 +287,36 @@ export function collectColourFiredRules(
   return firedRules;
 }
 
+export function collectCategoryPairFiredRules(
+  garments: GarmentListItem[],
+  rules: StyleRuleListItem[]
+): FiredRule[] {
+  const firedRules: FiredRule[] = [];
+  const firedRuleKeys = new Set<string>();
+
+  for (const rule of rules as RuleWithConstraint[]) {
+    if (rule.constraint_type !== "soft" || rule.active === false) continue;
+    if (rule.subject_type !== "category" || rule.object_type !== "category" || rule.predicate !== "pairs_with") continue;
+
+    for (const subject of garments) {
+      if (!garmentMatchesCategoryValue(subject, rule.subject_value)) continue;
+      for (const object of garments) {
+        if (subject.id === object.id || !garmentMatchesCategoryValue(object, rule.object_value)) continue;
+        const garmentIds = [subject.id as string, object.id as string].sort();
+        const key = `${rule.explanation || rule.predicate}:${garmentIds.join(":")}`;
+        if (firedRuleKeys.has(key)) continue;
+        firedRuleKeys.add(key);
+        firedRules.push({
+          description: rule.explanation || rule.predicate,
+          garment_ids: garmentIds
+        });
+      }
+    }
+  }
+
+  return firedRules;
+}
+
 function buildOutfitInsights(params: {
   firedRules: FiredRule[];
   garments: GarmentListItem[];
@@ -434,6 +464,31 @@ export type GeneratorInput = {
   trendWeight?: number;
   nowMs?: number;
 };
+
+/**
+ * Evaluate an already assembled look with the same structured rule engine
+ * used for generated outfits. This is used by outfit decomposition and
+ * imported looks: the pieces are fixed, while colour, layering, occasion,
+ * weather, and other applicable rules are still inspected and explained.
+ */
+export function evaluateOutfitComposition(input: {
+  garments: GarmentListItem[];
+  styleRules: StyleRuleListItem[];
+  dress_code?: string;
+  weather?: string;
+  occasion?: string;
+}): GeneratedOutfit {
+  return generateOutfit({
+    mode: "plan",
+    garments: input.garments,
+    styleRules: input.styleRules,
+    trendSignal: null,
+    dress_code: input.dress_code,
+    weather: input.weather,
+    occasion: input.occasion,
+    mustIncludeGarmentIds: input.garments.map((garment) => garment.id as string)
+  });
+}
 
 type ScoringContext = {
   dress_code?: string | null;
@@ -706,6 +761,13 @@ export function generateOutfit(input: GeneratorInput): GeneratedOutfit {
     if (firedRuleKeys.has(key)) continue;
     firedRuleKeys.add(key);
     firedRules.push(colourRule);
+  }
+
+  for (const categoryRule of collectCategoryPairFiredRules(selectedFullGarments, expandedRules)) {
+    const key = `${categoryRule.description}:${categoryRule.garment_ids.join(":")}`;
+    if (firedRuleKeys.has(key)) continue;
+    firedRuleKeys.add(key);
+    firedRules.push(categoryRule);
   }
 
   for (const tonalRule of collectDarkTonalColourRules(selectedFullGarments)) {

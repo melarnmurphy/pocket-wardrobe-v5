@@ -29,6 +29,8 @@ export default async function OutfitsPage({
         listStyleRules()
       ]);
     const defaultWeatherProvider = resolveWeatherProvider();
+    // Server-rendered snapshot boundary; this is intentionally evaluated once per request.
+    // eslint-disable-next-line react-hooks/purity
     const nowMs = Date.now();
     const weekAgo = nowMs - 7 * 24 * 60 * 60 * 1000;
     const recentOutfitGarmentIds = savedOutfits.flatMap((outfit) => {

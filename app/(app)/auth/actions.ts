@@ -110,7 +110,7 @@ export async function signInWithMagicLinkAction(formData: FormData) {
   const next = sanitizeNextPath(values.next);
 
   try {
-    await checkRateLimit("magic-link", 5, 600);
+    await checkRateLimit("magic-link", 5, 600, { failClosed: true });
   } catch (error) {
     if (error instanceof RateLimitError) {
       redirectMagicLinkError(next, values.email, error.message);
@@ -150,7 +150,7 @@ export async function signInWithPasswordAction(formData: FormData) {
   const next = sanitizeNextPath(values.next);
 
   try {
-    await checkRateLimit("sign-in-password", 10, 60);
+    await checkRateLimit("sign-in-password", 10, 60, { failClosed: true });
   } catch (error) {
     if (error instanceof RateLimitError) {
       redirect(
@@ -204,7 +204,7 @@ export async function signUpWithPasswordAction(formData: FormData) {
   try {
     // Sign-up is a low-frequency path. Keep the guard, but allow normal retry behavior
     // so a tester does not get blocked by a couple of failed attempts.
-    await checkRateLimit("sign-up", 10, 3600);
+    await checkRateLimit("sign-up", 10, 3600, { failClosed: true });
   } catch (error) {
     if (error instanceof RateLimitError) {
       redirect(
@@ -301,7 +301,7 @@ export async function sendPasswordResetAction(formData: FormData) {
   const next = sanitizeNextPath(values.next);
 
   try {
-    await checkRateLimit("password-reset", 3, 600);
+    await checkRateLimit("password-reset", 3, 600, { failClosed: true });
   } catch (error) {
     if (error instanceof RateLimitError) {
       redirect(

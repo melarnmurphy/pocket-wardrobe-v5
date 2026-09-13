@@ -8,6 +8,7 @@ import { saveOutfit, listSavedOutfits } from "@/lib/domain/outfits/service";
 import { suggestTodayOutfit } from "@/lib/domain/outfits/today";
 import { listStyleRules } from "@/lib/domain/style-rules/service";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
+import { userFacingError } from "@/lib/ui/user-facing-error";
 
 /**
  * 12a — "the forecast decides the layers." Called from the client once a
@@ -47,7 +48,7 @@ export async function suggestTodayOutfitWithWeatherAction(
 
     return { outfit };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Unable to check the weather." };
+    return { error: userFacingError(error, "we couldn't put together today's look. try again.") };
   }
 }
 
@@ -69,7 +70,7 @@ export async function saveTodayOutfitAction(formData: FormData) {
     typeof localHourRaw === "string" ? Number.parseInt(localHourRaw, 10) : Number.NaN;
 
   if (typeof localDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(localDate) || Number.isNaN(localHour)) {
-    throw new Error("Missing local date for calendar planning.");
+    throw new Error("choose a date before saving today's look.");
   }
 
   const garmentsRaw = readJsonField(formData, "garments");
@@ -85,7 +86,7 @@ export async function saveTodayOutfitAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    throw new Error("Could not save today’s outfit.");
+    throw new Error("we couldn't save today's look. try again.");
   }
 
   await saveOutfit(parsed.data);

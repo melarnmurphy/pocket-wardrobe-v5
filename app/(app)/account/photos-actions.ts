@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { deleteAllUserPhotos } from "@/lib/domain/account/service";
+import { userFacingError } from "@/lib/ui/user-facing-error";
 
 export type AccountActionState = {
   status: "idle" | "success" | "error";
@@ -27,7 +28,7 @@ export async function deleteAllUserPhotosAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Could not delete your photos."
+      message: userFacingError(error, "we couldn't delete your photos. try again.")
     };
   }
 }

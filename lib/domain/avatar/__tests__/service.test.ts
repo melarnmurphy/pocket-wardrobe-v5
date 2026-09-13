@@ -92,7 +92,7 @@ describe("generateAvatarFromReferencePhotos", () => {
     await generateAvatarFromReferencePhotos([makeReferenceFile(), makeReferenceFile()]).catch(() => {});
 
     expect(assertPaidPlanAccess).toHaveBeenCalled();
-    expect(checkRateLimit).toHaveBeenCalledWith("avatar-generate", expect.any(Number), expect.any(Number));
+    expect(checkRateLimit).toHaveBeenCalledWith("avatar-generate", expect.any(Number), expect.any(Number), { failClosed: true });
     expect(imagesEdit).toHaveBeenCalled();
 
     // The gate and the limit must both run before the expensive call, not after.

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import NextImage from "next/image";
 import {
   type ReactNode,
   useActionState,
@@ -558,6 +559,8 @@ export function WardrobeShop({
         tone: bulkDeleteState.status === "partial" ? "info" : "success"
       });
       setIsDeleteConfirmOpen(false);
+      // The callback is declared below; this effect only runs after mount.
+      // eslint-disable-next-line react-hooks/immutability
       exitSelectMode();
     } else if (bulkDeleteState.status === "error" && bulkDeleteState.message) {
       showAppToast({ message: bulkDeleteState.message, tone: "error" });
@@ -1638,9 +1641,12 @@ function GarmentDetailDialog({
               <div className="grid gap-4 lg:grid-cols-[1.4fr,0.9fr]">
                 <div className="overflow-hidden rounded-[12px] border border-[rgba(17,17,17,0.08)] bg-white shadow-[0_24px_55px_rgba(17,17,17,0.1)]">
                   <div className="relative">
-                    <img
+                    <NextImage
                       src={garment.preview_url}
                       alt={garment.title || garment.category}
+                      width={1000}
+                      height={1000}
+                      unoptimized
                       className="h-[22rem] w-full object-contain bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))] sm:h-[28rem]"
                     />
                     <div className="absolute inset-0 flex items-end justify-center bg-black/0 p-4 transition-all duration-200 hover:bg-black/10">
@@ -1688,11 +1694,12 @@ function GarmentDetailDialog({
                           >
                             <div className="aspect-[3/4] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))]">
                               {image.preview_url ? (
-                                <img
+                                <NextImage
                                   src={image.preview_url}
                                   alt={`${garment.title || garment.category} ${image.image_type}`}
-                                  loading="lazy"
-                                  decoding="async"
+                                  width={600}
+                                  height={800}
+                                  unoptimized
                                   className="h-full w-full object-cover"
                                 />
                               ) : (
@@ -2207,9 +2214,12 @@ function CreateImageField({
       >
         {previewUrl ? (
           <div className="relative">
-            <img
+            <NextImage
               src={previewUrl}
               alt="Selected garment preview"
+              width={800}
+              height={800}
+              unoptimized
               className="h-80 w-full object-contain bg-[rgba(0,0,0,0.03)]"
             />
             <div className="absolute right-4 top-4">
@@ -2242,10 +2252,13 @@ function CreateImageField({
               compact ? "px-4 py-6" : "px-6 py-10"
             }`}
           >
-            <img
+            <NextImage
               src="/illustrations/chatting.svg"
               alt=""
               aria-hidden="true"
+              width={112}
+              height={112}
+              unoptimized
               className={`${compact ? "mb-4 h-20 w-20" : "mb-5 h-28 w-28"} object-contain opacity-90`}
             />
             <p className={`${compact ? "text-sm" : "text-base"} font-semibold tracking-[-0.02em]`}>
@@ -2611,13 +2624,16 @@ function CreateGarmentPreviewCard({
       <div className="mt-4 overflow-hidden rounded-[8px] border border-[var(--line)] bg-white">
         <div className="relative aspect-[4/5] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,232,220,0.9))]">
           {previewUrl ? (
-            <img src={previewUrl} alt={displayTitle} className="h-full w-full object-cover" />
+            <NextImage src={previewUrl} alt={displayTitle} width={640} height={800} unoptimized className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-              <img
+              <NextImage
                 src="/illustrations/chatting.svg"
                 alt=""
                 aria-hidden="true"
+                width={96}
+                height={96}
+                unoptimized
                 className="h-24 w-24 object-contain opacity-80"
               />
               <p className="mt-4 text-sm font-semibold uppercase tracking-[0.15em] text-[var(--muted)]">
@@ -2949,9 +2965,12 @@ function ReceiptDraftComposer({
             {previewUrl ? (
               <div className="overflow-hidden rounded-[1.2rem] border border-[var(--line)] bg-white">
                 <div className="relative">
-                  <img
+                  <NextImage
                     src={previewUrl}
                     alt="Selected receipt preview"
+                    width={800}
+                    height={600}
+                    unoptimized
                     className="h-64 w-full object-contain bg-[rgba(0,0,0,0.03)]"
                   />
                   <div className="absolute right-4 top-4">

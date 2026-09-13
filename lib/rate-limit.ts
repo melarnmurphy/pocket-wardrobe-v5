@@ -1,11 +1,19 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { headers } from "next/headers";
+import { logger } from "@/lib/observability/logger";
 
 export class RateLimitError extends Error {
   constructor() {
     super("Too many attempts. Please try again later.");
     this.name = "RateLimitError";
+  }
+}
+
+export class RateLimitUnavailableError extends Error {
+  constructor() {
+    super("The security check is temporarily unavailable. Please try again shortly.");
+    this.name = "RateLimitUnavailableError";
   }
 }
 
@@ -42,10 +50,16 @@ function getLimiter(prefix: string, requests: number, windowSeconds: number): Ra
 export async function checkRateLimit(
   action: string,
   requests: number,
-  windowSeconds: number
+  windowSeconds: number,
+  options: { failClosed?: boolean } = {}
 ): Promise<void> {
   const limiter = getLimiter(action, requests, windowSeconds);
-  if (!limiter) return; // Upstash not configured — no-op in local dev
+  if (!limiter) {
+    if (options.failClosed && process.env.NODE_ENV === "production") {
+      throw new RateLimitUnavailableError();
+    }
+    return;
+  }
 
   const headerStore = await headers();
   const ip =
@@ -60,7 +74,10 @@ export async function checkRateLimit(
     // Upstash is configured but unreachable (wrong/stale credentials, outage). Fail open
     // rather than break every rate-limited action (sign-in, sign-up, etc.) on a dependency
     // that's meant to be a safety net, not a hard requirement.
-    console.error(`[rate-limit] Upstash unreachable for "${action}", failing open:`, error);
+    if (options.failClosed && process.env.NODE_ENV === "production") {
+      throw new RateLimitUnavailableError();
+    }
+    logger.error("rate_limit_unavailable", error, { action });
     return;
   }
   if (!success) throw new RateLimitError();

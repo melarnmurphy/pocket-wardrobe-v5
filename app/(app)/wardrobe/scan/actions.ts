@@ -9,6 +9,7 @@ import { canUseFeatureLabels } from "@/lib/domain/entitlements/service";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import { listStyleRules } from "@/lib/domain/style-rules/service";
 import { unlockCountForCandidate } from "@/lib/domain/outfits/unlock";
+import { userFacingError } from "@/lib/ui/user-facing-error";
 
 export type ScanResult =
   | {
@@ -88,7 +89,7 @@ export async function scanGarmentAction(formData: FormData): Promise<ScanResult>
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to scan that photo."
+      message: userFacingError(error, "we couldn't scan that photo. try again.")
     };
   }
 }

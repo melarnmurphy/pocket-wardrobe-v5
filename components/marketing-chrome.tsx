@@ -1,4 +1,5 @@
 import styles from "@/app/marketing.module.css";
+import Link from "next/link";
 
 export const MARKETING_SIGN_IN = "/sign-in?next=%2Fwardrobe";
 export const MARKETING_START = "/sign-in?mode=signup&next=%2Fonboarding";
@@ -14,27 +15,27 @@ const LINKS: { href: "/how-it-works" | "/nearby" | "/pricing"; id: MarketingSect
 export function MarketingBar({ active }: { active?: MarketingSection | null }) {
   return (
     <div className={styles.contentsNav}>
-      <a href="/" className={styles.navWord} aria-label="Garderobe home">
+      <Link href="/" className={styles.navWord} aria-label="Garderobe home">
         garderobe
-      </a>
+      </Link>
       <nav className={styles.contentsLinks} aria-label="Marketing">
         {LINKS.map((link) => (
-          <a
+          <Link
             key={link.id}
             href={link.href}
             className={active === link.id ? styles.navActive : undefined}
           >
             {link.label}
-          </a>
+          </Link>
         ))}
       </nav>
       <div className={styles.contentsAuth}>
-        <a href={MARKETING_SIGN_IN} className={styles.contentsSignIn}>
+        <Link href={MARKETING_SIGN_IN} className={styles.contentsSignIn}>
           sign in
-        </a>
-        <a href={MARKETING_START} className={styles.contentsStart}>
+        </Link>
+        <Link href={MARKETING_START} className={styles.contentsStart}>
           start for free
-        </a>
+        </Link>
       </div>
     </div>
   );
@@ -43,9 +44,9 @@ export function MarketingBar({ active }: { active?: MarketingSection | null }) {
 export function MarketingFooter() {
   return (
     <footer className={styles.legal}>
-      <a href="/" className={styles.legalWord}>
+      <Link href="/" className={styles.legalWord}>
         garderobe
-      </a>
+      </Link>
       <span className={styles.legalPlace}>adelaide</span>
       <div className={styles.legalLinks}>
         <span>privacy</span>

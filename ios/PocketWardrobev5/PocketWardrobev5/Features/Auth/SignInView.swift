@@ -28,6 +28,7 @@ struct SignInView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     labelledField("Email") {
                         TextField("you@example.com", text: $email)
+                            .accessibilityIdentifier("auth.email")
                             .textContentType(.emailAddress)
                             .keyboardType(.emailAddress)
                             .textInputAutocapitalization(.never)
@@ -35,6 +36,7 @@ struct SignInView: View {
                     }
                     labelledField("Password") {
                         SecureField("••••••••", text: $password)
+                            .accessibilityIdentifier("auth.password")
                             .textContentType(mode == .signIn ? .password : .newPassword)
                     }
                 }
@@ -52,6 +54,7 @@ struct SignInView: View {
                 }
                 .disabled(isSubmitting || email.isEmpty || password.isEmpty)
                 .opacity(isSubmitting || email.isEmpty || password.isEmpty ? 0.5 : 1)
+                .accessibilityIdentifier("auth.submit")
 
                 Button {
                     authStore.errorMessage = nil

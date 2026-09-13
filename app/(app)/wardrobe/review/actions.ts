@@ -5,12 +5,17 @@ import { getRequiredUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import {
   addGarmentImageFromUrl,
-  createGarment,
+  acceptGarmentDraftTransaction,
   setGarmentPrimaryColourFamily,
   setGarmentPriceManually
 } from "@/lib/domain/wardrobe/service";
 import { getCanonicalWardrobeColour } from "@/lib/domain/wardrobe/colours";
 import { z } from "zod";
+import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
+import { listStyleRules } from "@/lib/domain/style-rules/service";
+import { categoryToRole, evaluateOutfitComposition } from "@/lib/domain/outfits/generator";
+import { saveOutfit } from "@/lib/domain/outfits/service";
+import { userFacingError } from "@/lib/ui/user-facing-error";
 
 const RECEIPT_LIKE_SOURCE_TYPES = new Set([
   "receipt",
@@ -24,6 +29,76 @@ const RECEIPT_LIKE_SOURCE_TYPES = new Set([
 export type DraftActionResult =
   | { status: "success"; garmentId?: string }
   | { status: "error"; message: string };
+
+const saveImportedOutfitSchema = z.object({
+  garmentIds: z.array(z.string().uuid()).min(2).max(20),
+  sourceId: z.string().uuid().optional(),
+  title: z.string().trim().min(1).max(200).default("Imported look")
+});
+
+export async function saveImportedOutfitAction(
+  input: unknown
+): Promise<{ status: "success"; outfitId: string; firedRuleCount: number } | { status: "error"; message: string }> {
+  try {
+    const values = saveImportedOutfitSchema.parse(input);
+    const garments = (await listWardrobeGarments()).filter((garment) =>
+      values.garmentIds.includes(garment.id as string)
+    );
+    if (garments.length !== values.garmentIds.length) {
+      return { status: "error", message: "Some accepted garments could not be found." };
+    }
+
+    let provenance: Record<string, unknown> = {};
+    if (values.sourceId) {
+      const supabase = await createClient();
+      const { data: source, error: sourceError } = await supabase
+        .from("garment_sources")
+        .select("id, source_type, storage_path, source_metadata_json")
+        .eq("id", values.sourceId)
+        .eq("user_id", (await getRequiredUser()).id)
+        .maybeSingle();
+      if (sourceError) throw new Error(sourceError.message);
+      const sourceRecord = source as {
+        id: string;
+        source_type: string;
+        storage_path: string | null;
+        source_metadata_json: Record<string, unknown> | null;
+      } | null;
+      if (sourceRecord) {
+        provenance = {
+          source_id: sourceRecord.id,
+          source_type: sourceRecord.source_type,
+          storage_path: sourceRecord.storage_path,
+          source_metadata: sourceRecord.source_metadata_json
+        };
+      }
+    }
+
+    const styleRules = await listStyleRules();
+    const evaluation = evaluateOutfitComposition({ garments, styleRules });
+    const outfitId = await saveOutfit({
+      title: values.title,
+      source_type: "imported",
+      weather_context_json: {},
+      explanation: "Imported from an outfit image.",
+      explanation_json: {
+        provenance,
+        fired_rules: evaluation.firedRules,
+        insights: evaluation.insights
+      },
+      garments: garments.map((garment) => ({
+        garment_id: garment.id as string,
+        role: categoryToRole(garment.category, garment.subcategory, garment.title)
+      }))
+    });
+
+    revalidatePath("/outfits");
+    revalidatePath("/wardrobe/review");
+    return { status: "success", outfitId, firedRuleCount: evaluation.firedRules.length };
+  } catch (error) {
+    return { status: "error", message: userFacingError(error, "we couldn't save that look. try again.") };
+  }
+}
 
 const acceptDraftSchema = z.object({
   draftId: z.string().uuid(),
@@ -56,6 +131,8 @@ export async function acceptDraftAction(
         purchase_currency?: string;
       }
 ): Promise<DraftActionResult> {
+  let createdSourceId: string | null = null;
+
   try {
     const draftId = typeof input === "string" ? input : input.draftId;
     const user = await getRequiredUser();
@@ -82,6 +159,7 @@ export async function acceptDraftAction(
         source_metadata_json: Record<string, unknown> | null;
       } | null;
     }).garment_sources;
+    createdSourceId = (draft as { source_id?: string | null }).source_id ?? null;
     const p = (draft as { draft_payload_json: Record<string, unknown> }).draft_payload_json;
     const draftMetadata =
       p.metadata && typeof p.metadata === "object" && !Array.isArray(p.metadata)
@@ -124,107 +202,80 @@ export async function acceptDraftAction(
       values.purchase_currency?.trim() ||
       (p.purchase_currency ? String(p.purchase_currency) : undefined);
 
-    const garment = await createGarment(
-      {
-        category: values.category,
-        title: values.title,
-        brand,
-        material: values.material?.trim() || (p.material ? String(p.material) : undefined),
-        description: values.notes?.trim() || undefined,
-        retailer,
-        purchase_price: Number.isFinite(purchasePrice) ? purchasePrice : undefined,
-        purchase_currency: purchaseCurrency || undefined,
-        extraction_metadata_json: {
-          draft_source: p.source_type ?? "direct_upload",
-          draft_style: values.style?.trim() || p.style || null,
-          draft_colour: colour,
-          draft_brand: brand ?? null,
-          draft_retailer: retailer ?? null,
-          source_id: (draft as { source_id?: string | null }).source_id ?? null,
-          ...draftMetadata
-        }
-      },
-      { primaryColourFamily: canonicalColour ? canonicalColour.family : null }
-    );
-
-    // "How the price got in" (DATA_MODEL.md Piece.priceSource) — never guessed,
-    // derived from the draft's own source type.
-    if (Number.isFinite(purchasePrice)) {
-      const sourceType = typeof p.source_type === "string" ? p.source_type : null;
-      const priceSource = sourceType
-        ? RECEIPT_LIKE_SOURCE_TYPES.has(sourceType)
-          ? "receipt"
-          : sourceType === "product_url" || sourceType === "website_image"
-            ? "store"
-            : "manual"
-        : null;
-
-      if (priceSource) {
-        await supabase
-          .from("garments")
-          .update({ price_source: priceSource } as never)
-          .eq("id", garment.id as string)
-          .eq("user_id", user.id);
-      }
-    }
-
-    // Write the crop embedding back onto the accepted garment so future
-    // batches can compare against it — "duplicate compare above 0.92
-    // similarity, never a silent merge" (see lib/domain/ingestion/duplicates.ts).
-    if (Array.isArray(p.embedding) && p.embedding.length > 0) {
-      await supabase
-        .from("garments")
-        .update({ embedding: p.embedding } as never)
-        .eq("id", garment.id as string)
-        .eq("user_id", user.id);
-    }
-
-    const sourceId = (draft as { source_id?: string | null }).source_id;
-    if (sourceId) {
-      await supabase
-        .from("garment_sources")
-        .update({ garment_id: garment.id } as never)
-        .eq("id", sourceId)
-        .eq("user_id", user.id);
-    }
-
+    const sourceId = createdSourceId;
+    if (!sourceId) throw new Error("Draft provenance is missing. Try uploading it again.");
+    const sourceType = typeof p.source_type === "string" ? p.source_type : null;
+    const priceSource = Number.isFinite(purchasePrice)
+      ? sourceType && RECEIPT_LIKE_SOURCE_TYPES.has(sourceType)
+        ? "receipt"
+        : sourceType === "product_url" || sourceType === "website_image"
+          ? "store"
+          : "manual"
+      : null;
+    const updatedDraftPayload = {
+      ...p,
+      title: values.title,
+      tag: values.title,
+      category: values.category,
+      colour,
+      brand: brand ?? null,
+      material: values.material?.trim() || null,
+      style: values.style?.trim() || null,
+      notes: values.notes?.trim() || null,
+      retailer: retailer ?? null,
+      purchase_price: Number.isFinite(purchasePrice) ? purchasePrice : null,
+      purchase_currency: purchaseCurrency || null
+    };
     const cropPath = typeof p.crop_path === "string" && p.crop_path ? p.crop_path : null;
-    if (cropPath) {
-      await supabase
-        .from("garment_images")
-        .insert({
-          garment_id: garment.id,
-          image_type: "cropped",
-          storage_path: cropPath,
-          width: typeof p.crop_width === "number" ? p.crop_width : null,
-          height: typeof p.crop_height === "number" ? p.crop_height : null,
-        } as never);
-    } else if (source?.source_type === "direct_upload" && source.storage_path) {
-      await supabase
-        .from("garment_images")
-        .insert({
-          garment_id: garment.id,
-          image_type: "original",
-          storage_path: source.storage_path,
-          width:
-            source.source_metadata_json &&
-            typeof source.source_metadata_json.width === "number"
-              ? source.source_metadata_json.width
-              : null,
-          height:
-            source.source_metadata_json &&
-            typeof source.source_metadata_json.height === "number"
-              ? source.source_metadata_json.height
-              : null
-        } as never);
-    } else if (
+    const imagePath = cropPath || (source?.source_type === "direct_upload" ? source.storage_path : null);
+    const garmentId = await acceptGarmentDraftTransaction({
+      userId: user.id,
+      draftId: values.draftId,
+      title: values.title,
+      category: values.category,
+      brand: brand ?? null,
+      material: values.material?.trim() || (p.material ? String(p.material) : null),
+      description: values.notes?.trim() || null,
+      retailer: retailer ?? null,
+      purchasePrice: Number.isFinite(purchasePrice) ? purchasePrice : null,
+      purchaseCurrency: purchaseCurrency || null,
+      priceSource,
+      colourFamily: canonicalColour?.family ?? null,
+      embedding: Array.isArray(p.embedding)
+        ? p.embedding.filter((value): value is number => typeof value === "number")
+        : null,
+      extractionMetadata: {
+        draft_source: typeof p.source_type === "string" ? p.source_type : "direct_upload",
+        draft_style: values.style?.trim() || (typeof p.style === "string" ? p.style : null),
+        draft_colour: colour,
+        draft_brand: brand ?? null,
+        draft_retailer: retailer ?? null,
+        source_id: sourceId,
+        ...draftMetadata
+      },
+      sourceId,
+      imageType: cropPath ? "cropped" : imagePath ? "original" : null,
+      imagePath,
+      imageWidth: cropPath && typeof p.crop_width === "number"
+        ? p.crop_width
+        : source?.source_metadata_json && typeof source.source_metadata_json.width === "number"
+          ? source.source_metadata_json.width
+          : null,
+      imageHeight: cropPath && typeof p.crop_height === "number"
+        ? p.crop_height
+        : source?.source_metadata_json && typeof source.source_metadata_json.height === "number"
+          ? source.source_metadata_json.height
+          : null,
+      draftPayload: updatedDraftPayload
+    });
+    if (
       p.source_type === "product_url" &&
       typeof draftMetadata.extracted_image_url === "string" &&
       draftMetadata.extracted_image_url.length > 0
     ) {
       try {
         const uploadedImage = await addGarmentImageFromUrl({
-          garmentId: garment.id as string,
+          garmentId,
           imageUrl: draftMetadata.extracted_image_url,
           fileNameHint: values.title.replace(/\s+/g, "-").toLowerCase(),
           cropBox: null
@@ -232,7 +283,7 @@ export async function acceptDraftAction(
 
         if (!canonicalColour && uploadedImage.colourAnalysis.inferredFamily) {
           await setGarmentPrimaryColourFamily({
-            garmentId: garment.id as string,
+            garmentId,
             primaryColourFamily: uploadedImage.colourAnalysis.inferredFamily
           });
         }
@@ -242,44 +293,15 @@ export async function acceptDraftAction(
       }
     }
 
-    const { error: updateError } = await supabase
-      .from("garment_drafts")
-      .update({
-        status: "confirmed",
-        draft_payload_json: {
-          ...p,
-          title: values.title,
-          tag: values.title,
-          category: values.category,
-          colour,
-          brand: brand ?? null,
-          material: values.material?.trim() || null,
-          style: values.style?.trim() || null,
-          notes: values.notes?.trim() || null,
-          retailer: retailer ?? null,
-          purchase_price: Number.isFinite(purchasePrice) ? purchasePrice : null,
-          purchase_currency: purchaseCurrency || null
-        }
-      } as never) // supabase generated types are overly strict here
-      .eq("id", values.draftId)
-      .eq("user_id", user.id);
-
-    if (updateError) {
-      return {
-        status: "error",
-        message: "Garment created but draft could not be confirmed.",
-      };
-    }
-
     revalidatePath("/wardrobe");
     revalidatePath("/wardrobe/review");
     revalidatePath("/");
 
-    return { status: "success", garmentId: garment.id as string };
+    return { status: "success", garmentId };
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Failed to accept draft.",
+      message: userFacingError(error, "we couldn't add that piece yet. your draft is still safe to review."),
     };
   }
 }
@@ -329,6 +351,15 @@ export async function resolveReceiptMatchAction(
 
     const currency = typeof payload.purchase_currency === "string" ? payload.purchase_currency : "AUD";
 
+    const { data: existingGarment, error: existingGarmentError } = await supabase
+      .from("garments")
+      .select("id, purchase_price, purchase_currency, price_source")
+      .eq("id", parsedGarmentId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (existingGarmentError) throw new Error(existingGarmentError.message);
+    if (!existingGarment) return { status: "error", message: "That wardrobe piece is no longer available." };
+
     await setGarmentPriceManually({
       garmentId: parsedGarmentId,
       priceCents: Math.round(price * 100),
@@ -343,6 +374,15 @@ export async function resolveReceiptMatchAction(
       .eq("user_id", user.id);
 
     if (rejectError) {
+      await supabase
+        .from("garments")
+        .update({
+          purchase_price: (existingGarment as { purchase_price: number | null }).purchase_price,
+          purchase_currency: (existingGarment as { purchase_currency: string | null }).purchase_currency,
+          price_source: (existingGarment as { price_source: string | null }).price_source
+        } as never)
+        .eq("id", parsedGarmentId)
+        .eq("user_id", user.id);
       return { status: "error", message: rejectError.message };
     }
 
@@ -354,7 +394,7 @@ export async function resolveReceiptMatchAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to resolve this match."
+      message: userFacingError(error, "we couldn't attach that price. the receipt is still waiting for review.")
     };
   }
 }
@@ -396,7 +436,7 @@ export async function rejectDraftAction(draftId: string): Promise<DraftActionRes
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Failed to reject draft.",
+      message: userFacingError(error, "we couldn't dismiss that draft. try again.")
     };
   }
 }

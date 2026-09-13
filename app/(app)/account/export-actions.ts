@@ -1,6 +1,7 @@
 "use server";
 
 import { requestDataExport, getLatestDataExportRequest } from "@/lib/domain/account/service";
+import { userFacingError } from "@/lib/ui/user-facing-error";
 
 export async function requestDataExportAction() {
   try {
@@ -12,7 +13,7 @@ export async function requestDataExportAction() {
   } catch (error) {
     return {
       status: "error" as const,
-      message: error instanceof Error ? error.message : "Could not start your export."
+      message: userFacingError(error, "we couldn't start your export. try again.")
     };
   }
 }

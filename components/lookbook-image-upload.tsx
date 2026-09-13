@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { DestructiveActionButton } from "@/components/destructive-action-button";
 
 export function LookbookImageUpload({
@@ -97,9 +98,12 @@ export function LookbookImageUpload({
         <div className="flex flex-col gap-4">
           {previewUrl ? (
             <div className="relative">
-              <img
+              <Image
                 src={previewUrl}
                 alt="Selected lookbook upload preview"
+                width={800}
+                height={1000}
+                unoptimized
                 className="h-[26rem] w-full object-contain bg-[rgba(0,0,0,0.03)]"
               />
               <div className="absolute right-4 top-4">
@@ -124,10 +128,13 @@ export function LookbookImageUpload({
 
           {!previewUrl ? (
             <span className="flex flex-col items-center justify-center px-6 py-10 text-center">
-              <img
+              <Image
                 src="/illustrations/chatting.svg"
                 alt=""
                 aria-hidden="true"
+                width={112}
+                height={112}
+                unoptimized
                 className="mb-5 h-28 w-28 object-contain opacity-90"
               />
               <p className="text-base font-semibold tracking-[-0.02em]">

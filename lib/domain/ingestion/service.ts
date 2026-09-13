@@ -5,6 +5,7 @@ import type { PipelineAnalyzeResponse } from "./index";
 import { directUploadAdapter, outfitDecompositionAdapter, type ReviewDraftAdapterPayload, type IngestionAdapterKind } from "./adapters";
 import type { Json, TablesInsert } from "@/types/database";
 import sharp from "sharp";
+import { validateImageUpload } from "./limits";
 
 type GarmentDraftInsert = TablesInsert<"garment_drafts">;
 type GarmentSourceInsert = TablesInsert<"garment_sources">;
@@ -53,6 +54,7 @@ export async function createDraftsFromPipelineResult(
         material: draftPayload.material,
         style: draftPayload.style ?? "",
         tag: draftPayload.tag ?? draftPayload.title ?? "Photo upload draft",
+        role: draftPayload.role ?? null,
         embedding: draftPayload.embedding,
         source_type: draftPayload.sourceType,
         source_label: draftPayload.sourceLabel,
@@ -355,6 +357,7 @@ export interface PendingDraft {
     metadata: Record<string, unknown>;
     field_confidence?: Record<string, number>;
     field_provenance?: Record<string, string>;
+    role?: string | null;
     duplicate_hint?: {
       garment_id: string;
       title: string | null;
@@ -375,13 +378,14 @@ export async function createGarmentSource(params: {
 
   const safeFileName = params.file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
   const storagePath = `${user.id}/pipeline-uploads/${Date.now()}-${safeFileName}`;
+  const validated = await validateImageUpload(params.file);
 
   const { error: uploadError } = await supabase.storage
     .from("garment-originals")
-    .upload(storagePath, params.file, {
+    .upload(storagePath, validated.buffer, {
       cacheControl: "3600",
       upsert: false,
-      contentType: params.file.type || undefined,
+      contentType: validated.contentType,
     });
 
   if (uploadError) throw new Error(uploadError.message);
@@ -397,9 +401,9 @@ export async function createGarmentSource(params: {
       parse_status: "pending",
       source_metadata_json: {
         filename: params.file.name,
-        mime_type: params.file.type || null,
-        width: params.width ?? null,
-        height: params.height ?? null,
+        mime_type: validated.contentType,
+        width: params.width ?? validated.width,
+        height: params.height ?? validated.height,
       },
     }) as never)
     .select("id")
@@ -623,9 +627,36 @@ export async function listPendingDrafts(): Promise<PendingDraft[]> {
   }>;
 
   const previewUrlsBySourceId = new Map<string, string | null>();
+  const cropUrlsByDraftId = new Map<string, string | null>();
+  const cropPathsByDraftId = new Map<string, string>();
   const imageSourceIdsByBucket = new Map<string, string[]>();
   const imagePathBySourceId = new Map<string, string>();
   const previewKindBySourceId = new Map<string, "image" | "document" | null>();
+
+  for (const row of data) {
+    const cropPath = row.draft_payload_json.crop_path;
+    if (typeof cropPath === "string" && cropPath.length > 0) {
+      cropPathsByDraftId.set(row.id, cropPath);
+    }
+  }
+
+  const cropPaths = [...cropPathsByDraftId.values()];
+  if (cropPaths.length) {
+    const { data: signedCrops, error: signedCropsError } = await supabase.storage
+      .from("garment-cutouts")
+      .createSignedUrls(cropPaths, 60 * 60);
+
+    if (!signedCropsError) {
+      const signedCropByPath = new Map(
+        signedCrops
+          .filter((item) => Boolean(item.path))
+          .map((item) => [item.path as string, item.signedUrl ?? null])
+      );
+      for (const [draftId, path] of cropPathsByDraftId) {
+        cropUrlsByDraftId.set(draftId, signedCropByPath.get(path) ?? null);
+      }
+    }
+  }
 
   for (const row of data) {
     const source = row.garment_sources;
@@ -703,7 +734,8 @@ export async function listPendingDrafts(): Promise<PendingDraft[]> {
       created_at: row.created_at,
       source_created_at: row.garment_sources?.created_at ?? null,
       confidence: row.confidence,
-      preview_url: previewUrlsBySourceId.get(row.source_id) ?? null,
+      preview_url:
+        cropUrlsByDraftId.get(row.id) ?? previewUrlsBySourceId.get(row.source_id) ?? null,
       preview_kind: previewKindBySourceId.get(row.source_id) ?? null,
       source_image_width:
         row.garment_sources?.source_metadata_json &&
@@ -760,6 +792,7 @@ export async function listPendingDrafts(): Promise<PendingDraft[]> {
           !Array.isArray(p.field_provenance)
             ? (p.field_provenance as Record<string, string>)
             : undefined,
+        role: typeof p.role === "string" ? p.role : null,
         duplicate_hint:
           p.duplicate_hint &&
           typeof p.duplicate_hint === "object" &&

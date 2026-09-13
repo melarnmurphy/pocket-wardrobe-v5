@@ -62,6 +62,7 @@ function makeGarment(title: string, category = "shoes"): GarmentListItem {
     images: [],
     preview_url: null,
     recent_wear_events: [],
+    three_d_assets: [],
     primary_colour_family: null,
     primary_colour_hex: null
   } as GarmentListItem;

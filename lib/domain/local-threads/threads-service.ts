@@ -5,7 +5,7 @@ import { getRequiredUser } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getOrCreateProfile } from "@/lib/domain/profile/service";
 import { getGarmentById } from "@/lib/domain/wardrobe/service";
-import { classifyUploadFile } from "@/lib/domain/ingestion/limits";
+import { classifyUploadFile } from "@/lib/domain/ingestion/limits.shared";
 import { createLocalListingInputSchema, type CreateLocalListingInput } from "@/lib/domain/local-threads";
 import type { TablesInsert, TablesUpdate } from "@/types/database";
 

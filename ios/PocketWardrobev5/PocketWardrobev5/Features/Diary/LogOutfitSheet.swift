@@ -159,6 +159,7 @@ struct LogOutfitSheet: View {
                             }
                         }
                         .disabled(selectedGarmentIDs.isEmpty || wearLogStore.isSaving)
+                        .accessibilityIdentifier("diary.save")
                         PWButton(title: "Cancel", style: .ghost) { dismiss() }
                     }
                     .padding(.top, 28)
@@ -221,6 +222,7 @@ struct LogOutfitSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { showingGarmentPicker = false }
+                        .accessibilityIdentifier("diary.garment-picker.done")
                 }
             }
         }
@@ -301,6 +303,7 @@ struct LogOutfitSheet: View {
             sourceOptionLabel(icon: icon, title: title, sub: sub, isSelected: isSelected)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(value == .closet ? "diary.source.closet" : "diary.source.\(value)")
     }
 
     private func sourceOptionLabel(icon: String, title: String, sub: String, isSelected: Bool) -> some View {

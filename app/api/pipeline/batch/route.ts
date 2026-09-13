@@ -1,24 +1,21 @@
-import { after, NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { AuthenticationError, getRequiredUser } from "@/lib/auth";
-import { getServerEnv } from "@/lib/env";
-import { canUseFeatureLabels } from "@/lib/domain/entitlements/service";
-import { callPipelineService } from "@/lib/domain/ingestion/client";
+import { createGarmentSource } from "@/lib/domain/ingestion/service";
 import {
-  createDraftsFromPipelineResult,
-  createGarmentSource,
-  createManualPhotoReviewDraft
-} from "@/lib/domain/ingestion/service";
-import { appendBatchProgress, completeBatch, createPhotoBatch } from "@/lib/domain/ingestion/batch";
-import { createClient } from "@/lib/supabase/server";
+  appendBatchFailure,
+  createPhotoBatch,
+  enqueuePhotoBatchItem,
+  finishBatchIfReady
+} from "@/lib/domain/ingestion/batch";
+import { userFacingError } from "@/lib/ui/user-facing-error";
+import { logger } from "@/lib/observability/logger";
 
 const MAX_PHOTOS_PER_BATCH = 30;
 
 /**
- * 14a → 14b batch add. Responds with a batchId immediately, then keeps
- * working through the photos via next/server's after() — the batch row
- * (processing_jobs) is the durable state, so the client can close the app
- * and find the work finished when it comes back, per BUILD_ORDER phase 3's
- * "done when": twenty photos become twenty reviewable drafts.
+ * 14a → 14b batch add. Uploads are persisted first, then each photo is
+ * represented by a durable processing job. A worker owns analysis so the
+ * request lifecycle is never responsible for completing the batch.
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -40,59 +37,36 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const featureLabelsEnabled = await canUseFeatureLabels();
+    const user = await getRequiredUser();
     const batchId = await createPhotoBatch(files.length);
-    const pipelineServiceUrl = featureLabelsEnabled ? getServerEnv().PIPELINE_SERVICE_URL : null;
 
-    after(async () => {
-      for (const file of files) {
-        try {
-          const { sourceId, storagePath } = await createGarmentSource({ file });
-
-          if (!pipelineServiceUrl) {
-            const draftId = await createManualPhotoReviewDraft({ sourceId, fileName: file.name });
-            await appendBatchProgress(batchId, [draftId]);
-            continue;
-          }
-
-          const supabase = await createClient();
-          const { data: signedUrlData } = await supabase.storage
-            .from("garment-originals")
-            .createSignedUrl(storagePath, 5 * 60);
-
-          if (!signedUrlData?.signedUrl) {
-            await appendBatchProgress(batchId, []);
-            continue;
-          }
-
-          const result = await callPipelineService({
-            serviceUrl: pipelineServiceUrl,
-            imageUrl: signedUrlData.signedUrl
-          });
-
-          const draftIds = await createDraftsFromPipelineResult({
-            sourceId,
-            storagePath,
-            result
-          });
-
-          await appendBatchProgress(batchId, draftIds);
-        } catch {
-          // One bad photo shouldn't sink the batch — count it as done with
-          // no draft, the reviewer sees the shortfall against total_count.
-          await appendBatchProgress(batchId, []);
-        }
+    for (const file of files) {
+      try {
+        const source = await createGarmentSource({ file });
+        await enqueuePhotoBatchItem({
+          batchId,
+          sourceId: source.sourceId,
+          storagePath: source.storagePath,
+          fileName: file.name,
+          userId: user.id
+        });
+      } catch (error) {
+        await appendBatchFailure(
+          batchId,
+          `${file.name} could not be uploaded. Try it again.`
+        );
+        logger.error("photo_batch_queue_failed", error, { fileName: file.name });
       }
+    }
 
-      await completeBatch(batchId);
-    });
+    await finishBatchIfReady(batchId);
 
     return NextResponse.json({ batchId, totalCount: files.length });
   } catch (error) {
     if (error instanceof AuthenticationError) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
-    const message = error instanceof Error ? error.message : "Unable to start the batch.";
+    const message = userFacingError(error, "we couldn't start those photos. check your connection and try again.");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

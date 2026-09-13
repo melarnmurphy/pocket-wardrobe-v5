@@ -8,6 +8,7 @@ import {
 } from "@/lib/domain/wishlist/service";
 import type { AddWishlistItemInput } from "@/lib/domain/wishlist";
 import { extractProductMetadataFromUrl } from "@/lib/domain/ingestion/extractors";
+import { userFacingError } from "@/lib/ui/user-facing-error";
 
 type ActionResult = { status: "success" } | { status: "error"; message: string };
 
@@ -31,7 +32,7 @@ export async function resolveWishlistUrlAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Couldn't read that link."
+      message: userFacingError(error, "we couldn't read that link. check it and try again.")
     };
   }
 }
@@ -44,7 +45,7 @@ export async function addWishlistItemAction(input: AddWishlistItemInput): Promis
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to add that."
+      message: userFacingError(error, "we couldn't add that to your wishlist. try again.")
     };
   }
 }
@@ -57,7 +58,7 @@ export async function removeWishlistItemAction(entryId: string): Promise<ActionR
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to remove that."
+      message: userFacingError(error, "we couldn't remove that from your wishlist. try again.")
     };
   }
 }
@@ -70,7 +71,7 @@ export async function setWatchPriceAction(entryId: string, watch: boolean): Prom
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to update that."
+      message: userFacingError(error, "we couldn't update that wishlist item. try again.")
     };
   }
 }

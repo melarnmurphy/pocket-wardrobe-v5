@@ -14,6 +14,7 @@ import {
   saveAvatarLayout,
   uploadAvatarPhoto
 } from "@/lib/domain/avatar/service";
+import { userFacingError } from "@/lib/ui/user-facing-error";
 
 const avatarPhotoSchema = z.object({
   file: z.instanceof(File).refine((file) => file.size > 0, "Choose an avatar photo."),
@@ -104,7 +105,7 @@ export async function uploadAvatarPhotoAction(formData: FormData): Promise<Avata
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Could not save avatar photo."
+      message: userFacingError(error, "we couldn't save that avatar photo. try again.")
     };
   }
 }
@@ -129,7 +130,7 @@ export async function generateAvatarPhotoAction(formData: FormData): Promise<Ava
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Could not generate avatar."
+      message: userFacingError(error, "we couldn't generate your avatar. try again.")
     };
   }
 }
@@ -152,7 +153,7 @@ export async function saveAvatarLayoutAction(formData: FormData): Promise<Avatar
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Could not save avatar layout."
+      message: userFacingError(error, "we couldn't save your avatar layout. try again.")
     };
   }
 }
@@ -195,7 +196,7 @@ export async function saveAvatarMeasurementsAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Could not save avatar measurements."
+      message: userFacingError(error, "we couldn't save those measurements. try again.")
     };
   }
 }

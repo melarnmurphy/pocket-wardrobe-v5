@@ -14,7 +14,24 @@ const fromMock = vi.fn((table: string) => {
       update: () => ({ eq: draftUpdateEqMock })
     };
   }
-  return { update: () => ({ eq: () => ({ eq: () => ({ error: null }) }) }) };
+  return {
+    select: () => ({
+      eq: () => ({
+        eq: () => ({
+          maybeSingle: vi.fn(async () => ({
+            data: {
+              id: "cccccccc-cccc-cccc-cccc-cccccccccccc",
+              purchase_price: null,
+              purchase_currency: null,
+              price_source: null
+            },
+            error: null
+          }))
+        })
+      })
+    }),
+    update: () => ({ eq: () => ({ eq: () => ({ error: null }) }) })
+  };
 });
 
 vi.mock("@/lib/supabase/server", () => ({

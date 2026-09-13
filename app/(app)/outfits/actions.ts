@@ -16,6 +16,7 @@ import type { PlacementInput } from "@/lib/domain/outfits";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import { categoryToRole } from "@/lib/domain/outfits/generator";
 import type { GarmentListItem } from "@/lib/domain/wardrobe/service";
+import { userFacingError } from "@/lib/ui/user-facing-error";
 
 /** Generate an outfit. `isPro` is false for this iteration. */
 export async function generateOutfitAction(
@@ -30,7 +31,7 @@ export async function generateOutfitAction(
     }
     return { outfit };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Generation failed" };
+    return { error: userFacingError(e, "we couldn't put that look together. try again.") };
   }
 }
 
@@ -61,7 +62,7 @@ export async function saveOutfitAction(
     revalidatePath("/calendar");
     return { id };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Save failed" };
+    return { error: userFacingError(e, "we couldn't save that look. try again.") };
   }
 }
 
@@ -77,7 +78,7 @@ export async function saveOutfitPlacementsAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to save the arrangement."
+      message: userFacingError(error, "we couldn't save the arrangement. try again.")
     };
   }
 }
@@ -106,7 +107,7 @@ export async function deleteOutfitAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Delete failed."
+      message: userFacingError(error, "we couldn't delete that look. try again.")
     };
   }
 }

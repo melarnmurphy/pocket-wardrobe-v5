@@ -5,6 +5,7 @@ import { getRequiredMobileUser } from "@/lib/auth-mobile";
 import { verifyAppleTransaction, isAppleTransactionActive } from "@/lib/domain/billing/apple";
 import { syncUserEntitlementsFromBillingEvent } from "@/lib/domain/billing/service";
 import { getUserEntitlements } from "@/lib/domain/entitlements/service";
+import { createServiceClient } from "@/lib/supabase/service";
 
 export const dynamic = "force-dynamic";
 
@@ -48,15 +49,49 @@ export async function POST(request: NextRequest) {
     }
 
     const isActive = isAppleTransactionActive(decoded);
+    const transactionId = decoded.transactionId;
+    if (!transactionId) {
+      return NextResponse.json({ error: "Apple returned an incomplete transaction." }, { status: 400 });
+    }
 
-    await syncUserEntitlementsFromBillingEvent({
-      user_id: user.id,
-      plan_tier: isActive ? "premium" : "free",
-      billing_provider: "apple",
-      billing_customer_id: decoded.originalTransactionId ?? null,
-      billing_subscription_id: decoded.transactionId ?? null,
-      billing_status: isActive ? "active" : "lapsed"
-    });
+    const billingRpc = createServiceClient();
+    const { data: claimed, error: claimError } = await billingRpc.rpc(
+      "claim_apple_transaction" as never,
+      {
+        p_transaction_id: transactionId,
+        p_user_id: user.id,
+        p_original_transaction_id: decoded.originalTransactionId ?? null,
+        p_expires_at: decoded.expiresDate ? new Date(decoded.expiresDate).toISOString() : null
+      } as never
+    );
+    if (claimError) throw new Error(claimError.message);
+    if (!claimed) {
+      const entitlements = await getUserEntitlements({ supabase, userId: user.id });
+      return NextResponse.json({ entitlements, duplicate: true });
+    }
+
+    try {
+      await syncUserEntitlementsFromBillingEvent({
+        user_id: user.id,
+        plan_tier: isActive ? "premium" : "free",
+        billing_provider: "apple",
+        billing_customer_id: decoded.originalTransactionId ?? null,
+        billing_subscription_id: transactionId,
+        billing_status: isActive ? "active" : "lapsed"
+      });
+      await billingRpc.rpc("finish_apple_transaction" as never, {
+        p_transaction_id: transactionId,
+        p_status: "succeeded",
+        p_error_message: null
+      } as never);
+    } catch (error) {
+      await billingRpc.rpc("finish_apple_transaction" as never, {
+        p_transaction_id: transactionId,
+        p_status: "failed",
+        p_error_message: error instanceof Error ? error.message : "Entitlement sync failed"
+      } as never);
+      throw error;
+    }
 
     const entitlements = await getUserEntitlements({ supabase, userId: user.id });
     return NextResponse.json({ entitlements });
@@ -65,7 +100,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to verify purchase" },
+      { error: "We couldn’t verify that purchase right now. Please try again." },
       { status: 500 }
     );
   }

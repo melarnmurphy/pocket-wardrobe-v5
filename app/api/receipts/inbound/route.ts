@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { getServerEnv } from "@/lib/env";
 import {
@@ -19,10 +20,10 @@ import {
  * and accept each line in /wardrobe/review.
  */
 const inboundEmailSchema = z.object({
-  to: z.string().min(1),
-  from: z.string().min(1),
-  subject: z.string().default(""),
-  text: z.string().default("")
+  to: z.string().min(1).max(320),
+  from: z.string().min(1).max(320),
+  subject: z.string().max(500).default(""),
+  text: z.string().max(100_000).default("")
 });
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -37,8 +38,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const providedSecret = request.headers.get("x-garderobe-receipts-secret");
 
-  if (!providedSecret || providedSecret !== env.RECEIPTS_INBOUND_SECRET) {
+  const supplied = Buffer.from(providedSecret ?? "");
+  const expected = Buffer.from(env.RECEIPTS_INBOUND_SECRET);
+  if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  const contentLength = Number(request.headers.get("content-length") ?? 0);
+  if (contentLength > 128 * 1024) {
+    return NextResponse.json({ error: "Inbound email payload is too large." }, { status: 413 });
   }
 
   try {

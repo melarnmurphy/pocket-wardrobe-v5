@@ -8,6 +8,7 @@ import {
   setUserPasswordById,
   syncUserEntitlementsFromBillingEvent
 } from "@/lib/domain/billing/service";
+import { userFacingError } from "@/lib/ui/user-facing-error";
 
 export type AdminEntitlementActionState = {
   status: "idle" | "success" | "error";
@@ -103,7 +104,7 @@ export async function saveEntitlementAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Could not save entitlements."
+      message: userFacingError(error, "we couldn't save those entitlements. try again.")
     };
   }
 }
@@ -132,7 +133,7 @@ export async function setUserPasswordAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Could not update password."
+      message: userFacingError(error, "we couldn't update that password. try again.")
     };
   }
 }

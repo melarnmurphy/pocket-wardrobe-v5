@@ -30,40 +30,30 @@ export const getSidebarCounts = cache(async (): Promise<SidebarCounts> => {
   if (!user) return EMPTY_COUNTS;
 
   const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_sidebar_counts" as never);
 
-  const [wardrobe, looks, wishlist, letGo, threads] = await Promise.all([
-    supabase
-      .from("garments")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .is("archived_at", null)
-      .is("deleted_at", null),
-    supabase.from("outfits").select("id", { count: "exact", head: true }).eq("user_id", user.id),
-    supabase
-      .from("lookbook_entries")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .eq("source_type", "wishlist")
-      .is("bought_garment_id", null),
-    supabase
-      .from("garments")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .is("archived_at", null)
-      .is("deleted_at", null)
-      .not("let_go_reason", "is", null),
-    supabase
-      .from("threads")
-      .select("id", { count: "exact", head: true })
-      .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-  ]);
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const row = (Array.isArray(data) ? data[0] : data) as {
+    wardrobe?: number | string | null;
+    looks?: number | string | null;
+    wishlist?: number | string | null;
+    let_go?: number | string | null;
+    handovers?: number | string | null;
+  } | null;
+
+  if (!row) return EMPTY_COUNTS;
+
+  const count = (value: number | string | null | undefined) => Number(value ?? 0);
 
   return {
-    wardrobe: wardrobe.count ?? 0,
-    looks: looks.count ?? 0,
-    wishlist: wishlist.count ?? 0,
-    letGo: letGo.count ?? 0,
+    wardrobe: count(row.wardrobe),
+    looks: count(row.looks),
+    wishlist: count(row.wishlist),
+    letGo: count(row.let_go),
     nearby: 0,
-    handovers: threads.count ?? 0
+    handovers: count(row.handovers)
   };
 });

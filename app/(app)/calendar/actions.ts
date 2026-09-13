@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { setOutfitPlannedDate } from "@/lib/domain/outfits/service";
+import { userFacingError } from "@/lib/ui/user-facing-error";
 
 export type CalendarActionResult =
   | { status: "success" }
@@ -25,7 +26,7 @@ export async function planOutfitForDateAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Could not plan outfit."
+      message: userFacingError(error, "we couldn't plan that outfit. try again.")
     };
   }
 }
@@ -41,7 +42,7 @@ export async function unplanOutfitAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Could not remove plan."
+      message: userFacingError(error, "we couldn't remove that plan. try again.")
     };
   }
 }

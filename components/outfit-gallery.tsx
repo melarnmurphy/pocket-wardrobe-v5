@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
 import { z } from "zod";
 import type { OutfitInsight, OutfitWithItems } from "@/lib/domain/outfits";
@@ -56,7 +56,6 @@ export function OutfitGallery({ outfits }: OutfitGalleryProps) {
 }
 
 function SavedOutfitCard({ outfit }: { outfit: OutfitWithItems }) {
-  const router = useRouter();
   const slots = thumbnailSlots(outfit.items);
   const insights = parseSavedOutfitInsights(outfit);
   const [deleteState, deleteFormAction] = useActionState(
@@ -72,9 +71,8 @@ function SavedOutfitCard({ outfit }: { outfit: OutfitWithItems }) {
         tone: "success",
         message: deleteState.message || "Outfit deleted."
       });
-      router.refresh();
     }
-  }, [deleteState.message, deleteState.status, router]);
+  }, [deleteState.message, deleteState.status]);
 
   useEffect(() => {
     if (deleteState.status === "error" && deleteState.message) {
@@ -106,11 +104,12 @@ function SavedOutfitCard({ outfit }: { outfit: OutfitWithItems }) {
               className="aspect-square overflow-hidden rounded-[6px] bg-[rgba(17,17,17,0.08)]"
             >
               {item.garment.preview_url ? (
-                <img
+                <Image
                   src={item.garment.preview_url}
                   alt={item.garment.title ?? item.garment.category}
-                  loading="lazy"
-                  decoding="async"
+                  width={400}
+                  height={400}
+                  unoptimized
                   className="h-full w-full object-cover"
                 />
               ) : (

@@ -128,7 +128,6 @@ async function nameClustersBatch(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabase = { from: (table: string) => any };
 
 async function upsertStory(

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useId, useState } from "react";
+import Image from "next/image";
 import { useFormStatus } from "react-dom";
 import { DestructiveActionButton } from "@/components/destructive-action-button";
 import { FormFeedback } from "@/components/form-feedback";
@@ -134,9 +135,12 @@ export function GarmentImageUpload({
       >
         {previewUrl ? (
           <div className="relative">
-            <img
+            <Image
               src={previewUrl}
               alt="Selected garment upload preview"
+              width={800}
+              height={800}
+              unoptimized
               className="h-72 w-full object-contain bg-[rgba(0,0,0,0.03)]"
             />
             <div className="absolute right-4 top-4">
@@ -162,10 +166,13 @@ export function GarmentImageUpload({
             htmlFor={inputId}
             className="flex cursor-pointer flex-col items-center justify-center px-6 py-10 text-center"
           >
-            <img
+            <Image
               src="/illustrations/chatting.svg"
               alt=""
               aria-hidden="true"
+              width={88}
+              height={88}
+              unoptimized
               className="mb-5 h-24 w-24 object-contain opacity-90"
             />
             <p className="text-base font-semibold tracking-[-0.02em]">

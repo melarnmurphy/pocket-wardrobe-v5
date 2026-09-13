@@ -229,6 +229,7 @@ create table if not exists public.wear_events (
   worn_at timestamptz not null default now(),
   occasion text,
   notes text,
+  photo_storage_path text,
   outfit_id uuid,
   created_at timestamptz not null default now()
 );
@@ -752,7 +753,8 @@ create table if not exists public.processing_jobs (
       'colour_extraction',
       'embedding_generation',
       'garment_classification',
-      'photo_batch'
+      'photo_batch',
+      'photo_batch_item'
     )
   ),
   status text not null check (
@@ -763,12 +765,43 @@ create table if not exists public.processing_jobs (
   input_payload_json jsonb not null default '{}'::jsonb,
   result_payload_json jsonb not null default '{}'::jsonb,
   error_message text,
+  attempt_count integer not null default 0,
+  available_at timestamptz not null default now(),
+  locked_at timestamptz,
   -- 'photo_batch' progress (14a/14b) — see migration 025.
   done_count integer not null default 0,
   total_count integer not null default 0,
   draft_ids uuid[] not null default '{}',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
+);
+
+create table if not exists public.trend_follows (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  trend_signal_id uuid not null references public.trend_signals(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (user_id, trend_signal_id)
+);
+
+create table if not exists public.billing_webhook_events (
+  event_id text primary key,
+  event_type text not null,
+  status text not null default 'processing' check (status in ('processing', 'succeeded', 'failed')),
+  error_message text,
+  received_at timestamptz not null default now(),
+  processed_at timestamptz
+);
+
+create table if not exists public.apple_transaction_events (
+  transaction_id text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  original_transaction_id text,
+  status text not null default 'processing' check (status in ('processing', 'succeeded', 'failed')),
+  expires_at timestamptz,
+  error_message text,
+  received_at timestamptz not null default now(),
+  processed_at timestamptz
 );
 
 -- =============================================================================
@@ -1055,6 +1088,9 @@ alter table public.avatar_profiles enable row level security;
 alter table public.avatar_measurement_sets enable row level security;
 alter table public.garment_3d_assets enable row level security;
 alter table public.processing_jobs enable row level security;
+alter table public.trend_follows enable row level security;
+alter table public.billing_webhook_events enable row level security;
+alter table public.apple_transaction_events enable row level security;
 alter table public.profiles enable row level security;
 alter table public.local_listings enable row level security;
 alter table public.threads enable row level security;
@@ -1177,14 +1213,16 @@ for delete using (auth.uid() = user_id);
 create policy user_entitlements_select_own on public.user_entitlements
 for select using (auth.uid() = user_id);
 
-create policy user_entitlements_insert_own on public.user_entitlements
+-- Entitlements are billing authority. Client users may read their own row,
+-- but only trusted server-side billing/webhook code may write it.
+
+create policy trend_follows_select_own on public.trend_follows
+for select using (auth.uid() = user_id);
+
+create policy trend_follows_insert_own on public.trend_follows
 for insert with check (auth.uid() = user_id);
 
-create policy user_entitlements_update_own on public.user_entitlements
-for update using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
-
-create policy user_entitlements_delete_own on public.user_entitlements
+create policy trend_follows_delete_own on public.trend_follows
 for delete using (auth.uid() = user_id);
 
 create policy lookbook_entries_select_own on public.lookbook_entries
@@ -1453,15 +1491,8 @@ for delete using (
 create policy processing_jobs_select_own on public.processing_jobs
 for select using (auth.uid() = user_id);
 
-create policy processing_jobs_insert_own on public.processing_jobs
-for insert with check (auth.uid() = user_id);
-
-create policy processing_jobs_update_own on public.processing_jobs
-for update using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
-
-create policy processing_jobs_delete_own on public.processing_jobs
-for delete using (auth.uid() = user_id);
+-- Processing jobs are worker-owned. The client may read its own progress,
+-- while trusted server-side code creates and updates jobs.
 
 -- Global readable tables; writes should be service-side only.
 
@@ -1672,5 +1703,38 @@ insert into public.style_rules (
 --   ('garment-3d-assets', 'garment-3d-assets', false),
 --   ('source-thumbnails', 'source-thumbnails', false)
 -- on conflict (id) do nothing;
+
+-- App chrome count query. auth.uid() keeps the result scoped to the signed-in user.
+create or replace function public.get_sidebar_counts()
+returns table (
+  wardrobe bigint,
+  looks bigint,
+  wishlist bigint,
+  let_go bigint,
+  handovers bigint
+)
+language sql
+stable
+set search_path = public
+as $$
+  select
+    (select count(*) from public.garments
+      where user_id = auth.uid() and archived_at is null and deleted_at is null),
+    (select count(*) from public.outfits
+      where user_id = auth.uid()),
+    (select count(*) from public.lookbook_entries
+      where user_id = auth.uid()
+        and source_type = 'wishlist'
+        and bought_garment_id is null),
+    (select count(*) from public.garments
+      where user_id = auth.uid()
+        and archived_at is null
+        and deleted_at is null
+        and let_go_reason is not null),
+    (select count(*) from public.threads
+      where buyer_id = auth.uid() or seller_id = auth.uid());
+$$;
+
+grant execute on function public.get_sidebar_counts() to authenticated;
 
 commit;

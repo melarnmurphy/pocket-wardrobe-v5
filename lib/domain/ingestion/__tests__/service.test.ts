@@ -44,6 +44,13 @@ const validGarment = {
   embedding: Array(768).fill(0.1),
 };
 
+async function makeImageFile() {
+  const buffer = await sharp({
+    create: { width: 2, height: 2, channels: 3, background: { r: 255, g: 255, b: 255 } }
+  }).jpeg().toBuffer();
+  return new File([new Uint8Array(buffer)], "outfit.jpg", { type: "image/jpeg" });
+}
+
 describe("createDraftsFromPipelineResult", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -205,7 +212,7 @@ describe("createGarmentSource", () => {
     const { createGarmentSource } = await import(
       "@/lib/domain/ingestion/service"
     );
-    const file = new File(["data"], "outfit.jpg", { type: "image/jpeg" });
+    const file = await makeImageFile();
 
     const result = await createGarmentSource({ file, width: 1200, height: 1600 });
 
@@ -230,7 +237,7 @@ describe("createGarmentSource", () => {
     const { createGarmentSource } = await import(
       "@/lib/domain/ingestion/service"
     );
-    const file = new File(["data"], "outfit.jpg", { type: "image/jpeg" });
+    const file = await makeImageFile();
 
     await expect(createGarmentSource({ file })).rejects.toThrow("insert failed");
     expect(mockStorageRemove).toHaveBeenCalled();
@@ -242,7 +249,7 @@ describe("createGarmentSource", () => {
     const { createGarmentSource } = await import(
       "@/lib/domain/ingestion/service"
     );
-    const file = new File(["data"], "outfit.jpg", { type: "image/jpeg" });
+    const file = await makeImageFile();
 
     await expect(createGarmentSource({ file })).rejects.toThrow("upload failed");
     expect(mockInsert).not.toHaveBeenCalled();

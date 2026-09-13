@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["dom", "dom.iterable", "es2022"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "es2022"
+    ],
     "allowJs": false,
     "skipLibCheck": true,
     "strict": true,
@@ -11,27 +15,67 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
-    "plugins": [{ "name": "next" }],
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
     "baseUrl": ".",
     "paths": {
-      "@/app/account/*": ["./app/(app)/account/*"],
-      "@/app/admin/*": ["./app/(app)/admin/*"],
-      "@/app/auth/*": ["./app/(app)/auth/*"],
-      "@/app/calendar/*": ["./app/(app)/calendar/*"],
-      "@/app/local/*": ["./app/(app)/local/*"],
-      "@/app/lookbook/*": ["./app/(app)/lookbook/*"],
-      "@/app/onboarding/*": ["./app/(app)/onboarding/*"],
-      "@/app/outfits/*": ["./app/(app)/outfits/*"],
-      "@/app/style-rules/*": ["./app/(app)/style-rules/*"],
-      "@/app/today/*": ["./app/(app)/today/*"],
-      "@/app/trends/*": ["./app/(app)/trends/*"],
-      "@/app/wardrobe/*": ["./app/(app)/wardrobe/*"],
-      "@/app/wishlist/*": ["./app/(app)/wishlist/*"],
-      "@/*": ["./*"]
+      "@/app/account/*": [
+        "./app/(app)/account/*"
+      ],
+      "@/app/admin/*": [
+        "./app/(app)/admin/*"
+      ],
+      "@/app/auth/*": [
+        "./app/(app)/auth/*"
+      ],
+      "@/app/calendar/*": [
+        "./app/(app)/calendar/*"
+      ],
+      "@/app/local/*": [
+        "./app/(app)/local/*"
+      ],
+      "@/app/lookbook/*": [
+        "./app/(app)/lookbook/*"
+      ],
+      "@/app/onboarding/*": [
+        "./app/(app)/onboarding/*"
+      ],
+      "@/app/outfits/*": [
+        "./app/(app)/outfits/*"
+      ],
+      "@/app/style-rules/*": [
+        "./app/(app)/style-rules/*"
+      ],
+      "@/app/today/*": [
+        "./app/(app)/today/*"
+      ],
+      "@/app/trends/*": [
+        "./app/(app)/trends/*"
+      ],
+      "@/app/wardrobe/*": [
+        "./app/(app)/wardrobe/*"
+      ],
+      "@/app/wishlist/*": [
+        "./app/(app)/wishlist/*"
+      ],
+      "@/*": [
+        "./*"
+      ]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

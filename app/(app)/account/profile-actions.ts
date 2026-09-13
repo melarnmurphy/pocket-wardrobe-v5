@@ -7,6 +7,7 @@ import {
   updateProfile,
   updateSizes
 } from "@/lib/domain/profile/service";
+import { userFacingError } from "@/lib/ui/user-facing-error";
 
 export type ProfileActionState = {
   status: "idle" | "success" | "error";
@@ -28,7 +29,7 @@ export async function updateProfileAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to save."
+      message: userFacingError(error, "we couldn't save your profile. try again.")
     };
   }
 }
@@ -53,7 +54,7 @@ export async function updateSizesAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to save sizes."
+      message: userFacingError(error, "we couldn't save your sizes. try again.")
     };
   }
 }
@@ -72,7 +73,7 @@ export async function updateLocalPrivacyAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to save privacy settings."
+      message: userFacingError(error, "we couldn't save your privacy settings. try again.")
     };
   }
 }
@@ -84,7 +85,7 @@ export async function completeOnboardingAction(): Promise<ProfileActionState> {
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to finish onboarding."
+      message: userFacingError(error, "we couldn't finish setting up your account. try again.")
     };
   }
 }

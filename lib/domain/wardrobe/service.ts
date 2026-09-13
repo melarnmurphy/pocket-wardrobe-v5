@@ -16,6 +16,7 @@ import {
   type WardrobeColourFamily
 } from "@/lib/domain/wardrobe/colours";
 import { garment3dAssetSchema } from "@/lib/domain/avatar";
+import { assertSafeRemoteUrl } from "@/lib/security/safe-remote-url";
 import {
   analyseImageColours,
   buildFeatureDerivative
@@ -609,6 +610,59 @@ export async function createGarment(
     recent_wear_events: [],
     preview_url: null
   };
+}
+
+export async function acceptGarmentDraftTransaction(params: {
+  userId: string;
+  draftId: string;
+  title: string;
+  category: string;
+  brand?: string | null;
+  material?: string | null;
+  description?: string | null;
+  retailer?: string | null;
+  purchasePrice?: number | null;
+  purchaseCurrency?: string | null;
+  priceSource?: string | null;
+  colourFamily?: string | null;
+  embedding?: number[] | null;
+  extractionMetadata: Json;
+  sourceId: string;
+  imageType?: "original" | "cutout" | "cropped" | "thumbnail" | null;
+  imagePath?: string | null;
+  imageWidth?: number | null;
+  imageHeight?: number | null;
+  draftPayload: Json;
+}): Promise<string> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("accept_garment_draft" as never, {
+    p_user_id: params.userId,
+    p_draft_id: params.draftId,
+    p_title: params.title,
+    p_category: params.category,
+    p_brand: params.brand ?? null,
+    p_material: params.material ?? null,
+    p_description: params.description ?? null,
+    p_retailer: params.retailer ?? null,
+    p_purchase_price: params.purchasePrice ?? null,
+    p_purchase_currency: params.purchaseCurrency ?? null,
+    p_price_source: params.priceSource ?? null,
+    p_colour_family: params.colourFamily ?? null,
+    p_embedding: params.embedding ?? null,
+    p_extraction_metadata: params.extractionMetadata,
+    p_source_id: params.sourceId,
+    p_image_type: params.imageType ?? null,
+    p_image_path: params.imagePath ?? null,
+    p_image_width: params.imageWidth ?? null,
+    p_image_height: params.imageHeight ?? null,
+    p_draft_payload: params.draftPayload
+  } as never);
+
+  if (error || typeof data !== "string") {
+    throw new Error(error?.message ?? "Garment could not be saved.");
+  }
+
+  return data;
 }
 
 export async function updateGarment(
@@ -1449,12 +1503,15 @@ export async function addGarmentImageFromUrl(params: {
     throw new Error("Garment not found.");
   }
 
+  await assertSafeRemoteUrl(params.imageUrl);
+
   const imageResponse = await fetch(params.imageUrl, {
     headers: {
       "user-agent":
         "Mozilla/5.0 (compatible; PocketWardrobeBot/0.1; +https://example.com/bot)"
     },
     cache: "no-store",
+    redirect: "error",
     signal: AbortSignal.timeout(PRODUCT_IMAGE_FETCH_TIMEOUT_MS)
   });
 

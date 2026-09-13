@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { getServerEnv } from "@/lib/env";
 import { syncUserEntitlementsFromBillingEvent } from "@/lib/domain/billing/service";
+import { timingSafeEqual } from "node:crypto";
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,8 +17,15 @@ export async function POST(request: NextRequest) {
 
     const providedSecret = request.headers.get("x-pocketwardrobe-sync-secret");
 
-    if (!providedSecret || providedSecret !== env.BILLING_SYNC_SECRET) {
+    const supplied = Buffer.from(providedSecret ?? "");
+    const expected = Buffer.from(env.BILLING_SYNC_SECRET);
+    if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    const contentLength = Number(request.headers.get("content-length") ?? 0);
+    if (contentLength > 64 * 1024) {
+      return NextResponse.json({ error: "Billing sync payload is too large." }, { status: 413 });
     }
 
     const payload = await request.json();
@@ -30,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Billing sync failed." },
+      { error: "Billing sync is temporarily unavailable. Please retry." },
       { status: 500 }
     );
   }

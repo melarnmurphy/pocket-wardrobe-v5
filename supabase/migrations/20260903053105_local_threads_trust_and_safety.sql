@@ -1,0 +1,2 @@
+-- Reconciliation marker for the remote migration with this version.
+-- Its schema change is represented by 038_local_threads_trust_and_safety.sql.

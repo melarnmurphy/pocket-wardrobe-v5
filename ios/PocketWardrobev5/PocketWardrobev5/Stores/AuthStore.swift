@@ -26,6 +26,15 @@ final class AuthStore {
                 self.isBootstrapping = false
             }
         }
+
+        // Auth state normally emits immediately, but a stalled network or
+        // simulator service must not leave the app on an inaccessible spinner.
+        // The auth client can still deliver a later sign-in/session event.
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 8 * 1_000_000_000)
+            guard let self, self.isBootstrapping else { return }
+            self.isBootstrapping = false
+        }
     }
 
     func signIn(email: String, password: String) async {

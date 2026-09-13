@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useFormStatus } from "react-dom";
 import type { Route } from "next";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -118,21 +119,25 @@ export function LookbookEntryCard({
     >
       {entry.preview_url ? (
         <div className="overflow-hidden border-b border-[var(--line)] bg-white">
-          <img
+          <Image
             src={entry.preview_url}
             alt={entry.title || "Lookbook reference image"}
-            loading="lazy"
-            decoding="async"
+            width={640}
+            height={800}
+            unoptimized
             className="aspect-[4/5] w-full object-cover"
           />
         </div>
       ) : (
         <div className="flex aspect-[4/5] items-center justify-center border-b border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,243,255,0.92))]">
           <div className="text-center">
-            <img
+            <Image
               src="/illustrations/chatting.svg"
               alt=""
               aria-hidden="true"
+              width={80}
+              height={80}
+              unoptimized
               className="mx-auto h-20 w-20 object-contain opacity-80"
             />
             <p className="mt-4 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">

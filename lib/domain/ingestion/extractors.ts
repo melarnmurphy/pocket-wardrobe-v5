@@ -2,6 +2,7 @@ import {
   extractGarmentAttributesFromText,
   type GarmentAttribute,
 } from "./garment-attributes";
+import { assertSafeRemoteUrl, readResponseTextWithLimit } from "@/lib/security/safe-remote-url";
 
 const CLOTHING_KEYWORDS = [
   "dress",
@@ -163,12 +164,14 @@ export async function extractProductMetadataFromUrl(
     if (options?.preRenderedHtml) {
       html = options.preRenderedHtml;
     } else {
+      const safeUrl = await assertSafeRemoteUrl(url);
       const response = await fetch(url, {
         headers: {
           "user-agent":
             "Mozilla/5.0 (compatible; PocketWardrobeBot/0.1; +https://example.com/bot)"
         },
         cache: "no-store",
+        redirect: "error",
         signal: AbortSignal.timeout(PRODUCT_METADATA_FETCH_TIMEOUT_MS)
       });
 
@@ -191,7 +194,7 @@ export async function extractProductMetadataFromUrl(
         };
       }
 
-      html = await response.text();
+      html = await readResponseTextWithLimit(response, 2 * 1024 * 1024);
     }
     const adapter = extractRetailerAdapterMetadata(parsedUrl.hostname, html);
     const ogTitle = findMetaContent(html, "property", "og:title");

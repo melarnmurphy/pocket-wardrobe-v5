@@ -3,7 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Pocket Wardrobe uses your camera to photograph a garment so it can add it to your wardrobe.</string>
+	<string>Pocket Wardrobe uses your camera to photograph garments and outfit diary entries.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Pocket Wardrobe uses your photo library so you can add garment and outfit images.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Fraunces-LightItalic.ttf</string>

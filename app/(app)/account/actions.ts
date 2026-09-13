@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { updateAccountProfile } from "@/lib/domain/account/service";
+import { userFacingError } from "@/lib/ui/user-facing-error";
 
 const updateAccountProfileSchema = z.object({
   display_name: z.string().trim().max(80).optional(),
@@ -46,7 +47,7 @@ export async function updateAccountProfileAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Could not update account details."
+      message: userFacingError(error, "we couldn't update your account details. try again.")
     };
   }
 }

@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { getStripeClient } from "@/lib/stripe";
 import { getServerEnv } from "@/lib/env";
 import { syncUserEntitlementsFromBillingEvent } from "@/lib/domain/billing/service";
+import { createServiceClient } from "@/lib/supabase/service";
 
 function planTierForSubscriptionStatus(status: Stripe.Subscription.Status): "free" | "premium" {
   return status === "active" || status === "trialing" ? "premium" : "free";
@@ -70,6 +71,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid signature." }, { status: 400 });
   }
 
+  const serviceClient = createServiceClient();
+  const billingRpc = serviceClient as unknown as {
+    rpc(name: string, args: Record<string, unknown>): Promise<{ data: unknown; error: { message: string } | null }>;
+  };
+  const { data: claimed, error: claimError } = await billingRpc.rpc("claim_billing_webhook_event", {
+    p_event_id: event.id,
+    p_event_type: event.type
+  });
+
+  if (claimError) {
+    return NextResponse.json({ error: "Billing event tracking is unavailable." }, { status: 503 });
+  }
+  if (claimed !== true) {
+    return NextResponse.json({ received: true, duplicate: true }, { status: 200 });
+  }
+
   try {
     switch (event.type) {
       case "checkout.session.completed": {
@@ -101,9 +118,19 @@ export async function POST(request: NextRequest) {
       default:
         break;
     }
+    await billingRpc.rpc("finish_billing_webhook_event", {
+      p_event_id: event.id,
+      p_status: "succeeded",
+      p_error_message: null
+    });
   } catch (error) {
+    await billingRpc.rpc("finish_billing_webhook_event", {
+      p_event_id: event.id,
+      p_status: "failed",
+      p_error_message: error instanceof Error ? error.message : "Webhook handling failed."
+    });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Webhook handling failed." },
+      { error: "Billing update could not be completed. Stripe can safely retry this event." },
       { status: 500 }
     );
   }

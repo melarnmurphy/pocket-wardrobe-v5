@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getAccountClosureBlockers, closeUserAccount } from "@/lib/domain/account/service";
 import type { AccountActionState } from "@/app/account/photos-actions";
+import { userFacingError } from "@/lib/ui/user-facing-error";
 
 export async function getCloseAccountBlockersAction() {
   return getAccountClosureBlockers();
@@ -30,7 +31,7 @@ export async function closeUserAccountAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Could not close your account."
+      message: userFacingError(error, "we couldn't close your account. try again.")
     };
   }
 

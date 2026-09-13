@@ -1,18 +1,12 @@
 import type { Metadata } from "next";
 import { Abril_Fatface, Bodoni_Moda, IBM_Plex_Mono, Karla } from "next/font/google";
+import { NavigationProgress } from "@/components/navigation-progress";
 import "./globals.css";
 
 const bodyFont = Karla({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
   variable: "--font-body",
-  display: "swap"
-});
-
-const displayFont = Karla({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-display",
   display: "swap"
 });
 
@@ -50,8 +44,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${bodyFont.variable} ${displayFont.variable} ${bodoniFont.variable} ${abrilFont.variable} ${monoFont.variable}`}
+        className={`${bodyFont.variable} ${bodoniFont.variable} ${abrilFont.variable} ${monoFont.variable}`}
       >
+        <NavigationProgress />
         {children}
       </body>
     </html>

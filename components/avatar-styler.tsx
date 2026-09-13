@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition, type PointerEvent } from "react";
+import Image from "next/image";
 import {
   ChevronLeft,
   ChevronRight,
@@ -267,9 +268,12 @@ export function AvatarStyler({
             onPointerCancel={() => setDragState(null)}
           >
             {avatarUrl ? (
-              <img
+              <Image
                 src={avatarUrl}
                 alt="Static avatar reference"
+                width={900}
+                height={1200}
+                unoptimized
                 className="absolute inset-0 h-full w-full object-contain"
               />
             ) : (
@@ -579,9 +583,12 @@ export function AvatarStyler({
                     >
                       <div className="h-16 w-12 shrink-0 overflow-hidden rounded-[6px] bg-[rgba(17,17,17,0.04)]">
                         {garment.preview_url ? (
-                          <img
+                          <Image
                             src={garment.preview_url}
                             alt={displayGarmentName(garment)}
+                            width={160}
+                            height={200}
+                            unoptimized
                             className="h-full w-full object-cover"
                           />
                         ) : null}
@@ -877,9 +884,12 @@ function SelectedGarmentTile({
     >
       <div className="aspect-[4/5] bg-[rgba(17,17,17,0.04)]">
         {garment.preview_url ? (
-          <img
+          <Image
             src={garment.preview_url}
             alt={displayGarmentName(garment)}
+            width={400}
+            height={500}
+            unoptimized
             className="h-full w-full object-cover"
           />
         ) : (

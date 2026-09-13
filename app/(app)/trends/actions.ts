@@ -17,6 +17,7 @@ import {
 import type { UserTrendMatch, UserTrendMatchWithSignal, TrendSignalWithColour } from "@/lib/domain/trends/index";
 import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import { createClient } from "@/lib/supabase/server";
+import { userFacingError } from "@/lib/ui/user-facing-error";
 
 export interface TrendMatchWithSignal {
   match: UserTrendMatch;
@@ -127,7 +128,7 @@ export async function followTrendAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to follow this trend."
+      message: userFacingError(error, "we couldn't follow that trend. try again.")
     };
   }
 }
@@ -141,7 +142,7 @@ export async function unfollowTrendAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Unable to unfollow this trend."
+      message: userFacingError(error, "we couldn't unfollow that trend. try again.")
     };
   }
 }
