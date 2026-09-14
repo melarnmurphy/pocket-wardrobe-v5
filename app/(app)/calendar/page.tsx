@@ -40,25 +40,12 @@ export default async function CalendarPage() {
     }));
 
     return (
-      <main className="pw-shell">
-        <div className="mx-auto max-w-2xl pt-6 text-center">
-          <p
-            className="text-[0.72rem] font-semibold uppercase"
-            style={{ letterSpacing: "0.32em", color: "var(--muted)" }}
-          >
-            The Calendar
-          </p>
-          <h1
-            className="mt-3 italic"
-            style={{
-              fontFamily: "var(--font-display), serif",
-              fontSize: "clamp(2rem, 6vw, 3rem)",
-              fontWeight: 400,
-              letterSpacing: "-0.03em"
-            }}
-          >
-            Plan your week.
-          </h1>
+      <main className="pw-shell max-w-6xl">
+        <div className="pw-page-head border-b border-[var(--line)] pb-8 pt-6">
+          <div className="space-y-3">
+            <p className="pw-kicker">The Calendar</p>
+            <h1 className="pw-page-title">Plan your week.</h1>
+          </div>
         </div>
         <div className="mt-8">
           <OutfitCalendar outfits={enriched} todayKey={localTodayKey()} wearsByDate={wearsByDate} />

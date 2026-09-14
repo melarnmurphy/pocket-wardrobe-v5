@@ -28,35 +28,16 @@ export default async function TrendsPage() {
 
   if (!hasStories && trendMatches.length === 0) {
     return (
-      <main className="pw-shell max-w-5xl py-12">
-        <div className="mx-auto max-w-2xl pt-6 text-center">
-          <p
-            className="text-[0.72rem] font-semibold uppercase"
-            style={{ letterSpacing: "0.32em", color: "var(--muted)" }}
-          >
-            Trend Intelligence
-          </p>
-          <h1
-            className="mt-4 italic"
-            style={{
-              fontFamily: "var(--font-display), serif",
-              fontSize: "clamp(3rem, 8vw, 5rem)",
-              fontWeight: 400,
-              letterSpacing: "-0.03em",
-              lineHeight: 0.95
-            }}
-          >
-            No signals
-            <br />
-            yet.
-          </h1>
-          <p
-            className="mx-auto mt-6 max-w-md"
-            style={{ color: "var(--muted)", lineHeight: 1.65 }}
-          >
-            Trigger an ingestion run to populate the global trend dashboard and
-            see what your wardrobe already covers.
-          </p>
+      <main className="pw-shell max-w-5xl">
+        <div className="pw-page-head border-b border-[var(--line)] pb-8 pt-6">
+          <div className="space-y-3">
+            <p className="pw-kicker">Trend Intelligence</p>
+            <h1 className="pw-page-title">No signals yet.</h1>
+            <p className="pw-page-copy">
+              Trigger an ingestion run to populate the global trend dashboard and see what your
+              wardrobe already covers.
+            </p>
+          </div>
         </div>
       </main>
     );
@@ -72,53 +53,29 @@ export default async function TrendsPage() {
 
   return (
     <main className="pw-shell max-w-6xl">
-      {/* ── Editorial header ── */}
-      <div
-        className="border-b px-0 pb-8 pt-6"
-        style={{ borderColor: "var(--line)" }}
-      >
-        <p
-          className="text-[0.72rem] font-semibold uppercase"
-          style={{ letterSpacing: "0.32em", color: "var(--muted)" }}
-        >
-          Trend Intelligence
-        </p>
-        <h1
-          className="mt-4 italic"
-          style={{
-            fontFamily: "var(--font-display), serif",
-            fontSize: "clamp(2.4rem, 6vw, 4rem)",
-            fontWeight: 400,
-            letterSpacing: "-0.03em",
-            lineHeight: 0.95,
-            maxWidth: "14ch"
-          }}
-        >
-          What your wardrobe
-          <br />
-          already owns.
-        </h1>
-        <Link href="/trends/search" className="mt-3 inline-block text-sm underline">
-          search trends
-        </Link>
-        <div
-          className="mt-6 flex flex-wrap gap-6"
-          style={{ color: "var(--muted)", fontSize: "0.78rem" }}
-        >
+      <div className="pw-page-head border-b border-[var(--line)] pb-8 pt-6">
+        <div className="space-y-3">
+          <p className="pw-kicker">Trend Intelligence</p>
+          <h1 className="pw-page-title max-w-[14ch]">What your wardrobe already owns.</h1>
+          <Link href="/trends/search" className="inline-block text-sm underline">
+            search trends
+          </Link>
+        </div>
+        <div className="pw-meta-row">
           <span>
-            <strong style={{ color: "var(--foreground)", fontVariantNumeric: "tabular-nums" }}>
+            <strong className="text-[var(--foreground)] tabular-nums">
               {storyMatches.length}
             </strong>{" "}
             trend stories
           </span>
           <span>
-            <strong style={{ color: "var(--foreground)", fontVariantNumeric: "tabular-nums" }}>
+            <strong className="text-[var(--foreground)] tabular-nums">
               {trendMatches.length}
             </strong>{" "}
             active matches
           </span>
           <span>
-            <strong style={{ color: "var(--foreground)", fontVariantNumeric: "tabular-nums" }}>
+            <strong className="text-[var(--foreground)] tabular-nums">
               {trendMatches.reduce((n, { signal }) => n + signal.sources.length, 0)}
             </strong>{" "}
             evidence links
