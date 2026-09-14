@@ -124,6 +124,18 @@ function redirectMagicLinkError(next: string, email: string, error: string) {
   );
 }
 
+function redirectDuplicateSignup(next: string, email: string) {
+  redirect(
+    buildAuthPageRedirect({
+      mode: "password",
+      next,
+      email,
+      notice: "This email already has a Garderobe account. Sign in below to continue.",
+      errorSource: "duplicate"
+    }) as never
+  );
+}
+
 export async function signInWithMagicLinkAction(formData: FormData) {
   const parsed = signInSchema.safeParse({
     email: formData.get("email"),
@@ -293,9 +305,7 @@ export async function signUpWithPasswordAction(formData: FormData) {
 
   if (error) {
     if (isDuplicateAccountMessage(error.message)) {
-      redirect(
-        buildSignupPageRedirect({ next, ...preservedValues, duplicate: "1" }) as never
-      );
+      redirectDuplicateSignup(next, values.email);
     }
     redirect(
       buildSignupPageRedirect({
@@ -308,9 +318,7 @@ export async function signUpWithPasswordAction(formData: FormData) {
   }
 
   if (looksLikeExistingAccount(data.user)) {
-    redirect(
-      buildSignupPageRedirect({ next, ...preservedValues, duplicate: "1" }) as never
-    );
+    redirectDuplicateSignup(next, values.email);
   }
 
   if (data.session && data.user) {
