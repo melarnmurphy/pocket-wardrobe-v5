@@ -9,6 +9,7 @@ export const NOTIFICATION_KIND_VALUES = [
   "receipt read",
   "wear reminder",
   "batch finished",
+  "batch attention",
   "message"
 ] as const;
 

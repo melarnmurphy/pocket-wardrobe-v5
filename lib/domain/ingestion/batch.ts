@@ -175,14 +175,16 @@ export async function completeBatch(batchId: string, errorMessage?: string) {
 
   await supabase.from("processing_jobs").update(update as never).eq("id", batchId);
 
-  if (!errorMessage && job) {
+  if (job) {
     const { user_id: userId, done_count: doneCount } = job as { user_id: string; done_count: number };
     const { createNotification } = await import("@/lib/domain/notifications/service");
     await createNotification({
       userId,
-      kind: "batch finished",
-      title: "Batch finished",
-      body: `${doneCount} photo${doneCount === 1 ? "" : "s"} processed.`,
+      kind: errorMessage ? "batch attention" : "batch finished",
+      title: errorMessage ? "A few photos need attention" : "Batch finished",
+      body: errorMessage
+        ? "Some photos could not be read. Open the batch to retry or remove them."
+        : `${doneCount} photo${doneCount === 1 ? "" : "s"} processed.`,
       subjectKind: "batch",
       subjectId: batchId
     });
