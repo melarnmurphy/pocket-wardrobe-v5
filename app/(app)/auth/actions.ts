@@ -217,7 +217,10 @@ export async function signUpWithPasswordAction(formData: FormData) {
   try {
     // Sign-up is a low-frequency path. Keep the guard, but allow normal retry behavior
     // so a tester does not get blocked by a couple of failed attempts.
-    await checkRateLimit("sign-up", 10, 3600, { failClosed: true });
+    // Rate limiting is protective infrastructure, not a dependency required
+    // to create an account. If the hosted limiter is unavailable, preserve
+    // signup and let the service log the outage rather than throwing a 500.
+    await checkRateLimit("sign-up", 10, 3600, { failClosed: false });
   } catch (error) {
     if (error instanceof RateLimitError) {
       redirect(
