@@ -10,6 +10,8 @@ import {
   signInWithPasswordAction,
   signUpWithPasswordAction
 } from "@/app/auth/actions";
+import { EmailTakenDialog } from "@/components/garderobe/auth/email-taken-dialog";
+import { ResetSentDialog } from "@/components/garderobe/auth/reset-sent-dialog";
 import styles from "@/app/marketing.module.css";
 
 type Mode = "signin" | "create";
@@ -43,7 +45,8 @@ export default function SignInForm({
   const resetHref = `/sign-in?mode=reset&next=${encodeURIComponent(next)}${email ? `&email=${encodeURIComponent(email)}` : ""}`;
 
   return (
-    <main className={styles.authPage}>
+    <>
+      <main className={styles.authPage}>
       <section className={styles.authCover} aria-label="Garderobe">
         <div className={styles.authGrain} />
         <div className={styles.authVignette} />
@@ -146,7 +149,12 @@ export default function SignInForm({
           </>
         )}
       </section>
-    </main>
+      </main>
+      {duplicate && email ? <EmailTakenDialog email={email} signInHref={signInHref} /> : null}
+      {resetSent && email ? (
+        <ResetSentDialog email={email} next={next} resendAction={sendPasswordResetAction} />
+      ) : null}
+    </>
   );
 }
 
