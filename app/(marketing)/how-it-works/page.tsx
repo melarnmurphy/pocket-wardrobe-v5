@@ -30,8 +30,20 @@ export default function HowItWorksPage() {
             </p>
           </div>
           <div className={styles.stepVisual}>
-            <Image src="/cutouts/piece-cowl-tee.png" alt="" width={90} height={132} />
-            <Image src="/cutouts/piece-wide-trouser.png" alt="" width={80} height={152} />
+            <Image
+              src="/cutouts/piece-cowl-tee.png"
+              alt=""
+              width={90}
+              height={132}
+              style={{ width: "auto", height: "auto" }}
+            />
+            <Image
+              src="/cutouts/piece-wide-trouser.png"
+              alt=""
+              width={80}
+              height={152}
+              style={{ width: "auto", height: "auto" }}
+            />
           </div>
         </div>
 
@@ -71,7 +83,13 @@ export default function HowItWorksPage() {
             </p>
           </div>
           <div className={styles.stepVisual}>
-            <Image src="/cutouts/dress-red-floral.png" alt="" width={90} height={152} />
+            <Image
+              src="/cutouts/dress-red-floral.png"
+              alt=""
+              width={90}
+              height={152}
+              style={{ width: "auto", height: "auto" }}
+            />
             <div>
               <div style={{ fontSize: 13, lineHeight: 1.3, color: "var(--ink)" }}>unley · 6 km</div>
               <div style={{ fontSize: 13, paddingTop: 6, color: "var(--oxblood)" }}>A$120</div>
