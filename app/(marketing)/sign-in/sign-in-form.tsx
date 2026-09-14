@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
   sendPasswordResetAction,
@@ -13,6 +13,7 @@ import {
 import { EmailTakenDialog } from "@/components/garderobe/auth/email-taken-dialog";
 import { ResetSentDialog } from "@/components/garderobe/auth/reset-sent-dialog";
 import styles from "@/app/marketing.module.css";
+import { ADELAIDE_SUBURBS } from "@/lib/domain/local-threads/adelaide-suburbs";
 
 type Mode = "signin" | "create";
 
@@ -99,10 +100,7 @@ export default function SignInForm({
             <Field label="your name" name="name" autoComplete="name" data-1p-ignore="true" placeholder="your name" required />
             <div className={styles.authTwoUp}>
               <Field label="date of birth" name="date_of_birth" type="date" autoComplete="bday" data-1p-ignore="true" required />
-              <label className={styles.authField}>
-                <span>location</span>
-                <input name="location" autoComplete="address-level2" data-1p-ignore="true" placeholder="suburb or city, state" required />
-              </label>
+              <LocationField />
             </div>
             <Field label="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" defaultValue={email} required />
             <Field label="password" name="password" type="password" autoComplete="new-password" placeholder="••••••••" minLength={8} required />
@@ -166,6 +164,80 @@ export default function SignInForm({
         <ResetSentDialog email={email} next={next} resendAction={sendPasswordResetAction} />
       ) : null}
     </>
+  );
+}
+
+function LocationField() {
+  const [value, setValue] = useState("");
+  const [focused, setFocused] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const suggestions = useMemo(() => {
+    const query = value.trim().toLowerCase();
+    if (!query) return ADELAIDE_SUBURBS.slice(0, 6);
+    return ADELAIDE_SUBURBS.filter((entry) => entry.name.includes(query)).slice(0, 6);
+  }, [value]);
+  const showSuggestions = focused && suggestions.length > 0;
+
+  return (
+    <label className={`${styles.authField} ${styles.authLocationField}`}>
+      <span>location</span>
+      <input
+        name="location"
+        value={value}
+        autoComplete="off"
+        data-1p-ignore="true"
+        placeholder="suburb or city, state"
+        required
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={showSuggestions}
+        aria-controls="location-suggestions"
+        onChange={(event) => {
+          setValue(event.target.value);
+          setHighlightedIndex(0);
+        }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => window.setTimeout(() => setFocused(false), 120)}
+        onKeyDown={(event) => {
+          if (!showSuggestions) return;
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            setHighlightedIndex((index) => Math.min(index + 1, suggestions.length - 1));
+          } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            setHighlightedIndex((index) => Math.max(index - 1, 0));
+          } else if (event.key === "Enter") {
+            event.preventDefault();
+            setValue(suggestions[highlightedIndex].name);
+            setFocused(false);
+          } else if (event.key === "Escape") {
+            setFocused(false);
+          }
+        }}
+      />
+      {showSuggestions ? (
+        <div id="location-suggestions" className={styles.authLocationSuggestions} role="listbox" aria-label="Suggested locations">
+          {suggestions.map((suggestion, index) => (
+            <button
+              key={suggestion.name}
+              type="button"
+              role="option"
+              aria-selected={index === highlightedIndex}
+              className={index === highlightedIndex ? styles.authLocationSuggestionActive : styles.authLocationSuggestion}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                setValue(suggestion.name);
+                setFocused(false);
+              }}
+            >
+              {suggestion.name}
+              <span>South Australia</span>
+            </button>
+          ))}
+          <p className={styles.authLocationHint}>You can also enter any suburb or city, state.</p>
+        </div>
+      ) : null}
+    </label>
   );
 }
 
