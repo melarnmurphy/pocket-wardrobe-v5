@@ -965,7 +965,7 @@
   flex: none;
   height: auto;
   max-height: none;
-  padding: 0 44px;
+  padding: 0 44px 8px;
   border-top: 1px solid rgba(30, 26, 23, 0.12);
   background: var(--cream);
   line-height: 1;
