@@ -48,11 +48,17 @@ function fieldConfidence(draft: PendingDraft, field: keyof DraftEdit) {
 export default function BatchReviewFlow({
   drafts,
   batchId,
-  errorMessage
+  errorMessage,
+  processing = false,
+  doneCount = drafts.length,
+  totalCount = drafts.length
 }: {
   drafts: PendingDraft[];
   batchId: string;
   errorMessage?: string | null;
+  processing?: boolean;
+  doneCount?: number;
+  totalCount?: number;
 }) {
   const [step, setStep] = useState<ReviewStep>(drafts.length ? "batch" : "done");
   const [edits, setEdits] = useState<Record<string, DraftEdit>>(() =>
@@ -73,6 +79,46 @@ export default function BatchReviewFlow({
     ? fields.filter((field) => fieldConfidence(current, field) < 0.8)
     : [];
   const questionField: keyof DraftEdit = currentField ?? openFields[0] ?? fields[0] ?? "category";
+
+  if (processing) {
+    const remaining = Math.max(totalCount - doneCount, 0);
+    const slotCount = Math.min(Math.max(drafts.length + remaining, 1), 8);
+
+    return (
+      <main className="gw-review-batch">
+        <div className="gw-review-head">
+          <div>
+            <p className="gw-kicker">reading your photos</p>
+            <h1>We found<br />{drafts.length} so far.</h1>
+          </div>
+          <p className="gw-review-note">
+            Each piece settles into place as it is read. You can leave this screen and come back.
+          </p>
+        </div>
+        <div className={`gw-flatlay gw-flatlay-${slotCount}`} aria-live="polite">
+          {drafts.map((draft, index) => (
+            <div key={draft.id} className={`gw-flat-piece piece-${index}`}>
+              <DraftImage draft={draft} />
+            </div>
+          ))}
+          {Array.from({ length: remaining }, (_, index) => (
+            <div
+              key={`pending-${index}`}
+              className={`gw-flat-piece gw-flat-placeholder piece-${drafts.length + index}`}
+              aria-label="photo still processing"
+            />
+          ))}
+        </div>
+        <div className="gw-review-footer">
+          <span>{doneCount} of {totalCount} photos read</span>
+          <div className="gw-review-progress" aria-label={`${doneCount} of ${totalCount} photos read`}>
+            <span style={{ width: `${totalCount ? Math.round((doneCount / totalCount) * 100) : 0}%` }} />
+          </div>
+          <span className="gw-review-live">still reading…</span>
+        </div>
+      </main>
+    );
+  }
 
   function update(field: keyof DraftEdit, value: string) {
     if (!current) return;

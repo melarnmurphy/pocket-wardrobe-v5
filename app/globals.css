@@ -183,6 +183,7 @@
 .gw-flatlay { position: relative; flex: 1; min-height: 440px; margin: 0 clamp(18px, 5vw, 72px); }
 .gw-flat-piece { position: absolute; display: flex; align-items: center; justify-content: center; height: 44%; width: 21%; filter: drop-shadow(-10px 16px 22px rgba(30,26,23,.16)); }
 .gw-flat-piece img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.gw-flat-placeholder { border: 1px solid rgba(30,26,23,.06); background: rgba(242,236,227,.82); box-shadow: inset 0 0 32px rgba(255,255,255,.48); }
 .gw-flatlay-1 .piece-0, .gw-flatlay-2 .piece-0, .gw-flatlay-3 .piece-0 { left: 30%; top: 8%; }
 .gw-flatlay-2 .piece-1, .gw-flatlay-3 .piece-1 { left: 55%; top: 8%; }
 .gw-flatlay-3 .piece-2 { left: 78%; top: 9%; }
@@ -197,6 +198,9 @@
 .gw-check { position: absolute; right: -8px; top: 15%; display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid rgba(30,26,23,.18); border-radius: 50%; background: var(--cream); font-size: 12px; }
 .gw-flag { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); border: 0; border-radius: 100px; background: var(--oxblood); padding: 10px 14px; color: var(--cream); box-shadow: 0 6px 16px rgba(30,26,23,.18); font-size: 9px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; }
 .gw-review-footer { display: flex; align-items: center; gap: 22px; padding: 20px clamp(28px, 7vw, 92px) 28px; background: linear-gradient(0deg, rgba(250,247,242,.98) 40%, rgba(250,247,242,0)); color: var(--stone); font-size: 10px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; }
+.gw-review-progress { width: min(180px, 20vw); height: 3px; overflow: hidden; background: rgba(30,26,23,.11); }
+.gw-review-progress span { display: block; height: 100%; background: var(--oxblood); transition: width 300ms ease; }
+.gw-review-live { color: var(--oxblood); }
 .gw-review-footer .gw-secondary-link { margin-left: auto; border: 0; background: transparent; color: var(--ink); font-size: 10px; text-decoration: underline; }
 .gw-primary-button { border: 0; border-radius: 100px; background: var(--oxblood); padding: 15px 24px; color: var(--cream); font-size: 10px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; cursor: pointer; }
 .gw-review-question { display: grid; grid-template-columns: minmax(300px, 42%) 1fr; min-height: min(920px, 100vh); background: var(--cream); }

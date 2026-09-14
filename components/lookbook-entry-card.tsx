@@ -295,6 +295,13 @@ export function LookbookEntryCard({
             </span>
           </summary>
 
+          <TagPiecesButton
+            entryId={entry.id}
+            previewUrl={entry.preview_url}
+            garments={garments}
+            createItemAction={createItemAction}
+          />
+
           <div className="mt-4 space-y-3">
             {entry.items.length ? (
               entry.items.map((item) => (
@@ -322,6 +329,144 @@ export function LookbookEntryCard({
         <FormFeedback state={deleteState} />
       </div>
     </article>
+  );
+}
+
+function TagPiecesButton({
+  entryId,
+  previewUrl,
+  garments,
+  createItemAction
+}: {
+  entryId: string;
+  previewUrl: string | null;
+  garments: WardrobeLookupItem[];
+  createItemAction: (
+    state: FormActionState,
+    formData: FormData
+  ) => Promise<FormActionState>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [createState, createFormAction] = useActionState(createItemAction, formActionState);
+  const filteredGarments = garments.filter((garment) =>
+    [garment.title, garment.category, garment.brand]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(query.trim().toLowerCase())
+  );
+
+  useEffect(() => {
+    if (createState.status === "success") {
+      showAppToast({
+        message: createState.message || "Piece tagged",
+        tone: "success"
+      });
+      setOpen(false);
+      setQuery("");
+    }
+  }, [createState.message, createState.status]);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-4 border-b border-[var(--oxblood)] pb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--oxblood)]"
+      >
+        Tag pieces from wardrobe
+      </button>
+
+      {open ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(30,26,23,0.28)] p-0 sm:items-center sm:p-6"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setOpen(false);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`tag-pieces-${entryId}`}
+            className="max-h-[88vh] w-full max-w-xl overflow-y-auto rounded-t-[20px] border border-[var(--line)] bg-[var(--cream)] p-5 shadow-[0_-18px_50px_rgba(30,26,23,0.18)] sm:rounded-[14px]"
+          >
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <p className="pw-kicker">Lookbook link</p>
+                <h3 id={`tag-pieces-${entryId}`} className="mt-2 text-2xl font-light tracking-[-0.04em]">
+                  Tag pieces in this look
+                </h3>
+                <p className="mt-2 text-sm text-[var(--muted)]">
+                  Link what you own to this reference. The lookbook remains separate from your wardrobe.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]"
+              >
+                Close
+              </button>
+            </div>
+
+            {previewUrl ? (
+              <div className="mb-5 overflow-hidden border-y border-[var(--line)] bg-[var(--paper)]">
+                <Image
+                  src={previewUrl}
+                  alt=""
+                  width={640}
+                  height={260}
+                  unoptimized
+                  className="max-h-52 w-full object-contain"
+                />
+              </div>
+            ) : null}
+
+            <label className="flex flex-col gap-2 text-sm">
+              <span className="pw-kicker">Search wardrobe</span>
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search by name, category, or brand"
+                className="rounded-[6px] border border-[var(--line)] bg-white px-4 py-3 outline-none"
+                autoFocus
+              />
+            </label>
+
+            <div className="mt-4 divide-y divide-[var(--line)] border-y border-[var(--line)]">
+              {filteredGarments.length ? filteredGarments.map((garment) => (
+                <form key={garment.id} action={createFormAction}>
+                  <input type="hidden" name="lookbook_entry_id" value={entryId} />
+                  <input type="hidden" name="garment_id" value={garment.id} />
+                  <input type="hidden" name="role" value="" />
+                  <button
+                    type="submit"
+                    className="flex w-full items-center justify-between gap-4 px-1 py-4 text-left transition-colors hover:bg-[rgba(109,42,36,0.05)]"
+                  >
+                    <span>
+                      <span className="block text-sm font-medium text-[var(--foreground)]">
+                        {garment.title || garment.category}
+                      </span>
+                      <span className="mt-1 block text-xs text-[var(--muted)]">
+                        {[garment.brand, garment.category].filter(Boolean).join(" · ")}
+                      </span>
+                    </span>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--oxblood)]">
+                      Tag
+                    </span>
+                  </button>
+                </form>
+              )) : (
+                <p className="px-1 py-5 text-sm text-[var(--muted)]">No wardrobe pieces match that search.</p>
+              )}
+            </div>
+            <FormFeedback state={createState} className="mt-3" />
+          </section>
+        </div>
+      ) : null}
+    </>
   );
 }
 
