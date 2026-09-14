@@ -96,12 +96,12 @@ export default function SignInForm({
         {isCreate ? (
           <form action={signUpWithPasswordAction} className={styles.authForm}>
             <input type="hidden" name="next" value={next} />
-            <Field label="your name" name="name" placeholder="your name" required />
+            <Field label="your name" name="name" autoComplete="name" placeholder="your name" required />
             <div className={styles.authTwoUp}>
-              <Field label="date of birth" name="date_of_birth" type="date" required />
+              <Field label="date of birth" name="date_of_birth" type="date" autoComplete="bday" required />
               <label className={styles.authField}>
                 <span>location</span>
-                <input name="location" list="adelaide-suburbs" placeholder="suburb or city, state" required />
+                <input name="location" list="adelaide-suburbs" autoComplete="address-level2" placeholder="suburb or city, state" required />
                 <datalist id="adelaide-suburbs">
                   {ADELAIDE_SUBURBS.map((suburb) => (
                     <option key={suburb.name} value={titleCase(suburb.name) + ", SA"} />
@@ -109,9 +109,9 @@ export default function SignInForm({
                 </datalist>
               </label>
             </div>
-            <Field label="email" name="email" type="email" placeholder="you@example.com" defaultValue={email} required />
-            <Field label="password" name="password" type="password" placeholder="••••••••" minLength={8} required />
-            <Field label="confirm password" name="confirm_password" type="password" placeholder="••••••••" minLength={8} required />
+            <Field label="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" defaultValue={email} required />
+            <Field label="password" name="password" type="password" autoComplete="new-password" placeholder="••••••••" minLength={8} required />
+            <Field label="confirm password" name="confirm_password" type="password" autoComplete="new-password" placeholder="••••••••" minLength={8} required />
             <div className={styles.authActionRow}>
               <AuthSubmitButton className={styles.authPrimary} pendingLabel="Creating account…">
                 Create account
