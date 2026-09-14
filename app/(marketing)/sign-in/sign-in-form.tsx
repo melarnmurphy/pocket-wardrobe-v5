@@ -12,7 +12,6 @@ import {
 } from "@/app/auth/actions";
 import { EmailTakenDialog } from "@/components/garderobe/auth/email-taken-dialog";
 import { ResetSentDialog } from "@/components/garderobe/auth/reset-sent-dialog";
-import { ADELAIDE_SUBURBS } from "@/lib/domain/local-threads/adelaide-suburbs";
 import styles from "@/app/marketing.module.css";
 
 type Mode = "signin" | "create";
@@ -47,6 +46,7 @@ export default function SignInForm({
 
   return (
     <>
+      <div className={styles.authLayout}>
       <main className={styles.authPage}>
       <section className={styles.authCover} aria-label="Garderobe">
         <div className={styles.authGrain} />
@@ -62,11 +62,6 @@ export default function SignInForm({
             sizes="(max-width: 900px) 100vw, 42vw"
             className={styles.authFigure}
           />
-        </div>
-        <div className={styles.authLegal} aria-label="Garderobe legal information">
-          <span className={styles.authLegalWord}>garderobe pty ltd</span>
-          <span>adelaide</span>
-          <span className={styles.authLegalLinks}>privacy&nbsp;&nbsp;&nbsp; terms&nbsp;&nbsp;&nbsp; contact</span>
         </div>
       </section>
 
@@ -101,17 +96,12 @@ export default function SignInForm({
         {isCreate ? (
           <form action={signUpWithPasswordAction} className={styles.authForm}>
             <input type="hidden" name="next" value={next} />
-            <Field label="your name" name="name" autoComplete="name" placeholder="your name" required />
+            <Field label="your name" name="name" autoComplete="name" data-1p-ignore="true" placeholder="your name" required />
             <div className={styles.authTwoUp}>
-              <Field label="date of birth" name="date_of_birth" type="date" autoComplete="bday" required />
+              <Field label="date of birth" name="date_of_birth" type="date" autoComplete="bday" data-1p-ignore="true" required />
               <label className={styles.authField}>
                 <span>location</span>
-                <input name="location" list="adelaide-suburbs" autoComplete="address-level2" placeholder="suburb or city, state" required />
-                <datalist id="adelaide-suburbs">
-                  {ADELAIDE_SUBURBS.map((suburb) => (
-                    <option key={suburb.name} value={titleCase(suburb.name) + ", SA"} />
-                  ))}
-                </datalist>
+                <input name="location" autoComplete="address-level2" data-1p-ignore="true" placeholder="suburb or city, state" required />
               </label>
             </div>
             <Field label="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" defaultValue={email} required />
@@ -165,6 +155,12 @@ export default function SignInForm({
         )}
       </section>
       </main>
+      <footer className={styles.authFullLegal} aria-label="Garderobe legal information">
+        <span className={styles.authLegalWord}>garderobe pty ltd</span>
+        <span>adelaide</span>
+        <span className={styles.authLegalLinks}>privacy&nbsp;&nbsp;&nbsp; terms&nbsp;&nbsp;&nbsp; contact</span>
+      </footer>
+      </div>
       {duplicate && email ? <EmailTakenDialog email={email} signInHref={signInHref} /> : null}
       {resetSent && email ? (
         <ResetSentDialog email={email} next={next} resendAction={sendPasswordResetAction} />
@@ -175,10 +171,6 @@ export default function SignInForm({
 
 function Field({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return <label className={styles.authField}><span>{label}</span><input {...props} /></label>;
-}
-
-function titleCase(value: string) {
-  return value.replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function AuthSubmitButton({

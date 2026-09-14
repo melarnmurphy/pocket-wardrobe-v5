@@ -1046,7 +1046,8 @@
 }
 
 /* Auth handoff — homepage/SIGN_IN.md. Kept local so the app shell remains unchanged. */
-.authPage { min-height: 100vh; display: grid; grid-template-columns: minmax(0,.82fr) minmax(0,1fr); background: #faf7f2; color: var(--ink); font-family: var(--font-body), Karla, sans-serif; }
+.authLayout { min-height: 100vh; background: #faf7f2; }
+.authPage { min-height: calc(100vh - 76px); display: grid; grid-template-columns: minmax(0,.82fr) minmax(0,1fr); background: #faf7f2; color: var(--ink); font-family: var(--font-body), Karla, sans-serif; }
 .authCover { position: relative; overflow: hidden; background: linear-gradient(180deg,#8d9f84 0 74vh,#eee8df 78vh 100%); }
 .authCoverInner { position: sticky; top: 0; height: 100vh; overflow: hidden; }
 .authMasthead { position: relative; z-index: 1; display: block; padding-top: 22px; color: #faf7f2; text-align: center; font-family: var(--font-bodoni), serif; font-size: clamp(40px,6.2vw,88px); font-weight: 700; line-height: .82; letter-spacing: -.045em; animation: gMast 1.1s cubic-bezier(.2,.7,.2,1) both; }
@@ -1054,7 +1055,7 @@
 .authGrain, .authVignette { position: absolute; z-index: 4; inset: 0; pointer-events: none; }
 .authGrain { opacity: .18; background: repeating-linear-gradient(0deg,rgba(255,255,255,.06) 0 1px,transparent 1px 4px), repeating-linear-gradient(90deg,rgba(30,26,23,.035) 0 1px,transparent 1px 5px), repeating-linear-gradient(45deg,transparent 0 3px,rgba(255,255,255,.035) 3px 4px); }
 .authVignette { background: radial-gradient(ellipse at center,transparent 45%,rgba(30,26,23,.12) 100%); }
-.authLegal { position: absolute; z-index: 5; right: 0; bottom: 0; left: 0; display: flex; align-items: center; gap: 16px; min-height: 76px; padding: 0 32px 8px; border-top: 1px solid rgba(30,26,23,.12); background: rgba(250,247,242,.96); color: #6b6459; font: 400 11px/1 Karla,sans-serif; }
+.authFullLegal { display: flex; align-items: center; gap: 16px; min-height: 76px; padding: 0 44px 8px; border-top: 1px solid rgba(30,26,23,.12); background: var(--cream); color: #6b6459; font: 400 11px/1 Karla,sans-serif; }
 .authLegalWord { color: #6d2a24; font-family: var(--font-bodoni), Georgia, serif; font-size: 16px; font-weight: 700; letter-spacing: -.02em; }
 .authLegalLinks { margin-left: auto; color: #3a332c; }
 .authColumn { padding: 26px clamp(24px,4vw,64px) 56px; }
@@ -1099,7 +1100,7 @@
   .authCover { height: 46vh; }
   .authCoverInner { height: 46vh; }
   .authFigure { height: 93%; }
-  .authLegal { min-height: 58px; padding-inline: 20px; }
+  .authFullLegal { min-height: 58px; padding-inline: 20px; }
   .authLegalLinks { display: none; }
   .authColumn { padding-top: 26px; }
   .authTwoUp { grid-template-columns: 1fr; gap: 0; }
