@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import type { Route } from "next";
 import Link from "next/link";
+import { useId } from "react";
 import { PillButton } from "./pill-button";
 
 type DialogConfirmProps =
@@ -65,6 +66,9 @@ export function Dialog({
   confirmDisabled = false,
   hideCancel = false
 }: DialogProps) {
+  const titleId = useId();
+  const descriptionId = useId();
+
   if (!open) return null;
 
   return (
@@ -75,15 +79,24 @@ export function Dialog({
         onClick={onClose}
         className="absolute inset-0 bg-[rgba(12,10,9,.55)]"
       />
-      <div className="gw-pop relative w-full max-w-[340px] rounded-[14px] bg-[var(--cream)] px-[22px] py-6 text-center">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={description ? descriptionId : undefined}
+        className="gw-pop relative w-full max-w-[340px] rounded-[14px] bg-[var(--cream)] px-[22px] py-6 text-center"
+      >
         {icon ? (
           <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-[var(--blush)] text-[var(--blush-ink)]">
             {icon}
           </div>
         ) : null}
-        <div className="text-[21px] font-light leading-[1.25] text-[var(--ink)]">{title}</div>
+        <div id={titleId} className="text-[21px] font-light leading-[1.25] text-[var(--ink)]">{title}</div>
         {description ? (
-          <div className="px-0 py-[10px] pb-5 text-[12.5px] leading-[1.5] text-[var(--stone)]">
+          <div
+            id={descriptionId}
+            className="px-0 py-[10px] pb-5 text-[12.5px] leading-[1.5] text-[var(--stone)]"
+          >
             {description}
           </div>
         ) : null}
