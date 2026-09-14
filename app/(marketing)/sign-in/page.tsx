@@ -13,6 +13,9 @@ export default async function SignInPage({
     next?: string;
     mode?: string;
     email?: string;
+    name?: string;
+    dateOfBirth?: string;
+    location?: string;
     error?: string;
     errorSource?: string;
     notice?: string;
@@ -29,6 +32,9 @@ export default async function SignInPage({
       initialMode={params.mode === "signup" ? "create" : "signin"}
       resetMode={params.mode === "reset"}
       email={params.email ?? ""}
+      name={params.name ?? ""}
+      dateOfBirth={params.dateOfBirth ?? ""}
+      location={params.location ?? ""}
       error={params.error}
       errorSource={params.errorSource}
       notice={params.notice}

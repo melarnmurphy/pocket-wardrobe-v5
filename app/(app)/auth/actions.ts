@@ -90,6 +90,15 @@ function buildSignupPageRedirect(params: Record<string, string | null | undefine
   return `/sign-up${query ? `?${query}` : ""}`;
 }
 
+function signupFormRedirectValues(rawValues: Record<string, FormDataEntryValue | null>) {
+  return {
+    email: typeof rawValues.email === "string" ? rawValues.email : "",
+    name: typeof rawValues.name === "string" ? rawValues.name : "",
+    dateOfBirth: typeof rawValues.dateOfBirth === "string" ? rawValues.dateOfBirth : "",
+    location: typeof rawValues.location === "string" ? rawValues.location : ""
+  };
+}
+
 function redirectMagicLinkError(next: string, email: string, error: string) {
   redirect(
     buildAuthPageRedirect({
@@ -211,12 +220,13 @@ export async function signUpWithPasswordAction(formData: FormData) {
     confirmPassword: formData.get("confirm_password"),
     next: formData.get("next") ?? "/"
   };
+  const preservedValues = signupFormRedirectValues(rawValues);
   const parsed = signUpSchema.safeParse(rawValues);
   if (!parsed.success) {
     redirect(
       buildSignupPageRedirect({
         next: sanitizeNextPath(String(rawValues.next)),
-        email: typeof rawValues.email === "string" ? rawValues.email : "",
+        ...preservedValues,
         error: parsed.error.issues[0]?.message ?? "Check the account details and try again.",
         errorSource: "signup"
       }) as never
@@ -238,7 +248,7 @@ export async function signUpWithPasswordAction(formData: FormData) {
       redirect(
         buildSignupPageRedirect({
           next,
-          email: values.email,
+          ...preservedValues,
           error: error.message,
           errorSource: "signup"
         }) as never
@@ -270,13 +280,13 @@ export async function signUpWithPasswordAction(formData: FormData) {
   if (error) {
     if (isDuplicateAccountMessage(error.message)) {
       redirect(
-        buildSignupPageRedirect({ next, email: values.email, duplicate: "1" }) as never
+        buildSignupPageRedirect({ next, ...preservedValues, duplicate: "1" }) as never
       );
     }
     redirect(
       buildSignupPageRedirect({
         next,
-        email: values.email,
+        ...preservedValues,
         error: error.message,
         errorSource: "signup"
       }) as never
@@ -285,7 +295,7 @@ export async function signUpWithPasswordAction(formData: FormData) {
 
   if (looksLikeExistingAccount(data.user)) {
     redirect(
-      buildSignupPageRedirect({ next, email: values.email, duplicate: "1" }) as never
+      buildSignupPageRedirect({ next, ...preservedValues, duplicate: "1" }) as never
     );
   }
 

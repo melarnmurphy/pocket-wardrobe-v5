@@ -22,6 +22,9 @@ type Props = {
   initialMode: Mode;
   resetMode: boolean;
   email: string;
+  name?: string;
+  dateOfBirth?: string;
+  location?: string;
   error?: string;
   errorSource?: string;
   notice?: string;
@@ -34,6 +37,9 @@ export default function SignInForm({
   initialMode,
   resetMode,
   email,
+  name = "",
+  dateOfBirth = "",
+  location = "",
   error,
   errorSource,
   notice,
@@ -97,10 +103,10 @@ export default function SignInForm({
         {isCreate ? (
           <form action={signUpWithPasswordAction} className={styles.authForm} data-1p-ignore="true">
             <input type="hidden" name="next" value={next} />
-            <Field label="your name" name="name" autoComplete="name" data-1p-ignore="true" placeholder="your name" required />
+            <Field label="your name" name="name" autoComplete="name" data-1p-ignore="true" placeholder="your name" defaultValue={name} required />
             <div className={styles.authTwoUp}>
-              <Field label="date of birth" name="date_of_birth" type="date" autoComplete="bday" data-1p-ignore="true" required />
-              <LocationField />
+              <Field label="date of birth" name="date_of_birth" type="date" autoComplete="bday" data-1p-ignore="true" defaultValue={dateOfBirth} required />
+              <LocationField initialValue={location} />
             </div>
             <Field label="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" defaultValue={email} required />
             <Field label="password" name="password" type="password" autoComplete="new-password" placeholder="••••••••" minLength={8} required />
@@ -167,8 +173,8 @@ export default function SignInForm({
   );
 }
 
-function LocationField() {
-  const [value, setValue] = useState("");
+function LocationField({ initialValue }: { initialValue: string }) {
+  const [value, setValue] = useState(initialValue);
   const [focused, setFocused] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const suggestions = useMemo(() => {

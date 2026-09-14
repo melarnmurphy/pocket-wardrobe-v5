@@ -9,7 +9,17 @@ export const metadata: Metadata = {
 export default async function SignUpPage({
   searchParams
 }: {
-  searchParams: Promise<{ next?: string; email?: string; error?: string; errorSource?: string; notice?: string; duplicate?: string }>;
+  searchParams: Promise<{
+    next?: string;
+    email?: string;
+    name?: string;
+    dateOfBirth?: string;
+    location?: string;
+    error?: string;
+    errorSource?: string;
+    notice?: string;
+    duplicate?: string;
+  }>;
 }) {
   const params = await searchParams;
   const next = params.next?.startsWith("/") ? params.next : "/onboarding";
@@ -20,6 +30,9 @@ export default async function SignUpPage({
       initialMode="create"
       resetMode={false}
       email={params.email ?? ""}
+      name={params.name ?? ""}
+      dateOfBirth={params.dateOfBirth ?? ""}
+      location={params.location ?? ""}
       error={params.error}
       errorSource={params.errorSource}
       notice={params.notice}
