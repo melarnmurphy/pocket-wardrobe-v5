@@ -94,7 +94,7 @@ export default function SignInForm({
         ) : null}
 
         {isCreate ? (
-          <form action={signUpWithPasswordAction} className={styles.authForm}>
+          <form action={signUpWithPasswordAction} className={styles.authForm} data-1p-ignore="true">
             <input type="hidden" name="next" value={next} />
             <Field label="your name" name="name" autoComplete="name" data-1p-ignore="true" placeholder="your name" required />
             <div className={styles.authTwoUp}>
