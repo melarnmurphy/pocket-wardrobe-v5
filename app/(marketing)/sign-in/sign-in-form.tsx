@@ -63,6 +63,11 @@ export default function SignInForm({
             className={styles.authFigure}
           />
         </div>
+        <div className={styles.authLegal} aria-label="Garderobe legal information">
+          <span className={styles.authLegalWord}>garderobe pty ltd</span>
+          <span>adelaide</span>
+          <span className={styles.authLegalLinks}>privacy&nbsp;&nbsp;&nbsp; terms&nbsp;&nbsp;&nbsp; contact</span>
+        </div>
       </section>
 
       <section className={styles.authColumn}>
