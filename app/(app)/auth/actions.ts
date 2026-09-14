@@ -299,16 +299,16 @@ export async function signUpWithPasswordAction(formData: FormData) {
 
   const emailConfirmationRequired = !data.session;
 
-  redirect(
-    buildAuthPageRedirect({
-      mode: "signup",
-      next,
-      email: values.email,
-      notice: emailConfirmationRequired
-        ? "Account created. Check your email to confirm your account."
-        : "Account created. You can continue into Pocket Wardrobe now."
-    }) as never
-  );
+  if (emailConfirmationRequired) {
+    redirect(`/auth/check-email?type=signup&email=${encodeURIComponent(values.email)}&next=${encodeURIComponent(next)}` as never);
+  }
+
+  redirect(buildAuthPageRedirect({
+    mode: "signup",
+    next,
+    email: values.email,
+    notice: "Account created. You can continue into Pocket Wardrobe now."
+  }) as never);
 }
 
 export async function sendPasswordResetAction(formData: FormData) {
