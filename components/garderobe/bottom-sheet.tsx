@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronRight } from "lucide-react";
+import { useId } from "react";
 import type { ReactNode } from "react";
 
 type BottomSheetProps = {
@@ -13,6 +14,9 @@ type BottomSheetProps = {
 
 /** The bottom sheet primitive: 20px top corners, grab handle, cream ground. */
 export function BottomSheet({ open, onClose, title, description, children }: BottomSheetProps) {
+  const titleId = useId();
+  const descriptionId = useId();
+
   if (!open) return null;
 
   return (
@@ -23,11 +27,20 @@ export function BottomSheet({ open, onClose, title, description, children }: Bot
         onClick={onClose}
         className="absolute inset-0 bg-[rgba(12,10,9,.55)]"
       />
-      <div className="gw-pop relative w-full max-w-md rounded-t-[20px] bg-[var(--cream)] px-5 pb-[22px] pt-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={description ? descriptionId : undefined}
+        className="gw-pop relative w-full max-w-md rounded-t-[20px] bg-[var(--cream)] px-5 pb-[22px] pt-4"
+      >
         <div className="mx-auto mb-4 h-[3px] w-[38px] rounded-full bg-[rgba(30,26,23,.15)]" />
-        <div className="text-[21px] font-light leading-[1.1] text-[var(--ink)]">{title}</div>
+        <div id={titleId} className="text-[21px] font-light leading-[1.1] text-[var(--ink)]">{title}</div>
         {description ? (
-          <div className="py-2 pb-[14px] text-[12.5px] leading-[1.5] text-[var(--stone)]">
+          <div
+            id={descriptionId}
+            className="py-2 pb-[14px] text-[12.5px] leading-[1.5] text-[var(--stone)]"
+          >
             {description}
           </div>
         ) : null}
