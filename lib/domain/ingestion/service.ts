@@ -381,6 +381,8 @@ export interface PendingDraft {
     retailer: string | null;
     purchase_price: number | null;
     purchase_currency: string | null;
+    crop_width?: number | null;
+    crop_height?: number | null;
     extraction_source: string | null;
     metadata: Record<string, unknown>;
     field_confidence?: Record<string, number>;

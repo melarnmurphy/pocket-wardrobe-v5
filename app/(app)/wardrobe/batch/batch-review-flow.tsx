@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { PendingDraft } from "@/lib/domain/ingestion/service";
+import { calculateReviewLayout } from "@/lib/domain/ingestion/review-layout";
 import { acceptDraftAction, saveImportedOutfitAction } from "@/app/(app)/wardrobe/review/actions";
 
 type DraftEdit = {
@@ -82,7 +83,10 @@ export default function BatchReviewFlow({
 
   if (processing) {
     const remaining = Math.max(totalCount - doneCount, 0);
-    const slotCount = Math.min(Math.max(drafts.length + remaining, 1), 8);
+    const layout = calculateReviewLayout([
+      ...drafts.map((draft) => ({ aspectRatio: cropAspectRatio(draft) })),
+      ...Array.from({ length: remaining }, () => ({ pending: true }))
+    ]);
 
     return (
       <main className="gw-review-batch">
@@ -95,16 +99,17 @@ export default function BatchReviewFlow({
             Each piece settles into place as it is read. You can leave this screen and come back.
           </p>
         </div>
-        <div className={`gw-flatlay gw-flatlay-${slotCount}`} aria-live="polite">
+        <div className="gw-flatlay" aria-live="polite">
           {drafts.map((draft, index) => (
-            <div key={draft.id} className={`gw-flat-piece piece-${index}`}>
+            <div key={draft.id} className="gw-flat-piece" style={pieceStyle(layout[index])}>
               <DraftImage draft={draft} />
             </div>
           ))}
           {Array.from({ length: remaining }, (_, index) => (
             <div
               key={`pending-${index}`}
-              className={`gw-flat-piece gw-flat-placeholder piece-${drafts.length + index}`}
+              className="gw-flat-piece gw-flat-placeholder"
+              style={pieceStyle(layout[drafts.length + index])}
               aria-label="photo still processing"
             />
           ))}
@@ -223,8 +228,8 @@ export default function BatchReviewFlow({
     <main className="gw-review-batch">
       {errorMessage ? <div className="gw-review-warning">{errorMessage} Your readable pieces are still here to review.</div> : null}
       <div className="gw-review-head"><div><p className="gw-kicker">batch · {drafts.length} photos read</p><h1>We found<br />{drafts.length} pieces</h1></div><p className="gw-review-note">Every piece at once. The ones needing input are flagged in place.</p></div>
-      <div className={`gw-flatlay gw-flatlay-${Math.min(drafts.length, 8)}`}>
-        {drafts.map((draft, index) => <div key={draft.id} className={`gw-flat-piece piece-${index}`}><DraftImage draft={draft} />{needsInput(draft) ? <button className="gw-flag" onClick={() => { setCurrentDraft(flagged.findIndex((item) => item.id === draft.id)); setStep("questions"); }}>check {index === 0 ? "colour" : "category"}</button> : <span className="gw-check">✓</span>}</div>)}
+      <div className="gw-flatlay">
+        {drafts.map((draft, index) => <div key={draft.id} className="gw-flat-piece" style={pieceStyle(calculateReviewLayout(drafts.map((item) => ({ aspectRatio: cropAspectRatio(item) })))[index])}><DraftImage draft={draft} />{needsInput(draft) ? <button className="gw-flag" onClick={() => { setCurrentDraft(flagged.findIndex((item) => item.id === draft.id)); setStep("questions"); }}>check {index === 0 ? "colour" : "category"}</button> : <span className="gw-check">✓</span>}</div>)}
       </div>
       <div className="gw-review-footer"><span>{drafts.length - flagged.length} confirmed · {flagged.length} flagged</span><Link className="gw-secondary-link" href="/wardrobe/batch/new">add the other 5</Link><button className="gw-primary-button" onClick={() => { if (flagged.length) setStep("questions"); else finish(); }}>{flagged.length ? `start with ${flagged.length} questions →` : "add them to my wardrobe →"}</button></div>
       {error ? <p className="gw-review-error">{error}</p> : null}{saving ? <p className="gw-review-saving">adding your pieces…</p> : null}
@@ -234,6 +239,22 @@ export default function BatchReviewFlow({
 
 function currentIndexLabel(fields: string[], field: string) {
   return Math.max(0, fields.indexOf(field));
+}
+
+function cropAspectRatio(draft: PendingDraft) {
+  const width = draft.payload.crop_width ?? draft.source_image_width;
+  const height = draft.payload.crop_height ?? draft.source_image_height;
+  return width && height ? width / height : null;
+}
+
+function pieceStyle(position: ReturnType<typeof calculateReviewLayout>[number] | undefined) {
+  if (!position) return undefined;
+  return {
+    left: `${position.left}%`,
+    top: `${position.top}%`,
+    width: `${position.width}%`,
+    height: `${position.height}%`
+  };
 }
 
 function DraftImage({ draft }: { draft: PendingDraft }) {
