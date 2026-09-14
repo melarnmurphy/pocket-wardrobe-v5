@@ -102,6 +102,7 @@ export default function SignInForm({
             </div>
             <Field label="email" name="email" type="email" placeholder="you@example.com" defaultValue={email} required />
             <Field label="password" name="password" type="password" placeholder="••••••••" minLength={8} required />
+            <Field label="confirm password" name="confirm_password" type="password" placeholder="••••••••" minLength={8} required />
             <div className={styles.authActionRow}>
               <AuthSubmitButton className={styles.authPrimary} pendingLabel="Creating account…">
                 Create account

@@ -2,7 +2,7 @@ import styles from "@/app/marketing.module.css";
 import Link from "next/link";
 
 export const MARKETING_SIGN_IN = "/sign-in?next=%2Fwardrobe";
-export const MARKETING_START = "/sign-in?mode=signup&next=%2Fonboarding";
+export const MARKETING_START = { pathname: "/sign-up", query: { next: "/onboarding" } } as const;
 
 export type MarketingSection = "how-it-works" | "resale" | "pricing";
 

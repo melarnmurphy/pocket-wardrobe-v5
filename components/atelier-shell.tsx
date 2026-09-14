@@ -51,7 +51,7 @@ export async function AtelierShell({ children }: { children: React.ReactNode }) 
               sign in
             </Link>
             <Link
-              href="/sign-in?mode=signup&next=%2Fonboarding"
+              href={{ pathname: "/sign-up", query: { next: "/onboarding" } }}
               className="rounded-[100px] px-5 py-[10px] text-[9px] font-semibold uppercase tracking-[.18em] text-[var(--cream)]"
               style={{ background: "var(--oxblood)" }}
             >

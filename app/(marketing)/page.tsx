@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 const SIGN_IN = "/sign-in?next=%2Fwardrobe";
-const START = "/sign-in?mode=signup&next=%2Fonboarding";
+const START = "/sign-up?next=%2Fonboarding";
 
 const STRIP = [
   { file: "figure-blue-red-spheres.webp", alt: "figure in black tailoring on a blue ground" },

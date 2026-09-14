@@ -189,7 +189,7 @@ export async function signInWithPasswordAction(formData: FormData) {
 }
 
 export async function signUpWithPasswordAction(formData: FormData) {
-  const values = signUpSchema.parse({
+  const rawValues = {
     email: formData.get("email"),
     name: formData.get("name"),
     dateOfBirth: formData.get("date_of_birth"),
@@ -197,7 +197,20 @@ export async function signUpWithPasswordAction(formData: FormData) {
     password: formData.get("password"),
     confirmPassword: formData.get("confirm_password"),
     next: formData.get("next") ?? "/"
-  });
+  };
+  const parsed = signUpSchema.safeParse(rawValues);
+  if (!parsed.success) {
+    redirect(
+      buildAuthPageRedirect({
+        mode: "signup",
+        next: sanitizeNextPath(String(rawValues.next)),
+        email: typeof rawValues.email === "string" ? rawValues.email : "",
+        error: parsed.error.issues[0]?.message ?? "Check the account details and try again.",
+        errorSource: "signup"
+      }) as never
+    );
+  }
+  const values = parsed.data;
 
   const next = sanitizeNextPath(values.next);
 
