@@ -250,7 +250,7 @@
   width: 100%;
   max-width: 90rem;
   padding-inline: 1.5rem;
-  padding-block: 2rem 3rem;
+  padding-block: 1.625rem 3rem;
 }
 
 .pw-kicker {
@@ -265,16 +265,16 @@
   align-items: end;
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem 1.5rem;
+  gap: 1rem 1.625rem;
   justify-content: space-between;
 }
 
 .pw-page-title {
-  font-size: clamp(2.5rem, 6vw, 5.6rem);
+  font-size: clamp(2.125rem, 5vw, 4rem);
   font-weight: 300;
   letter-spacing: -0.01em;
   line-height: 0.98;
-  max-width: 11ch;
+  max-width: 14ch;
 }
 
 .pw-page-copy {
@@ -289,7 +289,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  font-size: 0.9rem;
+  font-size: 0.78rem;
 }
 
 .pw-meta-row .divider {
@@ -1059,7 +1059,7 @@
 
   input::placeholder,
   textarea::placeholder {
-    color: rgba(108, 102, 135, 0.82);
+    color: var(--stone);
   }
 }
 
