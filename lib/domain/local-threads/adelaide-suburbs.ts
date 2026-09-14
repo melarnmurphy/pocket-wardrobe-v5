@@ -31,7 +31,7 @@ export type AdelaideSuburb = (typeof ADELAIDE_SUBURBS)[number]["name"];
 
 export function resolveSuburbCentroid(suburb: string | null): { lat: number; lng: number } | null {
   if (!suburb) return null;
-  const normalised = suburb.trim().toLowerCase();
+  const normalised = suburb.trim().toLowerCase().replace(/,?\s*(sa|south australia)$/i, "").trim();
   const match = ADELAIDE_SUBURBS.find((entry) => entry.name === normalised);
   return match ? { lat: match.lat, lng: match.lng } : null;
 }

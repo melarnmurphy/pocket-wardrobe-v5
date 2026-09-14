@@ -1050,9 +1050,9 @@
 .authCover { position: relative; overflow: hidden; background: linear-gradient(180deg,#8d9f84 0 74vh,#eee8df 78vh 100%); }
 .authCoverInner { position: sticky; top: 0; height: 100vh; overflow: hidden; }
 .authMasthead { position: relative; z-index: 1; display: block; padding-top: 22px; color: #faf7f2; text-align: center; font-family: var(--font-bodoni), serif; font-size: clamp(40px,6.2vw,88px); font-weight: 700; line-height: .82; letter-spacing: -.045em; animation: gMast 1.1s cubic-bezier(.2,.7,.2,1) both; }
-.authFigure { position: absolute; z-index: 0; left: 0; top: 7%; width: 100%; height: 93%; object-fit: cover; object-position: 50% 12%; animation: gLift 11s ease-in-out infinite; }
+.authFigure { position: absolute; z-index: 0; left: 0; top: 7%; width: 100%; height: 93%; object-fit: contain; object-position: 50% 0; animation: gLift 11s ease-in-out infinite; }
 .authGrain, .authVignette { position: absolute; z-index: 4; inset: 0; pointer-events: none; }
-.authGrain { opacity: .5; background: repeating-linear-gradient(0deg,rgba(255,255,255,.06) 0 1px,transparent 1px 4px), repeating-linear-gradient(90deg,rgba(30,26,23,.035) 0 1px,transparent 1px 5px), repeating-linear-gradient(45deg,transparent 0 3px,rgba(255,255,255,.035) 3px 4px); }
+.authGrain { opacity: .18; background: repeating-linear-gradient(0deg,rgba(255,255,255,.06) 0 1px,transparent 1px 4px), repeating-linear-gradient(90deg,rgba(30,26,23,.035) 0 1px,transparent 1px 5px), repeating-linear-gradient(45deg,transparent 0 3px,rgba(255,255,255,.035) 3px 4px); }
 .authVignette { background: radial-gradient(ellipse at center,transparent 45%,rgba(30,26,23,.12) 100%); }
 .authColumn { padding: 26px clamp(24px,4vw,64px) 56px; }
 .authNav { display: flex; justify-content: space-between; font: 600 10.5px/1 Karla,sans-serif; letter-spacing: .18em; text-transform: uppercase; }
@@ -1074,7 +1074,7 @@
 .authTwoUp { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }
 .authActionRow { display: flex; align-items: center; flex-wrap: wrap; gap: 24px; padding-top: 34px; }
 .authPrimary, .authOutline { border-radius: 100px; cursor: pointer; font: 600 11.5px/1 Karla,sans-serif; letter-spacing: .14em; text-transform: uppercase; }
-.authPrimary { padding: 18px 26px; border: 0; background: #1f6b3f; color: #faf7f2; }
+.authPrimary { min-height: 52px; padding: 18px 26px; border: 0; background: #1f6b3f; color: #faf7f2; }
 .authOutline { padding: 16.5px 24px; border: 1.5px solid #14472b; background: transparent; color: #14472b; }
 .authForgot { color: #6d2a24; font: 400 15px/1 Karla,sans-serif; }
 .authTerms { max-width: 26ch; color: #6b6459; font: 400 14px/1.4 Karla,sans-serif; }

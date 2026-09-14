@@ -12,6 +12,7 @@ import {
 } from "@/app/auth/actions";
 import { EmailTakenDialog } from "@/components/garderobe/auth/email-taken-dialog";
 import { ResetSentDialog } from "@/components/garderobe/auth/reset-sent-dialog";
+import { ADELAIDE_SUBURBS } from "@/lib/domain/local-threads/adelaide-suburbs";
 import styles from "@/app/marketing.module.css";
 
 type Mode = "signin" | "create";
@@ -98,7 +99,15 @@ export default function SignInForm({
             <Field label="your name" name="name" placeholder="your name" required />
             <div className={styles.authTwoUp}>
               <Field label="date of birth" name="date_of_birth" type="date" required />
-              <Field label="location" name="location" placeholder="Adelaide, SA" required />
+              <label className={styles.authField}>
+                <span>location</span>
+                <input name="location" list="adelaide-suburbs" placeholder="suburb or city, state" required />
+                <datalist id="adelaide-suburbs">
+                  {ADELAIDE_SUBURBS.map((suburb) => (
+                    <option key={suburb.name} value={titleCase(suburb.name) + ", SA"} />
+                  ))}
+                </datalist>
+              </label>
             </div>
             <Field label="email" name="email" type="email" placeholder="you@example.com" defaultValue={email} required />
             <Field label="password" name="password" type="password" placeholder="••••••••" minLength={8} required />
@@ -161,6 +170,10 @@ export default function SignInForm({
 
 function Field({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return <label className={styles.authField}><span>{label}</span><input {...props} /></label>;
+}
+
+function titleCase(value: string) {
+  return value.replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function AuthSubmitButton({
