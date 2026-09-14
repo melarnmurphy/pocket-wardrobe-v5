@@ -12,18 +12,23 @@ function buildSignInRedirectUrl(origin: string, params: Record<string, string>) 
   return `${origin}/sign-in?${searchParams.toString()}`;
 }
 
+function buildSignupRedirectUrl(origin: string, params: Record<string, string>) {
+  const searchParams = new URLSearchParams(params);
+  return `${origin}/sign-up?${searchParams.toString()}`;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const isSignup = searchParams.get("flow") === "signup";
   const nextPath = sanitizeNextPath(searchParams.get("next"));
   const callbackError = searchParams.get("error_description") ?? searchParams.get("error");
 
   if (callbackError) {
     return NextResponse.redirect(
-      buildSignInRedirectUrl(origin, {
-        next: nextPath,
-        error: callbackError
-      })
+      isSignup
+        ? buildSignupRedirectUrl(origin, { next: nextPath, error: callbackError, errorSource: "signup" })
+        : buildSignInRedirectUrl(origin, { next: nextPath, error: callbackError })
     );
   }
 
@@ -61,10 +66,9 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return NextResponse.redirect(
-      buildSignInRedirectUrl(origin, {
-        next: nextPath,
-        error: error.message
-      })
+      isSignup
+        ? buildSignupRedirectUrl(origin, { next: nextPath, error: error.message, errorSource: "signup" })
+        : buildSignInRedirectUrl(origin, { next: nextPath, error: error.message })
     );
   }
 

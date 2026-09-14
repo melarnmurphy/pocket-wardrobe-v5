@@ -77,6 +77,19 @@ function buildAuthPageRedirect(params: Record<string, string | null | undefined>
   return `/sign-in${query ? `?${query}` : ""}`;
 }
 
+function buildSignupPageRedirect(params: Record<string, string | null | undefined>) {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) {
+      searchParams.set(key, value);
+    }
+  });
+
+  const query = searchParams.toString();
+  return `/sign-up${query ? `?${query}` : ""}`;
+}
+
 function redirectMagicLinkError(next: string, email: string, error: string) {
   redirect(
     buildAuthPageRedirect({
@@ -201,8 +214,7 @@ export async function signUpWithPasswordAction(formData: FormData) {
   const parsed = signUpSchema.safeParse(rawValues);
   if (!parsed.success) {
     redirect(
-      buildAuthPageRedirect({
-        mode: "signup",
+      buildSignupPageRedirect({
         next: sanitizeNextPath(String(rawValues.next)),
         email: typeof rawValues.email === "string" ? rawValues.email : "",
         error: parsed.error.issues[0]?.message ?? "Check the account details and try again.",
@@ -224,8 +236,7 @@ export async function signUpWithPasswordAction(formData: FormData) {
   } catch (error) {
     if (error instanceof RateLimitError) {
       redirect(
-        buildAuthPageRedirect({
-          mode: "signup",
+        buildSignupPageRedirect({
           next,
           email: values.email,
           error: error.message,
@@ -252,19 +263,18 @@ export async function signUpWithPasswordAction(formData: FormData) {
         suburb: values.location,
         date_of_birth: values.dateOfBirth
       },
-      emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`
+      emailRedirectTo: `${origin}/auth/callback?flow=signup&next=${encodeURIComponent(next)}`
     }
   });
 
   if (error) {
     if (isDuplicateAccountMessage(error.message)) {
       redirect(
-        buildAuthPageRedirect({ mode: "signup", next, email: values.email, duplicate: "1" }) as never
+        buildSignupPageRedirect({ next, email: values.email, duplicate: "1" }) as never
       );
     }
     redirect(
-      buildAuthPageRedirect({
-        mode: "signup",
+      buildSignupPageRedirect({
         next,
         email: values.email,
         error: error.message,
@@ -275,7 +285,7 @@ export async function signUpWithPasswordAction(formData: FormData) {
 
   if (looksLikeExistingAccount(data.user)) {
     redirect(
-      buildAuthPageRedirect({ mode: "signup", next, email: values.email, duplicate: "1" }) as never
+      buildSignupPageRedirect({ next, email: values.email, duplicate: "1" }) as never
     );
   }
 
@@ -303,8 +313,7 @@ export async function signUpWithPasswordAction(formData: FormData) {
     redirect(`/auth/check-email?type=signup&email=${encodeURIComponent(values.email)}&next=${encodeURIComponent(next)}` as never);
   }
 
-  redirect(buildAuthPageRedirect({
-    mode: "signup",
+  redirect(buildSignupPageRedirect({
     next,
     email: values.email,
     notice: "Account created. You can continue into Pocket Wardrobe now."
