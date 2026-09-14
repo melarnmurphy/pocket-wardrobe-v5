@@ -134,8 +134,7 @@ export default function HomePage() {
             </a>
           ))}
           <p className={styles.pricing}>
-            Free to keep every piece, every wear and every cost per wear.{" "}
-            <a href="/pricing">A$69 a year</a> when you want Plus.
+            Free to keep every piece, every wear and every cost per wear.
           </p>
         </div>
 
