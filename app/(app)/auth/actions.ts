@@ -51,6 +51,11 @@ async function getRequestOrigin() {
   const origin = headerStore.get("origin");
 
   if (origin) {
+    // A hosted action must never email a localhost callback. This can happen
+    // when a proxy forwards the browser's development origin incorrectly.
+    if (process.env.VERCEL && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
+      return "https://fashionapp5.vercel.app";
+    }
     return origin;
   }
 
@@ -58,6 +63,9 @@ async function getRequestOrigin() {
   const proto = headerStore.get("x-forwarded-proto") ?? "http";
 
   if (host) {
+    if (process.env.VERCEL && /^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(host)) {
+      return "https://fashionapp5.vercel.app";
+    }
     return `${proto}://${host}`;
   }
 
