@@ -10,19 +10,19 @@ export function AuthRequiredCard({
   description: string;
 }) {
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl items-center px-6 py-10">
-      <section className="pw-panel w-full p-8">
-        <p className="pw-kicker">
-          Authentication Required
-        </p>
-        <h1 className="mt-4 text-3xl font-semibold tracking-[-0.04em]">{title}</h1>
-        <p className="mt-4 text-sm leading-6 text-[var(--muted)]">{description}</p>
+    <main className="pw-shell mx-auto flex min-h-[calc(100vh-68px)] max-w-3xl items-center">
+      <section className="w-full rounded-[6px] border border-[var(--line)] bg-[var(--cream)] p-6 md:p-8">
+        <p className="pw-kicker">authentication required</p>
+        <h1 className="mt-4 max-w-[18ch] text-[34px] font-light leading-[1.05] tracking-[-0.04em]">
+          {title}
+        </h1>
+        <p className="mt-4 max-w-2xl text-[13px] leading-6 text-[var(--muted)]">{description}</p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
-          href={`/sign-in?next=${encodeURIComponent(next)}`}
+            href={`/sign-in?next=${encodeURIComponent(next)}`}
             className="pw-button-primary"
           >
-            Sign In
+            sign in
           </Link>
         </div>
       </section>
