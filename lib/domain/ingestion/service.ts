@@ -14,15 +14,23 @@ export interface CreateDraftsParams {
   sourceId: string;
   storagePath?: string | null;
   result: PipelineAnalyzeResponse;
+  cutoutStoragePath?: string | null;
+  cutoutWidth?: number | null;
+  cutoutHeight?: number | null;
 }
 
 export async function createDraftsFromPipelineResult(
   params: CreateDraftsParams,
   ctx?: ServiceContext
 ): Promise<string[]> {
-  const { sourceId, storagePath, result } = params;
+  const { sourceId, storagePath, result, cutoutStoragePath, cutoutWidth, cutoutHeight } = params;
 
   if (result.garments.length === 0) {
+    if (params.cutoutStoragePath) {
+      const user = ctx ? { id: ctx.userId } : await getRequiredUser();
+      const supabase = ctx ? ctx.supabase : await createClient();
+      await supabase.storage.from("garment-cutouts").remove([params.cutoutStoragePath]);
+    }
     return [];
   }
 
@@ -97,7 +105,7 @@ export async function createDraftsFromPipelineResult(
     }
   }
 
-  if (storagePath) {
+  if (storagePath && !(cutoutStoragePath && drafts.length === 1)) {
     await createDraftCrops({
       supabase,
       userId: user.id,
@@ -105,6 +113,26 @@ export async function createDraftsFromPipelineResult(
       storagePath,
       drafts
     });
+  }
+
+  if (cutoutStoragePath && drafts.length === 1) {
+    const draft = drafts[0];
+    const payload = {
+      ...draft.draftPayload,
+      crop_path: cutoutStoragePath,
+      crop_width: cutoutWidth ?? null,
+      crop_height: cutoutHeight ?? null,
+      image_derivative: "background_removed"
+    };
+
+    await supabase
+      .from("garment_drafts")
+      .update({ draft_payload_json: payload } as never)
+      .eq("id", draft.draftId)
+      .eq("user_id", user.id);
+  } else if (cutoutStoragePath) {
+    // A multi-garment photo uses the detector's per-item crops instead.
+    await supabase.storage.from("garment-cutouts").remove([cutoutStoragePath]);
   }
 
   await attachDuplicateHints(supabase, drafts);
@@ -370,15 +398,26 @@ export interface PendingDraft {
 
 export async function createGarmentSource(params: {
   file: File;
+  cutoutFile?: File | null;
   width?: number;
   height?: number;
-}, ctx?: ServiceContext): Promise<{ sourceId: string; storagePath: string }> {
+}, ctx?: ServiceContext): Promise<{
+  sourceId: string;
+  storagePath: string;
+  cutoutStoragePath: string | null;
+  cutoutWidth: number | null;
+  cutoutHeight: number | null;
+}> {
   const user = ctx ? { id: ctx.userId } : await getRequiredUser();
   const supabase = ctx ? ctx.supabase : await createClient();
 
   const safeFileName = params.file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
   const storagePath = `${user.id}/pipeline-uploads/${Date.now()}-${safeFileName}`;
   const validated = await validateImageUpload(params.file);
+  const cutout = params.cutoutFile ? await validateImageUpload(params.cutoutFile) : null;
+  const cutoutStoragePath = cutout
+    ? `${user.id}/pipeline-cutouts/${Date.now()}-${safeFileName.replace(/\.[^.]+$/, "")}.png`
+    : null;
 
   const { error: uploadError } = await supabase.storage
     .from("garment-originals")
@@ -389,6 +428,21 @@ export async function createGarmentSource(params: {
     });
 
   if (uploadError) throw new Error(uploadError.message);
+
+  if (cutout && cutoutStoragePath) {
+    const { error: cutoutUploadError } = await supabase.storage
+      .from("garment-cutouts")
+      .upload(cutoutStoragePath, cutout.buffer, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: cutout.contentType
+      });
+
+    if (cutoutUploadError) {
+      await supabase.storage.from("garment-originals").remove([storagePath]);
+      throw new Error(cutoutUploadError.message);
+    }
+  }
 
   const { data, error } = await supabase
     .from("garment_sources")
@@ -404,6 +458,9 @@ export async function createGarmentSource(params: {
         mime_type: validated.contentType,
         width: params.width ?? validated.width,
         height: params.height ?? validated.height,
+        cutout_storage_path: cutoutStoragePath,
+        cutout_width: cutout?.width ?? null,
+        cutout_height: cutout?.height ?? null,
       },
     }) as never)
     .select("id")
@@ -411,10 +468,19 @@ export async function createGarmentSource(params: {
 
   if (error) {
     await supabase.storage.from("garment-originals").remove([storagePath]);
+    if (cutoutStoragePath) {
+      await supabase.storage.from("garment-cutouts").remove([cutoutStoragePath]);
+    }
     throw new Error(error.message);
   }
 
-  return { sourceId: (data as { id: string }).id, storagePath };
+  return {
+    sourceId: (data as { id: string }).id,
+    storagePath,
+    cutoutStoragePath,
+    cutoutWidth: cutout?.width ?? null,
+    cutoutHeight: cutout?.height ?? null
+  };
 }
 
 export async function createReceiptSource(params: {
@@ -519,6 +585,9 @@ export async function createManualReviewDraft(params: {
   metadata?: Record<string, unknown>;
   fieldConfidence?: Partial<Record<string, number>> | null;
   fieldProvenance?: Partial<Record<string, string>> | null;
+  cropPath?: string | null;
+  cropWidth?: number | null;
+  cropHeight?: number | null;
 }, ctx?: ServiceContext): Promise<string> {
   const user = ctx ? { id: ctx.userId } : await getRequiredUser();
   const supabase = ctx ? ctx.supabase : await createClient();
@@ -543,6 +612,9 @@ export async function createManualReviewDraft(params: {
       purchase_currency: params.purchaseCurrency ?? null,
       extraction_source: params.extractionSource ?? null,
       metadata: (params.metadata ?? {}) as Json,
+      crop_path: params.cropPath ?? null,
+      crop_width: params.cropWidth ?? null,
+      crop_height: params.cropHeight ?? null,
       field_confidence: params.fieldConfidence ?? null,
       field_provenance: params.fieldProvenance ?? null
     },
@@ -567,6 +639,9 @@ export async function createManualPhotoReviewDraft(params: {
   sourceId: string;
   fileName: string;
   notes?: string | null;
+  cutoutStoragePath?: string | null;
+  cutoutWidth?: number | null;
+  cutoutHeight?: number | null;
 }, ctx?: ServiceContext): Promise<string> {
   const draftPayload = directUploadAdapter.buildDraft({
     fileName: params.fileName,
@@ -589,9 +664,18 @@ export async function createManualPhotoReviewDraft(params: {
     purchasePrice: draftPayload.purchasePrice,
     purchaseCurrency: draftPayload.purchaseCurrency,
     extractionSource: draftPayload.extractionSource,
-    metadata: draftPayload.metadata,
+    metadata: {
+      ...draftPayload.metadata,
+      cutout_path: params.cutoutStoragePath ?? null,
+      cutout_width: params.cutoutWidth ?? null,
+      cutout_height: params.cutoutHeight ?? null,
+      image_derivative: params.cutoutStoragePath ? "background_removed" : null
+    },
     fieldConfidence: draftPayload.fieldConfidence,
-    fieldProvenance: draftPayload.fieldProvenance
+    fieldProvenance: draftPayload.fieldProvenance,
+    cropPath: params.cutoutStoragePath,
+    cropWidth: params.cutoutWidth,
+    cropHeight: params.cutoutHeight
   }, ctx);
 }
 

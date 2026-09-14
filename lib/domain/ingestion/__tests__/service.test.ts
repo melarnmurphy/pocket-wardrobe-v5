@@ -192,6 +192,32 @@ describe("createDraftsFromPipelineResult", () => {
     );
     expect(garmentSourcesCalls).toHaveLength(0);
   });
+
+  it("uses a persisted background-removed cutout for a single detected garment", async () => {
+    const { createDraftsFromPipelineResult } = await import(
+      "@/lib/domain/ingestion/service"
+    );
+
+    await createDraftsFromPipelineResult({
+      sourceId: "source-uuid-abc",
+      result: { garments: [validGarment] },
+      cutoutStoragePath: "user-uuid-123/pipeline-cutouts/shirt.png",
+      cutoutWidth: 90,
+      cutoutHeight: 180
+    });
+
+    const draftUpdate = mockUpdate.mock.calls.find((args: unknown[]) => {
+      const payload = args[0] as Record<string, unknown>;
+      const draftPayload = payload.draft_payload_json as Record<string, unknown> | undefined;
+      return draftPayload?.crop_path === "user-uuid-123/pipeline-cutouts/shirt.png";
+    });
+
+    expect(draftUpdate).toBeTruthy();
+    const payload = draftUpdate?.[0] as { draft_payload_json: Record<string, unknown> };
+    expect(payload.draft_payload_json.crop_width).toBe(90);
+    expect(payload.draft_payload_json.crop_height).toBe(180);
+    expect(payload.draft_payload_json.image_derivative).toBe("background_removed");
+  });
 });
 
 // ---- createGarmentSource tests -------------------------------------------
@@ -241,6 +267,28 @@ describe("createGarmentSource", () => {
 
     await expect(createGarmentSource({ file })).rejects.toThrow("insert failed");
     expect(mockStorageRemove).toHaveBeenCalled();
+  });
+
+  it("stores an optional cutout in the private cutout bucket and records its dimensions", async () => {
+    const { createGarmentSource } = await import(
+      "@/lib/domain/ingestion/service"
+    );
+    const file = await makeImageFile();
+    const cutoutFile = await makeImageFile();
+
+    const result = await createGarmentSource({ file, cutoutFile });
+
+    expect(mockStorageFrom).toHaveBeenCalledWith("garment-originals");
+    expect(mockStorageFrom).toHaveBeenCalledWith("garment-cutouts");
+    const insertCall = mockInsert.mock.calls[0][0] as Record<string, unknown>;
+    expect(insertCall.source_metadata_json).toEqual(
+      expect.objectContaining({
+        cutout_storage_path: result.cutoutStoragePath,
+        cutout_width: result.cutoutWidth,
+        cutout_height: result.cutoutHeight
+      })
+    );
+    expect(result.cutoutStoragePath).toContain("pipeline-cutouts");
   });
 
   it("throws immediately if storage upload fails, without inserting DB row", async () => {

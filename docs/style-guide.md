@@ -49,6 +49,57 @@ Fills: `rgba(30,26,23,.07)` chips and inactive fields, `rgba(30,26,23,.16)` off-
 - No gradients as a brand device. No violet, electric purple, hot pink, acid yellow or cyber
   mint anywhere in the product.
 
+### Garment image ground
+
+The page ground should feel like warm gallery paper, not a coloured panel behind the clothes.
+Keep the cream/paper base quiet and use only a very soft, low-saturation warmth behind a
+featured cut-out when separation is needed. The garment remains the visual anchor.
+
+- Preserve the cream base; reduce peach/yellow saturation rather than increasing contrast.
+- Keep any warmth local and diffuse, with no obvious gradient boundary.
+- Use a faint soft shadow beneath cut-outs to ground them without boxing them in.
+- Prefer cut-outs on the continuous page surface; do not add decorative image cards.
+- On mobile, let the image ground collapse naturally with the content rather than becoming a
+  tall coloured slab.
+
+This is the visual reading: **warm gallery wall**, not **coloured panel**.
+
+### Product surface schema
+
+The signed-in product follows one continuous editorial surface across today, wardrobe,
+lookbook, calendar, trends, and resale. Feature pages may change their content, but not their
+visual grammar:
+
+- spacing scale: `4 · 8 · 14 · 20 · 32 · 46 · 64`;
+- hairline rules and square surfaces do the structural work;
+- almost no radius except pill buttons and toggles;
+- serif display titles, Karla body copy, and uppercase tracked micro labels;
+- cut-outs carry emphasis; cards should not compete with them;
+- one continuous cream ground rather than a collection of boxed sections.
+
+### Editorial product rulings
+
+The current product direction is the reference for all signed-in surfaces:
+
+- One continuous page surface replaces segmented cards.
+- Hairline rules create structure without adding visual noise.
+- The editorial hierarchy is clear: one daily recommendation, then supporting evidence.
+- The sidebar feels like part of the product system, not a separate dashboard.
+- Serif display type gives the product a distinctive identity.
+- “Worn this week” and “worth knowing” make the data feel useful, not merely administrative.
+
+Refinements to preserve as the product expands:
+
+- Reduce the number of tiny uppercase labels; they should not compete with one another.
+- Make the primary daily action the most visually dominant control on the page.
+- Keep the palette restrained: cream, ink, oxblood, and one soft warmth are enough.
+- Let large hero image areas collapse elegantly on mobile instead of becoming tall slabs.
+- Apply the continuous editorial surface to wardrobe, lookbook, calendar, trends, and resale.
+- Keep dense controls—filters, editing, and tagging—in drawers or sheets so the main pages
+  retain their calm rhythm.
+- Treat the colour wheel as a quiet explanatory layer inside outfit reasoning, never as
+  another prominent dashboard.
+
 ## Shape system
 
 - Pills and toggles: `100px` radius.

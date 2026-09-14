@@ -27,13 +27,21 @@ export async function uploadAndAnalyseAction(
   }
 
   try {
-    const { sourceId, storagePath } = await createGarmentSource({ file });
+    const cutout = formData.get("cutout");
+    const { sourceId, storagePath, cutoutStoragePath, cutoutWidth, cutoutHeight } =
+      await createGarmentSource({
+        file,
+        cutoutFile: cutout instanceof File && cutout.size > 0 ? cutout : null
+      });
     const featureLabelsEnabled = await canUseFeatureLabels();
 
     if (!featureLabelsEnabled) {
       await createManualPhotoReviewDraft({
         sourceId,
-        fileName: file.name
+        fileName: file.name,
+        cutoutStoragePath,
+        cutoutWidth,
+        cutoutHeight
       });
       redirect("/wardrobe/review");
     }
@@ -53,7 +61,14 @@ export async function uploadAndAnalyseAction(
       imageUrl: signedUrlData.signedUrl,
     });
 
-    await createDraftsFromPipelineResult({ sourceId, storagePath, result });
+    await createDraftsFromPipelineResult({
+      sourceId,
+      storagePath,
+      result,
+      cutoutStoragePath,
+      cutoutWidth,
+      cutoutHeight
+    });
   } catch (error) {
     return {
       status: "error",

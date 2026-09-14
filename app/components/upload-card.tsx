@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { removeBackground } from "@imgly/background-removal";
 import { uploadAndAnalyseAction } from "@/app/page-actions";
 import type { PlanTier } from "@/lib/domain/entitlements";
 
@@ -14,20 +15,37 @@ export default function UploadCard({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [processingLabel, setProcessingLabel] = useState<string | null>(null);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setError(null);
-    const formData = new FormData();
-    formData.append("image", file);
-
     startTransition(async () => {
+      let cutout: Blob | null = null;
+      setProcessingLabel("Preparing image…");
+
+      try {
+        // Keep the original as provenance. The cutout is an optional feature
+        // derivative and never blocks upload if the browser model cannot run.
+        cutout = await removeBackground(file);
+      } catch {
+        cutout = null;
+      }
+
+      const formData = new FormData();
+      formData.append("image", file);
+      if (cutout) {
+        formData.append("cutout", cutout, `${file.name.replace(/\.[^.]+$/, "")}.png`);
+      }
+
+      setProcessingLabel(canUseFeatureLabels ? "Analysing…" : "Uploading…");
       const result = await uploadAndAnalyseAction(formData);
       if (result.status === "error") {
         setError(result.message);
       }
+      setProcessingLabel(null);
       // On success, the server action's redirect() handles navigation
     });
   }
@@ -58,7 +76,7 @@ export default function UploadCard({
         <div className="mt-3 flex items-center gap-2">
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
           <span className="text-xs text-white/80">
-            {canUseFeatureLabels ? "Analysing…" : "Uploading…"}
+            {processingLabel || (canUseFeatureLabels ? "Analysing…" : "Uploading…")}
           </span>
         </div>
       ) : (

@@ -46,12 +46,7 @@ describe("syncUserEntitlementsFromBillingEvent", () => {
 
 describe("createPlusCheckoutSession", () => {
   const checkoutSessionsCreate = vi.fn();
-
-  function mockServerEnv(priceId: string | undefined) {
-    vi.doMock("@/lib/env", () => ({
-      getServerEnv: vi.fn(() => ({ STRIPE_PLUS_ANNUAL_PRICE_ID: priceId }))
-    }));
-  }
+  let annualPriceId: string | undefined;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -71,7 +66,10 @@ describe("createPlusCheckoutSession", () => {
         checkout: { sessions: { create: checkoutSessionsCreate } }
       }))
     }));
-    mockServerEnv("price_annual_test");
+    annualPriceId = "price_annual_test";
+    vi.doMock("@/lib/env", () => ({
+      getServerEnv: vi.fn(() => ({ STRIPE_PLUS_ANNUAL_PRICE_ID: annualPriceId }))
+    }));
   });
 
   it("creates a subscription checkout session for the configured annual price, with no payment_method_types set", async () => {
@@ -108,7 +106,7 @@ describe("createPlusCheckoutSession", () => {
   });
 
   it("throws a clear error when no annual price is configured", async () => {
-    mockServerEnv(undefined);
+    annualPriceId = undefined;
 
     const { createPlusCheckoutSession } = await import("@/lib/domain/billing/service");
     await expect(createPlusCheckoutSession("https://fashionapp5.vercel.app")).rejects.toThrow(
