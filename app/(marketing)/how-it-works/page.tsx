@@ -66,8 +66,8 @@ export default function HowItWorksPage() {
             <h2 className={styles.stepTitle}>make better calls.</h2>
             <p className={styles.stepCopy}>
               Get recommendations on what to wear from the clothes you already own — weather,
-              occasion, and what is actually free to use. Pieces you stop reaching for can go to
-              someone nearby.
+              occasion, and what is actually free to use. Pieces you stop reaching for can go
+              through resale.
             </p>
           </div>
           <div className={styles.stepVisual}>

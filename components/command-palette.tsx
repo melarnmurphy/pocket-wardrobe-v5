@@ -10,10 +10,10 @@ const KIND_LABEL: Record<SearchResult["kind"], string> = {
   piece: "piece",
   look: "look",
   trend: "trend",
-  listing: "nearby"
+  listing: "resale"
 };
 
-/** w3c — ⌘K search across pieces, looks, trends and nearby. */
+/** w3c — ⌘K search across pieces, looks, trends and resale. */
 export function CommandPalette() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -73,7 +73,7 @@ export function CommandPalette() {
             ref={inputRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="search pieces, looks, trends, nearby"
+            placeholder="search pieces, looks, trends, resale"
             className="flex-1 bg-transparent text-[14px] text-[var(--ink)] outline-none placeholder:text-[var(--stone)]"
           />
         </div>

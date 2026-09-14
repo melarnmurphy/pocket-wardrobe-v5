@@ -32,6 +32,6 @@ describe("CancelListingDialog", () => {
       />
     );
 
-    expect(screen.getByText(/takes it off the nearby feed/i)).toBeInTheDocument();
+    expect(screen.getByText(/takes it out of resale/i)).toBeInTheDocument();
   });
 });

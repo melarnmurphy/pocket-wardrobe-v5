@@ -25,7 +25,7 @@ export function CancelListingDialog({
     ? `you have a handover arranged with ${name}. cancelling the listing cancels that too, and the thread ends.`
     : hasOffer
       ? `${name}'s offer closes and the thread ends. the piece stays in your wardrobe, but this can't be undone.`
-      : "takes it off the nearby feed. the piece stays in your wardrobe.";
+      : "takes it out of resale. the piece stays in your wardrobe.";
 
   return (
     <Dialog

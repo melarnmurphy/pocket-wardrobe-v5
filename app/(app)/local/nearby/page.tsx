@@ -12,7 +12,7 @@ function formatMoney(cents: number) {
   return `A$${(cents / 100).toFixed(0)}`;
 }
 
-/** 16a / w2a — what's for sale nearby, 30km default, expandable, four sorts. */
+/** 16a / w2a — the resale feed, 30km default, expandable, four sorts. */
 export default async function NearbyPage({
   searchParams
 }: {
@@ -38,7 +38,7 @@ export default async function NearbyPage({
           wardrobe
         </Link>
 
-        <h1 className="pt-4 text-[34px] font-light leading-[1.05] text-[var(--ink)]">nearby</h1>
+        <h1 className="pt-4 text-[34px] font-light leading-[1.05] text-[var(--ink)]">resale</h1>
         <p className="pt-2 text-[12.5px] leading-[1.5] text-[var(--slate)]">
           what&apos;s for sale within {radiusKm} km
           {profile.suburb ? ` of ${profile.suburb}` : ""}
@@ -56,7 +56,7 @@ export default async function NearbyPage({
               <Link href="/account" className="underline">
                 your account
               </Link>{" "}
-              to see what&apos;s nearby.
+              to see what&apos;s available for resale.
             </p>
           </div>
         ) : (
@@ -109,7 +109,7 @@ export default async function NearbyPage({
       return (
         <AuthRequiredCard
           next="/local/nearby"
-          title="Sign in with Supabase to see what's nearby."
+          title="Sign in with Supabase to browse resale."
           description="This page reads listings scoped by your own suburb, so it requires an authenticated Supabase session."
         />
       );

@@ -39,7 +39,7 @@ export async function AtelierShell({ children }: { children: React.ReactNode }) 
                 how it works
               </Link>
               <Link href="/nearby" style={{ color: "var(--slate)" }}>
-                nearby
+                resale
               </Link>
               <Link href="/pricing" style={{ color: "var(--slate)" }}>
                 pricing

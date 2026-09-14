@@ -9,9 +9,9 @@ import {
 import styles from "@/app/marketing.module.css";
 
 export const metadata: Metadata = {
-  title: "Nearby · Garderobe",
+  title: "Resale · Garderobe",
   description:
-    "List pieces to people nearby with their wear count attached. Garderobe never takes a cut."
+    "List pieces for resale with their wear count attached. Garderobe never takes a cut."
 };
 
 const LISTINGS = [
@@ -28,7 +28,7 @@ const LISTINGS = [
 export default function NearbyMarketingPage() {
   return (
     <main className={styles.page}>
-      <MarketingBar active="nearby" />
+      <MarketingBar active="resale" />
       <div className={styles.nearbyHead}>
         <div>
           <h1 className={styles.heroTitle}>not reaching for it? someone else might.</h1>
@@ -65,8 +65,8 @@ export default function NearbyMarketingPage() {
 
       <div className={styles.darkBar}>
         <p>
-          List pieces to people nearby with their wear count attached. Pick a public meeting place,
-          settle up directly and send a good piece into its next era.
+          List pieces for resale with their wear count attached. Pick a public meeting place, settle
+          up directly and send a good piece into its next era.
         </p>
         <nav>
           <Link href={MARKETING_SIGN_IN} className={styles.ctaGhost}>

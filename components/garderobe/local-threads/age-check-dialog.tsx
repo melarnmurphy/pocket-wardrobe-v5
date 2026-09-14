@@ -37,7 +37,7 @@ export function AgeBlockedDialog({ open, onDismiss }: AgeBlockedDialogProps) {
       open={open}
       onClose={onDismiss}
       title="local threads needs an adult"
-      description="you can still browse nearby, but listing a piece or messaging a seller stays off until you're 18."
+      description="you can still browse resale, but listing a piece or messaging a seller stays off until you're 18."
       confirmLabel="ok"
       hideCancel
       onConfirm={onDismiss}

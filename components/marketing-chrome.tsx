@@ -4,11 +4,11 @@ import Link from "next/link";
 export const MARKETING_SIGN_IN = "/sign-in?next=%2Fwardrobe";
 export const MARKETING_START = "/sign-in?mode=signup&next=%2Fonboarding";
 
-export type MarketingSection = "how-it-works" | "nearby" | "pricing";
+export type MarketingSection = "how-it-works" | "resale" | "pricing";
 
 const LINKS: { href: "/how-it-works" | "/nearby" | "/pricing"; id: MarketingSection; label: string }[] = [
   { href: "/how-it-works", id: "how-it-works", label: "how it works" },
-  { href: "/nearby", id: "nearby", label: "nearby" },
+  { href: "/nearby", id: "resale", label: "resale" },
   { href: "/pricing", id: "pricing", label: "pricing" }
 ];
 

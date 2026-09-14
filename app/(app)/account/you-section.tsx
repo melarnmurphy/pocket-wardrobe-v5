@@ -119,7 +119,7 @@ export function YouSection({
               name="one_size_either_way"
               defaultChecked={profile.one_size_either_way}
             />
-            one size either way — widen the nearby feed
+            one size either way — widen the resale feed
           </label>
           <PillButton type="submit" fullWidth={false} variant="secondary">
             save sizes

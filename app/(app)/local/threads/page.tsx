@@ -27,7 +27,7 @@ export default async function ThreadsInboxPage() {
       <div className="mx-auto max-w-[560px] px-5 py-6 pb-16">
         <Link href="/local/nearby" className="inline-flex items-center gap-1 text-[12.5px] text-[var(--stone)]">
           <ChevronLeft size={14} strokeWidth={1.5} />
-          nearby
+          resale
         </Link>
 
         <h1 className="pt-4 text-[34px] font-light leading-[1.05] text-[var(--ink)]">threads</h1>
@@ -54,7 +54,7 @@ export default async function ThreadsInboxPage() {
             <p className="text-[12.5px] text-[var(--stone)]">
               No conversations yet. Message a seller from a{" "}
               <Link href="/local/nearby" className="underline">
-                nearby listing
+                resale listing
               </Link>
               .
             </p>

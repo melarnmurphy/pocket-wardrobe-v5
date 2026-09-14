@@ -30,7 +30,7 @@ const CONTENTS = [
   { n: "01", label: "upload images of your wardrobe", href: "/how-it-works" },
   { n: "02", label: "record every wear", href: "/how-it-works" },
   { n: "03", label: "get recommendations on what to wear", href: "/how-it-works" },
-  { n: "04", label: "sell it nearby", href: "/nearby" }
+  { n: "04", label: "sell it through resale", href: "/nearby" }
 ] as const;
 
 export default function HomePage() {
@@ -45,7 +45,7 @@ export default function HomePage() {
         <div className={styles.nav}>
           <nav className={styles.navLinks} aria-label="Marketing">
             <a href="/how-it-works">how it works</a>
-            <a href="/nearby">nearby</a>
+            <a href="/nearby">resale</a>
             <a href="/pricing">pricing</a>
           </nav>
           <div className={styles.navAuth}>
@@ -107,7 +107,7 @@ export default function HomePage() {
         <div className={styles.contentsNav}>
           <nav className={styles.contentsLinks} aria-label="Contents">
             <a href="/how-it-works">how it works</a>
-            <a href="/nearby">nearby</a>
+            <a href="/nearby">resale</a>
             <a href="/pricing">pricing</a>
           </nav>
           <div className={styles.contentsAuth}>

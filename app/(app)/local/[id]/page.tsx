@@ -57,7 +57,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
       <div className="mx-auto max-w-[560px] px-5 py-6 pb-16">
         <Link href="/local/nearby" className="inline-flex items-center gap-1 text-[12.5px] text-[var(--stone)]">
           <ChevronLeft size={14} strokeWidth={1.5} />
-          nearby
+          resale
         </Link>
 
         <div className="mt-5 grid grid-cols-2 gap-2">

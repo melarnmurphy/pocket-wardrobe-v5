@@ -69,7 +69,7 @@ export function OnboardingFlow({
             your suburb
           </h1>
           <p className="pt-3 text-[13px] leading-[1.6] text-[var(--slate)]">
-            This centres the nearby feed and finishes your public profile — never a street or a
+            This centres the resale feed and finishes your public profile — never a street or a
             number, and only shown to others if you choose to.
           </p>
           <form

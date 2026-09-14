@@ -15,7 +15,7 @@ const PRIMARY_ITEMS = [
 ] as const;
 
 const LOCAL_ITEMS = [
-  { label: "nearby", href: "/local/nearby", countKey: "nearby" },
+  { label: "resale", href: "/local/nearby", countKey: "nearby" },
   { label: "handovers", href: "/local/threads", countKey: "handovers" }
 ] as const;
 
