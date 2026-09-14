@@ -30,10 +30,6 @@
       "schedule": "0 8 1 * *"
     },
     {
-      "path": "/api/trends/extract",
-      "schedule": "30 1 * * *"
-    },
-    {
       "path": "/api/cron/story-generation",
       "schedule": "0 11 * * *"
     },
@@ -48,10 +44,6 @@
     {
       "path": "/api/cron/price-check",
       "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/photo-processing",
-      "schedule": "30 0 * * *"
     }
   ]
 }
