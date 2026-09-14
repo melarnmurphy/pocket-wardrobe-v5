@@ -37,7 +37,7 @@ export default async function BatchReviewPage({ params }: { params: Promise<{ id
     }
 
     if (batch.status !== "running") {
-      return <BatchReviewFlow drafts={drafts} batchId={batch.id} errorMessage={batch.error_message} />;
+      return <BatchReviewFlow drafts={drafts} batchId={batch.id} errorMessage={batch.error_message} failedItems={batch.failed_items} />;
     }
 
     return (

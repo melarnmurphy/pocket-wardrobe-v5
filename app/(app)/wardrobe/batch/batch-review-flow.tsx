@@ -21,6 +21,7 @@ type DraftEdit = {
 };
 
 type ReviewStep = "batch" | "questions" | "done";
+type FailedItem = { id: string; file_name: string; error_message: string | null; preview_url: string | null };
 
 function editFor(draft: PendingDraft): DraftEdit {
   return {
@@ -52,7 +53,8 @@ export default function BatchReviewFlow({
   errorMessage,
   processing = false,
   doneCount = drafts.length,
-  totalCount = drafts.length
+  totalCount = drafts.length,
+  failedItems = []
 }: {
   drafts: PendingDraft[];
   batchId: string;
@@ -60,6 +62,7 @@ export default function BatchReviewFlow({
   processing?: boolean;
   doneCount?: number;
   totalCount?: number;
+  failedItems?: FailedItem[];
 }) {
   const [step, setStep] = useState<ReviewStep>(drafts.length ? "batch" : "done");
   const [edits, setEdits] = useState<Record<string, DraftEdit>>(() =>
@@ -69,6 +72,23 @@ export default function BatchReviewFlow({
   const [currentField, setCurrentField] = useState<keyof DraftEdit | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryingItem, setRetryingItem] = useState<string | null>(null);
+
+  async function retryItem(itemId: string, action: "retry" | "remove" = "retry") {
+    setRetryingItem(itemId);
+    const response = await fetch(`/api/pipeline/batch/${batchId}/retry`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ itemId, action })
+    });
+    if (!response.ok) {
+      const body = (await response.json()) as { error?: string };
+      setError(body.error ?? "Unable to retry this photo.");
+      setRetryingItem(null);
+      return;
+    }
+    window.location.reload();
+  }
 
   const flagged = useMemo(() => drafts.filter(needsInput), [drafts]);
   const current = flagged[currentDraft] ?? null;
@@ -90,6 +110,7 @@ export default function BatchReviewFlow({
 
     return (
       <main className="gw-review-batch">
+        {failedItems.length ? <FailedPhotoStrip items={failedItems} retryingItem={retryingItem} onRetry={retryItem} /> : null}
         <div className="gw-review-head">
           <div>
             <p className="gw-kicker">reading your photos</p>
@@ -235,6 +256,16 @@ export default function BatchReviewFlow({
       {error ? <p className="gw-review-error">{error}</p> : null}{saving ? <p className="gw-review-saving">adding your pieces…</p> : null}
     </main>
   );
+}
+
+function FailedPhotoStrip({ items, retryingItem, onRetry }: { items: FailedItem[]; retryingItem: string | null; onRetry: (id: string, action?: "retry" | "remove") => void }) {
+  return <div className="gw-review-failures" aria-live="polite">
+    {items.map((item) => <div className="gw-review-failure" key={item.id}>
+      {item.preview_url ? <Image src={item.preview_url} alt="" width={72} height={72} unoptimized /> : <div className="gw-failure-missing">photo</div>}
+      <div><p className="gw-kicker">photo needs another go</p><strong>{item.file_name}</strong><span>{item.error_message ?? "We couldn’t read this image."}</span></div>
+      <div className="gw-failure-actions"><button className="gw-primary-button" onClick={() => onRetry(item.id)} disabled={retryingItem === item.id}>{retryingItem === item.id ? "retaking…" : "retake"}</button><button className="gw-skip" onClick={() => onRetry(item.id, "remove")} disabled={retryingItem === item.id}>remove</button></div>
+    </div>)}
+  </div>;
 }
 
 function currentIndexLabel(fields: string[], field: string) {

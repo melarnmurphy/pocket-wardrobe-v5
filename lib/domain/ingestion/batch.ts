@@ -14,6 +14,12 @@ const batchSchema = z.object({
   total_count: z.number().int().nonnegative(),
   draft_ids: z.array(z.string().uuid()),
   error_message: z.string().nullable().optional(),
+  failed_items: z.array(z.object({
+    id: z.string().uuid(),
+    file_name: z.string(),
+    error_message: z.string().nullable(),
+    preview_url: z.string().url().nullable()
+  })),
   created_at: z.string()
 });
 
@@ -200,7 +206,106 @@ export async function getPhotoBatch(batchId: string): Promise<PhotoBatch | null>
     return null;
   }
 
-  return batchSchema.parse(data);
+  const { data: failedRows } = await supabase
+    .from("processing_jobs")
+    .select("id,error_message,input_payload_json")
+    .eq("target_id", parsedId)
+    .eq("job_type", "photo_batch_item")
+    .eq("status", "failed")
+    .order("created_at");
+
+  const failedItems = await Promise.all(((failedRows ?? []) as Array<{
+    id: string;
+    error_message: string | null;
+    input_payload_json: Record<string, unknown> | null;
+  }>).map(async (row) => {
+    const payload = (row.input_payload_json ?? {}) as { file_name?: string; storage_path?: string };
+    let previewUrl: string | null = null;
+    if (payload.storage_path) {
+      const signed = await supabase.storage.from("garment-originals").createSignedUrl(payload.storage_path, 10 * 60);
+      previewUrl = signed.data?.signedUrl ?? null;
+    }
+    return {
+      id: row.id,
+      file_name: payload.file_name ?? "photo upload",
+      error_message: row.error_message,
+      preview_url: previewUrl
+    };
+  }));
+
+  return batchSchema.parse({ ...(data as Record<string, unknown>), failed_items: failedItems });
+}
+
+export async function retryFailedPhotoBatchItem(batchId: string, itemId: string) {
+  const user = await getRequiredUser();
+  const supabase = createServiceClient();
+  const { data: item } = await supabase
+    .from("processing_jobs")
+    .select("id")
+    .eq("id", itemId)
+    .eq("target_id", batchId)
+    .eq("user_id", user.id)
+    .eq("job_type", "photo_batch_item")
+    .eq("status", "failed")
+    .maybeSingle();
+
+  if (!item) throw new Error("That failed photo is no longer available to retry.");
+
+  const { data: batch } = await supabase
+    .from("processing_jobs")
+    .select("done_count")
+    .eq("id", batchId)
+    .eq("user_id", user.id)
+    .eq("job_type", "photo_batch")
+    .single();
+  if (!batch) throw new Error("Batch not found.");
+
+  await supabase.from("processing_jobs").update({
+    status: "queued",
+    error_message: null,
+    attempt_count: 0,
+    available_at: new Date().toISOString(),
+    locked_at: null
+  } as never).eq("id", itemId);
+
+  await supabase.from("processing_jobs").update({
+    status: "running",
+    done_count: Math.max(0, batch.done_count - 1),
+    error_message: null
+  } as never).eq("id", batchId);
+}
+
+export async function removeFailedPhotoBatchItem(batchId: string, itemId: string) {
+  const user = await getRequiredUser();
+  const supabase = createServiceClient();
+  const { data: item } = await supabase
+    .from("processing_jobs")
+    .select("id")
+    .eq("id", itemId)
+    .eq("target_id", batchId)
+    .eq("user_id", user.id)
+    .eq("job_type", "photo_batch_item")
+    .eq("status", "failed")
+    .maybeSingle();
+  if (!item) throw new Error("That failed photo is no longer available to remove.");
+
+  await supabase.from("processing_jobs").update({ status: "cancelled" } as never).eq("id", itemId);
+  // Keep the aggregate counters coherent after removing a terminal item.
+  const { data: batch } = await supabase.from("processing_jobs").select("total_count,done_count").eq("id", batchId).single();
+  if (batch) {
+    const nextTotal = Math.max(0, batch.total_count - 1);
+    const { count: remainingFailures } = await supabase
+      .from("processing_jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("target_id", batchId)
+      .eq("job_type", "photo_batch_item")
+      .eq("status", "failed");
+    await supabase.from("processing_jobs").update({
+      total_count: nextTotal,
+      status: remainingFailures ? "failed" : batch.done_count >= nextTotal ? "succeeded" : "running",
+      error_message: remainingFailures ? "One or more photos could not be read." : null
+    } as never).eq("id", batchId);
+  }
 }
 
 /** For a "finish your batch" resume prompt on the wardrobe page. */
