@@ -292,6 +292,9 @@ export async function signUpWithPasswordAction(formData: FormData) {
     if (profileError) {
       throw new Error(profileError.message);
     }
+
+    revalidatePath("/");
+    redirect(next as never);
   }
 
   const emailConfirmationRequired = !data.session;
