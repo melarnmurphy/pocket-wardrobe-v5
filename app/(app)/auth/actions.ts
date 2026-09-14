@@ -42,11 +42,17 @@ const updatePasswordSchema = z
     path: ["confirmPassword"]
   });
 
+const PRODUCTION_APP_ORIGIN = "https://fashionapp5.vercel.app";
+
 function sanitizeNextPath(next: string) {
   return next.startsWith("/") ? next : "/";
 }
 
 async function getRequestOrigin() {
+  if (process.env.VERCEL_ENV === "production" || process.env.VERCEL === "1") {
+    return PRODUCTION_APP_ORIGIN;
+  }
+
   const headerStore = await headers();
   const origin = headerStore.get("origin");
 
