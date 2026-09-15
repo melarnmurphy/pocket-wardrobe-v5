@@ -14,13 +14,14 @@ import { OnboardingFlow } from "./onboarding-flow";
  */
 export default async function OnboardingPage() {
   try {
-    const profile = await getOrCreateProfile();
+    const [profile, garments] = await Promise.all([
+      getOrCreateProfile(),
+      listWardrobeGarments()
+    ]);
 
     if (profile.onboarding_completed_at) {
       redirect("/wardrobe");
     }
-
-    const garments = await listWardrobeGarments();
 
     return (
       <OnboardingFlow
