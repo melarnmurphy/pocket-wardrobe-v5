@@ -12,7 +12,7 @@ export function OwnedTrendCard({ match }: { match: UserTrendMatchWithSignal }) {
   const kind = match.match_type === "exact_match" ? "On you" : "Close to you";
 
   return (
-    <section className="pw-panel p-6">
+    <section className="border-t border-b border-[var(--line)] py-8">
       <p className="pw-kicker">{kind}</p>
       <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em]">
         You already own {match.trend_signal.label}

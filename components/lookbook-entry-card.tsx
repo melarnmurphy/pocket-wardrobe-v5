@@ -111,14 +111,14 @@ export function LookbookEntryCard({
   return (
     <article
       ref={cardRef}
-      className={`overflow-hidden rounded-[8px] border bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,243,255,0.92))] shadow-[0_18px_40px_rgba(45,27,105,0.08)] transition-all duration-200 ${
+      className={`overflow-hidden border-b border-[var(--line)] transition-all duration-200 ${
         isActive
-          ? "border-[rgba(123,92,240,0.4)] shadow-[0_22px_50px_rgba(123,92,240,0.16)] ring-1 ring-[rgba(123,92,240,0.18)]"
-          : "border-[var(--line)]"
+          ? "border-t border-[var(--oxblood)] bg-[rgba(242,236,227,.45)]"
+          : "border-t border-[var(--line)]"
       }`}
     >
       {entry.preview_url ? (
-        <div className="overflow-hidden border-b border-[var(--line)] bg-white">
+        <div className="overflow-hidden border-b border-[var(--line)] bg-transparent">
           <Image
             src={entry.preview_url}
             alt={entry.title || "Lookbook reference image"}
@@ -129,7 +129,7 @@ export function LookbookEntryCard({
           />
         </div>
       ) : (
-        <div className="flex aspect-[4/5] items-center justify-center border-b border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,243,255,0.92))]">
+        <div className="flex aspect-[4/5] items-center justify-center border-b border-[var(--line)] bg-[var(--paper)]">
           <div className="text-center">
             <Image
               src="/illustrations/chatting.svg"
@@ -511,7 +511,7 @@ function LinkedItemCard({
   }, [deleteState.message, deleteState.status]);
 
   return (
-    <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4">
+    <article className="border-t border-[var(--line)] py-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="space-y-2 text-sm text-[var(--muted)]">
           <p className="font-medium text-[var(--foreground)]">
@@ -528,7 +528,7 @@ function LinkedItemCard({
         </form>
       </div>
 
-      <details className="mt-4 rounded-2xl border border-[var(--line)] bg-white/70 p-4">
+      <details className="mt-4 border-t border-[var(--line)] pt-4">
         <summary className="cursor-pointer text-sm font-medium">Edit Linked Item</summary>
         <form action={updateFormAction} className="mt-4 space-y-4">
           <input type="hidden" name="id" value={item.id} />
@@ -749,7 +749,7 @@ function LookbookMiniStat({
   detail: string;
 }) {
   return (
-    <div className="rounded-[8px] border border-[var(--line)] bg-white/82 px-4 py-3">
+    <div className="border-t border-[var(--line)] px-1 py-3 first:border-t-0">
       <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">{label}</p>
       <p className="mt-2 text-sm font-medium text-[var(--foreground)]">{value}</p>
       <p className="mt-2 text-sm text-[var(--muted)]">{detail}</p>

@@ -75,9 +75,9 @@ export function LookbookEntryForm({
     <form
       ref={formRef}
       action={formAction}
-      className={`pw-panel-soft p-6 transition-all duration-200 md:p-7 ${
+      className={`border-t border-b border-[var(--line)] p-6 transition-all duration-200 md:p-7 ${
         isActive
-          ? "border-[rgba(123,92,240,0.36)] shadow-[0_22px_50px_rgba(123,92,240,0.16)] ring-1 ring-[rgba(123,92,240,0.18)]"
+          ? "border-t-[var(--oxblood)] bg-[rgba(242,236,227,.35)]"
           : ""
       }`}
     >
