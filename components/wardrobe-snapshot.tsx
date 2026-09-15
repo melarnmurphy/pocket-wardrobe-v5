@@ -10,7 +10,7 @@ export function WardrobeSnapshot({ garments }: { garments: GarmentListItem[] }) 
   );
 
   return (
-    <section className="pw-panel p-5 md:p-6" aria-labelledby="wardrobe-snapshot-title">
+    <section className="border-b border-[var(--line)] py-8" aria-labelledby="wardrobe-snapshot-title">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="pw-kicker">Your wardrobe, at a glance</p>

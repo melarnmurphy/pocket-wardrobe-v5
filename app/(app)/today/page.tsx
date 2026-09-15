@@ -50,14 +50,14 @@ export default async function TodayPage() {
     });
 
     return (
-      <main className="px-6 py-8 md:px-8">
+      <main className="mx-auto max-w-[1120px] px-6 py-8 md:px-10">
         <p className="text-[8.5px] font-semibold uppercase tracking-[.2em] text-[var(--stone)]">
           {weekday}
         </p>
         <h1 className="pt-3 text-[34px] font-light leading-none text-[var(--ink)]">
           good morning
         </h1>
-        <div className="mt-[22px] flex max-w-3xl flex-col gap-4 border-t pt-[22px]" style={{ borderColor: "rgba(30,26,23,.11)" }}>
+        <div className="mt-[22px] flex max-w-4xl flex-col border-t pt-[22px]" style={{ borderColor: "rgba(30,26,23,.11)" }}>
           <TodayOutfitCard outfit={todayOutfit} />
           <WardrobeSnapshot garments={garments} />
           <WardrobeInsights garments={garments} />

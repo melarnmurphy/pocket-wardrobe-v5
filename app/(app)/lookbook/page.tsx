@@ -49,13 +49,13 @@ export default async function LookbookPage({
           </div>
         </div>
 
-        <section className="grid gap-6 xl:grid-cols-[1.05fr_1fr]">
+        <section className="grid gap-10 border-t border-[var(--line)] pt-8 xl:grid-cols-[minmax(280px,.75fr)_minmax(0,1.25fr)]">
           <LookbookEntryForm
             action={createLookbookEntryFormAction}
             initialIsActive={initialCreateFocused}
           />
 
-          <section className="pw-panel-soft p-6">
+          <section className="border-l border-[var(--line)] pl-0 xl:pl-10">
             <div className="mb-5">
               <p className="pw-kicker">Saved References</p>
               <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em]">Your visual planning layer</h2>

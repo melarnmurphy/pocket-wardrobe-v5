@@ -88,7 +88,7 @@ export function TodayOutfitCard({
     .join(" · ");
 
   return (
-    <section className={`pw-panel ${compact ? "p-5" : "p-6 md:p-7"}`}>
+    <section className={`${compact ? "p-5" : "pb-8 md:pb-10"} border-b border-[var(--line)]`}>
       <div className="flex items-center justify-between gap-3">
         <p className="pw-kicker">Wear this</p>
         <button

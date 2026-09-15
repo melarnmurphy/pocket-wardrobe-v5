@@ -102,7 +102,7 @@ export function OutfitCalendar({
             <button
               key={cell.date}
               onClick={() => setSelected(cell.date)}
-              className="relative aspect-square overflow-hidden rounded-lg text-sm"
+              className="relative aspect-square overflow-hidden rounded-[4px] text-sm"
               style={{
                 border: isSel ? "1px solid var(--accent)" : "1px solid var(--line)",
                 fontWeight: isToday ? 700 : 400
@@ -136,7 +136,7 @@ export function OutfitCalendar({
       </div>
 
       {selected && (
-        <div className="mt-6 rounded-2xl p-5" style={{ border: "1px solid var(--line)" }}>
+        <div className="mt-6 border-t border-[var(--line)] pt-6">
           <p className="text-[0.72rem] font-semibold uppercase"
             style={{ color: "var(--muted)", letterSpacing: "0.2em" }}>{selected}</p>
 
@@ -148,7 +148,7 @@ export function OutfitCalendar({
               <div className="mt-2 flex gap-2 overflow-x-auto">
                 {selectedWears.map((wear, index) => (
                   <div key={`${wear.garmentId}-${index}`} className="flex w-16 shrink-0 flex-col items-center gap-1">
-                    <div className="h-16 w-16 overflow-hidden rounded-lg" style={{ border: "1px solid var(--line)" }}>
+                    <div className="h-16 w-16 overflow-hidden rounded-[4px]" style={{ border: "1px solid var(--line)" }}>
                       {wear.previewUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={wear.previewUrl} alt={wear.title ?? wear.category} className="h-full w-full object-cover" />
@@ -171,7 +171,7 @@ export function OutfitCalendar({
               <div className="mt-3 flex gap-2 overflow-x-auto">
                 {selectedOutfit.items.map((it) => (
                   <div key={it.id} className="flex w-16 shrink-0 flex-col items-center gap-1">
-                    <div className="h-16 w-16 overflow-hidden rounded-lg"
+                    <div className="h-16 w-16 overflow-hidden rounded-[4px]"
                       style={{ border: "1px solid var(--line)" }}>
                       {it.garment.preview_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -207,7 +207,7 @@ export function OutfitCalendar({
                       <button
                         disabled={isPending}
                         onClick={() => plan(o.id, selected)}
-                        className="w-full rounded-xl px-4 py-3 text-left"
+                        className="w-full rounded-[4px] px-4 py-3 text-left"
                         style={{ border: "1px solid var(--line)" }}>
                         <span className="text-sm font-medium">{o.title ?? "Saved outfit"}</span>
                         <span className="ml-2 text-[0.72rem]" style={{ color: "var(--muted)" }}>

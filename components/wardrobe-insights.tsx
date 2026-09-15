@@ -20,7 +20,7 @@ export function WardrobeInsights({ garments }: WardrobeInsightsProps) {
   if (garments.length === 0) return null;
 
   return (
-    <section className="pw-panel p-5 md:p-6" aria-labelledby="wardrobe-insights-title">
+    <section className="border-b border-[var(--line)] py-8" aria-labelledby="wardrobe-insights-title">
       <div className="pw-page-head gap-4">
         <div>
           <p className="pw-kicker">the useful part</p>
