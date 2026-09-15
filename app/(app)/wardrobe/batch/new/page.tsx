@@ -111,17 +111,13 @@ export default function ChoosePhotosPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[560px] px-5 py-6 pb-16">
+    <div className="mx-auto w-full max-w-[1240px] px-5 py-8 pb-16 lg:px-10">
       <Link href="/wardrobe" className="inline-flex items-center gap-1 text-[12.5px] text-[var(--stone)]">
         <ChevronLeft size={14} strokeWidth={1.5} />
         wardrobe
       </Link>
 
-      <h1 className="pt-4 text-[34px] font-light leading-[1.05] text-[var(--ink)]">choose photos</h1>
-      <p className="pt-2 max-w-[44rem] text-[12.5px] leading-[1.5] text-[var(--slate)]">
-        Pick as many as you like, or drag a folder in on desktop. Nothing enters the wardrobe until
-        you review and confirm each one.
-      </p>
+      <h1 className="pt-5 text-[46px] font-light leading-[1.05] tracking-[-0.035em] text-[var(--ink)]">choose photos</h1>
 
       <div
         onDragOver={(event) => {
@@ -131,17 +127,23 @@ export default function ChoosePhotosPage() {
         onDragLeave={() => setIsDragging(false)}
         onDrop={onDrop}
         onClick={openPicker}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openPicker();
+          }
+        }}
         role="button"
         tabIndex={0}
         className={[
-          "mt-6 flex cursor-pointer flex-col items-center gap-2 rounded-[4px] border border-dashed px-6 py-10 text-center transition-colors",
+          "mt-10 ml-0 flex min-h-[clamp(480px,68vh,740px)] cursor-pointer flex-col items-center justify-center gap-3 rounded-[4px] border border-dashed px-6 text-center transition-colors lg:ml-[136px]",
           isDragging
             ? "border-[var(--oxblood)] bg-[var(--blush)]"
-            : "border-[rgba(30,26,23,.3)] bg-[var(--paper)]"
+            : "border-[rgba(30,26,23,.24)] bg-transparent"
         ].join(" ")}
       >
-        <ImagePlus size={22} strokeWidth={1.5} className="text-[var(--stone)]" />
-        <p className="text-[12.5px] text-[var(--slate)]">
+        <ImagePlus size={30} strokeWidth={1.25} className="text-[var(--stone)]" />
+        <p className="text-[14px] text-[var(--slate)]">
           drop photos here, or tap to choose from your library
         </p>
         <input
