@@ -5,11 +5,11 @@ export default function LookbookLoading() {
         <div className="h-3 w-24 animate-pulse rounded-full bg-[rgba(17,17,17,0.06)]" />
         <div className="h-16 w-96 max-w-full animate-pulse rounded-[10px] bg-[rgba(17,17,17,0.07)]" />
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-x-10 gap-y-0 border-t border-[var(--line)] pt-8 lg:grid-cols-2">
         {[0, 1, 2, 3].map((item) => (
           <div
             key={item}
-            className="h-64 animate-pulse rounded-[8px] border border-[var(--line)] bg-[rgba(255,255,255,0.76)]"
+            className="h-64 animate-pulse border-b border-[var(--line)] bg-transparent"
           />
         ))}
       </div>

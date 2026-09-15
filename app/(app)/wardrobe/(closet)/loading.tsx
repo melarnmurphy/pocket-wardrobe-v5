@@ -13,7 +13,7 @@ export default function ClosetLoading() {
         {[0, 1, 2, 3, 4, 5, 6, 7].map((item) => (
           <div
             key={item}
-            className="h-72 animate-pulse rounded-[8px] border border-[var(--line)] bg-[rgba(255,255,255,0.76)]"
+            className="h-72 animate-pulse border-b border-[var(--line)] bg-transparent"
           />
         ))}
       </div>

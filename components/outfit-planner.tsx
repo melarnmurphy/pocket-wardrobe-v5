@@ -507,7 +507,7 @@ export function OutfitPlanner({
 
   return (
     <section className="space-y-6">
-      <div className="pw-editorial-frame overflow-hidden p-5 md:p-6">
+      <div className="border-t border-b border-[var(--line)] py-5 md:py-6">
         <div
           className={`grid gap-5 ${
             hasGeneratedOutfit ? "xl:grid-cols-[0.82fr_1.18fr]" : "xl:grid-cols-[1.1fr_0.9fr]"
@@ -543,7 +543,7 @@ export function OutfitPlanner({
             ) : null}
           </div>
 
-          <div className="pw-panel-soft flex flex-col gap-4 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.92))] p-5">
+          <div className="flex flex-col gap-4 border-l border-[var(--line)] pl-5">
             <div>
               <p className="pw-kicker">Active Day</p>
               <p className="mt-3 text-3xl font-semibold tracking-[-0.07em]">
@@ -593,7 +593,7 @@ export function OutfitPlanner({
       {todayOutfit ? <TodayOutfitCard outfit={todayOutfit} compact /> : null}
 
       <div className="space-y-4">
-        <div className="pw-panel-soft p-4 md:p-5">
+        <div className="border-t border-b border-[var(--line)] py-4 md:py-5">
             <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <p className="pw-kicker">{canvasMode === "weather" ? "Weekly View" : "Monthly View"}</p>
