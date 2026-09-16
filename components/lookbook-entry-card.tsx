@@ -193,7 +193,7 @@ export function LookbookEntryCard({
           {entry.occasion_tags.slice(0, 2).map((tag) => (
             <span
               key={`${entry.id}-${tag}-occasion`}
-              className="rounded-full border border-[rgba(45,27,105,0.08)] bg-[rgba(45,27,105,0.06)] px-3 py-1.5 text-xs uppercase tracking-[0.14em] text-[var(--muted)]"
+              className="border border-[var(--line)] bg-transparent px-3 py-1.5 text-xs uppercase tracking-[0.14em] text-[var(--muted)]"
             >
               {tag}
             </span>
@@ -674,7 +674,7 @@ function Field({
       <span className="font-medium">{label}</span>
       <input
         suppressHydrationWarning
-        className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
+        className="border border-[var(--line)] bg-[var(--cream)] px-4 py-3 outline-none"
         name={name}
         type={type}
         placeholder={placeholder}
@@ -698,7 +698,7 @@ function TextAreaField({
       <span className="font-medium">{label}</span>
       <textarea
         suppressHydrationWarning
-        className="min-h-28 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
+        className="min-h-28 border border-[var(--line)] bg-[var(--cream)] px-4 py-3 outline-none"
         name={name}
         defaultValue={defaultValue}
       />
@@ -722,7 +722,7 @@ function SelectField({
       <span className="font-medium">{label}</span>
       <select
         suppressHydrationWarning
-        className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
+        className="border border-[var(--line)] bg-[var(--cream)] px-4 py-3 outline-none"
         name={name}
         defaultValue={defaultValue ?? "manual"}
       >

@@ -2164,8 +2164,8 @@ function CreateImageField({
           previewUrl
             ? "border-transparent bg-white"
             : dragActive
-              ? "border-[var(--accent)] bg-[rgba(123,92,240,0.08)]"
-              : "border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,243,255,0.88))]"
+              ? "border-[var(--oxblood)] bg-[rgba(109,42,36,0.05)]"
+              : "border-[var(--line)] bg-[rgba(255,255,255,0.28)]"
         } ${compact ? "mt-0 rounded-[1rem]" : "mt-2 rounded-[1.5rem]"}`}
         onDragEnter={(event) => {
           event.preventDefault();
@@ -2233,7 +2233,7 @@ function CreateImageField({
                 confirmClassName="rounded-full bg-red-600 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white shadow-[0_10px_24px_rgba(185,28,28,0.24)]"
               />
             </div>
-            <div className="border-t border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,243,255,0.88))] px-5 py-4">
+            <div className="border-t border-[var(--line)] bg-[rgba(242,236,227,0.32)] px-5 py-4">
               <p className="text-sm font-semibold">{fileName || "Image selected"}</p>
               <p className="mt-1 text-sm text-[var(--muted)]">
                 This image will be uploaded as the original garment photo when the item is created.

@@ -22,7 +22,7 @@ export function StyleRuleBlankInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={blank.label}
-        className="rounded-2xl border border-[var(--line)] bg-white px-3 py-1.5 text-sm outline-none min-w-[120px]"
+        className="min-w-[120px] border border-[var(--line)] bg-[var(--cream)] px-3 py-1.5 text-sm outline-none"
       />
       {blank.suggestions.length > 0 && (
         <div className="flex flex-wrap gap-1.5 max-w-xs">

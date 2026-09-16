@@ -8,7 +8,7 @@ export function DestructiveActionButton({
   pendingLabel,
   confirmLabel = "Confirm delete",
   className = "pw-button-danger px-4 py-2 text-sm",
-  confirmClassName = "rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-[0_10px_24px_rgba(185,28,28,0.18)]",
+  confirmClassName = "bg-[var(--oxblood)] px-4 py-2 text-sm font-medium text-white",
   hintAlign = "right",
   buttonType = "submit",
   onConfirm
@@ -60,7 +60,7 @@ export function DestructiveActionButton({
 
           setIsConfirming(false);
         }}
-        className={`${isConfirming ? confirmClassName : className} transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(45,27,105,0.1)] active:translate-y-0 active:scale-[0.98] disabled:transform-none disabled:opacity-60 disabled:shadow-none`}
+        className={`${isConfirming ? confirmClassName : className} transition-colors duration-200 ease-out active:opacity-90 disabled:opacity-60`}
       >
         <span className="inline-flex items-center gap-2">
           <TrashIcon />
@@ -70,7 +70,7 @@ export function DestructiveActionButton({
 
       {isConfirming && !pending ? (
         <p
-          className={`absolute top-full mt-2 rounded-full bg-[var(--accent-strong)] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white shadow-[0_10px_24px_rgba(45,27,105,0.18)] ${
+          className={`absolute top-full mt-2 bg-[var(--oxblood)] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white ${
             hintAlign === "left" ? "left-0" : "right-0"
           }`}
         >

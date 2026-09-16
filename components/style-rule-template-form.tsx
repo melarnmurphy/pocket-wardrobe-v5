@@ -395,7 +395,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
     <button
       type="submit"
       disabled={disabled || pending}
-      className="mt-2 rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--accent-foreground)] shadow-[0_12px_25px_rgba(166,99,60,0.18)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(166,99,60,0.24)] active:translate-y-0 active:scale-[0.98] disabled:transform-none disabled:opacity-60 disabled:shadow-none"
+      className="mt-2 bg-[var(--oxblood)] px-5 py-3 text-sm font-semibold text-[var(--accent-foreground)] transition-colors duration-200 ease-out hover:bg-[var(--oxblood-dark)] active:opacity-90 disabled:opacity-60"
     >
       {pending ? "Saving..." : "Save Rule"}
     </button>

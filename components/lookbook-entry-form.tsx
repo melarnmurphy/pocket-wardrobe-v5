@@ -103,7 +103,7 @@ export function LookbookEntryForm({
       </div>
 
       <div className="space-y-6">
-        <section className="rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,243,255,0.92))] p-5 md:p-6">
+        <section className="border-t border-b border-[var(--line)] py-5 md:py-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">
@@ -193,7 +193,7 @@ function Field({
       <span className="font-medium">{label}</span>
       <input
         suppressHydrationWarning
-        className="rounded-[8px] border border-[var(--line)] bg-white px-4 py-3 outline-none"
+        className="border border-[var(--line)] bg-[var(--cream)] px-4 py-3 outline-none"
         name={name}
         type={type}
         placeholder={placeholder}
@@ -216,7 +216,7 @@ function TextAreaField({
       <span className="font-medium">{label}</span>
       <textarea
         suppressHydrationWarning
-        className="min-h-28 rounded-[8px] border border-[var(--line)] bg-white px-4 py-3 outline-none"
+        className="min-h-28 border border-[var(--line)] bg-[var(--cream)] px-4 py-3 outline-none"
         name={name}
         placeholder={placeholder}
       />
@@ -238,7 +238,7 @@ function SelectField({
       <span className="font-medium">{label}</span>
       <select
         suppressHydrationWarning
-        className="rounded-[8px] border border-[var(--line)] bg-white px-4 py-3 outline-none"
+        className="border border-[var(--line)] bg-[var(--cream)] px-4 py-3 outline-none"
         name={name}
         defaultValue="manual"
       >

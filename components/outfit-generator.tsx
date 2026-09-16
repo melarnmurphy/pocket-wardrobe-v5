@@ -244,7 +244,7 @@ export function OutfitGenerator({
             >
               {labels[tab]}
               {isLocked && (
-                <span className="ml-1.5 text-[9px] font-semibold tracking-wide bg-[#e8e0d0] text-[#a08050] px-1.5 py-0.5 rounded">
+                <span className="ml-1.5 border border-[var(--line)] px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-[var(--muted)]">
                   PRO
                 </span>
               )}

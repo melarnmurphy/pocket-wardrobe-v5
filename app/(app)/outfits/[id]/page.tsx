@@ -85,7 +85,7 @@ export default async function LookDetailPage({ params }: { params: Promise<{ id:
         </p>
 
         {sourceImageUrl ? (
-          <figure className="mt-6 overflow-hidden rounded-[18px] border border-[rgba(30,26,23,.12)] bg-[var(--surface)] shadow-[0_20px_50px_rgba(30,26,23,.1)]">
+          <figure className="mt-6 overflow-hidden border-t border-b border-[var(--line)] bg-[var(--surface)]">
             <Image
               src={sourceImageUrl}
               alt="Original uploaded outfit"
@@ -113,10 +113,10 @@ export default async function LookDetailPage({ params }: { params: Promise<{ id:
             </div>
             <div className="grid gap-2">
               {firedRules.slice(0, 6).map((rule, index) => (
-                <div key={`${rule.description}-${index}`} className="rounded-xl border border-[rgba(30,26,23,.1)] bg-[rgba(255,255,255,.72)] px-3 py-2.5">
+                <div key={`${rule.description}-${index}`} className="border-t border-[rgba(30,26,23,.1)] px-3 py-2.5">
                   <div className="flex flex-wrap items-center gap-1.5">
                     {rule.garment_ids.map((garmentId) => (
-                      <span key={garmentId} className="rounded-full bg-[rgba(123,92,240,.1)] px-2 py-1 text-[10px] text-[var(--accent-strong)]">
+                      <span key={garmentId} className="border-b border-[rgba(109,42,36,.24)] px-2 py-1 text-[10px] text-[var(--oxblood)]">
                         {garmentLabels.get(garmentId) || "piece"}
                       </span>
                     ))}

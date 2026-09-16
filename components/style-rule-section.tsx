@@ -82,7 +82,7 @@ function StyleRuleCard({
   }, [deleteState.message, deleteState.status]);
 
   return (
-    <article className="rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,243,255,0.92))] p-5 shadow-[0_18px_40px_rgba(45,27,105,0.08)]">
+    <article className="border-t border-b border-[var(--line)] py-5">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-2">
           <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
@@ -93,10 +93,10 @@ function StyleRuleCard({
           </h3>
         </div>
         <span
-          className={`rounded-full px-3 py-1.5 text-xs uppercase tracking-[0.18em] ${
+          className={`border px-3 py-1.5 text-xs uppercase tracking-[0.18em] ${
             rule.active
-              ? "bg-[rgba(13,255,232,0.12)] text-[var(--trend-accent-ink)]"
-              : "bg-[rgba(45,27,105,0.06)] text-[var(--muted)]"
+              ? "border-[var(--oxblood)] bg-[rgba(109,42,36,0.06)] text-[var(--oxblood)]"
+              : "border-[var(--line)] bg-transparent text-[var(--muted)]"
           }`}
         >
           {rule.active ? "Active" : "Inactive"}
@@ -348,14 +348,14 @@ function RuleChip({
 }) {
   return (
     <span
-      className={`rounded-full px-3 py-1.5 text-xs uppercase tracking-[0.14em] ${
+      className={`border px-3 py-1.5 text-xs uppercase tracking-[0.14em] ${
         tone === "weight"
-          ? "bg-[rgba(45,27,105,0.06)] text-[var(--muted)]"
+          ? "border-[var(--line)] bg-transparent text-[var(--muted)]"
           : tone === "user"
-            ? "bg-[rgba(255,107,157,0.12)] text-[var(--accent-strong)]"
+            ? "border-[rgba(109,42,36,0.22)] bg-[rgba(109,42,36,0.06)] text-[var(--oxblood)]"
             : tone === "global"
-              ? "bg-[rgba(123,92,240,0.12)] text-[var(--accent-strong)]"
-              : "border border-[var(--line)] bg-white/82 text-[var(--muted)]"
+              ? "border-[var(--line)] bg-transparent text-[var(--muted)]"
+              : "border-[var(--line)] bg-transparent text-[var(--muted)]"
       }`}
     >
       {label.replaceAll("_", " ")}

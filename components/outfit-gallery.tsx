@@ -88,7 +88,7 @@ function SavedOutfitCard({ outfit }: { outfit: OutfitWithItems }) {
   }
 
   return (
-    <article className="relative overflow-hidden rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-white shadow-[0_18px_40px_rgba(17,17,17,0.06)]">
+    <article className="relative overflow-hidden border-t border-b border-[var(--line)] bg-[var(--surface)]">
       <div className="absolute right-3 top-3 z-10">
         <form action={deleteFormAction}>
           <input type="hidden" name="outfit_id" value={outfit.id} />
@@ -144,7 +144,7 @@ function SavedOutfitCard({ outfit }: { outfit: OutfitWithItems }) {
             {insights.slice(0, 2).map((insight, index) => (
               <div
                 key={`${insight.key}-${index}`}
-                className="rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,243,238,0.92))] p-3"
+                className="border-t border-[var(--line)] bg-[rgba(242,236,227,0.32)] p-3"
               >
                 <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">
                   {insight.title}

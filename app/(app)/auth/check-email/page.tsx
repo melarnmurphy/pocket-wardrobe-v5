@@ -12,7 +12,7 @@ export default async function CheckEmailPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl items-center px-6 py-10">
-      <section className="pw-panel w-full p-8">
+      <section className="w-full border-t border-b border-[var(--line)] py-8">
         <p className="pw-kicker">
           Check Email
         </p>

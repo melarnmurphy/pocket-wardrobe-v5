@@ -50,7 +50,7 @@ function resolveStroke(status?: string | null) {
     case "dominant":
       return "#0DFFE8";
     case "cooling":
-      return "#FF6B9D";
+      return "#6d2a24";
     case "candidate":
     case "emerging":
     case "confirmed":

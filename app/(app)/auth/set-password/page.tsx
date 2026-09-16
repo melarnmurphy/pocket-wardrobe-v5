@@ -10,7 +10,7 @@ export default async function SetPasswordPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl items-center px-6 py-10">
-      <section className="pw-panel w-full p-8">
+      <section className="w-full border-t border-b border-[var(--line)] py-8">
         <p className="pw-kicker">
           Set Password
         </p>
@@ -22,7 +22,7 @@ export default async function SetPasswordPage({
         </p>
 
         {params.error ? (
-          <p className="mt-6 rounded-[1rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p className="mt-6 border-l-2 border-[var(--oxblood)] bg-[rgba(109,42,36,0.05)] px-4 py-3 text-sm text-[var(--oxblood)]">
             {params.error}
           </p>
         ) : null}
@@ -35,7 +35,7 @@ export default async function SetPasswordPage({
             required
             minLength={8}
             placeholder="New password"
-            className="w-full rounded-[1rem] border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
+            className="w-full border border-[var(--line)] bg-[var(--cream)] px-4 py-3 text-sm outline-none"
           />
           <input
             name="confirm_password"
@@ -43,7 +43,7 @@ export default async function SetPasswordPage({
             required
             minLength={8}
             placeholder="Confirm new password"
-            className="w-full rounded-[1rem] border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
+            className="w-full border border-[var(--line)] bg-[var(--cream)] px-4 py-3 text-sm outline-none"
           />
           <button
             type="submit"
