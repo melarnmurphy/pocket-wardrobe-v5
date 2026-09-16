@@ -296,7 +296,7 @@ export function OutfitGenerator({
               </div>
             </div>
 
-            <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
+            <div className="border-t border-b border-[var(--line)] bg-[rgba(255,255,255,0.32)] py-3">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
                 <div className="flex-1">
                   <label className="block text-[10px] uppercase tracking-[0.25em] text-[var(--muted)] mb-1.5">
@@ -331,7 +331,7 @@ export function OutfitGenerator({
               </div>
 
               {weatherContext ? (
-                <div className="mt-3 rounded-lg bg-white px-3 py-2 text-xs text-[var(--muted)]">
+                  <div className="mt-3 border-l-2 border-[var(--oxblood)] bg-[rgba(242,236,227,0.42)] px-3 py-2 text-xs text-[var(--muted)]">
                   <span className="font-medium text-[var(--foreground)]">
                     {weatherContext.profile_label}
                   </span>
@@ -372,7 +372,7 @@ export function OutfitGenerator({
                     key={match.trend_signal_id}
                     onClick={() => setSelectedSignalId(match.trend_signal_id)}
                     className={`
-                      flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-colors
+                      flex items-center gap-3 border-t border-b px-4 py-3 text-left transition-colors
                       ${selectedSignalId === match.trend_signal_id
                         ? "border-[var(--foreground)] bg-[var(--surface)]"
                         : "border-[var(--line)] bg-white hover:bg-[var(--surface)]"}
@@ -408,7 +408,7 @@ export function OutfitGenerator({
         <button
           onClick={handleGenerate}
           disabled={isGenerating}
-          className="w-full h-10 bg-[var(--foreground)] text-white rounded-xl text-sm font-medium disabled:opacity-60"
+          className="h-10 w-full bg-[var(--oxblood)] text-white text-sm font-medium disabled:opacity-60"
         >
           {isGenerating
             ? "Generating…"
@@ -487,7 +487,7 @@ export function OutfitGenerator({
               {pendingResult.insights.map((insight, index) => (
                 <div
                   key={`${insight.key}-${index}`}
-                  className="rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3"
+                  className="border-t border-[var(--line)] bg-[rgba(255,255,255,0.32)] px-4 py-3"
                 >
                   <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
                     {insight.title}
@@ -506,7 +506,7 @@ export function OutfitGenerator({
               ))}
             </div>
           ) : pendingResult.firedRules.length > 0 ? (
-            <div className="bg-[var(--surface)] rounded-xl px-4 py-3">
+            <div className="border-t border-b border-[var(--line)] bg-[rgba(255,255,255,0.32)] px-4 py-3">
               <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)] mb-2">Why this works</p>
               <div className="flex flex-wrap gap-1.5">
                 {pendingResult.firedRules.map((rule, i) => (
@@ -547,7 +547,7 @@ function SwapChip({ garment, onSwap }: SwapChipProps) {
 
   return (
     <div className="relative">
-      <div className="flex items-center gap-0 border border-[var(--line)] rounded-xl bg-white overflow-hidden">
+      <div className="flex items-center gap-0 border-t border-b border-[var(--line)] bg-[var(--cream)] overflow-hidden">
         <div className="w-11 h-11 bg-[var(--surface)] flex-shrink-0">
           {garment.preview_url && (
             <Image src={garment.preview_url} alt={garment.title ?? garment.category} width={88} height={88} unoptimized className="w-full h-full object-cover" />
@@ -569,7 +569,7 @@ function SwapChip({ garment, onSwap }: SwapChipProps) {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute top-full left-0 mt-1 z-20 w-56 bg-white border border-[var(--line)] rounded-xl shadow-lg overflow-hidden max-h-52 overflow-y-auto">
+          <div className="absolute top-full left-0 z-20 mt-1 w-56 overflow-y-auto border border-[var(--line)] bg-[var(--cream)] max-h-52">
             {isLoading && <p className="text-xs text-[var(--muted)] px-3 py-2">Loading…</p>}
             {!isLoading && candidates.length === 0 && (
               <p className="text-xs text-[var(--muted)] px-3 py-2">No other options in this role.</p>

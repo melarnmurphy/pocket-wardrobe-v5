@@ -259,9 +259,9 @@ export function AvatarStyler({
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)]">
-        <div className="overflow-hidden rounded-[10px] border border-[rgba(17,17,17,0.08)] bg-white shadow-[0_24px_70px_rgba(17,17,17,0.08)]">
+        <div className="overflow-hidden border-t border-b border-[var(--line)] bg-[var(--surface)]">
           <div
-            className="relative flex min-h-[36rem] touch-pan-y select-none items-center justify-center overflow-hidden bg-[linear-gradient(180deg,#fbfaf7,#eee8dd)]"
+            className="relative flex min-h-[36rem] touch-pan-y select-none items-center justify-center overflow-hidden bg-[rgba(242,236,227,0.45)]"
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -278,7 +278,7 @@ export function AvatarStyler({
               />
             ) : (
               <div className="flex max-w-md flex-col items-center px-8 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-[0_18px_38px_rgba(17,17,17,0.08)]">
+                <div className="flex h-16 w-16 items-center justify-center border border-[var(--line)] bg-[var(--cream)]">
                   <Shirt className="h-7 w-7 text-[var(--muted)]" />
                 </div>
                 <p className="mt-5 text-2xl font-semibold tracking-[-0.04em]">
@@ -288,7 +288,7 @@ export function AvatarStyler({
                   The photo is stored privately in your avatar profile while your wardrobe items
                   come from your saved garment records.
                 </p>
-                <div className="mt-5 rounded-[8px] border border-white/80 bg-white/82 px-4 py-3 text-left shadow-[0_14px_34px_rgba(17,17,17,0.08)]">
+                <div className="mt-5 border-l-2 border-[var(--oxblood)] bg-[rgba(255,255,255,0.42)] px-4 py-3 text-left">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
                     Best Avatar Photo
                   </p>
@@ -329,7 +329,7 @@ export function AvatarStyler({
                     return (
                       <span
                         key={slot}
-                        className="rounded-full border border-white/70 bg-white/88 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--foreground)] shadow-sm backdrop-blur"
+                        className="border border-[var(--line)] bg-[var(--cream)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--foreground)]"
                       >
                         {slotLabels[slot]}: {garment ? displayGarmentName(garment) : "empty"}
                       </span>
@@ -363,7 +363,7 @@ export function AvatarStyler({
                 <button
                   type="button"
                   onClick={() => updateSelectedIndex(activeSlot, -1)}
-                  className="absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[var(--foreground)] shadow-[0_12px_30px_rgba(17,17,17,0.12)] transition hover:-translate-x-0.5 disabled:opacity-40"
+                  className="absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center border border-[var(--line)] bg-[var(--cream)] text-[var(--foreground)] transition hover:border-[var(--oxblood)] disabled:opacity-40"
                   disabled={!activeItems.length}
                   aria-label={`Previous ${slotLabels[activeSlot].toLowerCase()}`}
                 >
@@ -372,14 +372,14 @@ export function AvatarStyler({
                 <button
                   type="button"
                   onClick={() => updateSelectedIndex(activeSlot, 1)}
-                  className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[var(--foreground)] shadow-[0_12px_30px_rgba(17,17,17,0.12)] transition hover:translate-x-0.5 disabled:opacity-40"
+                  className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center border border-[var(--line)] bg-[var(--cream)] text-[var(--foreground)] transition hover:border-[var(--oxblood)] disabled:opacity-40"
                   disabled={!activeItems.length}
                   aria-label={`Next ${slotLabels[activeSlot].toLowerCase()}`}
                 >
                   <ChevronRight className="h-5 w-5" />
                 </button>
 
-                <div className="absolute inset-x-4 bottom-4 rounded-[8px] border border-white/70 bg-white/92 p-3 shadow-[0_18px_44px_rgba(17,17,17,0.12)] backdrop-blur">
+                <div className="absolute inset-x-4 bottom-4 border-t border-b border-[var(--line)] bg-[rgba(250,247,242,0.94)] p-3">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
@@ -432,7 +432,7 @@ export function AvatarStyler({
             disabled={isPending}
           />
 
-          <div className="rounded-[10px] border border-[rgba(17,17,17,0.08)] bg-white/92 p-4 shadow-[0_18px_45px_rgba(17,17,17,0.06)]">
+          <div className="border-t border-b border-[var(--line)] bg-[rgba(255,255,255,0.42)] py-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">
@@ -462,7 +462,7 @@ export function AvatarStyler({
 
           {hasAvatar ? (
             <>
-              <div className="rounded-[10px] border border-[rgba(17,17,17,0.08)] bg-white/92 p-4 shadow-[0_18px_45px_rgba(17,17,17,0.06)]">
+              <div className="border-t border-b border-[var(--line)] bg-[rgba(255,255,255,0.42)] py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">
@@ -500,7 +500,7 @@ export function AvatarStyler({
                 </div>
               </div>
 
-              <div className="rounded-[10px] border border-[rgba(17,17,17,0.08)] bg-white/92 p-4 shadow-[0_18px_45px_rgba(17,17,17,0.06)]">
+              <div className="border-t border-b border-[var(--line)] bg-[rgba(255,255,255,0.42)] py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">
@@ -556,7 +556,7 @@ export function AvatarStyler({
           ) : null}
 
           {hasAvatar ? (
-          <div className="rounded-[10px] border border-[rgba(17,17,17,0.08)] bg-white/92 p-4 shadow-[0_18px_45px_rgba(17,17,17,0.06)]">
+          <div className="border-t border-b border-[var(--line)] bg-[rgba(255,255,255,0.42)] py-4">
             <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">
               {slotLabels[activeSlot]}
             </p>
@@ -634,7 +634,7 @@ function AvatarMeasurementsPanel({
   return (
     <form
       action={action}
-      className="rounded-[10px] border border-[rgba(17,17,17,0.08)] bg-white/92 p-4 shadow-[0_18px_45px_rgba(17,17,17,0.06)]"
+    className="border-t border-b border-[var(--line)] bg-[rgba(255,255,255,0.42)] py-4"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
