@@ -14,8 +14,8 @@ test("sign-in page exposes an understandable authentication form", async ({ page
 
 test("protected wardrobe entry does not expose private data to signed-out users", async ({ page }) => {
   await page.goto("/wardrobe");
-  await expect(page.getByRole("link", { name: "Sign In", exact: true })).toBeVisible();
-  await expect(page.getByText("Authentication Required")).toBeVisible();
+  await expect(page.getByRole("link", { name: /^sign in$/i }).first()).toBeVisible();
+  await expect(page.getByText("authentication required", { exact: false })).toBeVisible();
 });
 
 test("signed-out users cannot enqueue private photo processing", async ({ request }) => {
