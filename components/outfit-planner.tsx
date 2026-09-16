@@ -605,7 +605,7 @@ export function OutfitPlanner({
                 ) : null}
               </div>
               <div className="flex flex-col items-start gap-3 lg:items-end">
-                <div className="inline-flex rounded-full border border-[var(--line)] bg-[rgba(255,255,255,0.82)] p-1 shadow-[0_10px_24px_rgba(17,17,17,0.05)]">
+                <div className="inline-flex border-b border-[var(--line)] bg-transparent p-1">
                   {([
                     {
                       key: "weather",
@@ -628,7 +628,7 @@ export function OutfitPlanner({
                         onClick={() => setCanvasMode(option.key)}
                         className={`inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium tracking-[-0.01em] transition ${
                           isActive
-                            ? "bg-[#111111] text-white shadow-[0_14px_30px_rgba(17,17,17,0.14)]"
+                            ? "bg-[var(--oxblood)] text-white"
                             : "text-[var(--muted)] hover:text-[var(--foreground)]"
                         }`}
                       >
@@ -744,7 +744,7 @@ function PlannedOutfitCard({
   showExplanation?: boolean;
 }) {
   return (
-    <div className="flex flex-1 flex-col space-y-4 rounded-[10px] bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(247,244,238,0.76))] p-3 md:p-4">
+    <div className="flex flex-1 flex-col space-y-4 border-t border-b border-[var(--line)] py-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="pw-kicker">Planned Outfit</p>
@@ -777,9 +777,9 @@ function PlannedOutfitCard({
         {outfit.garments.map((garment) => (
           <div
             key={garment.id}
-            className="flex items-center gap-3 rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.92))] px-3 py-2.5"
+            className="flex items-center gap-3 border-t border-[var(--line)] px-1 py-2.5"
           >
-            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-[6px] bg-[rgba(17,17,17,0.04)] md:h-16 md:w-16">
+            <div className="h-14 w-14 shrink-0 overflow-hidden border border-[var(--line)] bg-[rgba(242,236,227,0.45)] md:h-16 md:w-16">
               {garment.preview_url ? (
                 <Image
                   src={garment.preview_url}
@@ -805,7 +805,7 @@ function PlannedOutfitCard({
       </div>
 
       {showExplanation && outfit.explanation ? (
-        <p className="rounded-[8px] border border-[rgba(17,17,17,0.06)] bg-[rgba(17,17,17,0.03)] px-4 py-4 text-sm leading-7 text-[var(--muted)]">
+        <p className="border-t border-b border-[var(--line)] px-1 py-4 text-sm leading-7 text-[var(--muted)]">
           {outfit.explanation}
         </p>
       ) : null}
@@ -825,7 +825,7 @@ function OutfitExplanationSummary({ outfit }: { outfit: GeneratedOutfit }) {
   }
 
   return (
-    <div className="rounded-[10px] border border-[var(--line)] bg-[rgba(255,255,255,0.72)] p-4 md:p-5">
+    <div className="border-t border-b border-[var(--line)] py-4 md:py-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="pw-kicker">Why It Works</p>
@@ -847,7 +847,7 @@ function OutfitExplanationSummary({ outfit }: { outfit: GeneratedOutfit }) {
           {primaryInsights.map((insight, index) => (
             <div
               key={`${insight.key}-${index}`}
-              className="rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(247,244,238,0.86))] p-3"
+              className="border-t border-[var(--line)] p-3"
             >
               <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">
                 {insight.title}
@@ -880,7 +880,7 @@ function OutfitInsightGrid({ outfit }: { outfit: GeneratedOutfit }) {
       {outfit.insights.map((insight, index) => (
         <div
           key={`${insight.key}-${index}`}
-          className="rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,243,238,0.92))] p-4"
+          className="border-t border-[var(--line)] p-4"
         >
           <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">
             {insight.title}
@@ -931,12 +931,12 @@ function WeatherPlannerGrid({
             key={day.key}
             type="button"
             onClick={() => onSelectDay(day.key)}
-            className={`relative overflow-hidden rounded-[8px] border p-4 text-left transition-all ${
+            className={`relative overflow-hidden border-t border-b p-4 text-left transition-colors ${
               isActive
-                ? "border-[var(--foreground)] bg-white shadow-[0_18px_40px_rgba(17,17,17,0.08)]"
+                ? "border-[var(--foreground)] bg-[rgba(255,255,255,0.7)]"
                 : isToday
-                  ? "border-[rgba(17,17,17,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,244,238,0.92))] shadow-[0_16px_34px_rgba(17,17,17,0.06)]"
-                : "border-[var(--line)] bg-[rgba(255,255,255,0.76)] hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(17,17,17,0.08)]"
+                  ? "border-[rgba(17,17,17,0.18)] bg-[rgba(242,236,227,0.42)]"
+                : "border-[var(--line)] bg-transparent hover:bg-[rgba(255,255,255,0.5)]"
             }`}
           >
             {isActive ? (
@@ -962,7 +962,7 @@ function WeatherPlannerGrid({
                   Today
                 </span>
               ) : isPlanned ? (
-                <span className="rounded-full bg-[rgba(123,92,240,0.1)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--foreground)]">
+              <span className="border border-[var(--line)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--foreground)]">
                   Drafted
                 </span>
               ) : null}
@@ -1082,8 +1082,8 @@ function CalendarPlannerGrid({
 
   return (
     <>
-      <div className="overflow-hidden rounded-[10px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(246,243,238,0.88))]">
-        <div className="grid grid-cols-7 border-b border-[var(--line)] bg-[rgba(247,243,236,0.72)]">
+      <div className="overflow-hidden border-t border-b border-[var(--line)]">
+        <div className="grid grid-cols-7 border-b border-[var(--line)] bg-[rgba(242,236,227,0.42)]">
           {dayHeadings.map((heading) => (
             <div
               key={heading}
@@ -1189,10 +1189,10 @@ function CalendarCellOutfitPreview({
           event.stopPropagation();
           onAddLook();
         }}
-        className={`flex h-[62px] w-full items-center justify-center rounded-[8px] border px-3 text-center transition ${
+        className={`flex h-[62px] w-full items-center justify-center border px-3 text-center transition ${
           isPlanned
             ? "border-[rgba(17,17,17,0.08)] bg-[rgba(255,255,255,0.82)]"
-            : "border-dashed border-[rgba(17,17,17,0.12)] bg-[linear-gradient(180deg,rgba(249,246,240,0.92),rgba(244,239,232,0.68))] hover:border-[rgba(17,17,17,0.22)] hover:bg-white"
+            : "border-dashed border-[rgba(17,17,17,0.12)] bg-[rgba(242,236,227,0.32)] hover:border-[rgba(17,17,17,0.22)] hover:bg-white"
         }`}
       >
         <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--muted)]">
@@ -1206,7 +1206,7 @@ function CalendarCellOutfitPreview({
     const garment = previewGarments[0];
 
     return (
-      <div className="h-[70px] overflow-hidden rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-[rgba(255,255,255,0.8)]">
+      <div className="h-[70px] overflow-hidden border border-[rgba(17,17,17,0.08)] bg-[rgba(255,255,255,0.8)]">
         <Image
           src={garment.preview_url ?? ""}
           alt={garment.title ?? garment.category}
@@ -1743,10 +1743,10 @@ function PlanningContextEditor({
                     key={option.key}
                     type="button"
                     onClick={() => setPrimaryEvent(option.key)}
-                    className={`rounded-full border px-3.5 py-2 text-sm font-medium tracking-[-0.01em] shadow-[0_10px_24px_rgba(17,17,17,0.04)] transition ${
+                    className={`border px-3.5 py-2 text-sm font-medium tracking-[-0.01em] transition ${
                       isSelected
-                        ? "border-[rgba(17,17,17,0.92)] bg-[linear-gradient(180deg,rgba(17,17,17,0.96),rgba(33,33,33,0.96))] text-white shadow-[0_14px_30px_rgba(17,17,17,0.16)]"
-                        : "border-[rgba(17,17,17,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,243,238,0.9))] text-[var(--foreground)] hover:border-[rgba(17,17,17,0.18)] hover:bg-white"
+                        ? "border-[var(--oxblood)] bg-[var(--oxblood)] text-white"
+                        : "border-[rgba(17,17,17,0.14)] bg-transparent text-[var(--foreground)] hover:border-[var(--oxblood)] hover:bg-[rgba(242,236,227,0.35)]"
                     }`}
                   >
                     {option.label}
@@ -1760,12 +1760,12 @@ function PlanningContextEditor({
                 value={parsedOccasion.primaryText === "Custom" ? "" : parsedOccasion.primaryText}
                 onChange={(event) => setCustomPrimary(event.target.value)}
                 placeholder="Add your own occasion"
-                className="w-full rounded-[10px] border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none transition"
+                className="w-full border border-[var(--line)] bg-[var(--cream)] px-4 py-3 text-sm outline-none transition"
               />
             ) : null}
           </div>
 
-          <details className="group rounded-[12px] border border-[rgba(17,17,17,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,245,240,0.76))] px-4 py-3 shadow-[0_12px_28px_rgba(17,17,17,0.04)]">
+          <details className="group border-t border-b border-[var(--line)] px-1 py-3">
             <summary className="cursor-pointer list-none text-sm font-medium text-[var(--muted)] transition group-open:text-[var(--foreground)]">
               Add another occasion
             </summary>
@@ -1798,7 +1798,7 @@ function PlanningContextEditor({
                   key={label}
                   type="button"
                   onClick={() => removeSecondary(label)}
-                  className="inline-flex items-center gap-2 rounded-full border border-[rgba(17,17,17,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,242,237,0.92))] px-3 py-1.5 text-xs font-medium tracking-[0.01em] text-[var(--foreground)] shadow-[0_8px_20px_rgba(17,17,17,0.04)] transition hover:border-[rgba(17,17,17,0.18)] hover:bg-white"
+                  className="inline-flex items-center gap-2 border-b border-[var(--line)] px-3 py-1.5 text-xs font-medium tracking-[0.01em] text-[var(--foreground)] transition hover:border-[var(--oxblood)]"
                 >
                   <span>{label}</span>
                   <span
