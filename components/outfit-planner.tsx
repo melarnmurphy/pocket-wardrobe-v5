@@ -93,8 +93,8 @@ const weatherVisuals: Record<
 > = {
   warm_sun: {
     icon: SunMedium,
-    iconClassName: "text-[#c66f19]",
-    chipClassName: "border-[#efcf9d] bg-[#fff4e4] text-[#8f5317]"
+    iconClassName: "text-[var(--oxblood)]",
+    chipClassName: "border-[var(--blush)] bg-[var(--blush)] text-[var(--blush-ink)]"
   },
   mild_clear: {
     icon: CloudSun,
