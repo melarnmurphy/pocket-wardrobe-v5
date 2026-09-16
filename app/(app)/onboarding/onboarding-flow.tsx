@@ -22,10 +22,17 @@ export function OnboardingFlow({
   const [step, setStep] = useState<Step>(hasGarments ? "you" : "photos");
   const [localSuburb, setLocalSuburb] = useState(suburb ?? "");
   const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function finish() {
     setIsSaving(true);
-    await completeOnboardingAction();
+    setErrorMessage(null);
+    const result = await completeOnboardingAction();
+    if (result.status === "error") {
+      setErrorMessage(result.message ?? "we couldn't finish setting up your account. try again.");
+      setIsSaving(false);
+      return;
+    }
     router.push("/wardrobe");
   }
 
@@ -77,11 +84,16 @@ export function OnboardingFlow({
             onSubmit={async (event) => {
               event.preventDefault();
               setIsSaving(true);
+              setErrorMessage(null);
               const formData = new FormData();
               formData.set("local_name", "");
               formData.set("suburb", localSuburb);
-              await updateProfileAction({ status: "idle", message: null }, formData);
+              const result = await updateProfileAction({ status: "idle", message: null }, formData);
               setIsSaving(false);
+              if (result.status === "error") {
+                setErrorMessage(result.message ?? "we couldn't save your suburb. try again.");
+                return;
+              }
               setStep("done");
             }}
           >
@@ -116,6 +128,12 @@ export function OnboardingFlow({
             </PillButton>
           </div>
         </>
+      ) : null}
+
+      {errorMessage ? (
+        <p role="alert" className="mt-4 text-[13px] leading-[1.6] text-[var(--oxblood)]">
+          {errorMessage}
+        </p>
       ) : null}
     </div>
   );
