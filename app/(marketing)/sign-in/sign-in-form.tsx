@@ -103,9 +103,9 @@ export default function SignInForm({
         {isCreate ? (
           <form action={signUpWithPasswordAction} className={styles.authForm} data-1p-ignore="true">
             <input type="hidden" name="next" value={next} />
-            <Field label="your name" name="name" autoComplete="name" data-1p-ignore="true" placeholder="your name" defaultValue={name} required />
+            <Field label="your name" name="name" autoComplete="name" data-1p-ignore data-op-ignore placeholder="your name" defaultValue={name} required />
             <div className={styles.authTwoUp}>
-              <Field label="date of birth" name="date_of_birth" type="date" autoComplete="bday" data-1p-ignore="true" defaultValue={dateOfBirth} required />
+              <Field label="date of birth" name="date_of_birth" type="date" autoComplete="bday" data-1p-ignore data-op-ignore defaultValue={dateOfBirth} required />
               <LocationField initialValue={location} />
             </div>
             <Field label="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" defaultValue={email} required />
@@ -198,7 +198,8 @@ function LocationField({ initialValue }: { initialValue: string }) {
         name="location"
         value={value}
         autoComplete="off"
-        data-1p-ignore="true"
+        data-1p-ignore
+        data-op-ignore
         placeholder="suburb or city, state"
         required
         role="combobox"
