@@ -177,10 +177,17 @@ function LocationField({ initialValue }: { initialValue: string }) {
   const [value, setValue] = useState(initialValue);
   const [focused, setFocused] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
-  const suggestions = useMemo(() => {
+  const suggestions = useMemo<Array<{ name: string; custom: boolean }>>(() => {
     const query = value.trim().toLowerCase();
-    if (!query) return ADELAIDE_SUBURBS.slice(0, 6);
-    return ADELAIDE_SUBURBS.filter((entry) => entry.name.includes(query)).slice(0, 6);
+    const matches = (query
+      ? ADELAIDE_SUBURBS.filter((entry) => entry.name.includes(query)).slice(0, 5)
+      : ADELAIDE_SUBURBS.slice(0, 6)
+    ).map((entry) => ({ name: entry.name, custom: false }));
+    const exactMatch = ADELAIDE_SUBURBS.some((entry) => entry.name === query);
+
+    return query && !exactMatch
+      ? [{ name: value.trim(), custom: true }, ...matches]
+      : matches;
   }, [value]);
   const showSuggestions = focused && suggestions.length > 0;
 
@@ -214,7 +221,7 @@ function LocationField({ initialValue }: { initialValue: string }) {
             setHighlightedIndex((index) => Math.max(index - 1, 0));
           } else if (event.key === "Enter") {
             event.preventDefault();
-            setValue(suggestions[highlightedIndex].name);
+            setValue(suggestions[highlightedIndex]?.name ?? value);
             setFocused(false);
           } else if (event.key === "Escape") {
             setFocused(false);
@@ -236,11 +243,11 @@ function LocationField({ initialValue }: { initialValue: string }) {
                 setFocused(false);
               }}
             >
-              {suggestion.name}
-              <span>South Australia</span>
+              <span>{suggestion.custom ? `use “${suggestion.name}”` : suggestion.name}</span>
+              <span>{suggestion.custom ? "your location" : "South Australia"}</span>
             </button>
           ))}
-          <p className={styles.authLocationHint}>You can also enter any suburb or city, state.</p>
+          <p className={styles.authLocationHint}>Suggestions follow what you type. Any suburb or city, state is welcome.</p>
         </div>
       ) : null}
     </label>
