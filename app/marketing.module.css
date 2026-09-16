@@ -1083,9 +1083,9 @@
 .authLocationSuggestionActive { background: #eadbd0; }
 .authLocationHint { margin: 0; padding: 10px 14px 12px; color: #6b6459; font: 400 11px/1.35 Karla,sans-serif; }
 .authActionRow { display: flex; align-items: center; flex-wrap: wrap; gap: 24px; padding-top: 34px; }
-.authPrimary, .authOutline { border-radius: 100px; cursor: pointer; font: 600 11.5px/1 Karla,sans-serif; letter-spacing: .14em; text-transform: uppercase; }
-.authPrimary { min-height: 52px; padding: 18px 26px; border: 0; background: #1f6b3f; color: #faf7f2; }
-.authOutline { padding: 16.5px 24px; border: 1.5px solid #14472b; background: transparent; color: #14472b; }
+.authPrimary, .authOutline { display: inline-flex; min-height: 52px; align-items: center; justify-content: center; white-space: nowrap; border-radius: 100px; cursor: pointer; font: 600 11.5px/1 Karla,sans-serif; letter-spacing: .14em; text-transform: uppercase; }
+.authPrimary { min-width: 174px; padding: 18px 26px; border: 0; background: #1f6b3f; color: #faf7f2; }
+.authOutline { min-width: 174px; padding: 16.5px 24px; border: 1.5px solid #14472b; background: transparent; color: #14472b; }
 .authForgot { color: #6d2a24; font: 400 15px/1 Karla,sans-serif; }
 .authTerms { max-width: 26ch; color: #6b6459; font: 400 14px/1.4 Karla,sans-serif; }
 .authTerms a { color: #6d2a24; text-decoration: underline; }
