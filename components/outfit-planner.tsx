@@ -1378,7 +1378,7 @@ function PlannerAddLookDialog({
           </button>
         </div>
 
-        <div className="inline-flex rounded-full border border-[var(--line)] bg-white p-1">
+        <div className="inline-flex border-b border-[var(--line)] bg-transparent p-1">
           {([
             { key: "wardrobe", label: "Wardrobe" },
             { key: "lookbook", label: "Lookbook" }
@@ -1390,8 +1390,8 @@ function PlannerAddLookDialog({
                 key={option.key}
                 type="button"
                 onClick={() => setSourceMode(option.key)}
-                className={`rounded-full px-4 py-2 text-sm transition ${
-                  isActive ? "bg-[#111111] text-white" : "text-[var(--muted)]"
+                className={`px-4 py-2 text-sm transition ${
+                  isActive ? "bg-[var(--oxblood)] text-white" : "text-[var(--muted)]"
                 }`}
               >
                 {option.label}
@@ -1416,12 +1416,12 @@ function PlannerAddLookDialog({
                 value={wardrobeQuery}
                 onChange={(event) => setWardrobeQuery(event.target.value)}
                 placeholder="Search title, brand, category"
-                className="rounded-[10px] border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
+                className="border border-[var(--line)] bg-[var(--cream)] px-4 py-3 text-sm outline-none"
               />
               <select
                 value={wardrobeTypeFilter}
                 onChange={(event) => setWardrobeTypeFilter(event.target.value)}
-                className="rounded-[10px] border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
+                className="border border-[var(--line)] bg-[var(--cream)] px-4 py-3 text-sm outline-none"
               >
                 <option value="all">All types</option>
                 {wardrobeCategories.map((category) => (
@@ -1433,7 +1433,7 @@ function PlannerAddLookDialog({
               <select
                 value={wardrobeColourFilter}
                 onChange={(event) => setWardrobeColourFilter(event.target.value)}
-                className="rounded-[10px] border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
+                className="border border-[var(--line)] bg-[var(--cream)] px-4 py-3 text-sm outline-none"
               >
                 <option value="all">All colours</option>
                 {wardrobeColours.map((colour) => (
@@ -1445,7 +1445,7 @@ function PlannerAddLookDialog({
               <button
                 type="button"
                 onClick={() => setWardrobeFavouritesOnly((current) => !current)}
-                className={`rounded-[10px] border px-4 py-3 text-sm transition ${
+                className={`border px-4 py-3 text-sm transition ${
                   wardrobeFavouritesOnly
                     ? "border-[var(--foreground)] bg-[rgba(17,17,17,0.04)] text-[var(--foreground)]"
                     : "border-[var(--line)] bg-white text-[var(--muted)]"
@@ -1472,10 +1472,10 @@ function PlannerAddLookDialog({
                     key={safeGarmentId}
                     type="button"
                     onClick={() => toggleWardrobeItem(safeGarmentId)}
-                    className={`rounded-[12px] border p-3 text-left transition ${
+                    className={`border-t border-b p-3 text-left transition ${
                       isSelected
-                        ? "border-[var(--foreground)] bg-[rgba(17,17,17,0.03)] shadow-[0_14px_30px_rgba(17,17,17,0.08)]"
-                        : "border-[var(--line)] bg-white hover:border-[rgba(17,17,17,0.18)]"
+                        ? "border-[var(--foreground)] bg-[rgba(17,17,17,0.03)]"
+                        : "border-[var(--line)] bg-transparent hover:bg-[rgba(255,255,255,0.5)]"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -1491,7 +1491,7 @@ function PlannerAddLookDialog({
                         </span>
                       ) : null}
                     </div>
-                    <div className="mt-3 h-32 overflow-hidden rounded-[10px] bg-[rgba(17,17,17,0.04)]">
+                    <div className="mt-3 h-32 overflow-hidden border border-[var(--line)] bg-[rgba(242,236,227,0.45)]">
                       {garment.preview_url ? (
                         <Image
                           src={garment.preview_url}
@@ -1513,7 +1513,7 @@ function PlannerAddLookDialog({
             </div>
 
             {!filteredWardrobeItems.length ? (
-              <div className="rounded-[12px] border border-dashed border-[var(--line)] bg-[rgba(255,255,255,0.72)] px-4 py-6 text-sm text-[var(--muted)]">
+              <div className="border border-dashed border-[var(--line)] bg-[rgba(255,255,255,0.42)] px-4 py-6 text-sm text-[var(--muted)]">
                 No wardrobe pieces match these filters.
               </div>
             ) : null}
@@ -1541,10 +1541,10 @@ function PlannerAddLookDialog({
                     key={entry.id}
                     type="button"
                     onClick={() => setSelectedLookbookId(entry.id)}
-                    className={`rounded-[12px] border p-4 text-left transition ${
+                    className={`border-t border-b p-4 text-left transition ${
                       isSelected
-                        ? "border-[var(--foreground)] bg-[rgba(17,17,17,0.03)] shadow-[0_14px_30px_rgba(17,17,17,0.08)]"
-                        : "border-[var(--line)] bg-white hover:border-[rgba(17,17,17,0.18)]"
+                        ? "border-[var(--foreground)] bg-[rgba(17,17,17,0.03)]"
+                        : "border-[var(--line)] bg-transparent hover:bg-[rgba(255,255,255,0.5)]"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">

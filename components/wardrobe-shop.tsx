@@ -927,7 +927,7 @@ export function WardrobeShop({
 
                 {createState.message ? (
                   <p
-                    className={`rounded-2xl border px-4 py-3 text-sm ${
+                    className={`border px-4 py-3 text-sm ${
                       createState.status === "error" || createState.status === "partial"
                         ? "border-red-200 bg-red-50 text-red-700"
                         : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)]"
@@ -1427,10 +1427,10 @@ function QuickIconButton({
       title={title}
       disabled={pending}
       onClick={onPress}
-      className={`rounded-full border border-[rgba(17,17,17,0.08)] p-2 shadow-sm backdrop-blur transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(17,17,17,0.1)] active:translate-y-0 active:scale-[0.96] disabled:transform-none disabled:opacity-60 disabled:shadow-sm ${
+      className={`border border-[rgba(17,17,17,0.08)] p-2 transition-colors duration-200 ease-out hover:border-[var(--oxblood)] active:opacity-90 disabled:opacity-60 ${
         tone === "favourite"
-          ? "border-[rgba(255,107,157,0.18)] bg-[rgba(255,107,157,0.12)] text-[var(--foreground)]"
-          : "bg-white/96 text-[var(--foreground)]"
+          ? "border-[rgba(109,42,36,0.22)] bg-[rgba(109,42,36,0.06)] text-[var(--oxblood)]"
+          : "bg-[var(--cream)] text-[var(--foreground)]"
       }`}
     >
       {children}
