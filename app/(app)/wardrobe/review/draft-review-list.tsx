@@ -200,13 +200,13 @@ export default function DraftReviewList({
   return (
     <div className="flex flex-col gap-5">
       {savedOutfitMessage ? (
-        <Link href="/outfits" className="pw-panel-soft flex items-center justify-between px-4 py-3 text-sm text-[var(--foreground)]">
+        <Link href="/outfits" className="flex items-center justify-between border-t border-b border-[var(--line)] px-1 py-3 text-sm text-[var(--foreground)]">
           <span>{savedOutfitMessage}</span>
-          <span className="text-xs uppercase tracking-[0.16em] text-[var(--accent-strong)]">View outfits →</span>
+          <span className="text-xs uppercase tracking-[0.16em] text-[var(--oxblood)]">View outfits →</span>
         </Link>
       ) : null}
       {groupedDrafts.length > 1 ? (
-        <div className="pw-panel-soft flex items-center justify-between gap-3 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 border-t border-b border-[var(--line)] px-1 py-3">
           <div>
             <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
               Review Scope
@@ -218,10 +218,10 @@ export default function DraftReviewList({
           <button
             type="button"
             onClick={() => setLatestBatchOnly((value) => !value)}
-            className={`rounded-full px-4 py-2 text-xs font-medium uppercase tracking-[0.16em] transition-colors ${
+            className={`px-4 py-2 text-xs font-medium uppercase tracking-[0.16em] transition-colors ${
               latestBatchOnly
-                ? "bg-[var(--accent-strong)] text-white"
-                : "border border-[var(--line)] bg-white text-[var(--foreground)]"
+                ? "bg-[var(--oxblood)] text-white"
+                : "border border-[var(--line)] bg-transparent text-[var(--foreground)]"
             }`}
           >
             {latestBatchOnly ? "Showing Latest Only" : "Show Latest Only"}
@@ -239,7 +239,7 @@ export default function DraftReviewList({
                 {group.description}
               </p>
             </div>
-            <span className="pw-chip border-[rgba(123,92,240,0.18)] bg-[rgba(123,92,240,0.1)] text-[var(--accent-strong)]">
+            <span className="pw-chip border-[var(--line)] bg-transparent text-[var(--muted)]">
               {group.drafts.length} {group.drafts.length === 1 ? "draft" : "drafts"}
             </span>
           </div>
@@ -262,10 +262,10 @@ export default function DraftReviewList({
         return (
           <div
             key={draft.id}
-            className="grid gap-5 rounded-[8px] border border-[var(--line)] bg-[rgba(255,255,255,0.88)] p-5 shadow-[0_18px_40px_rgba(45,27,105,0.08)] md:grid-cols-[96px_1fr_auto]"
+            className="grid gap-5 border-t border-b border-[var(--line)] bg-[rgba(255,255,255,0.28)] py-5 md:grid-cols-[96px_1fr_auto]"
             style={{ opacity: isLowConfidence ? 0.85 : 1 }}
           >
-            <div className="relative flex h-[118px] w-[96px] items-center justify-center overflow-hidden rounded-xl bg-[rgba(123,92,240,0.08)] text-center text-[10px] uppercase tracking-[0.16em] text-[var(--muted)]">
+            <div className="relative flex h-[118px] w-[96px] items-center justify-center overflow-hidden border border-[var(--line)] bg-[rgba(242,236,227,0.45)] text-center text-[10px] uppercase tracking-[0.16em] text-[var(--muted)]">
               {draft.preview_url && draft.preview_kind === "image" ? (
                 <>
                   <DraftPreviewImage
@@ -275,7 +275,7 @@ export default function DraftReviewList({
                     sourceWidth={draft.source_image_width}
                     sourceHeight={draft.source_image_height}
                   />
-                  <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(180deg,transparent,rgba(15,13,26,0.82))] px-2 py-2 text-[9px] tracking-[0.16em] text-white">
+                  <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(180deg,transparent,rgba(30,26,23,0.82))] px-2 py-2 text-[9px] tracking-[0.16em] text-white">
                     {sourceLabel(draft.payload.source_type)}
                   </div>
                 </>
@@ -295,7 +295,7 @@ export default function DraftReviewList({
                 <p className="text-[15px] font-semibold text-[var(--foreground)]">
                   {draft.payload.source_label || draft.payload.tag}
                 </p>
-                <span className="pw-chip border-[rgba(123,92,240,0.18)] bg-[rgba(123,92,240,0.1)] text-[var(--accent-strong)]">
+                <span className="pw-chip border-[var(--line)] bg-transparent text-[var(--muted)]">
                   {sourceLabel(draft.payload.source_type)}
                 </span>
                 {draft.payload.extraction_source ? (
@@ -303,7 +303,7 @@ export default function DraftReviewList({
                     className={`rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] ${
                       isWeakExtraction
                         ? "border border-[rgba(208,80,60,0.22)] bg-[rgba(255,237,232,0.92)] text-[#b24a35]"
-                        : "border border-[rgba(123,92,240,0.16)] bg-[rgba(123,92,240,0.08)] text-[var(--accent-strong)]"
+                        : "border border-[var(--line)] bg-transparent text-[var(--muted)]"
                     }`}
                   >
                     {draft.payload.extraction_source}
@@ -312,7 +312,7 @@ export default function DraftReviewList({
               </div>
               <div className="mb-2 flex flex-wrap gap-1.5">
                 {draft.payload.source_type === "outfit_decomposition" && draft.payload.role ? (
-                  <span className="rounded-full border border-[rgba(123,92,240,0.2)] bg-[rgba(123,92,240,0.08)] px-2.5 py-0.5 text-[11px] font-medium capitalize text-[var(--accent-strong)]">
+                  <span className="border border-[var(--line)] bg-transparent px-2.5 py-0.5 text-[11px] font-medium capitalize text-[var(--muted)]">
                     outfit role: {draft.payload.role}
                   </span>
                 ) : null}
@@ -330,7 +330,7 @@ export default function DraftReviewList({
                   .map(([field, value]) => (
                     <span
                       key={field}
-                      className="rounded-full bg-[rgba(45,27,105,0.06)] px-2.5 py-0.5 text-[11px] text-[var(--muted)]"
+                      className="border border-[var(--line)] bg-transparent px-2.5 py-0.5 text-[11px] text-[var(--muted)]"
                     >
                       {value}
                     </span>
@@ -368,14 +368,14 @@ export default function DraftReviewList({
               ) : null}
               {isWeakPhotoDraft ? (
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <p className="text-[11px] text-[var(--accent-strong)]">
+                  <p className="text-[11px] text-[var(--oxblood)]">
                     This photo draft is low-confidence. Start by checking the category and colour
                     before accepting it into your wardrobe.
                   </p>
                   <button
                     type="button"
                     onClick={() => focusField(fieldId(draft.id, photoJumpField))}
-                    className="rounded-full border border-[rgba(123,92,240,0.18)] bg-[rgba(123,92,240,0.1)] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--accent-strong)] transition-colors hover:bg-[rgba(123,92,240,0.14)]"
+                    className="border border-[rgba(109,42,36,0.24)] bg-[rgba(109,42,36,0.05)] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--oxblood)] transition-colors hover:bg-[rgba(109,42,36,0.1)]"
                   >
                     {photoJumpField === "category" ? "Jump To Category" : "Jump To Colour"}
                   </button>
@@ -666,7 +666,7 @@ function Field({
         <button
           type="button"
           onClick={() => setRevealed(true)}
-          className="rounded-2xl border border-dashed border-[rgba(208,80,60,0.5)] bg-[rgba(208,80,60,0.05)] px-4 py-3 text-left text-[var(--foreground)]"
+          className="border border-dashed border-[rgba(208,80,60,0.5)] bg-[rgba(208,80,60,0.05)] px-4 py-3 text-left text-[var(--foreground)]"
         >
           {value.trim().toLowerCase()}?
         </button>
@@ -687,7 +687,7 @@ function Field({
         step={step}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
-        className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
+        className="border border-[var(--line)] bg-[var(--cream)] px-4 py-3 outline-none"
         style={{
           borderLeft: borderColor ? `2px solid ${borderColor}` : undefined,
           background: bgColor
@@ -869,7 +869,7 @@ function TextAreaField({
       <textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="min-h-24 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
+        className="min-h-24 border border-[var(--line)] bg-[var(--cream)] px-4 py-3 outline-none"
       />
     </label>
   );
