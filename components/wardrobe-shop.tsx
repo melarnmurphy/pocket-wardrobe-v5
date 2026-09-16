@@ -872,7 +872,7 @@ export function WardrobeShop({
                   <div className={`space-y-5 ${createMobileStep === 1 ? "block" : "hidden"} lg:block`}>
                     <CreateImageField onPreviewChange={setCreatePreviewImageUrl} />
 
-                    <div className="rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,243,255,0.92))] p-5">
+                    <div className="border-t border-b border-[var(--line)] py-5">
                       <div>
                         <div>
                           <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">
@@ -1639,7 +1639,7 @@ function GarmentDetailDialog({
           {garment.preview_url ? (
             <div className="mx-auto max-w-5xl space-y-4">
               <div className="grid gap-4 lg:grid-cols-[1.4fr,0.9fr]">
-                <div className="overflow-hidden rounded-[12px] border border-[rgba(17,17,17,0.08)] bg-white shadow-[0_24px_55px_rgba(17,17,17,0.1)]">
+                <div className="overflow-hidden border-t border-b border-[var(--line)] bg-[var(--surface)]">
                   <div className="relative">
                     <NextImage
                       src={garment.preview_url}
@@ -1647,13 +1647,13 @@ function GarmentDetailDialog({
                       width={1000}
                       height={1000}
                       unoptimized
-                      className="h-[22rem] w-full object-contain bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))] sm:h-[28rem]"
+                      className="h-[22rem] w-full object-contain bg-[rgba(242,236,227,0.45)] sm:h-[28rem]"
                     />
                     <div className="absolute inset-0 flex items-end justify-center bg-black/0 p-4 transition-all duration-200 hover:bg-black/10">
                       <button
                         type="button"
                         onClick={() => setShowReupload((v) => !v)}
-                        className="rounded-full border border-white/50 bg-white/90 px-4 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--foreground)] shadow-[0_10px_20px_rgba(17,17,17,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--foreground)]"
+                        className="border border-[var(--line)] bg-[var(--cream)] px-4 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--foreground)]"
                       >
                         {showReupload ? "Cancel" : "Reupload"}
                       </button>
@@ -1670,7 +1670,7 @@ function GarmentDetailDialog({
                 </div>
 
                 {garment.images.length ? (
-                  <div className="space-y-3 rounded-[12px] border border-[rgba(17,17,17,0.08)] bg-[rgba(255,255,255,0.96)] p-3 shadow-[0_18px_40px_rgba(17,17,17,0.06)]">
+                  <div className="space-y-3 border-t border-b border-[var(--line)] py-3">
                     <div className="flex items-center justify-between px-2">
                       <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
                         Image Set
@@ -1686,13 +1686,13 @@ function GarmentDetailDialog({
                         return (
                           <div
                             key={image.id}
-                            className={`flex flex-col overflow-hidden rounded-[10px] border ${
+                            className={`flex flex-col overflow-hidden border-t border-b ${
                               isFeature
-                                ? "border-[var(--foreground)] bg-white shadow-[0_16px_34px_rgba(17,17,17,0.08)]"
-                                : "border-[var(--line)] bg-[rgba(255,255,255,0.92)]"
+                                ? "border-[var(--foreground)] bg-[rgba(255,255,255,0.72)]"
+                                : "border-[var(--line)] bg-transparent"
                             }`}
                           >
-                            <div className="aspect-[3/4] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))]">
+                            <div className="aspect-[3/4] overflow-hidden bg-[rgba(242,236,227,0.45)]">
                               {image.preview_url ? (
                                 <NextImage
                                   src={image.preview_url}
@@ -2608,7 +2608,7 @@ function CreateGarmentPreviewCard({
   const missingChecks = readinessChecks.filter((check) => !check.complete);
 
   return (
-    <div className="space-y-4 rounded-[8px] border border-[rgba(17,17,17,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))] p-4 shadow-[0_18px_44px_rgba(17,17,17,0.08)]">
+    <div className="space-y-4 border-t border-b border-[var(--line)] py-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Card Preview</p>
@@ -2622,7 +2622,7 @@ function CreateGarmentPreviewCard({
       </div>
 
       <div className="mt-4 overflow-hidden rounded-[8px] border border-[var(--line)] bg-white">
-        <div className="relative aspect-[4/5] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,232,220,0.9))]">
+        <div className="relative aspect-[4/5] overflow-hidden bg-[rgba(242,236,227,0.45)]">
           {previewUrl ? (
             <NextImage src={previewUrl} alt={displayTitle} width={640} height={800} unoptimized className="h-full w-full object-cover" />
           ) : (
@@ -2641,7 +2641,7 @@ function CreateGarmentPreviewCard({
               </p>
             </div>
           )}
-          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/10 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[rgba(30,26,23,0.12)] to-transparent" />
         </div>
 
         <div className="space-y-3 p-4">
@@ -2663,11 +2663,11 @@ function CreateGarmentPreviewCard({
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-[8px] border border-[rgba(17,17,17,0.06)] bg-[rgba(17,17,17,0.03)] px-3 py-2">
+            <div className="border-t border-[var(--line)] px-3 py-2">
               <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Wear Count</p>
               <p className="mt-1 text-sm font-medium">0</p>
             </div>
-            <div className="rounded-[8px] border border-[rgba(17,17,17,0.06)] bg-[rgba(17,17,17,0.03)] px-3 py-2">
+            <div className="border-t border-[var(--line)] px-3 py-2">
               <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Cost Per Wear</p>
               <p className="mt-1 text-sm font-medium">
                 {price.trim() ? `${currency.trim() || "AUD"} ${price.trim()}` : "n/a"}
@@ -2824,7 +2824,7 @@ function PhotoSourceDropCard({
   return (
     <form
       action={action}
-      className="flex h-full flex-col rounded-[8px] border border-[rgba(17,17,17,0.12)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,244,238,0.94))] p-4 shadow-[0_18px_38px_rgba(17,17,17,0.08)]"
+      className="flex h-full flex-col border-t border-b border-[var(--line)] py-4"
     >
       <div className="mb-4 flex items-center justify-between gap-3">
         <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(17,17,17,0.05)] text-[var(--foreground)]">
@@ -2953,7 +2953,7 @@ function ReceiptDraftComposer({
             Upload a receipt or invoice file. This creates a draft that you can review and clean up
             before adding the garment into your wardrobe.
           </p>
-          <p className="mt-3 max-w-2xl rounded-[8px] border border-[rgba(123,92,240,0.16)] bg-[rgba(123,92,240,0.08)] px-4 py-3 text-sm leading-6 text-[var(--accent-strong)]">
+          <p className="mt-3 max-w-2xl border-l-2 border-[var(--oxblood)] bg-[rgba(109,42,36,0.05)] px-4 py-3 text-sm leading-6 text-[var(--muted)]">
             Best results come from pasted receipt text or text-readable PDFs. Image and photo
             receipts use OCR when available, but if the draft looks weak, paste the merchant lines
             and item text here before retrying.
@@ -2985,7 +2985,7 @@ function ReceiptDraftComposer({
                     />
                   </div>
                 </div>
-                <div className="border-t border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,243,255,0.88))] px-5 py-4">
+                <div className="border-t border-[var(--line)] bg-[rgba(242,236,227,0.32)] px-5 py-4">
                   <p className="text-sm font-semibold">{fileName || "Receipt selected"}</p>
                   <p className="mt-1 text-sm text-[var(--muted)]">
                     This receipt image will be used for OCR and review before any wardrobe item is
@@ -3000,7 +3000,7 @@ function ReceiptDraftComposer({
               </div>
             ) : fileName ? (
               <div className="overflow-hidden rounded-[1.2rem] border border-[var(--line)] bg-white">
-                <div className="relative flex min-h-40 items-center justify-center bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,243,255,0.9))]">
+                <div className="relative flex min-h-40 items-center justify-center bg-[rgba(242,236,227,0.45)]">
                   <div className="flex flex-col items-center gap-3 px-6 text-center text-[var(--muted)]">
                     <DocumentIcon />
                     <div>
@@ -3024,7 +3024,7 @@ function ReceiptDraftComposer({
                     />
                   </div>
                 </div>
-                <div className="border-t border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,243,255,0.88))] px-5 py-4">
+                <div className="border-t border-[var(--line)] bg-[rgba(242,236,227,0.32)] px-5 py-4">
                   <p className="text-sm font-semibold">{fileName}</p>
                   <p className="mt-1 text-sm text-[var(--muted)]">
                     This receipt document will be used for OCR and review before any wardrobe item
@@ -3035,7 +3035,7 @@ function ReceiptDraftComposer({
             ) : (
               <label
                 htmlFor={inputId}
-                className="flex cursor-pointer items-center justify-between rounded-[8px] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,243,255,0.9))] px-4 py-4"
+                className="flex cursor-pointer items-center justify-between border-t border-b border-[var(--line)] bg-[rgba(242,236,227,0.32)] px-4 py-4"
               >
                 <span className="text-sm text-[var(--muted)]">
                   {fileName || "PDF, PNG, JPG, or WEBP"}
