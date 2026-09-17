@@ -137,13 +137,14 @@ export default function ChoosePhotosPage() {
         onDrop={onDrop}
         onClick={openPicker}
         onKeyDown={(event) => {
+          if (photos.length) return;
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
             openPicker();
           }
         }}
-        role="button"
-        tabIndex={0}
+        role={photos.length ? "group" : "button"}
+        tabIndex={photos.length ? -1 : 0}
         className={[
           "mt-10 ml-0 flex min-h-[clamp(480px,68vh,740px)] cursor-pointer flex-col rounded-[4px] border border-dashed px-6 text-center transition-colors lg:ml-[136px]",
           photos.length ? "justify-start gap-5 py-6" : "items-center justify-center gap-3",
