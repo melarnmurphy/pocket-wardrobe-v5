@@ -13,9 +13,10 @@ type PickedPhoto = { file: File; previewUrl: string };
 
 const MAX_OUTBOUND_IMAGE_EDGE = 1800;
 const OUTBOUND_IMAGE_QUALITY = 0.82;
+const MAX_OUTBOUND_BATCH_BYTES = 3_500_000;
 
-async function prepareUploadFile(file: File): Promise<File> {
-  if (file.size < 700_000) return file;
+async function prepareUploadFile(file: File, targetBytes: number): Promise<File> {
+  if (file.size <= targetBytes) return file;
 
   const sourceUrl = URL.createObjectURL(file);
   try {
@@ -26,18 +27,25 @@ async function prepareUploadFile(file: File): Promise<File> {
       image.onerror = () => reject(new Error("Could not read image."));
     });
 
-    const scale = Math.min(1, MAX_OUTBOUND_IMAGE_EDGE / Math.max(image.naturalWidth, image.naturalHeight));
+    let scale = Math.min(1, MAX_OUTBOUND_IMAGE_EDGE / Math.max(image.naturalWidth, image.naturalHeight));
     const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
     const context = canvas.getContext("2d");
     if (!context) return file;
-    context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
     const outputType = file.type === "image/png" ? "image/webp" : file.type;
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, outputType, OUTBOUND_IMAGE_QUALITY)
-    );
+    let quality = OUTBOUND_IMAGE_QUALITY;
+    let blob: Blob | null = null;
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, outputType, quality));
+      if (blob && blob.size <= targetBytes) break;
+      scale *= 0.8;
+      quality = Math.max(0.55, quality - 0.07);
+    }
+
     if (!blob || blob.size >= file.size) return file;
 
     const extension = outputType === "image/webp" ? "webp" : outputType === "image/png" ? "png" : "jpg";
@@ -106,7 +114,10 @@ export default function ChoosePhotosPage() {
 
     try {
       const formData = new FormData();
-      const uploadFiles = await Promise.all(photos.map((photo) => prepareUploadFile(photo.file)));
+      const targetBytes = Math.floor(MAX_OUTBOUND_BATCH_BYTES / photos.length);
+      const uploadFiles = await Promise.all(
+        photos.map((photo) => prepareUploadFile(photo.file, targetBytes))
+      );
       uploadFiles.forEach((file) => formData.append("photos", file));
 
       const response = await fetch("/api/pipeline/batch", { method: "POST", body: formData });
