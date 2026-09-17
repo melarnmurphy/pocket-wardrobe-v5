@@ -20,6 +20,7 @@ export class RateLimitUnavailableError extends Error {
 // Module-level singletons — survive across requests in the same function instance.
 let redis: Redis | null = null;
 const limiters = new Map<string, Ratelimit>();
+const OPTIONAL_CHECK_TIMEOUT_MS = 800;
 
 function getRedis(): Redis | null {
   if (redis !== null) return redis;
@@ -69,7 +70,12 @@ export async function checkRateLimit(
 
   let success: boolean;
   try {
-    ({ success } = await limiter.limit(ip));
+    ({ success } = await Promise.race([
+      limiter.limit(ip),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new RateLimitUnavailableError()), OPTIONAL_CHECK_TIMEOUT_MS);
+      })
+    ]));
   } catch (error) {
     // Upstash is configured but unreachable (wrong/stale credentials, outage). Fail open
     // rather than break every rate-limited action (sign-in, sign-up, etc.) on a dependency
