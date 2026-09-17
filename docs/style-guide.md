@@ -22,9 +22,6 @@ retired; nothing in the app should reference it.
 | blush | `#f2d6cb` | second colour (default) — highlight blocks, toast marks |
 | blush ink | `#4a1f16` | text on blush |
 | blush mid | `#6d3a2c` | body text on blush |
-| butter | `#e8cfa0` | second colour (alternate colourway) |
-| butter ink | `#3d1f10` | text on butter |
-| butter mid | `#5c3a16` | body text on butter |
 | ink | `#1e1a17` | primary text, dark chips, toasts |
 | cream | `#faf7f2` | app background (light screens) |
 | paper | `#f2ece3` | cut-out tile background, page ground |
@@ -43,8 +40,8 @@ Fills: `rgba(30,26,23,.07)` chips and inactive fields, `rgba(30,26,23,.16)` off-
 ## Usage rules
 
 - Oxblood is the product foundation: primary buttons, active states, links.
-- Blush is the default second colour for highlight blocks and toast marks; butter is the
-  alternate colourway where a screen calls for it. They are never mixed on the one screen.
+- Blush is the second colour for highlight blocks and toast marks. It is not mixed with
+  another highlight colour on the one screen.
 - Sage is reserved for positive status only — connected, sold, live — never a decorative accent.
 - No gradients as a brand device. No violet, electric purple, hot pink, acid yellow or cyber
   mint anywhere in the product.

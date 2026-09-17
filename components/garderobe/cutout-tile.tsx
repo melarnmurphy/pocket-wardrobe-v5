@@ -37,7 +37,7 @@ export function CutoutTile({
           className="absolute inset-0"
           style={{
             backgroundImage:
-              "repeating-linear-gradient(135deg, #dcc6a8 0 6px, #d0b795 6px 12px)"
+              "repeating-linear-gradient(135deg, #ded6c8 0 6px, #d0c7b6 6px 12px)"
           }}
         />
       )}

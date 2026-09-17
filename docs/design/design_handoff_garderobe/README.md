@@ -59,9 +59,6 @@ matched closely. Two qualifications:
 | blush | `#f2d6cb` | second colour (default) — highlight blocks, toast marks |
 | blush ink | `#4a1f16` | text on blush |
 | blush mid | `#6d3a2c` | body text on blush |
-| butter | `#e8cfa0` | second colour (alternate colourway) |
-| butter ink | `#3d1f10` | text on butter |
-| butter mid | `#5c3a16` | body text on butter |
 | ink | `#1e1a17` | primary text, dark chips, toasts |
 | cream | `#faf7f2` | app background (light screens) |
 | paper | `#f2ece3` | cut-out tile background, page ground |
