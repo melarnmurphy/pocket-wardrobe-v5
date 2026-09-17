@@ -70,7 +70,13 @@ export default function ChoosePhotosPage() {
       photos.forEach((photo) => formData.append("photos", photo.file));
 
       const response = await fetch("/api/pipeline/batch", { method: "POST", body: formData });
-      const body = (await response.json()) as { batchId?: string; error?: string };
+      const responseText = await response.text();
+      let body: { batchId?: string; error?: string } = {};
+      try {
+        body = JSON.parse(responseText) as { batchId?: string; error?: string };
+      } catch {
+        // A platform timeout or proxy error may return HTML instead of JSON.
+      }
 
       if (!response.ok || !body.batchId) {
         setError(

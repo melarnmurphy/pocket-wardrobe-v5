@@ -414,11 +414,11 @@ export async function createGarmentSource(params: {
   const supabase = ctx ? ctx.supabase : await createClient();
 
   const safeFileName = params.file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-  const storagePath = `${user.id}/pipeline-uploads/${Date.now()}-${safeFileName}`;
+  const storagePath = `${user.id}/pipeline-uploads/${Date.now()}-${crypto.randomUUID()}-${safeFileName}`;
   const validated = await validateImageUpload(params.file);
   const cutout = params.cutoutFile ? await validateImageUpload(params.cutoutFile) : null;
   const cutoutStoragePath = cutout
-    ? `${user.id}/pipeline-cutouts/${Date.now()}-${safeFileName.replace(/\.[^.]+$/, "")}.png`
+    ? `${user.id}/pipeline-cutouts/${Date.now()}-${crypto.randomUUID()}-${safeFileName.replace(/\.[^.]+$/, "")}.png`
     : null;
 
   const { error: uploadError } = await supabase.storage

@@ -40,7 +40,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const user = await getRequiredUser();
     const batchId = await createPhotoBatch(files.length);
 
-    for (const file of files) {
+    await Promise.all(files.map(async (file) => {
       try {
         const source = await createGarmentSource({ file });
         await enqueuePhotoBatchItem({
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         );
         logger.error("photo_batch_queue_failed", error, { fileName: file.name });
       }
-    }
+    }));
 
     await finishBatchIfReady(batchId);
 
