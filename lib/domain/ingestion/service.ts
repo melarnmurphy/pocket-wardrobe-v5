@@ -7,6 +7,7 @@ import { directUploadAdapter, outfitDecompositionAdapter, type ReviewDraftAdapte
 import type { Json, TablesInsert } from "@/types/database";
 import sharp from "sharp";
 import { validateImageUpload } from "./limits";
+import type { OpenRouterAnalyzeResponse } from "./openrouter-analyser";
 
 type GarmentDraftInsert = TablesInsert<"garment_drafts">;
 type GarmentSourceInsert = TablesInsert<"garment_sources">;
@@ -722,6 +723,59 @@ export async function createManualPhotoReviewDraft(params: {
     cropWidth: params.cutoutWidth,
     cropHeight: params.cutoutHeight
   }, ctx);
+}
+
+export async function createDraftsFromOpenRouterResult(params: {
+  sourceId: string;
+  fileName: string;
+  result: OpenRouterAnalyzeResponse;
+}, ctx?: ServiceContext): Promise<string[]> {
+  if (params.result.garments.length === 0) {
+    return [await createManualPhotoReviewDraft({
+      sourceId: params.sourceId,
+      fileName: params.fileName,
+      notes: "The photo was uploaded, but no clear garment was detected. Review the photo or add this piece manually."
+    }, ctx)];
+  }
+
+  const draftIds: string[] = [];
+  for (const garment of params.result.garments) {
+    draftIds.push(await createManualReviewDraft({
+      sourceId: params.sourceId,
+      sourceType: "direct_upload",
+      title: garment.title,
+      category: garment.category,
+      colour: garment.colour,
+      material: garment.material || null,
+      style: garment.style || null,
+      notes: garment.notes || "Review the assisted labels before adding this piece.",
+      sourceLabel: params.fileName,
+      confidence: garment.confidence,
+      extractionSource: "openrouter_vision",
+      metadata: {
+        original_filename: params.fileName,
+        extraction_source: "openrouter_vision",
+        detected_role: garment.role,
+        detector_provider: "openrouter"
+      },
+      fieldConfidence: {
+        title: garment.confidence,
+        category: garment.confidence,
+        colour: garment.confidence,
+        material: garment.material ? garment.confidence : 0.2,
+        style: garment.style ? garment.confidence : 0.2
+      },
+      fieldProvenance: {
+        title: "openrouter_vision",
+        category: "openrouter_vision",
+        colour: "openrouter_vision",
+        material: "openrouter_vision",
+        style: "openrouter_vision"
+      }
+    }, ctx));
+  }
+
+  return draftIds;
 }
 
 export async function listPendingDrafts(): Promise<PendingDraft[]> {

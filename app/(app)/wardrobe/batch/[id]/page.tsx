@@ -21,13 +21,13 @@ export default async function BatchReviewPage({ params }: { params: Promise<{ id
     const batchDraftIds = new Set(batch.draft_ids);
     const drafts = allDrafts.filter((draft) => batchDraftIds.has(draft.id));
 
-    if (batch.status !== "running" && batch.draft_ids.length === 0) {
+    if (batch.status !== "running" && batch.draft_ids.length === 0 && batch.error_message) {
       return (
         <main className="mx-auto max-w-3xl px-5 py-10 text-center">
-          <p className="gw-kicker">batch finished</p>
-          <h1 className="pt-4 text-[34px] font-light leading-[1.05] text-[var(--ink)]">no garments found</h1>
+          <p className="gw-kicker">photo processing needs attention</p>
+          <h1 className="pt-4 text-[34px] font-light leading-[1.05] text-[var(--ink)]">your photos are still safe</h1>
           <p className="mx-auto max-w-md pt-3 text-[12.5px] leading-[1.5] text-[var(--slate)]">
-            Nothing entered your wardrobe. Try a clearer photo with one or more garments visible.
+            We uploaded your selection, but automatic analysis could not finish. Check your connection and try again. If it keeps happening, remove one photo and retry.
           </p>
           <Link href="/wardrobe/batch/new" className="mt-6 inline-flex rounded-[100px] bg-[var(--oxblood)] px-6 py-4 text-[10px] font-semibold uppercase tracking-[.16em] text-[var(--cream)]">
             choose photos again

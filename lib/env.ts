@@ -56,6 +56,7 @@ const serverEnvSchema = publicEnvSchema.extend({
   OPENROUTER_TREND_MODEL: optionalString,
   // Structured extraction / story naming. Default is OpenRouter's discounted Solar Pro 4.
   OPENROUTER_CHAT_MODEL: optionalString,
+  OPENROUTER_INGESTION_MODEL: optionalString,
   // Direct xAI / Grok grounding.
   XAI_API_KEY: optionalString,
   XAI_TREND_MODEL: optionalString,
@@ -106,6 +107,7 @@ export function getServerEnv(): ServerEnv {
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     OPENROUTER_TREND_MODEL: process.env.OPENROUTER_TREND_MODEL,
     OPENROUTER_CHAT_MODEL: process.env.OPENROUTER_CHAT_MODEL,
+    OPENROUTER_INGESTION_MODEL: process.env.OPENROUTER_INGESTION_MODEL,
     XAI_API_KEY: process.env.XAI_API_KEY,
     XAI_TREND_MODEL: process.env.XAI_TREND_MODEL,
     CRON_SECRET: process.env.CRON_SECRET,

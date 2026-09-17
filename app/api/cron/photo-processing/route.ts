@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerEnv } from "@/lib/env";
 import { createServiceClient } from "@/lib/supabase/service";
 import { callPipelineService } from "@/lib/domain/ingestion/client";
+import { analyzePhotoWithOpenRouter } from "@/lib/domain/ingestion/openrouter-analyser";
 import {
   createDraftsFromPipelineResult,
+  createDraftsFromOpenRouterResult,
   createManualPhotoReviewDraft
 } from "@/lib/domain/ingestion/service";
 import { canUseFeatureLabels } from "@/lib/domain/entitlements/service";
@@ -95,18 +97,32 @@ export async function GET(request: NextRequest) {
         throw new Error("The uploaded photo could not be opened for analysis.");
       }
 
-      const result = await callPipelineService({
-        serviceUrl: env.PIPELINE_SERVICE_URL,
-        imageUrl: signedUrlData.signedUrl
-      });
-
-      draftIds = result.garments.length > 0
-        ? await createDraftsFromPipelineResult({ sourceId, storagePath, result }, serviceContext)
-        : [await createManualPhotoReviewDraft({
-            sourceId,
-            fileName,
-            notes: "The image was uploaded, but automatic detection found no garment. Review this piece manually."
-          }, serviceContext)];
+      if (env.OPENROUTER_API_KEY) {
+        const result = await analyzePhotoWithOpenRouter({
+          apiKey: env.OPENROUTER_API_KEY,
+          imageUrl: signedUrlData.signedUrl,
+          model: env.OPENROUTER_INGESTION_MODEL
+        });
+        draftIds = await createDraftsFromOpenRouterResult({ sourceId, fileName, result }, serviceContext);
+      } else if (!/localhost|127\.0\.0\.1/.test(env.PIPELINE_SERVICE_URL)) {
+        const result = await callPipelineService({
+          serviceUrl: env.PIPELINE_SERVICE_URL,
+          imageUrl: signedUrlData.signedUrl
+        });
+        draftIds = result.garments.length > 0
+          ? await createDraftsFromPipelineResult({ sourceId, storagePath, result }, serviceContext)
+          : [await createManualPhotoReviewDraft({
+              sourceId,
+              fileName,
+              notes: "The image was uploaded, but automatic detection found no garment. Review this piece manually."
+            }, serviceContext)];
+      } else {
+        draftIds = [await createManualPhotoReviewDraft({
+          sourceId,
+          fileName,
+          notes: "Automatic analysis is not connected yet. Review this photo manually or try again later."
+        }, serviceContext)];
+      }
     }
 
     await rpc.rpc("finish_photo_batch_item", {
