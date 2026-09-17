@@ -73,14 +73,23 @@ export default function ChoosePhotosPage() {
       const body = (await response.json()) as { batchId?: string; error?: string };
 
       if (!response.ok || !body.batchId) {
-        setError(body.error ?? "Unable to start the batch.");
+        setError(
+          body.error ??
+            (response.status === 401
+              ? "Your session has expired. Sign in again, then return here to try these photos once more."
+              : response.status >= 500
+                ? "Garderobe could not start the photo batch just now. Your selected photos are still here. Check your connection and try again; if it keeps happening, remove one photo and retry."
+                : "These photos could not be started. Your selection is still here—check the files and try again.")
+        );
         setIsSubmitting(false);
         return;
       }
 
       router.push(`/wardrobe/batch/${body.batchId}`);
     } catch {
-      setError("Unable to start the batch.");
+      setError(
+        "Garderobe could not be reached just now. Your selected photos are still here. Check your connection and try again; if it keeps happening, remove one photo and retry."
+      );
       setIsSubmitting(false);
     }
   }
@@ -112,12 +121,12 @@ export default function ChoosePhotosPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1240px] px-5 py-8 pb-16 lg:px-10">
-      <Link href="/wardrobe" className="inline-flex items-center gap-1 text-[12.5px] text-[var(--stone)]">
+      <Link href="/wardrobe" className="inline-flex items-center gap-1 text-[12.5px] text-[var(--stone)] lg:ml-[136px]">
         <ChevronLeft size={14} strokeWidth={1.5} />
         wardrobe
       </Link>
 
-      <h1 className="pt-5 text-[46px] font-light leading-[1.05] tracking-[-0.035em] text-[var(--ink)]">choose photos</h1>
+      <h1 className="pt-5 text-[46px] font-light leading-[1.05] tracking-[-0.035em] text-[var(--ink)] lg:ml-[136px]">choose photos</h1>
 
       <div
         onDragOver={(event) => {
@@ -136,16 +145,59 @@ export default function ChoosePhotosPage() {
         role="button"
         tabIndex={0}
         className={[
-          "mt-10 ml-0 flex min-h-[clamp(480px,68vh,740px)] cursor-pointer flex-col items-center justify-center gap-3 rounded-[4px] border border-dashed px-6 text-center transition-colors lg:ml-[136px]",
+          "mt-10 ml-0 flex min-h-[clamp(480px,68vh,740px)] cursor-pointer flex-col rounded-[4px] border border-dashed px-6 text-center transition-colors lg:ml-[136px]",
+          photos.length ? "justify-start gap-5 py-6" : "items-center justify-center gap-3",
           isDragging
             ? "border-[var(--oxblood)] bg-[var(--blush)]"
             : "border-[rgba(30,26,23,.24)] bg-transparent"
         ].join(" ")}
       >
-        <ImagePlus size={30} strokeWidth={1.25} className="text-[var(--stone)]" />
-        <p className="text-[14px] text-[var(--slate)]">
-          drop photos here, or tap to choose from your library
-        </p>
+        {photos.length ? (
+          <>
+            <div className="flex w-full items-center justify-between border-b border-[rgba(30,26,23,.11)] pb-4 text-left">
+              <p className="text-[11px] font-semibold uppercase tracking-[.18em] text-[var(--stone)]">
+                {photos.length} photo{photos.length === 1 ? "" : "s"} selected
+              </p>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openPicker();
+                }}
+                className="text-[10px] font-semibold uppercase tracking-[.16em] text-[var(--oxblood)] underline"
+              >
+                add more
+              </button>
+            </div>
+            <div className="grid w-full flex-1 grid-cols-2 content-start gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              {photos.map((photo, index) => (
+                <div key={photo.previewUrl} className="relative aspect-[.78] overflow-hidden rounded-[3px] bg-[var(--paper)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={photo.previewUrl} alt={`Selected photo ${index + 1}`} className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      removePhoto(index);
+                    }}
+                    aria-label={`Remove selected photo ${index + 1}`}
+                    className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--ink)] text-[var(--cream)]"
+                  >
+                    <X size={12} strokeWidth={1.5} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <p className="text-[12.5px] text-[var(--slate)]">tap the rectangle to add more photos</p>
+          </>
+        ) : (
+          <>
+            <ImagePlus size={30} strokeWidth={1.25} className="text-[var(--stone)]" />
+            <p className="text-[14px] text-[var(--slate)]">
+              drop photos here, or tap to choose from your library
+            </p>
+          </>
+        )}
         <input
           ref={inputRef}
           type="file"
@@ -161,30 +213,24 @@ export default function ChoosePhotosPage() {
 
       {photos.length ? (
         <>
-          <div className="mt-6 grid grid-cols-4 gap-2">
-            {photos.map((photo, index) => (
-              <div key={photo.previewUrl} className="relative aspect-[.78] overflow-hidden rounded-[3px]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={photo.previewUrl}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => removePhoto(index)}
-                  aria-label="remove"
-                  className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--ink)] text-[var(--cream)]"
-                >
-                  <X size={11} strokeWidth={1.5} />
-                </button>
-              </div>
-            ))}
-          </div>
+          {error ? (
+            <div
+              role="alert"
+              className="mt-6 flex max-w-[680px] flex-wrap items-center gap-x-5 gap-y-3 border border-[rgba(109,42,36,.22)] bg-[var(--blush)] px-4 py-3 text-[12.5px] leading-[1.5] text-[var(--blush-ink)]"
+            >
+              <p className="min-w-0 flex-1 break-words">{error}</p>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="shrink-0 font-semibold uppercase tracking-[.16em] text-[10px] text-[var(--oxblood)] underline disabled:opacity-50"
+              >
+                try again
+              </button>
+            </div>
+          ) : null}
 
-          {error ? <p className="pt-4 text-[12.5px] text-[var(--oxblood)]">{error}</p> : null}
-
-          <div className="mt-6 sticky bottom-4">
+          <div className="sticky bottom-4 mt-6 pb-6">
             <PillButton onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting
                 ? "starting…"

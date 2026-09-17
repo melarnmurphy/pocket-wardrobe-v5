@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getOrCreateProfile } from "@/lib/domain/profile/service";
-import { listWardrobeGarments } from "@/lib/domain/wardrobe/service";
+import { countWardrobeGarments } from "@/lib/domain/wardrobe/service";
 import { AuthenticationError } from "@/lib/auth";
 import { AuthRequiredCard } from "@/components/auth-required-card";
 import { OnboardingFlow } from "./onboarding-flow";
@@ -14,9 +14,9 @@ import { OnboardingFlow } from "./onboarding-flow";
  */
 export default async function OnboardingPage() {
   try {
-    const [profile, garments] = await Promise.all([
+    const [profile, garmentCount] = await Promise.all([
       getOrCreateProfile(),
-      listWardrobeGarments()
+      countWardrobeGarments()
     ]);
 
     if (profile.onboarding_completed_at) {
@@ -25,7 +25,7 @@ export default async function OnboardingPage() {
 
     return (
       <OnboardingFlow
-        hasGarments={garments.length > 0}
+        hasGarments={garmentCount > 0}
         suburb={profile.suburb}
         topsSize={profile.tops_size}
       />
