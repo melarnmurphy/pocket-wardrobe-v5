@@ -8,52 +8,12 @@ import { PillButton } from "@/components/garderobe";
 import { UploadFailedDialog } from "@/components/garderobe/wardrobe/upload-failed-dialog";
 import { PhotoLibraryPermissionDialog } from "@/components/garderobe/wardrobe/photo-library-permission-dialog";
 import { classifyUploadFile } from "@/lib/domain/ingestion/limits.shared";
+import { createClient as createBrowserClient } from "@/lib/supabase/client";
 
 type PickedPhoto = { file: File; previewUrl: string };
 
-const MAX_OUTBOUND_IMAGE_EDGE = 1800;
-const OUTBOUND_IMAGE_QUALITY = 0.82;
-const MAX_OUTBOUND_BATCH_BYTES = 3_500_000;
-
-async function prepareUploadFile(file: File, targetBytes: number): Promise<File> {
-  if (file.size <= targetBytes) return file;
-
-  const sourceUrl = URL.createObjectURL(file);
-  try {
-    const image = new Image();
-    image.src = sourceUrl;
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve();
-      image.onerror = () => reject(new Error("Could not read image."));
-    });
-
-    let scale = Math.min(1, MAX_OUTBOUND_IMAGE_EDGE / Math.max(image.naturalWidth, image.naturalHeight));
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-    if (!context) return file;
-
-    const outputType = file.type === "image/png" ? "image/webp" : file.type;
-    let quality = OUTBOUND_IMAGE_QUALITY;
-    let blob: Blob | null = null;
-
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, outputType, quality));
-      if (blob && blob.size <= targetBytes) break;
-      scale *= 0.8;
-      quality = Math.max(0.55, quality - 0.07);
-    }
-
-    if (!blob || blob.size >= file.size) return file;
-
-    const extension = outputType === "image/webp" ? "webp" : outputType === "image/png" ? "png" : "jpg";
-    const baseName = file.name.replace(/\.[^.]+$/, "");
-    return new File([blob], `${baseName}.${extension}`, { type: outputType, lastModified: file.lastModified });
-  } finally {
-    URL.revokeObjectURL(sourceUrl);
-  }
+function safeStorageFileName(file: File) {
+  return file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
 }
 
 /** 14a — choose photos, many at a time. Also serves w1d's drag-a-folder on desktop. */
@@ -62,7 +22,7 @@ export default function ChoosePhotosPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isPreparing, setIsPreparing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadErrorCode, setUploadErrorCode] = useState<
     "unsupported_format" | "too_large" | null
   >(null);
@@ -109,18 +69,64 @@ export default function ChoosePhotosPage() {
   async function handleSubmit() {
     if (!photos.length || isSubmitting) return;
     setIsSubmitting(true);
-    setIsPreparing(true);
+    setUploadProgress(0);
     setError(null);
 
     try {
-      const formData = new FormData();
-      const targetBytes = Math.floor(MAX_OUTBOUND_BATCH_BYTES / photos.length);
-      const uploadFiles = await Promise.all(
-        photos.map((photo) => prepareUploadFile(photo.file, targetBytes))
-      );
-      uploadFiles.forEach((file) => formData.append("photos", file));
+      const supabase = createBrowserClient();
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) {
+        throw new Error("Your session has expired. Sign in again, then return here to try these photos once more.");
+      }
+      const user = userData.user;
 
-      const response = await fetch("/api/pipeline/batch", { method: "POST", body: formData });
+      const uploads: Array<{
+        storagePath: string;
+        fileName: string;
+        contentType: "image/jpeg" | "image/png" | "image/webp";
+        size: number;
+      }> = [];
+      const uploadErrors: string[] = [];
+      let completed = 0;
+      let nextIndex = 0;
+
+      async function uploadNext() {
+        while (nextIndex < photos.length) {
+          const index = nextIndex;
+          nextIndex += 1;
+          const photo = photos[index];
+          const fileName = safeStorageFileName(photo.file);
+          const storagePath = `${user.id}/pipeline-uploads/${Date.now()}-${crypto.randomUUID()}-${fileName}`;
+          const upload = await supabase.storage.from("garment-originals").upload(storagePath, photo.file, {
+            cacheControl: "3600",
+            contentType: photo.file.type,
+            upsert: false
+          });
+          if (upload.error) {
+            uploadErrors.push(photo.file.name);
+          } else {
+            uploads.push({
+              storagePath,
+              fileName: photo.file.name,
+              contentType: photo.file.type as "image/jpeg" | "image/png" | "image/webp",
+              size: photo.file.size
+            });
+          }
+          completed += 1;
+          setUploadProgress(completed);
+        }
+      }
+
+      await Promise.all([0, 1, 2, 3].map(() => uploadNext()));
+      if (!uploads.length) {
+        throw new Error("None of the selected photos could be uploaded. Check your connection and try again.");
+      }
+
+      const response = await fetch("/api/pipeline/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uploads })
+      });
       const responseText = await response.text();
       let body: { batchId?: string; error?: string } = {};
       try {
@@ -130,18 +136,24 @@ export default function ChoosePhotosPage() {
       }
 
       if (!response.ok || !body.batchId) {
+        await supabase.storage.from("garment-originals").remove(uploads.map((upload) => upload.storagePath));
         setError(
           body.error ??
             (response.status === 401
               ? "Your session has expired. Sign in again, then return here to try these photos once more."
-              : response.status === 413
-                ? "These photos are too large to send together. Remove one or two, or try smaller image files, then try again."
               : response.status >= 500
                 ? "Garderobe could not start the photo batch just now. Your selected photos are still here. Check your connection and try again; if it keeps happening, remove one photo and retry."
                 : "These photos could not be started. Your selection is still here—check the files and try again.")
         );
+        if (uploadErrors.length) {
+          setError(`${uploadErrors.length} photo${uploadErrors.length === 1 ? "" : "s"} could not be uploaded. Remove them or try again.`);
+        }
         setIsSubmitting(false);
         return;
+      }
+
+      if (uploadErrors.length) {
+        setError(`${uploadErrors.length} photo${uploadErrors.length === 1 ? "" : "s"} could not be uploaded. The remaining ${uploads.length} will continue.`);
       }
 
       router.push(`/wardrobe/batch/${body.batchId}`);
@@ -151,7 +163,7 @@ export default function ChoosePhotosPage() {
       );
       setIsSubmitting(false);
     } finally {
-      setIsPreparing(false);
+      setIsSubmitting(false);
     }
   }
 
@@ -295,7 +307,9 @@ export default function ChoosePhotosPage() {
           <div className="sticky bottom-4 mt-6 pb-6">
             <PillButton onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting
-                ? isPreparing ? "preparing photos…" : "starting…"
+                ? uploadProgress < photos.length
+                  ? `uploading ${uploadProgress} of ${photos.length}…`
+                  : "starting…"
                 : `process ${photos.length} photo${photos.length === 1 ? "" : "s"}`}
             </PillButton>
           </div>

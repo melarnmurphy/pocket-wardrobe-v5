@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { getRequiredUser } from "@/lib/auth";
 import type { ServiceContext } from "@/lib/domain/service-context";
 import type { PipelineAnalyzeResponse } from "./index";
@@ -483,6 +484,48 @@ export async function createGarmentSource(params: {
     cutoutWidth: cutout?.width ?? null,
     cutoutHeight: cutout?.height ?? null
   };
+}
+
+/**
+ * Registers an image that has already been uploaded directly by the browser.
+ * Keeping this separate from createGarmentSource preserves the server-upload
+ * path used by smaller, trusted internal flows while large batches bypass the
+ * Vercel request-body limit.
+ */
+export async function createGarmentSourceFromStorage(params: {
+  userId: string;
+  storagePath: string;
+  fileName: string;
+  contentType: string;
+  size: number;
+  width?: number;
+  height?: number;
+}): Promise<{ sourceId: string }> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("garment_sources")
+    .insert(({
+      user_id: params.userId,
+      garment_id: null,
+      source_type: "direct_upload",
+      storage_path: params.storagePath,
+      parse_status: "pending",
+      source_metadata_json: {
+        filename: params.fileName,
+        mime_type: params.contentType,
+        size: params.size,
+        width: params.width ?? null,
+        height: params.height ?? null
+      }
+    }) as never)
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "Unable to register the uploaded photo.");
+  }
+
+  return { sourceId: (data as { id: string }).id };
 }
 
 export async function createReceiptSource(params: {
