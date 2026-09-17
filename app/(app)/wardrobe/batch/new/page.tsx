@@ -189,7 +189,7 @@ export default function ChoosePhotosPage() {
                 </div>
               ))}
             </div>
-            <p className="text-[12.5px] text-[var(--slate)]">tap the rectangle to add more photos</p>
+            <p className="text-[12.5px] text-[var(--slate)]">tap the photo area to add more photos</p>
           </>
         ) : (
           <>
