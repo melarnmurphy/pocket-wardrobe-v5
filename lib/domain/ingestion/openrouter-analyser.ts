@@ -20,7 +20,8 @@ export type OpenRouterGarmentResult = z.infer<typeof openRouterGarmentSchema>;
 export type OpenRouterAnalyzeResponse = z.infer<typeof openRouterResponseSchema>;
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
-const DEFAULT_MODEL = "google/gemma-3-27b-it:free";
+export const DEFAULT_OPENROUTER_INGESTION_MODEL = "google/gemma-4-26b-a4b";
+export const DEFAULT_OPENROUTER_INGESTION_FALLBACK_MODEL = "qwen/qwen3.7-flash";
 
 const responseFormat = {
   type: "json_schema",
@@ -60,20 +61,30 @@ export async function analyzePhotoWithOpenRouter(params: {
   apiKey: string;
   imageUrl: string;
   model?: string;
+  fallbackModel?: string;
 }): Promise<OpenRouterAnalyzeResponse> {
   const client = new OpenAI({
     apiKey: params.apiKey,
     baseURL: OPENROUTER_URL,
+    timeout: 25_000,
     defaultHeaders: {
       "HTTP-Referer": "https://fashionapp5.vercel.app",
       "X-Title": "Garderobe"
     }
   });
 
-  const response = await client.chat.completions.create({
-    model: params.model ?? DEFAULT_MODEL,
+  const request = {
+    model: params.model ?? DEFAULT_OPENROUTER_INGESTION_MODEL,
+    models: [
+      params.model ?? DEFAULT_OPENROUTER_INGESTION_MODEL,
+      params.fallbackModel ?? DEFAULT_OPENROUTER_INGESTION_FALLBACK_MODEL
+    ],
     temperature: 0,
     max_tokens: 1200,
+    provider: {
+      zdr: true,
+      data_collection: "deny"
+    },
     response_format: responseFormat,
     messages: [
       {
@@ -92,7 +103,9 @@ export async function analyzePhotoWithOpenRouter(params: {
         ]
       }
     ]
-  });
+  } as never;
+
+  const response = await client.chat.completions.create(request);
 
   const content = response.choices[0]?.message?.content;
   if (!content) throw new Error("OpenRouter returned no garment analysis.");

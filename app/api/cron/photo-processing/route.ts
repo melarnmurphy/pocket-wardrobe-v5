@@ -101,7 +101,8 @@ export async function GET(request: NextRequest) {
         const result = await analyzePhotoWithOpenRouter({
           apiKey: env.OPENROUTER_API_KEY,
           imageUrl: signedUrlData.signedUrl,
-          model: env.OPENROUTER_INGESTION_MODEL
+          model: env.OPENROUTER_INGESTION_MODEL,
+          fallbackModel: env.OPENROUTER_INGESTION_FALLBACK_MODEL
         });
         draftIds = await createDraftsFromOpenRouterResult({ sourceId, fileName, result }, serviceContext);
       } else if (!/localhost|127\.0\.0\.1/.test(env.PIPELINE_SERVICE_URL)) {
