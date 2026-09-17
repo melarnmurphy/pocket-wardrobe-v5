@@ -158,7 +158,9 @@ export async function signInWithMagicLinkAction(formData: FormData) {
   const next = sanitizeNextPath(values.next);
 
   try {
-    await checkRateLimit("magic-link", 5, 600, { failClosed: true });
+    // Supabase Auth already throttles OTP delivery. The optional Redis guard
+    // must not turn a sign-in attempt into a server error when unavailable.
+    await checkRateLimit("magic-link", 5, 600, { failClosed: false });
   } catch (error) {
     if (error instanceof RateLimitError) {
       redirectMagicLinkError(next, values.email, error.message);
@@ -198,7 +200,9 @@ export async function signInWithPasswordAction(formData: FormData) {
   const next = sanitizeNextPath(values.next);
 
   try {
-    await checkRateLimit("sign-in-password", 10, 60, { failClosed: true });
+    // Keep authentication available if the optional Redis rate-limit service
+    // is unset or temporarily unreachable; Supabase still enforces auth limits.
+    await checkRateLimit("sign-in-password", 10, 60, { failClosed: false });
   } catch (error) {
     if (error instanceof RateLimitError) {
       redirect(
@@ -361,7 +365,9 @@ export async function sendPasswordResetAction(formData: FormData) {
   const next = sanitizeNextPath(values.next);
 
   try {
-    await checkRateLimit("password-reset", 3, 600, { failClosed: true });
+    // Password reset delivery is already protected by Supabase Auth. Do not
+    // expose an infrastructure failure as a generic page error here.
+    await checkRateLimit("password-reset", 3, 600, { failClosed: false });
   } catch (error) {
     if (error instanceof RateLimitError) {
       redirect(
