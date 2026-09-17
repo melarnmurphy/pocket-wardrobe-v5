@@ -11,12 +11,50 @@ import { classifyUploadFile } from "@/lib/domain/ingestion/limits.shared";
 
 type PickedPhoto = { file: File; previewUrl: string };
 
+const MAX_OUTBOUND_IMAGE_EDGE = 1800;
+const OUTBOUND_IMAGE_QUALITY = 0.82;
+
+async function prepareUploadFile(file: File): Promise<File> {
+  if (file.size < 700_000) return file;
+
+  const sourceUrl = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = sourceUrl;
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("Could not read image."));
+    });
+
+    const scale = Math.min(1, MAX_OUTBOUND_IMAGE_EDGE / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext("2d");
+    if (!context) return file;
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    const outputType = file.type === "image/png" ? "image/webp" : file.type;
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, outputType, OUTBOUND_IMAGE_QUALITY)
+    );
+    if (!blob || blob.size >= file.size) return file;
+
+    const extension = outputType === "image/webp" ? "webp" : outputType === "image/png" ? "png" : "jpg";
+    const baseName = file.name.replace(/\.[^.]+$/, "");
+    return new File([blob], `${baseName}.${extension}`, { type: outputType, lastModified: file.lastModified });
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
+}
+
 /** 14a — choose photos, many at a time. Also serves w1d's drag-a-folder on desktop. */
 export default function ChoosePhotosPage() {
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
   const [uploadErrorCode, setUploadErrorCode] = useState<
     "unsupported_format" | "too_large" | null
   >(null);
@@ -63,11 +101,13 @@ export default function ChoosePhotosPage() {
   async function handleSubmit() {
     if (!photos.length || isSubmitting) return;
     setIsSubmitting(true);
+    setIsPreparing(true);
     setError(null);
 
     try {
       const formData = new FormData();
-      photos.forEach((photo) => formData.append("photos", photo.file));
+      const uploadFiles = await Promise.all(photos.map((photo) => prepareUploadFile(photo.file)));
+      uploadFiles.forEach((file) => formData.append("photos", file));
 
       const response = await fetch("/api/pipeline/batch", { method: "POST", body: formData });
       const responseText = await response.text();
@@ -83,6 +123,8 @@ export default function ChoosePhotosPage() {
           body.error ??
             (response.status === 401
               ? "Your session has expired. Sign in again, then return here to try these photos once more."
+              : response.status === 413
+                ? "These photos are too large to send together. Remove one or two, or try smaller image files, then try again."
               : response.status >= 500
                 ? "Garderobe could not start the photo batch just now. Your selected photos are still here. Check your connection and try again; if it keeps happening, remove one photo and retry."
                 : "These photos could not be started. Your selection is still here—check the files and try again.")
@@ -97,6 +139,8 @@ export default function ChoosePhotosPage() {
         "Garderobe could not be reached just now. Your selected photos are still here. Check your connection and try again; if it keeps happening, remove one photo and retry."
       );
       setIsSubmitting(false);
+    } finally {
+      setIsPreparing(false);
     }
   }
 
@@ -240,7 +284,7 @@ export default function ChoosePhotosPage() {
           <div className="sticky bottom-4 mt-6 pb-6">
             <PillButton onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting
-                ? "starting…"
+                ? isPreparing ? "preparing photos…" : "starting…"
                 : `process ${photos.length} photo${photos.length === 1 ? "" : "s"}`}
             </PillButton>
           </div>
